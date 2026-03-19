@@ -40,139 +40,147 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; overscroll-behavior: none; }
 
-/* ── LAYOUT MÓVIL (base) ── */
-#app { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
-.screen { display: none; flex-direction: column; height: 100%; overflow-y: auto; padding-bottom: 68px; }
+/* ══════════════════════════════════════
+   LAYOUT BASE — MÓVIL
+══════════════════════════════════════ */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* El wrapper contiene TODAS las screens */
+#screens-wrapper {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+}
+
+.screen {
+  display: none;
+  flex-direction: column;
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
 .screen.active { display: flex; }
 
-/* ── LAYOUT ESCRITORIO (≥ 768px) ── */
-@media (min-width: 768px) {
-  body { background: #080808; }
+/* Nav abajo en móvil */
+.bottomnav {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  height: 58px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  z-index: 100;
+}
+
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: var(--ink3);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  padding: 4px 2px;
+  transition: color .15s;
+}
+.nav-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; }
+.nav-btn.active { color: var(--orange); }
+
+/* ══════════════════════════════════════
+   LAYOUT ESCRITORIO (≥ 900px)
+══════════════════════════════════════ */
+@media (min-width: 900px) {
+  html, body { background: #060606; }
 
   #app {
     flex-direction: row;
-    max-width: 1200px;
+    max-width: 1280px;
     margin: 0 auto;
     height: 100dvh;
-    box-shadow: 0 0 60px rgba(0,0,0,.8);
+    box-shadow: 0 0 80px rgba(0,0,0,.9);
   }
 
-  /* Nav lateral izquierdo en escritorio */
+  /* Nav se convierte en sidebar izquierdo */
   .bottomnav {
-    position: relative;
     flex-direction: column;
-    width: 200px;
-    min-width: 200px;
+    width: 220px;
+    min-width: 220px;
     height: 100dvh;
     border-top: none;
     border-right: 1px solid var(--border);
-    padding: 20px 0;
+    padding: 0;
     justify-content: flex-start;
-    gap: 4px;
+    overflow: hidden;
+  }
+
+  /* Logo en el sidebar */
+  .bottomnav::before {
+    content: '';
+    display: block;
+    height: 64px;
+    min-height: 64px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 40'%3E%3Ctext x='20' y='30' font-family='Georgia,serif' font-size='28' font-weight='900' font-style='italic' letter-spacing='3' fill='%23f0f0f0'%3EF%3C/text%3E%3Ctext x='36' y='30' font-family='Georgia,serif' font-size='28' font-weight='900' font-style='italic' fill='%23e85d04'%3EO%3C/text%3E%3Ctext x='54' y='30' font-family='Georgia,serif' font-size='28' font-weight='900' font-style='italic' letter-spacing='3' fill='%23f0f0f0'%3ERGE%3C/text%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 20px center;
   }
 
   .nav-btn {
     flex: none;
     flex-direction: row;
     justify-content: flex-start;
-    padding: 12px 20px;
+    width: 100%;
+    padding: 13px 20px;
     gap: 12px;
     font-size: 12px;
-    border-radius: 8px;
-    margin: 0 8px;
-    width: calc(100% - 16px);
+    font-weight: 600;
+    letter-spacing: .5px;
+    border-radius: 0;
+    border-left: 3px solid transparent;
+    color: var(--ink2);
   }
-
-  .nav-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
-  .nav-btn.active { background: #1a0a00; color: var(--orange); }
-
-  /* Logo en el nav lateral */
-  .bottomnav::before {
-    content: 'FⓄRGE';
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 24px;
-    font-weight: 800;
-    font-style: italic;
-    color: var(--ink);
-    letter-spacing: 2px;
-    padding: 0 20px 20px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 12px;
-    display: block;
+  .nav-btn:hover { background: var(--bg3); color: var(--ink); }
+  .nav-btn.active {
+    background: #1a0a00;
+    color: var(--orange);
+    border-left-color: var(--orange);
   }
+  .nav-btn svg { width: 18px; height: 18px; }
 
-  /* Área de contenido */
-  .screens-wrapper {
+  /* Wrapper de contenido ocupa el resto */
+  #screens-wrapper {
     flex: 1;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    min-width: 0;
   }
 
-  .screen {
-    padding-bottom: 0;
-    flex: 1;
-  }
+  .screen { padding-bottom: 0; }
 
-  /* Contenido centrado con max-width */
-  .screen > div,
-  .screen > .topbar,
-  .screen > .tab-row {
-    max-width: 780px;
-  }
+  /* Modales centrados */
+  .modal-overlay { align-items: center; padding: 24px; }
+  .modal { border-radius: 16px; max-width: 520px; margin: 0 auto; }
 
-  /* Topbar fija arriba */
-  .topbar {
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-  }
-
-  /* Auth overlay centrado */
-  #auth-overlay > div {
-    max-width: 380px;
-  }
-
-  /* Modales centrados verticalmente */
-  .modal-overlay {
-    align-items: center;
-    padding: 20px;
-  }
-  .modal {
-    border-radius: 16px;
-    max-width: 500px;
-    margin: 0 auto;
-  }
-
-  /* Grid de stats más ancho */
-  #train-quick-stats {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  /* Foto grid más columnas */
-  .photo-grid {
-    grid-template-columns: repeat(5, 1fr);
-  }
-
-  /* Overlays de evaluación */
-  .eval-overlay,
-  .macro-end-overlay {
-    padding: 40px;
-  }
-
-  /* Toast más arriba */
+  /* Toast */
   .toast { bottom: 24px; }
-
-  /* Rest overlay */
-  .rest-overlay { padding: 40px; }
-}
-
-/* ── WRAPPER para escritorio ── */
-#screens-wrapper {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
 }
 
 /* ── TOPBAR ── */
@@ -869,14 +877,81 @@ svg.rest-ring { position: absolute; inset: -4px; width: calc(100% + 8px); height
 
 <div id="app">
 
-<!-- ══════ SCREEN: ENTRENAR ══════ -->
-<div id="screen-train" class="screen active">
+<!-- ══════ NAV (móvil: abajo / escritorio: sidebar izquierdo) ══════ -->
+<nav class="bottomnav">
+  <button class="nav-btn active" id="nav-home" onclick="gotoScreen('home')">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Inicio
+  </button>
+  <button class="nav-btn" id="nav-train" onclick="gotoScreen('train')">
+    <svg viewBox="0 0 24 24"><path d="M6.5 6.5h11M6.5 17.5h11M3 9l3.5 3-3.5 3M21 9l-3.5 3 3.5 3"/></svg>
+    Entrenar
+  </button>
+  <button class="nav-btn" id="nav-food" onclick="gotoScreen('food')">
+    <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 4-3 6-3 9H8c0-3-3-5-3-9a7 7 0 0 1 7-7z"/><line x1="8" y1="22" x2="16" y2="22"/><line x1="12" y1="17" x2="12" y2="22"/></svg>
+    Nutrición
+  </button>
+  <button class="nav-btn" id="nav-plan" onclick="gotoScreen('plan')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Plan
+  </button>
+  <button class="nav-btn" id="nav-habits" onclick="gotoScreen('habits')">
+    <svg viewBox="0 0 24 24"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z"/><path d="M8 12l3 3 5-5"/></svg>
+    Hábitos
+  </button>
+  <button class="nav-btn" id="nav-stats" onclick="gotoScreen('stats')">
+    <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    Stats
+  </button>
+  <button class="nav-btn" id="nav-progress" onclick="gotoScreen('progress')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+    Progreso
+  </button>
+</nav>
+
+<!-- ══════ WRAPPER DE SCREENS ══════ -->
+<div id="screens-wrapper">
+
+<!-- ══════ SCREEN: INICIO ══════ -->
+<div id="screen-home" class="screen active">
   <div class="topbar">
     <div class="topbar-logo">F<span>O</span>RGE</div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--green);"></div>
       <div id="user-initials-btn" onclick="showUserMenu()" style="width:32px;height:32px;border-radius:50%;background:var(--orange);color:#fff;display:none;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;"></div>
     </div>
+  </div>
+  <div style="padding:16px;">
+    <!-- Bienvenida + fecha -->
+    <div id="home-bienvenida" style="margin-bottom:16px;"></div>
+    <!-- Banner plan activo -->
+    <div id="active-session-banner" style="display:none;"></div>
+    <!-- Stats rápidas -->
+    <div id="home-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;"></div>
+    <!-- Acción rápida -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">
+      <button class="btn btn-primary" onclick="gotoScreen('train')" style="gap:6px;">
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M6.5 6.5h11M6.5 17.5h11M3 9l3.5 3-3.5 3M21 9l-3.5 3 3.5 3"/></svg>
+        Entrenar
+      </button>
+      <button class="btn btn-secondary" onclick="gotoScreen('food')" style="gap:6px;">
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M12 2a7 7 0 0 1 7 7c0 4-3 6-3 9H8c0-3-3-5-3-9a7 7 0 0 1 7-7z"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+        Nutrición
+      </button>
+    </div>
+    <!-- Últimas sesiones -->
+    <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--ink);margin-bottom:10px;">
+      📋 Últimos entrenamientos
+    </div>
+    <div id="home-ultimas-sesiones"></div>
+  </div>
+</div>
+
+<!-- ══════ SCREEN: ENTRENAR ══════ -->
+<div id="screen-train" class="screen">
+  <div class="topbar">
+    <div class="topbar-logo">F<span>O</span>RGE</div>
+    <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;">Rutinas</div>
   </div>
   <div id="train-home">
     <div style="padding:16px;">
@@ -1076,34 +1151,9 @@ svg.rest-ring { position: absolute; inset: -4px; width: calc(100% + 8px); height
   </div>
 </div>
 
-<!-- ══════ BOTTOM NAV — 6 items + Plan ══════ -->
-<nav class="bottomnav" style="height:56px;">
-  <button class="nav-btn active" id="nav-train" onclick="gotoScreen('train')">
-    <svg viewBox="0 0 24 24"><path d="M6.5 6.5h11M6.5 17.5h11M3 9l3.5 3-3.5 3M21 9l-3.5 3 3.5 3"/></svg>
-    Entrenar
-  </button>
-  <button class="nav-btn" id="nav-food" onclick="gotoScreen('food')">
-    <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 4-3 6-3 9H8c0-3-3-5-3-9a7 7 0 0 1 7-7z"/><line x1="8" y1="22" x2="16" y2="22"/><line x1="12" y1="17" x2="12" y2="22"/></svg>
-    Nutrición
-  </button>
-  <button class="nav-btn" id="nav-plan" onclick="gotoScreen('plan')">
-    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14" stroke-width="2.5"/><line x1="12" y1="14" x2="12" y2="14" stroke-width="2.5"/><line x1="16" y1="14" x2="16" y2="14" stroke-width="2.5"/></svg>
-    Plan
-  </button>
-  <button class="nav-btn" id="nav-habits" onclick="gotoScreen('habits')">
-    <svg viewBox="0 0 24 24"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z"/><path d="M8 12l3 3 5-5"/></svg>
-    Hábitos
-  </button>
-  <button class="nav-btn" id="nav-stats" onclick="gotoScreen('stats')">
-    <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-    Stats
-  </button>
-  <button class="nav-btn" id="nav-progress" onclick="gotoScreen('progress')">
-    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-    Progreso
-  </button>
-</nav>
-</div>
+<!-- ══════ FIN SCREENS-WRAPPER ══════ -->
+</div><!-- /screens-wrapper -->
+</div><!-- /app -->
 
 <!-- ══════ OVERLAY: EVALUACIÓN DE BLOQUE ══════ -->
 <div id="eval-overlay" class="eval-overlay">
@@ -1782,6 +1832,7 @@ function gotoScreen(s) {
   const nb = document.getElementById('nav-'+s);
   if(nb) nb.classList.add('active');
   currentScreen=s;
+  if(s==='home')   renderHome();
   if(s==='train')  renderTrainHome();
   if(s==='food')   renderFood();
   if(s==='plan')   renderPlan();
@@ -1952,9 +2003,92 @@ function cancelDiagnostico() {
   diagRutinaId = null;
 }
 
-// ═══════════════════════════════════
-//  TRAIN HOME
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+//  PANTALLA DE INICIO
+// ═══════════════════════════════════════════════════════════════
+function renderHome() {
+  // Bienvenida
+  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const hoy = new Date();
+  const nombreUsuario = currentUser?.displayName?.split(' ')[0] || 'Diego';
+  document.getElementById('home-bienvenida').innerHTML = `
+    <div style="margin-bottom:4px;">
+      <span style="font-size:13px;color:var(--ink3);">${dias[hoy.getDay()]} ${hoy.getDate()} de ${meses[hoy.getMonth()]}</span>
+    </div>
+    <div style="font-family:var(--font-display);font-size:26px;font-weight:800;color:var(--ink);line-height:1.1;">
+      Hola, ${nombreUsuario} 👋
+    </div>`;
+
+  // Banner plan activo
+  renderPlanBannerHome();
+
+  // Stats rápidas
+  const sessions = forge.sessions || [];
+  const weekStart = new Date(hoy); weekStart.setDate(hoy.getDate() - hoy.getDay()); weekStart.setHours(0,0,0,0);
+  const estasSemana = sessions.filter(s => new Date(s.date) >= weekStart).length;
+  const streak = calcStreak();
+  const totalVol = sessions.slice(-10).reduce((a,s) => a+(s.totalVolume||0), 0);
+
+  document.getElementById('home-stats').innerHTML = `
+    <div class="stat-box"><div class="stat-num">${estasSemana}</div><div class="stat-label">Esta semana</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--orange);">${streak}</div><div class="stat-label">Racha días</div></div>
+    <div class="stat-box"><div class="stat-num" style="font-size:20px;">${sessions.length}</div><div class="stat-label">Total sesiones</div></div>`;
+
+  // Últimas 10 sesiones
+  const ultimas = [...sessions].sort((a,b) => b.date - a.date).slice(0, 10);
+  const el = document.getElementById('home-ultimas-sesiones');
+
+  if (!ultimas.length) {
+    el.innerHTML = `<div class="empty" style="padding:32px 0;">
+      <div class="empty-icon">🏋</div>
+      <div class="empty-text">Sin sesiones aún</div>
+      <div class="empty-sub">Inicia tu primera rutina para ver el historial aquí.</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = ultimas.map(s => {
+    const fecha = new Date(s.date);
+    const diasAtras = Math.floor((hoy - fecha) / 86400000);
+    const cuandoLabel = diasAtras === 0 ? 'Hoy' : diasAtras === 1 ? 'Ayer' : `Hace ${diasAtras} días`;
+    const fechaStr = fecha.toLocaleDateString('es', {day:'2-digit', month:'short'});
+    const ejercicios = (s.exercises || []);
+    const numEx = ejercicios.length;
+    const volStr = s.totalVolume ? `${s.totalVolume.toLocaleString()} kg vol.` : '';
+    const durStr = s.elapsed ? fmtTime(s.elapsed) : '';
+
+    // Top 3 ejercicios con sus mejores sets
+    const topSets = ejercicios.slice(0,3).map(ex => {
+      const exData = getExercise(ex.exId);
+      const mejorSet = (ex.sets||[]).filter(s=>s.done&&s.weight).sort((a,b)=>b.weight-a.weight)[0];
+      if (!exData) return '';
+      return `<span class="rutina-ex-chip">${exData.name.split('(')[0].trim()}${mejorSet ? ` ${mejorSet.weight}kg` : ''}</span>`;
+    }).join('');
+
+    return `<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="verDetalleSession('${s.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--ink);">${s.routineName || 'Sesión libre'}</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:2px;">${cuandoLabel} · ${fechaStr}</div>
+        </div>
+        <div style="text-align:right;">
+          ${volStr ? `<div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--orange);">${volStr}</div>` : ''}
+          ${durStr ? `<div style="font-size:11px;color:var(--ink3);">${durStr}</div>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:10px;color:var(--ink3);margin-right:2px;">${numEx} ejerc.</span>
+        ${topSets}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function verDetalleSession(id) {
+  // Por ahora ir a stats — en futuro abrir detalle
+  gotoScreen('stats');
+}
 function renderTrainHome() {
   if(activeSession){
     document.getElementById('train-home').style.display='none';
@@ -2925,7 +3059,11 @@ function closeUserMenu(){document.getElementById('user-menu').classList.remove('
 document.addEventListener('click',e=>{const menu=document.getElementById('user-menu');const btn=document.getElementById('user-initials-btn');if(menu.classList.contains('open')&&!menu.contains(e.target)&&!btn?.contains(e.target)) closeUserMenu();});
 
 function updateUserUI(user){
-  const btn=document.getElementById('user-initials-btn');if(!btn) return;
+  // sync-dot y user-initials ahora están en screen-home topbar
+  const dot = document.getElementById('sync-dot');
+  if(dot) dot.style.background='var(--green)';
+  const btn=document.getElementById('user-initials-btn');
+  if(!btn) return;
   const parts=(user.displayName||user.email||'U').split(' ');
   btn.textContent=parts.map(p=>p[0]).join('').slice(0,2).toUpperCase();
   btn.style.display='flex';
@@ -2936,17 +3074,21 @@ function updateUserUI(user){
 auth.onAuthStateChanged(async user=>{
   const overlay=document.getElementById('auth-overlay');
   if(user){
-    currentUser=user;overlay.style.display='none';updateUserUI(user);
+    currentUser=user;
+    overlay.style.display='none';
+    updateUserUI(user);
     cargarRutinasIniciales();
     cargarHabitosDefault();
-    renderTrainHome();
-    renderPlanBannerHome();
+    currentScreen='home';
+    gotoScreen('home');
     setSyncDot('syncing');
     try{
       await auth.currentUser.getIdToken(false);
       const snap=await db_fire.collection('users').doc(user.uid).collection('forge').doc('data').get();
       if(snap.exists){forge=mergeDB(forge,snap.data());localStorage.setItem(DB_KEY,JSON.stringify(forge));setLastSync();}
-      setSyncDot('ok');refreshCurrentScreen();renderPlanBannerHome();
+      setSyncDot('ok');
+      renderHome();
+      renderPlanBannerHome();
     }catch(e){setSyncDot('offline');}
   }else{currentUser=null;overlay.style.display='flex';authTab('login');}
 });
