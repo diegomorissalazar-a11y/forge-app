@@ -3291,64 +3291,6 @@ function saveComidaNotas(comidaId, notas) {
   foodData.comidas[comidaId].notas = notas;
   saveFoodData(foodData);
 }
-  metaAgua: 10,
-  porciones: [
-    { nombre:'Cereales',                  meta:'3',    emoji:'🌾' },
-    { nombre:'Frutas',                    meta:'2',    emoji:'🍎' },
-    { nombre:'Carnes bajas en grasa',     meta:'12',   emoji:'🍗' },
-    { nombre:'Lácteos semidescremados',   meta:'2 P',  emoji:'🥛' },
-    { nombre:'Lácteos descremados',       meta:'1',    emoji:'🥛' },
-    { nombre:'Alimentos ricos en lípidos',meta:'0.5',  emoji:'🥑' },
-    { nombre:'Aceites y grasas',          meta:'1',    emoji:'🫒' },
-    { nombre:'Verduras generales',        meta:'2',    emoji:'🥦' },
-  ],
-  comidas: [
-    { id:'desayuno',         emoji:'☀️', nombre:'Desayuno',     hora:'08:00',
-      grupos:'1 lácteo semidesc. protein · 0.5 cereal · 3 carnes',
-      ejemplo:'Yogur Soprole protein + 1 pan molde + 3 huevos + 60g jamón pavo' },
-    { id:'colacion_am',      emoji:'🍎', nombre:'Colación AM',  hora:'10:30',
-      grupos:'1 fruta',
-      ejemplo:'120g arándanos' },
-    { id:'almuerzo',         emoji:'🍽', nombre:'Almuerzo',     hora:'13:00',
-      grupos:'4 carnes · verduras generales · verduras libre consumo',
-      ejemplo:'320g merluza + ensalada apio + tortilla acelga' },
-    { id:'colacion_pm',      emoji:'🥛', nombre:'Colación PM',  hora:'16:00',
-      grupos:'1 lácteo semidesc. protein',
-      ejemplo:'1 yogur Soprole protein' },
-    { id:'preentrenamiento', emoji:'⚡', nombre:'Pre-Entreno',  hora:'18:00',
-      grupos:'1 fruta · 1 lácteo desc. · 2 carnes (1 scoop)',
-      ejemplo:'1 fruta + 200ml leche desc. + 1 scoop proteína' },
-    { id:'cena',             emoji:'🌙', nombre:'Cena',         hora:'20:30',
-      grupos:'2 cereales · 3 carnes · verduras · 0.5 lípidos',
-      ejemplo:'1 tortilla grande + 200g pechuga + lechuga + zanahoria + 50g palta' },
-  ]
-};
-
-const MENU_SEMANAL = [
-  { dia:'Domingo',   rutina:'Cardio 🏃',   desayuno:'Yogur protein + pan + 3 huevos + 1 fruta',     almuerzo:'320g merluza + papa 150g + lechuga',          cena:'1 tortilla + 200g pollo + zanahoria + 50g palta' },
-  { dia:'Lunes',     rutina:'Inf A 🦵',    desayuno:'Yogur protein + 40g avena + 60g jamón pavo',    almuerzo:'240g atún + rúcula + tomate cherry',          cena:'130g choclo + 200g pechuga + espinaca + 45g palta' },
-  { dia:'Martes',    rutina:'Sup A 🏋',    desayuno:'Yogur protein + pan molde + 3 huevos + jamón',  almuerzo:'320g merluza + brócoli + zanahoria',          cena:'2 tortillas + 200g pollo + lechuga + 50g palta' },
-  { dia:'Miércoles', rutina:'Inf B 🦵',    desayuno:'200ml leche desc + 2 huevos + pan + 60g jamón', almuerzo:'320g tilapia + apio + lechuga',               cena:'100g arroz + 200g pollo + zapallo + 50g palta' },
-  { dia:'Jueves',    rutina:'Sup B 💪',    desayuno:'Yogur protein + 40g avena + 60g jamón',         almuerzo:'4 huevos + ensalada apio + acelga',           cena:'100g choclo + 240g atún + tomate + 50g palta' },
-  { dia:'Viernes',   rutina:'Descanso',    desayuno:'Yogur protein + pan + 3 huevos',                almuerzo:'320g corvina + brócoli + champiñones',        cena:'2 tortillas + 200g pollo + rúcula + 50g palta' },
-  { dia:'Sábado',    rutina:'Descanso',    desayuno:'200ml leche + avena + 2 huevos + jamón',        almuerzo:'120g camarones + ensalada mixta + zanahoria', cena:'100g arroz + 200g pechuga + espinaca + nueces' },
-];
-
-const FOOD_KEY_PREFIX='forge_food_';
-function getFoodKey(f){return FOOD_KEY_PREFIX+f;}
-function getFoodData(fecha){
-  try{const raw=localStorage.getItem(getFoodKey(fecha));if(raw) return JSON.parse(raw);}catch{}
-  const data={fecha,agua:0,comidas:{}};
-  FOOD_CONFIG.comidas.forEach(c=>{data.comidas[c.id]={completada:false,notas:''};});
-  return data;
-}
-function saveFoodData(data){
-  localStorage.setItem(getFoodKey(data.fecha),JSON.stringify(data));
-}
-
-let foodFecha=new Date().toISOString().split('T')[0];
-let foodData=null;
-let foodOpenId=null;
 
 // ═══════════════════════════════════════════════════════════════
 //  RUTINAS CORRECTAS — Lunes Inf A / Martes Sup A / Mié Inf B / Jue Sup B
