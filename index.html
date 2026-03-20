@@ -1386,6 +1386,7 @@ function saveEditSesion(){
   renderHome();
   showToast('✓ Sesión actualizada',2000,'ok');
 }
+function deleteEditSet(sesId,ei,si){
   const s=(forge.sessions||[]).find(x=>x.id===sesId); if(!s) return;
   s.exercises[ei].sets.splice(si,1);
   renderEditSesExs(s);
