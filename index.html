@@ -615,10 +615,44 @@ select.inp{cursor:pointer}
       <div style="font-weight:600;color:var(--ink)">Importar CSV Hevy</div>
     </div>
   </div>
+  <div class="um-item" onclick="closeUserMenu();openDatosPersonales()">
+    <span style="font-size:16px">👤</span>
+    <div>
+      <div style="font-weight:600;color:var(--ink)">Datos personales</div>
+      <div style="font-size:11px;color:var(--ink3)">Estatura, edad y más</div>
+    </div>
+  </div>
   <div style="height:1px;background:var(--border)"></div>
   <div class="um-item" onclick="closeUserMenu();openModalCerrarSesion()" style="color:var(--red)">
     <span style="font-size:16px">↪</span>
     <div style="font-weight:600">Cerrar sesión</div>
+  </div>
+</div>
+
+<!-- MODAL: DATOS PERSONALES -->
+<div id="modal-perfil" class="modal-bg">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="modal-title">Datos personales</div>
+      <button class="bicon" onclick="closeModal('modal-perfil')">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field">
+          <label>Estatura (cm)</label>
+          <input class="inp" type="number" id="dp-estatura" placeholder="175" min="100" max="230" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>Fecha de nacimiento</label>
+          <input class="inp" type="date" id="dp-nacimiento">
+        </div>
+      </div>
+      <div id="dp-resumen" style="background:var(--bg3);border-radius:var(--r);padding:12px;margin-bottom:14px;font-size:13px;color:var(--ink2);line-height:1.8;display:none"></div>
+      <button class="btn btn-p" onclick="saveDatosPersonales()">Guardar</button>
+    </div>
   </div>
 </div>
 
@@ -1202,20 +1236,69 @@ function initRutinas(){
   if(!forge.exercises) forge.exercises=[];
   if(!forge.routines)  forge.routines=[];
 
-  // Migrar ejercicios viejos de carrera → ex_correr
-  const viejos=['ex_correr_10k','ex_trote','ex_running'];
-  forge.exercises=forge.exercises.filter(e=>!viejos.includes(e.id));
+  // ── Migrar ejercicios viejos de carrera → ex_correr ─────────
+  const viejosRun=['ex_correr_10k','ex_trote','ex_running'];
+  forge.exercises=forge.exercises.filter(e=>!viejosRun.includes(e.id));
   if(forge.sessions){
     forge.sessions.forEach(s=>{
       (s.exercises||[]).forEach(ex=>{
-        if(viejos.includes(ex.exId)) ex.exId='ex_correr';
+        if(viejosRun.includes(ex.exId)) ex.exId='ex_correr';
       });
     });
   }
   if(forge.routines){
     forge.routines.forEach(r=>{
-      if(r.exercises) r.exercises=r.exercises.map(id=>viejos.includes(id)?'ex_correr':id);
+      if(r.exercises) r.exercises=r.exercises.map(id=>viejosRun.includes(id)?'ex_correr':id);
     });
+  }
+
+  // ── Fusionar duplicados importados de Hevy ────────────────────
+  // Formato: 'nombre duplicado (a eliminar)' → 'id canónico (a conservar)'
+  // Solo fusionar si son exactamente el mismo ejercicio con el mismo instrumento
+  const FUSION_MAP = {
+    // Press Banca Barra
+    'press de banca (barra)':         'ex_press_banca',
+    'press banca (barra)':            'ex_press_banca',
+    // Press Inclinado Barra
+    'press de banca inclinado (barra)':'ex_press_inclinado',
+    'press inclinado (barra)':         'ex_press_inclinado',
+    // Remo con barra
+    'remo pendlay (barra)':            'ex_remo_barra',
+    // Press hombros barra
+    'press de hombros (barra)':        'ex_press_hombros',
+    // Peso muerto barra
+    'peso muerto (barra)':             'ex_peso_muerto',
+    // Jalón al pecho cable — SOLO el agarre normal, no el cerrado
+    'jalón al pecho (cable)':          'ex_jalon_pecho',
+    'jalon al pecho (cable)':          'ex_jalon_pecho',
+    // Sentadilla barra
+    'sentadilla (barra)':              'ex_sentadilla',
+    // Hip thrust barra
+    'empuje de caderas (barra)':       'ex_hip_thrust',
+    'hip thrust (barra)':              'ex_hip_thrust',
+  };
+
+  // Construir mapa id_duplicado → id_canonico
+  const idFusionMap = {};
+  (forge.exercises||[]).forEach(e=>{
+    const key = e.name.toLowerCase().trim();
+    const canonico = FUSION_MAP[key];
+    if(canonico && e.id !== canonico) {
+      idFusionMap[e.id] = canonico;
+    }
+  });
+
+  // Si hay fusiones que hacer, reasignar en sesiones
+  if(Object.keys(idFusionMap).length > 0){
+    (forge.sessions||[]).forEach(s=>{
+      (s.exercises||[]).forEach(ex=>{
+        if(idFusionMap[ex.exId]) ex.exId = idFusionMap[ex.exId];
+      });
+    });
+    // Eliminar los ejercicios duplicados de la lista
+    const idsAEliminar = new Set(Object.keys(idFusionMap));
+    forge.exercises = forge.exercises.filter(e=>!idsAEliminar.has(e.id));
+    saveDB();
   }
 
   const exIds = new Set(forge.exercises.map(e=>e.id));
@@ -1340,22 +1423,27 @@ function renderSesCard(s, hoy){
       ${records?`<div class="hm-item"><div class="hm-label">Récords</div><div class="hm-val">🏅 ${records}</div></div>`:''}`;
   }
 
+  // Emoji e ícono según tipo de sesión
+  const esCardioFlag = esCardio;
+  const rutEmoji = esCardioFlag ? '🏃' : s.routineId ? (
+    (forge.routines||[]).find(r=>r.id===s.routineId)?.emoji || '🏋'
+  ) : '🏋';
+
   const exs = (s.exercises||[]).slice(0,3);
   return `
   <div class="hevy-card" onclick="openSesDetail('${s.id}')">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <div class="hevy-avatar">${(currentUser?.displayName||'DM').slice(0,2).toUpperCase()}</div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:var(--ink)">${(currentUser?.displayName||'Diego').toLowerCase()}</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div class="hevy-avatar" style="font-size:16px">${rutEmoji}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:16px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.routineName||'Sesión libre'}</div>
         <div style="font-size:11px;color:var(--ink3)">${cuando}</div>
       </div>
     </div>
-    <div style="font-size:18px;font-weight:800;color:var(--ink);margin-bottom:8px">${s.routineName||'Sesión libre'}</div>
     <div class="hevy-meta">
       <div class="hm-item"><div class="hm-label">Tiempo</div><div class="hm-val">${durStr}</div></div>
       ${metaRow}
     </div>
-    <div style="border-top:1px solid var(--border);padding-top:8px">
+    <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
       ${exs.map(ex=>{ const e=getEx(ex.exId); const n=(ex.sets||[]).filter(s=>s.done).length; return e?`<div style="font-size:12px;color:var(--ink2);padding:2px 0">${n} serie${n!==1?'s':''} ${e.name}</div>`:''; }).join('')}
       ${(s.exercises||[]).length>3?`<div style="font-size:11px;color:var(--orange);margin-top:3px">Ver ${(s.exercises||[]).length-3} más</div>`:''}
     </div>
@@ -2316,32 +2404,179 @@ function renderProgCuerpo(){
 
   // Historial tabla
   document.getElementById('cuerpo-historial').innerHTML=`
-    <div class="section-label">Historial completo</div>
-    <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="section-label" style="margin:0">Historial completo</div>
+      <div style="font-size:11px;color:var(--ink3)">Toca ✏ para editar una fila</div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
       <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="border-bottom:1px solid var(--border)">
-            <th style="padding:5px 8px;text-align:left;color:var(--ink3);font-size:10px;text-transform:uppercase">Fecha</th>
-            <th style="padding:5px 6px;text-align:center;color:var(--ink3);font-size:10px">Peso</th>
-            <th style="padding:5px 6px;text-align:center;color:var(--ink3);font-size:10px">Grasa%</th>
-            <th style="padding:5px 6px;text-align:center;color:var(--ink3);font-size:10px">Musc.</th>
-            <th style="padding:5px 6px;text-align:center;color:var(--ink3);font-size:10px">IMC</th>
-            <th style="padding:5px 6px;text-align:center;color:var(--ink3);font-size:10px">6P</th>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:520px">
+          <thead><tr style="border-bottom:1px solid var(--border);background:var(--bg3)">
+            <th style="padding:8px 10px;text-align:left;color:var(--ink3);font-size:10px;text-transform:uppercase;white-space:nowrap">Fecha</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">Peso kg</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">Grasa %</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">Musc. kg</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">IMC</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">6P mm</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">8P mm</th>
+            <th style="padding:8px 6px;width:32px"></th>
           </tr></thead>
-          <tbody>
-            ${[...mets].reverse().map((m,i)=>`
-            <tr style="border-bottom:1px solid var(--border);background:${i%2===0?'var(--bg3)':'transparent'}">
-              <td style="padding:6px 8px;color:var(--ink2)">${m.date}</td>
-              <td style="padding:6px;text-align:center;font-weight:700">${m.peso||'—'}</td>
-              <td style="padding:6px;text-align:center;color:${parseFloat(m.grasa||99)<30?'var(--green)':'var(--red)'}">${m.grasa||'—'}</td>
-              <td style="padding:6px;text-align:center;color:var(--green)">${m.muscular||'—'}</td>
-              <td style="padding:6px;text-align:center;color:var(--gold)">${m.imc||'—'}</td>
-              <td style="padding:6px;text-align:center;color:var(--blue)">${m.pliegues?.p6||'—'}</td>
-            </tr>`).join('')}
+          <tbody id="cuerpo-hist-tbody">
+            ${renderMedRows([...mets].reverse())}
           </tbody>
         </table>
       </div>
     </div>`;
+}
+
+function renderMedRows(mets){
+  return mets.map((m,i)=>`
+  <tr id="med-row-${m.date}" style="border-bottom:1px solid var(--border);background:${i%2===0?'var(--bg3)':'transparent'}">
+    <td style="padding:7px 10px;color:var(--ink2);white-space:nowrap;font-size:12px">${m.date}</td>
+    <td style="padding:7px 6px;text-align:center;font-weight:700;color:var(--ink)">${m.peso||'—'}</td>
+    <td style="padding:7px 6px;text-align:center;color:${parseFloat(m.grasa||99)<30?'var(--green)':'var(--red)'}">${m.grasa||'—'}</td>
+    <td style="padding:7px 6px;text-align:center;color:var(--green)">${m.muscular||'—'}</td>
+    <td style="padding:7px 6px;text-align:center;color:var(--gold)">${m.imc||'—'}</td>
+    <td style="padding:7px 6px;text-align:center;color:var(--blue)">${m.pliegues?.p6||'—'}</td>
+    <td style="padding:7px 6px;text-align:center;color:var(--blue)">${m.pliegues?.p8||'—'}</td>
+    <td style="padding:7px 6px;text-align:center">
+      <button onclick="openEditMedRow('${m.date}')"
+        style="background:none;border:none;color:var(--orange);cursor:pointer;font-size:14px;padding:2px 4px"
+        title="Editar">✏</button>
+    </td>
+  </tr>`).join('');
+}
+
+function openEditMedRow(fecha){
+  const m=(forge.bodyMetrics||[]).find(x=>x.date===fecha);
+  if(!m) return;
+  const row=document.getElementById('med-row-'+fecha);
+  if(!row) return;
+
+  // Reemplazar la fila con inputs editables
+  row.innerHTML=`
+    <td style="padding:4px 6px">
+      <input type="date" value="${m.date}"
+        style="background:var(--bg4);border:1px solid var(--orange);border-radius:5px;color:var(--ink);padding:5px;font-size:11px;width:120px"
+        id="edit-med-fecha-${fecha}">
+    </td>
+    <td style="padding:4px 3px"><input type="number" step="0.1" value="${m.peso||''}" placeholder="—"
+      style="${styleInp()}" id="em-peso-${fecha}"></td>
+    <td style="padding:4px 3px"><input type="number" step="0.1" value="${m.grasa||''}" placeholder="—"
+      style="${styleInp()}" id="em-grasa-${fecha}"></td>
+    <td style="padding:4px 3px"><input type="number" step="0.1" value="${m.muscular||''}" placeholder="—"
+      style="${styleInp()}" id="em-musc-${fecha}"></td>
+    <td style="padding:4px 3px"><input type="number" step="0.1" value="${m.imc||''}" placeholder="—"
+      style="${styleInp()}" id="em-imc-${fecha}"></td>
+    <td style="padding:4px 3px"><input type="number" step="0.5" value="${m.pliegues?.p6||''}" placeholder="—"
+      style="${styleInp()}" id="em-p6-${fecha}"></td>
+    <td style="padding:4px 3px"><input type="number" step="0.5" value="${m.pliegues?.p8||''}" placeholder="—"
+      style="${styleInp()}" id="em-p8-${fecha}"></td>
+    <td style="padding:4px 3px;white-space:nowrap">
+      <button onclick="saveEditMedRow('${fecha}')"
+        style="background:var(--green);border:none;border-radius:5px;color:#fff;cursor:pointer;font-size:11px;font-weight:700;padding:5px 8px;margin-right:2px">✓</button>
+      <button onclick="deleteEditMedRow('${fecha}')"
+        style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:3px">🗑</button>
+    </td>`;
+}
+
+function styleInp(){
+  return 'background:var(--bg4);border:1px solid var(--border2);border-radius:5px;color:var(--ink);padding:5px 4px;font-size:11px;width:62px;text-align:center;outline:none';
+}
+
+function saveEditMedRow(fechaOriginal){
+  const nuevaFecha=document.getElementById('edit-med-fecha-'+fechaOriginal)?.value||fechaOriginal;
+  const peso    =parseFloat(document.getElementById('em-peso-'+fechaOriginal)?.value)||null;
+  const grasa   =parseFloat(document.getElementById('em-grasa-'+fechaOriginal)?.value)||null;
+  const muscular=parseFloat(document.getElementById('em-musc-'+fechaOriginal)?.value)||null;
+  const imc     =parseFloat(document.getElementById('em-imc-'+fechaOriginal)?.value)||null;
+  const p6      =parseFloat(document.getElementById('em-p6-'+fechaOriginal)?.value)||null;
+  const p8      =parseFloat(document.getElementById('em-p8-'+fechaOriginal)?.value)||null;
+
+  if(!forge.bodyMetrics) forge.bodyMetrics=[];
+  // Eliminar entrada original
+  forge.bodyMetrics=forge.bodyMetrics.filter(x=>x.date!==fechaOriginal);
+  // Agregar con nueva fecha y valores
+  const entry = {date:nuevaFecha, peso, grasa, muscular, imc, pliegues:{p6,p8}, source:'manual'};
+  autoCalcIMC(entry); // recalcular IMC si hay estatura guardada
+  forge.bodyMetrics.push(entry);
+  forge.bodyMetrics.sort((a,b)=>a.date.localeCompare(b.date));
+  saveDB();
+  showToast('✓ Medición actualizada',2000,'ok');
+  renderProgCuerpo();
+}
+
+function deleteEditMedRow(fecha){
+  if(!confirm('¿Eliminar esta medición?')) return;
+  forge.bodyMetrics=(forge.bodyMetrics||[]).filter(x=>x.date!==fecha);
+  saveDB();
+  showToast('Medición eliminada');
+  renderProgCuerpo();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DATOS PERSONALES + IMC AUTOMÁTICO
+// ═══════════════════════════════════════════════════════════════
+function getDatosPersonales(){
+  try{ return JSON.parse(localStorage.getItem('forge_perfil')||'{}'); }catch{ return {}; }
+}
+function saveDatosPersonalesData(d){ localStorage.setItem('forge_perfil',JSON.stringify(d)); }
+
+function calcEdad(nac){
+  if(!nac) return null;
+  const hoy=new Date(), n=new Date(nac);
+  let e=hoy.getFullYear()-n.getFullYear();
+  if(hoy.getMonth()<n.getMonth()||(hoy.getMonth()===n.getMonth()&&hoy.getDate()<n.getDate())) e--;
+  return e;
+}
+function calcIMC(peso,estCm){
+  if(!peso||!estCm) return null;
+  const h=parseFloat(estCm)/100;
+  return Math.round((parseFloat(peso)/(h*h))*10)/10;
+}
+
+function openDatosPersonales(){
+  const dp=getDatosPersonales();
+  document.getElementById('dp-estatura').value=dp.estatura||'';
+  document.getElementById('dp-nacimiento').value=dp.nacimiento||'';
+  actualizarResumenPerfil(dp);
+  document.getElementById('dp-estatura').oninput=
+  document.getElementById('dp-nacimiento').oninput=()=>actualizarResumenPerfil({
+    estatura:document.getElementById('dp-estatura').value,
+    nacimiento:document.getElementById('dp-nacimiento').value
+  });
+  openModal('modal-perfil');
+}
+function actualizarResumenPerfil(dp){
+  const res=document.getElementById('dp-resumen'); if(!res) return;
+  const edad=calcEdad(dp.nacimiento);
+  const ult=(forge.bodyMetrics||[]).slice(-1)[0];
+  const imc=ult?.peso&&dp.estatura?calcIMC(ult.peso,dp.estatura):null;
+  const lines=[];
+  if(edad!=null) lines.push(`🎂 Edad: <strong>${edad} años</strong>`);
+  if(dp.estatura) lines.push(`📏 Estatura: <strong>${dp.estatura} cm</strong>`);
+  if(imc) lines.push(`📊 IMC actual con último peso (${ult.peso}kg): <strong style="color:var(--gold)">${imc}</strong>`);
+  res.style.display=lines.length?'block':'none';
+  res.innerHTML=lines.join('<br>');
+}
+function saveDatosPersonales(){
+  const estatura=parseFloat(document.getElementById('dp-estatura').value)||null;
+  const nacimiento=document.getElementById('dp-nacimiento').value||null;
+  saveDatosPersonalesData({estatura,nacimiento});
+  // Recalcular IMC en todas las mediciones que tienen peso
+  if(estatura&&forge.bodyMetrics){
+    forge.bodyMetrics.forEach(m=>{ if(m.peso) m.imc=calcIMC(m.peso,estatura); });
+    saveDB();
+  }
+  closeModal('modal-perfil');
+  showToast('✓ Datos guardados · IMC recalculado',2500,'ok');
+  if(document.getElementById('prog-cuerpo')?.classList.contains('on')) renderProgCuerpo();
+}
+// Llamar al guardar cada medición de peso para calcular IMC automáticamente
+function autoCalcIMC(m){
+  const dp=getDatosPersonales();
+  if(dp.estatura&&m.peso) m.imc=calcIMC(m.peso,dp.estatura);
+  return m;
 }
 
 // ── Mediciones: una métrica a la vez ──────────────────────────
@@ -2472,6 +2707,9 @@ function saveMedValor(){
   if(medKeyActual==='p6') m.pliegues.p6 = numVal;
   else if(medKeyActual==='p8') m.pliegues.p8 = numVal;
   else m[medKeyActual] = numVal;
+
+  // Si se guarda peso, recalcular IMC automáticamente
+  if(medKeyActual==='peso') autoCalcIMC(m);
 
   saveDB();
   showToast(`✓ ${MED_METRICAS.find(x=>x.key===medKeyActual).label} guardado`,2000,'ok');
