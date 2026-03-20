@@ -583,10 +583,71 @@ select.inp{cursor:pointer}
 
 <!-- USER MENU -->
 <div id="user-menu">
-  <div class="um-item" onclick="closeUserMenu();openImport()">📊 Importar CSV Hevy</div>
-  <div class="um-item" onclick="closeUserMenu();syncCloud()">☁ Guardar en nube</div>
-  <div class="um-divider"></div>
-  <div class="um-item" onclick="closeUserMenu();doSignOut()" style="color:var(--red)">Cerrar sesión</div>
+  <!-- Header con info del usuario -->
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+    <div id="um-name" style="font-size:14px;font-weight:700;color:var(--ink)"></div>
+    <div id="um-email" style="font-size:11px;color:var(--ink3);margin-top:2px"></div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
+      <div id="sync-dot" style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0"></div>
+      <div id="um-sync-txt" style="font-size:11px;color:var(--ink3)">Sincronizado</div>
+    </div>
+    <div id="um-last-sync" style="font-size:10px;color:var(--ink3);margin-top:2px"></div>
+    <div id="um-records" style="font-size:10px;color:var(--ink3);margin-top:1px"></div>
+  </div>
+  <!-- Acciones -->
+  <div class="um-item" onclick="closeUserMenu();doGuardarNube()">
+    <span style="font-size:16px">☁️</span>
+    <div>
+      <div style="font-weight:600;color:var(--ink)">Guardar en nube</div>
+      <div style="font-size:11px;color:var(--ink3)">Sube tus datos locales</div>
+    </div>
+  </div>
+  <div class="um-item" onclick="closeUserMenu();doCargarNube()">
+    <span style="font-size:16px">📥</span>
+    <div>
+      <div style="font-weight:600;color:var(--ink)">Cargar desde nube</div>
+      <div style="font-size:11px;color:var(--ink3)">Actualización incremental</div>
+    </div>
+  </div>
+  <div class="um-item" onclick="closeUserMenu();openImport()">
+    <span style="font-size:16px">📊</span>
+    <div>
+      <div style="font-weight:600;color:var(--ink)">Importar CSV Hevy</div>
+    </div>
+  </div>
+  <div style="height:1px;background:var(--border)"></div>
+  <div class="um-item" onclick="closeUserMenu();openModalCerrarSesion()" style="color:var(--red)">
+    <span style="font-size:16px">↪</span>
+    <div style="font-weight:600">Cerrar sesión</div>
+  </div>
+</div>
+
+<!-- MODAL: CERRAR SESIÓN -->
+<div id="modal-logout" class="modal-bg">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="modal-title">Cerrar sesión</div>
+      <button class="bicon" onclick="closeModal('modal-logout')">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:14px;color:var(--ink2);margin-bottom:8px;line-height:1.6">
+        ¿Deseas guardar tus datos en la nube antes de salir?
+      </div>
+      <div id="logout-records" style="font-size:12px;color:var(--ink3);margin-bottom:20px"></div>
+      <button class="btn btn-p" onclick="doGuardarYSalir()" style="margin-bottom:10px;gap:8px">
+        ☁️ Guardar y cerrar sesión
+      </button>
+      <button class="btn btn-s" onclick="doSalirSinGuardar()" style="margin-bottom:10px">
+        Cerrar sesión sin guardar
+      </button>
+      <button class="btn btn-s" onclick="closeModal('modal-logout')" style="color:var(--ink3)">
+        Cancelar
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL: NUEVA RUTINA -->
@@ -896,7 +957,34 @@ function showAuthErr(msg, ok=false) {
 }
 document.getElementById('a-email').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('a-pass').focus(); });
 document.getElementById('a-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doAuth(); });
-function doSignOut() { auth.signOut(); }
+function updateUserUI(user){
+  const btn = document.getElementById('user-btn');
+  if(btn){ btn.textContent=(user.displayName||user.email||'U').slice(0,2).toUpperCase(); btn.style.display='flex'; }
+  const nm = document.getElementById('um-name');
+  const em = document.getElementById('um-email');
+  if(nm) nm.textContent = user.displayName || 'Usuario';
+  if(em) em.textContent = user.email || '';
+  refreshUmSyncInfo();
+}
+
+function refreshUmSyncInfo(){
+  const last = forge._lastSync;
+  const syncTxt = document.getElementById('um-sync-txt');
+  const lastTxt = document.getElementById('um-last-sync');
+  const recTxt  = document.getElementById('um-records');
+  if(!syncTxt) return;
+  if(last){
+    const d = new Date(last);
+    syncTxt.textContent = 'Sincronizado';
+    lastTxt.textContent = `Última sync: ${d.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})} · ${d.toLocaleDateString('es',{day:'numeric',month:'short'})}`;
+  } else {
+    syncTxt.textContent = 'Sin sincronizar';
+    lastTxt.textContent = '';
+  }
+  // Contar registros
+  const total = (forge.sessions?.length||0) + (forge.bodyMetrics?.length||0) + (forge.photos?.length||0);
+  if(recTxt) recTxt.textContent = `${total} registros locales`;
+}
 
 auth.onAuthStateChanged(async user => {
   if(user) {
@@ -905,8 +993,7 @@ auth.onAuthStateChanged(async user => {
     initRutinas();
     document.getElementById('auth').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
-    const btn = document.getElementById('user-btn');
-    if(btn) { btn.textContent=(user.displayName||user.email||'U').slice(0,2).toUpperCase(); btn.style.display='flex'; }
+    updateUserUI(user);
     setSyncDot('syncing');
     renderAll();
     try {
@@ -921,17 +1008,81 @@ auth.onAuthStateChanged(async user => {
   }
 });
 
-async function syncCloud() {
+// ── Guardar en nube ────────────────────────────────────────────
+async function doGuardarNube() {
   if(!currentUser){ showToast('Inicia sesión primero'); return; }
   setSyncDot('syncing');
   try {
     await db.collection('users').doc(currentUser.uid).collection('forge').doc('data').set(forge);
-    setLastSync(); setSyncDot('ok'); showToast('✓ Guardado en nube', 2000, 'ok');
-  } catch(e){ setSyncDot('off'); showToast('Error al guardar: '+e.message); }
+    setLastSync(); saveDB();
+    setSyncDot('ok');
+    showToast('✓ Datos guardados en la nube', 2500, 'ok');
+    refreshUmSyncInfo();
+  } catch(e){
+    setSyncDot('off');
+    showToast('Error al guardar: '+e.message);
+  }
+}
+// Alias para compatibilidad con llamadas existentes
+function syncCloud(){ return doGuardarNube(); }
+
+// ── Cargar desde nube (merge incremental) ──────────────────────
+async function doCargarNube() {
+  if(!currentUser){ showToast('Inicia sesión primero'); return; }
+  setSyncDot('syncing');
+  showToast('📥 Descargando desde la nube…', 2000);
+  try {
+    const snap = await db.collection('users').doc(currentUser.uid).collection('forge').doc('data').get();
+    if(!snap.exists){
+      setSyncDot('ok');
+      showToast('Sin datos en la nube aún', 2000);
+      return;
+    }
+    const remoto = snap.data();
+    const antes  = contarRegistros(forge);
+    forge = mergeDB(forge, remoto);
+    saveDB();
+    setLastSync();
+    setSyncDot('ok');
+    const despues = contarRegistros(forge);
+    const nuevos  = despues - antes;
+    showToast(nuevos > 0 ? `✓ ${nuevos} registros nuevos cargados` : '✓ Todo al día, sin cambios', 3000, 'ok');
+    renderAll();
+    refreshUmSyncInfo();
+  } catch(e){
+    setSyncDot('off');
+    showToast('Error al cargar: '+e.message);
+  }
+}
+
+function contarRegistros(db){
+  return (db.sessions?.length||0) + (db.bodyMetrics?.length||0) +
+         (db.exercises?.length||0) + (db.routines?.length||0) +
+         (db.photos?.length||0) + (db.logros?.length||0);
+}
+
+// ── Cerrar sesión ──────────────────────────────────────────────
+function openModalCerrarSesion(){
+  const total = contarRegistros(forge);
+  const el = document.getElementById('logout-records');
+  if(el) el.textContent = `Tienes ${total} registros locales.`;
+  openModal('modal-logout');
+}
+async function doGuardarYSalir(){
+  closeModal('modal-logout');
+  await doGuardarNube();
+  auth.signOut();
+}
+function doSalirSinGuardar(){
+  closeModal('modal-logout');
+  auth.signOut();
 }
 function setSyncDot(st) {
   const d = document.getElementById('sync-dot'); if(!d) return;
   d.style.background = st==='ok'?'var(--green)':st==='syncing'?'var(--gold)':'var(--red)';
+  const txt = document.getElementById('um-sync-txt');
+  if(txt) txt.textContent = st==='ok'?'Sincronizado':st==='syncing'?'Sincronizando…':'Error de conexión';
+  if(txt) txt.style.color = st==='ok'?'var(--green)':st==='syncing'?'var(--gold)':'var(--red)';
 }
 function setLastSync() { forge._lastSync = Date.now(); }
 
@@ -972,7 +1123,11 @@ function showToast(msg,dur=2200,type='') {
 }
 function openModal(id){ document.getElementById(id).classList.add('on'); }
 function closeModal(id){ document.getElementById(id).classList.remove('on'); }
-function toggleUserMenu(){ document.getElementById('user-menu').classList.toggle('on'); }
+function toggleUserMenu(){
+  const m = document.getElementById('user-menu');
+  const isOpen = m.classList.toggle('on');
+  if(isOpen) refreshUmSyncInfo();
+}
 function closeUserMenu(){ document.getElementById('user-menu').classList.remove('on'); }
 document.addEventListener('click',e=>{ if(!e.target.closest('#user-menu')&&!e.target.closest('#user-btn')) closeUserMenu(); });
 
