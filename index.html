@@ -753,6 +753,47 @@ select.inp{cursor:pointer}
   </div>
 </div>
 
+<!-- MODAL: SESIÓN LIBRE (con fecha) -->
+<div id="modal-free-ses" class="modal-bg">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="modal-title">Nueva sesión</div>
+      <button class="bicon" onclick="closeModal('modal-free-ses')"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--bg3);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--ink2);margin-bottom:14px;border-left:3px solid var(--orange)">
+        💡 Puedes poner una fecha pasada para cargar sesiones que ya hiciste.
+      </div>
+      <div class="field"><label>Fecha</label><input class="inp" type="date" id="free-ses-fecha"></div>
+      <div class="field"><label>Nombre</label><input class="inp" type="text" id="free-ses-nombre" placeholder="Ej: Tren Superior, Piernas..."></div>
+      <button class="btn btn-p" onclick="doStartFreeSession()">▶ Iniciar sesión</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EDITAR SESIÓN -->
+<div id="modal-edit-ses" class="modal-bg">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="modal-title">Editar sesión</div>
+      <button class="bicon" onclick="closeModal('modal-edit-ses')"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-ses-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>Fecha</label><input class="inp" type="date" id="edit-ses-fecha"></div>
+        <div class="field"><label>Duración (min)</label><input class="inp" type="number" id="edit-ses-dur" min="0" max="300"></div>
+      </div>
+      <div class="field"><label>Nombre</label><input class="inp" type="text" id="edit-ses-nombre"></div>
+      <div class="section-label" style="margin-top:4px">Ejercicios y series</div>
+      <div id="edit-ses-exs" style="max-height:320px;overflow-y:auto;margin-bottom:12px"></div>
+      <button class="btn btn-p" onclick="saveEditSesion()">✓ Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1129,7 +1170,8 @@ function openSesDetail(id){
     <div style="padding:16px;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
         <div class="hevy-avatar">${(currentUser?.displayName||'DM').slice(0,2).toUpperCase()}</div>
-        <div><div style="font-size:13px;font-weight:700">${currentUser?.displayName||'Diego'}</div><div style="font-size:11px;color:var(--ink3)">${fecha} − ${hora}</div></div>
+        <div style="flex:1"><div style="font-size:13px;font-weight:700">${currentUser?.displayName||'Diego'}</div><div style="font-size:11px;color:var(--ink3)">${fecha} − ${hora}</div></div>
+        <button class="btn btn-s btn-sm" onclick="openEditSesion('${id}')">✏ Editar</button>
       </div>
       <div style="font-size:22px;font-weight:800;margin-bottom:12px">${s.routineName||'Sesión libre'}</div>
       <div class="hevy-meta">
@@ -1154,20 +1196,99 @@ function openSesDetail(id){
         const isRun=e.type==='run'||e.type==='hiit';
         return `<div style="margin-bottom:20px">
           <div style="font-size:16px;font-weight:700;color:var(--orange);margin-bottom:8px">${e.name}</div>
-          <div style="display:grid;grid-template-columns:48px 1fr;gap:0;font-size:10px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;padding:4px;margin-bottom:2px">
+          <div style="display:grid;grid-template-columns:48px 1fr;font-size:10px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;padding:4px;margin-bottom:2px">
             <span>Serie</span><span>${isRun?'Distancia / Tiempo':'Peso y Reps'}</span>
           </div>
           ${sets.map((set,i)=>`
-          <div style="display:grid;grid-template-columns:48px 1fr;gap:0;padding:7px 4px;border-radius:6px;background:${i%2===0?'var(--bg3)':'transparent'}">
+          <div style="display:grid;grid-template-columns:48px 1fr;padding:7px 4px;border-radius:6px;background:${i%2===0?'var(--bg3)':'transparent'}">
             <span style="font-size:16px;font-weight:700;color:var(--ink)">${i+1}</span>
             <span style="font-size:14px;color:var(--ink2)">${isRun?(set.distance?set.distance+'km':'')+(set.time?' '+set.time:'—'):(set.weight||0)+' kg × '+(set.reps||0)}</span>
           </div>`).join('')}
         </div>`;
       }).join('')}
+      <button class="btn btn-r btn-sm" style="margin-top:12px" onclick="deleteSesion('${id}')">🗑 Eliminar sesión</button>
     </div>`;
   document.getElementById('ses-detail').classList.add('on');
 }
 function closeSesDetail(){ document.getElementById('ses-detail').classList.remove('on'); }
+
+function deleteSesion(id){
+  if(!confirm('¿Eliminar esta sesión? No se puede deshacer.')) return;
+  forge.sessions=(forge.sessions||[]).filter(s=>s.id!==id);
+  saveDB(); closeSesDetail(); renderHome(); showToast('Sesión eliminada');
+}
+
+function openEditSesion(id){
+  const s=(forge.sessions||[]).find(x=>x.id===id); if(!s) return;
+  // Precargamos el modal de edición
+  const fechaStr=new Date(s.date).toISOString().split('T')[0];
+  const durMins=Math.floor((s.elapsed||0)/60);
+  document.getElementById('edit-ses-id').value=id;
+  document.getElementById('edit-ses-fecha').value=fechaStr;
+  document.getElementById('edit-ses-nombre').value=s.routineName||'';
+  document.getElementById('edit-ses-dur').value=durMins||0;
+  renderEditSesExs(s);
+  closeSesDetail();
+  openModal('modal-edit-ses');
+}
+
+function renderEditSesExs(s){
+  const container=document.getElementById('edit-ses-exs');
+  container.innerHTML=(s.exercises||[]).map((ex,ei)=>{
+    const e=getEx(ex.exId); if(!e) return '';
+    const isRun=e.type==='run'||e.type==='hiit';
+    return `<div style="margin-bottom:14px;background:var(--bg3);border-radius:var(--r);padding:10px 12px">
+      <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:8px">${e.name}</div>
+      ${ex.sets.map((set,si)=>`
+        <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
+          ${isRun?`
+            <input class="inp" type="text" placeholder="km" value="${set.distance||''}" oninput="updateEditSet('${s.id}',${ei},${si},'distance',this.value)" style="padding:7px;font-size:13px">
+            <input class="inp" type="text" placeholder="mm:ss" value="${set.time||''}" oninput="updateEditSet('${s.id}',${ei},${si},'time',this.value)" style="padding:7px;font-size:13px">
+          `:`
+            <input class="inp" type="number" placeholder="kg" value="${set.weight||''}" oninput="updateEditSet('${s.id}',${ei},${si},'weight',this.value)" style="padding:7px;font-size:13px" inputmode="decimal">
+            <input class="inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateEditSet('${s.id}',${ei},${si},'reps',this.value)" style="padding:7px;font-size:13px" inputmode="numeric">
+          `}
+          <button onclick="deleteEditSet('${s.id}',${ei},${si})" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:16px">✕</button>
+        </div>`).join('')}
+      <button onclick="addEditSet('${s.id}',${ei})" style="background:none;border:none;color:var(--orange);cursor:pointer;font-size:12px;font-weight:600;padding:4px 0">+ Serie</button>
+    </div>`;
+  }).join('');
+}
+
+function updateEditSet(sesId,ei,si,field,val){
+  const s=(forge.sessions||[]).find(x=>x.id===sesId); if(!s) return;
+  s.exercises[ei].sets[si][field]=field==='weight'||field==='reps'?parseFloat(val)||0:val;
+}
+function deleteEditSet(sesId,ei,si){
+  const s=(forge.sessions||[]).find(x=>x.id===sesId); if(!s) return;
+  s.exercises[ei].sets.splice(si,1);
+  renderEditSesExs(s);
+}
+function addEditSet(sesId,ei){
+  const s=(forge.sessions||[]).find(x=>x.id===sesId); if(!s) return;
+  const e=getEx(s.exercises[ei].exId);
+  const isRun=e?.type==='run'||e?.type==='hiit';
+  const last=s.exercises[ei].sets[s.exercises[ei].sets.length-1]||{weight:0,reps:8};
+  s.exercises[ei].sets.push({type:isRun?'run':'weight',done:true,weight:last.weight,reps:last.reps,distance:'',time:''});
+  renderEditSesExs(s);
+}
+function saveEditSesion(){
+  const id=document.getElementById('edit-ses-id').value;
+  const s=(forge.sessions||[]).find(x=>x.id===id); if(!s) return;
+  const fecha=document.getElementById('edit-ses-fecha').value;
+  const nombre=document.getElementById('edit-ses-nombre').value.trim();
+  const durMins=parseInt(document.getElementById('edit-ses-dur').value)||0;
+  if(fecha) s.date=new Date(fecha+'T12:00:00').getTime();
+  if(nombre) s.routineName=nombre;
+  s.elapsed=durMins*60;
+  // Recalcular volumen
+  s.totalVolume=s.exercises.reduce((a,ex)=>a+ex.sets.filter(s=>s.done&&s.weight).reduce((b,s2)=>b+(s2.weight||0)*(s2.reps||1),0),0);
+  saveDB();
+  closeModal('modal-edit-ses');
+  renderHome();
+  showToast('✓ Sesión actualizada',2000,'ok');
+}
 
 function calcDivMuscular(s){
   const grupos={Pecho:0,Espalda:0,Hombros:0,Piernas:0,Glúteos:0,Brazos:0,Cardio:0};
@@ -1205,43 +1326,80 @@ function renderTrain(){
   }
 }
 
+// Redondeo correcto según tipo: barra=2.5kg, mancuerna=0.5kg
+function roundCarga(kg, tipo){
+  if(tipo==='barbell') return Math.round(kg/2.5)*2.5;
+  return Math.round(kg*2)/2; // 0.5kg
+}
+
 function renderRutinas(){
   const list=document.getElementById('rutinas-list');
   const rutinas=forge.routines||[];
   if(!rutinas.length){ list.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin rutinas</div><div class="empty-sub">Crea tu primera rutina.</div></div>`; return; }
-  list.innerHTML=rutinas.map(r=>{
+
+  const plan=(forge.planes||[]).find(p=>p.activo);
+  const semG=plan?semanaActualPlan(plan):0;
+
+  // Ordenar: rutinas del plan primero (en orden del día), luego el resto
+  const diasOrden=['lunes','martes','miércoles','jueves','viernes','sábado','domingo'];
+  const sorted=[...rutinas].sort((a,b)=>{
+    const ia=diasOrden.findIndex(d=>a.name.toLowerCase().includes(d));
+    const ib=diasOrden.findIndex(d=>b.name.toLowerCase().includes(d));
+    if(ia>=0&&ib>=0) return ia-ib;
+    if(ia>=0) return -1;
+    if(ib>=0) return 1;
+    return 0;
+  });
+
+  list.innerHTML=sorted.map((r,idx)=>{
     const exs=(r.exercises||[]).map(id=>getEx(id)).filter(Boolean);
     const ultsesion=(forge.sessions||[]).filter(s=>s.routineId===r.id).sort((a,b)=>b.date-a.date)[0];
     const ultstxt=ultsesion?'Último: '+fmtDate(ultsesion.date):'Sin sesiones aún';
-    return `<div class="rutina-card">
+    const num=idx+1;
+
+    // ¿Esta rutina tiene ejercicios clave del plan?
+    const esClavePlan=plan&&exs.some(e=>['ex_sentadilla','ex_press_banca','ex_correr_10k'].includes(e.id));
+    const cargas=plan?getCargasSemana(r.id):{};
+    const tieneCarga=esClavePlan&&Object.keys(cargas).length>0;
+
+    const planTag=esClavePlan?`<span style="background:var(--green);color:#fff;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-left:6px">Plan · Sem ${semG}</span>`:'';
+    const btnColor=esClavePlan?'var(--green)':'var(--orange)';
+    const cargaHint=tieneCarga?`<div style="background:#0a1a0a;border-top:1px solid var(--border);padding:7px 16px;font-size:11px;color:var(--green)">
+      ✦ Carga plan sem ${semG}: ${exs.filter(e=>cargas[e.id]).map(e=>`${e.name.split('(')[0].trim()} ${cargas[e.id]}kg`).join(' · ')}
+    </div>`:'';
+
+    return `<div class="rutina-card" style="${esClavePlan?'border-color:'+btnColor+';':''}">
       <div class="rutina-head">
-        <div class="rutina-emoji">${r.emoji||'🏋'}</div>
+        <div style="position:relative">
+          <div class="rutina-emoji">${r.emoji||'🏋'}</div>
+          <div style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:${btnColor};color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">${num}</div>
+        </div>
         <div class="rutina-info">
-          <div class="rutina-name">${r.name}</div>
-          <div class="rutina-meta">${exs.length} ejercicios · Desc. ${fmtTime(r.restSec||90)} · ${ultstxt}</div>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px">
+            <div class="rutina-name">${r.name}</div>${planTag}
+          </div>
+          <div class="rutina-meta">${exs.length} ejerc. · Desc. ${fmtTime(r.restSec||90)} · ${ultstxt}</div>
         </div>
         <button class="bicon" onclick="event.stopPropagation();openEditRutina('${r.id}')">
           <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
         </button>
       </div>
       <div style="padding:0 16px 12px;display:flex;flex-wrap:wrap">
-        ${exs.map(e=>`<span class="ex-chip">${e.name.split('(')[0].trim()}</span>`).join('')}
+        ${exs.map(e=>{
+          const c=cargas[e.id];
+          return `<span class="ex-chip" style="${c?'border-color:var(--green);color:var(--green)':''}">${e.name.split('(')[0].trim()}${c?' '+c+'kg':''}</span>`;
+        }).join('')}
       </div>
-      <button class="btn btn-p" style="border-radius:0 0 var(--rl) var(--rl);margin:0" onclick="iniciarRutina('${r.id}')">▶ Iniciar rutina</button>
+      ${cargaHint}
+      <button class="btn" style="border-radius:0 0 var(--rl) var(--rl);margin:0;background:${btnColor};color:#fff" onclick="iniciarRutina('${r.id}')">▶ ${esClavePlan?'Iniciar (Plan)':'Iniciar rutina'}</button>
     </div>`;
   }).join('');
-  // Botón nueva rutina en topbar
   document.getElementById('train-topbar-right').innerHTML=`
     <button class="btn btn-p btn-sm" onclick="openNewRutina()">+ Nueva</button>`;
 }
 
 function iniciarRutina(rutinaId){
-  const r=(forge.routines||[]).find(x=>x.id===rutinaId); if(!r) return;
-  // Diagnóstico de estado
-  const opts=['🔥 Con todo','✅ Normal','😴 Cansado','🏥 Recuperación'];
-  const factors=[1.05,1.00,0.90,0.75];
-  const idx=0; // default Normal — para simplificar se inicia directamente
-  _doIniciarRutina(rutinaId, factors[1]);
+  _doIniciarRutina(rutinaId, 1.0);
 }
 
 function _doIniciarRutina(rutinaId, factor){
@@ -1251,7 +1409,7 @@ function _doIniciarRutina(rutinaId, factor){
     const e=getEx(exId); if(!e) return null;
     const pr=getPR(exId);
     const baseCarga=cargaSemana[exId]||pr.weight||0;
-    const carga=Math.round(baseCarga*factor*2)/2;
+    const carga=roundCarga(baseCarga*factor, e.type);
     const isRun=e.type==='run'||e.type==='hiit';
     return {
       exId, sets:Array.from({length:3},(_,i)=>({
@@ -1273,9 +1431,19 @@ function _doIniciarRutina(rutinaId, factor){
 }
 
 function startFreeSession(){
+  // Pedir fecha — útil para cargar sesiones pasadas
+  document.getElementById('free-ses-fecha').value=today();
+  document.getElementById('free-ses-nombre').value='Sesión libre';
+  openModal('modal-free-ses');
+}
+function doStartFreeSession(){
+  const fecha=document.getElementById('free-ses-fecha').value||today();
+  const nombre=document.getElementById('free-ses-nombre').value.trim()||'Sesión libre';
+  closeModal('modal-free-ses');
   activeSession={
-    id:'s_'+Date.now(), routineId:null, routineName:'Sesión libre',
-    date:Date.now(), exercises:[], elapsed:0, totalVolume:0, restSec:90
+    id:'s_'+Date.now(), routineId:null, routineName:nombre,
+    date:new Date(fecha+'T12:00:00').getTime(),
+    exercises:[], elapsed:0, totalVolume:0, restSec:90
   };
   sesSeconds=0;
   sesTimer=setInterval(()=>{ sesSeconds++; document.getElementById('ses-timer').textContent=fmtTime(sesSeconds); },1000);
@@ -1467,8 +1635,9 @@ function getCargasSemana(rutinaId){
   EJERCICIOS_CLAVE.forEach(ec=>{
     if(!plan.cargas?.[ec.id]) return;
     const base=plan.cargas[ec.id];
-    const factor=Math.pow(1.025,semG-1); // +2.5% acumulado por semana
-    cargas[ec.id]=Math.round(base*factor*2)/2; // redondeo a 0.5kg
+    const factor=Math.pow(1.025,semG-1);
+    const e=getEx(ec.id);
+    cargas[ec.id]=roundCarga(base*factor, e?.type||'barbell');
   });
   return cargas;
 }
