@@ -113,36 +113,36 @@ html, body { height: 100%; background: var(--bg); color: var(--ink); font-family
 
   #app {
     flex-direction: row;
-    max-width: 1280px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
     height: 100dvh;
-    box-shadow: 0 0 80px rgba(0,0,0,.9);
   }
 
   /* Nav se convierte en sidebar izquierdo */
   .bottomnav {
     flex-direction: column;
-    width: 220px;
-    min-width: 220px;
+    width: 200px;
+    min-width: 200px;
     height: 100dvh;
     border-top: none;
     border-right: 1px solid var(--border);
     padding: 0;
     justify-content: flex-start;
     overflow: hidden;
+    background: var(--bg2);
   }
 
   /* Logo en el sidebar */
   .bottomnav::before {
     content: '';
     display: block;
-    height: 64px;
-    min-height: 64px;
+    height: 60px;
+    min-height: 60px;
     background: var(--bg2);
     border-bottom: 1px solid var(--border);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 40'%3E%3Ctext x='20' y='30' font-family='Georgia,serif' font-size='28' font-weight='900' font-style='italic' letter-spacing='3' fill='%23f0f0f0'%3EF%3C/text%3E%3Ctext x='36' y='30' font-family='Georgia,serif' font-size='28' font-weight='900' font-style='italic' fill='%23e85d04'%3EO%3C/text%3E%3Ctext x='54' y='30' font-family='Georgia,serif' font-size='28' font-weight='900' font-style='italic' letter-spacing='3' fill='%23f0f0f0'%3ERGE%3C/text%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 36'%3E%3Ctext x='16' y='27' font-family='Georgia,serif' font-size='26' font-weight='900' font-style='italic' fill='%23f0f0f0'%3EF%3C/text%3E%3Ctext x='31' y='27' font-family='Georgia,serif' font-size='26' font-weight='900' font-style='italic' fill='%23e85d04'%3EO%3C/text%3E%3Ctext x='48' y='27' font-family='Georgia,serif' font-size='26' font-weight='900' font-style='italic' fill='%23f0f0f0'%3ERGE%3C/text%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: 20px center;
+    background-position: 16px center;
   }
 
   .nav-btn {
@@ -150,14 +150,15 @@ html, body { height: 100%; background: var(--bg); color: var(--ink); font-family
     flex-direction: row;
     justify-content: flex-start;
     width: 100%;
-    padding: 13px 20px;
+    padding: 13px 18px;
     gap: 12px;
     font-size: 12px;
     font-weight: 600;
-    letter-spacing: .5px;
+    letter-spacing: .3px;
     border-radius: 0;
     border-left: 3px solid transparent;
     color: var(--ink2);
+    text-transform: none;
   }
   .nav-btn:hover { background: var(--bg3); color: var(--ink); }
   .nav-btn.active {
@@ -165,13 +166,10 @@ html, body { height: 100%; background: var(--bg); color: var(--ink); font-family
     color: var(--orange);
     border-left-color: var(--orange);
   }
-  .nav-btn svg { width: 18px; height: 18px; }
+  .nav-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
 
-  /* Wrapper de contenido ocupa el resto */
-  #screens-wrapper {
-    flex: 1;
-    min-width: 0;
-  }
+  /* Wrapper de contenido ocupa TODO el resto */
+  #screens-wrapper { flex: 1; min-width: 0; }
 
   .screen { padding-bottom: 0; }
 
@@ -1171,6 +1169,8 @@ svg.rest-ring { position: absolute; inset: -4px; width: calc(100% + 8px); height
 <!-- ══════ FIN SCREENS-WRAPPER ══════ -->
 </div><!-- /screens-wrapper -->
 </div><!-- /app -->
+
+<div class="toast" id="toast"></div>
 
 <!-- ══════ OVERLAY: EVALUACIÓN DE BLOQUE ══════ -->
 <div id="eval-overlay" class="eval-overlay">
@@ -2762,8 +2762,12 @@ function checkLogros(){
   const sessions=forge.sessions||[];const logros=forge.logros||[];const ids=new Set(logros.map(l=>l.id));const newLogros=[];
   if(sessions.length===1&&!ids.has('first_session')) newLogros.push({id:'first_session',icon:'🔥',title:'Primera sesión',sub:'¡Comenzaste tu viaje en FORGE!',date:Date.now()});
   if(sessions.length>=10&&!ids.has('ten_sessions')) newLogros.push({id:'ten_sessions',icon:'💪',title:'10 sesiones',sub:'Constancia que se convierte en hábito.',date:Date.now()});
-  if(calcStreak()>=7&&!ids.has('streak_7')) newLogros.push({id:'streak_7',icon:'⚡',title:'Racha de 7 días',sub:'Una semana sin parar. ¡Bestia!',date:Date.now()});
-  if(newLogros.length){if(!forge.logros) forge.logros=[];forge.logros.push(...newLogros);saveDB();newLogros.forEach(l=>setTimeout(()=>showToast(`${l.icon} Logro desbloqueado: ${l.title}`,4000,true),500));}
+  if(calcStreak()>=7&&!ids.has('streak_7')) newLogros.push({id:'streak_7',icon:'⚡',title:'Racha de 7 días',sub:'¡Una semana sin parar!',date:Date.now()});
+  if(newLogros.length){if(!forge.logros) forge.logros=[];forge.logros.push(...newLogros);saveDB();newLogros.forEach(l=>setTimeout(()=>showToast(`${l.icon} Logro: ${l.title}`,4000,true),500));}
+  // Acciones adicionales al terminar sesión
+  autoMarcarHabitoEntreno();
+  verificarFinDeBloque();
+  renderPlanBannerHome();
 }
 function renderStatsLogros(){
   const el=document.getElementById('stats-logros');const logros=forge.logros||[];
@@ -4025,15 +4029,7 @@ function archivarHabito(id) {
 }
 
 // ── Conectar hábitos con entrenamiento ─────────────────────────
-// Parchear finishSession para auto-marcar hábitos de entreno
-const _origFinishSession = finishSession;
-// No re-definir, sino añadir al final del saveDB
-// Lo hacemos via el hook de checkLogros
-const _origCheckLogros = checkLogros;
-function checkLogros() {
-  _origCheckLogros();
-  autoMarcarHabitoEntreno();
-}
+// autoMarcarHabitoEntreno se llama directamente desde finishSession
 
 // ── Conectar con agua ──────────────────────────────────────────
 const _origToggleAgua = toggleAgua;
@@ -4612,15 +4608,8 @@ function verificarFinDeBloque() {
   }
 }
 
-// ── HOOK: auto-check fin de bloque al terminar sesión ──────────
-const _origFinishSession_plan = finishSession;
-// Parchear via checkLogros (ya hookeado)
-const _prevCheckLogros = checkLogros;
-function checkLogros() {
-  _prevCheckLogros();
-  verificarFinDeBloque();
-  renderPlanBannerHome();
-}
+// ── Auto-check fin de bloque al terminar sesión ──────────────
+// verificarFinDeBloque se llama directamente desde finishSession
 
 // ── Tabs de la pantalla Hábitos ────────────────────────────────
 let habitsTab = 'habitos';
