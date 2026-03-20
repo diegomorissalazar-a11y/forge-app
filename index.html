@@ -784,7 +784,7 @@ select.inp{cursor:pointer}
       <input type="hidden" id="edit-ses-id">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="field"><label>Fecha</label><input class="inp" type="date" id="edit-ses-fecha"></div>
-        <div class="field"><label>Duración (min)</label><input class="inp" type="number" id="edit-ses-dur" min="0" max="300"></div>
+        <div class="field"><label>Duración (hh:mm)</label><input class="inp" type="text" id="edit-ses-dur" placeholder="00:37" pattern="\d{1,2}:\d{2}" inputmode="numeric"></div>
       </div>
       <div class="field"><label>Nombre</label><input class="inp" type="text" id="edit-ses-nombre"></div>
       <div class="section-label" style="margin-top:4px">Ejercicios y series</div>
@@ -1113,15 +1113,57 @@ function renderHomePlanBanner(){
     </div>`;
 }
 
+// Calcular ritmo promedio de una sesión de carrera
+function calcSesRitmo(s){
+  let totalDist=0, totalMins=0;
+  (s.exercises||[]).forEach(ex=>{
+    const e=getEx(ex.exId); if(!e) return;
+    if(e.type!=='run'&&e.type!=='hiit') return;
+    (ex.sets||[]).filter(set=>set.done).forEach(set=>{
+      const dist=parseFloat(set.distance)||0;
+      if(dist>0) totalDist+=dist;
+      if(set.time){
+        const parts=(set.time+'').split(':');
+        const mm=parseInt(parts[0])||0, ss=parseInt(parts[1])||0;
+        totalMins+=mm+ss/60;
+      }
+    });
+  });
+  return {dist:totalDist, ritmo: totalDist>0&&totalMins>0 ? totalMins/totalDist : 0};
+}
+
+function esSesSoloCardio(s){
+  const exs=s.exercises||[];
+  return exs.length>0 && exs.every(ex=>{ const e=getEx(ex.exId); return e?.type==='run'||e?.type==='hiit'; });
+}
+
 function renderSesCard(s, hoy){
   const fecha    = new Date(s.date);
   const dias     = Math.floor((hoy-fecha)/86400000);
   const cuando   = dias===0?'Hoy':dias===1?'Ayer':`Hace ${dias} días`;
   const durStr   = s.elapsed?fmtTime(s.elapsed):'—';
-  const volStr   = s.totalVolume?`${Math.round(s.totalVolume).toLocaleString('es')} kg`:'—';
-  const nSeries  = (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(s=>s.done).length,0);
-  const records  = calcSesRecords(s);
-  const exs      = (s.exercises||[]).slice(0,3);
+  const esCardio = esSesSoloCardio(s);
+  const ritmoData = esCardio ? calcSesRitmo(s) : null;
+
+  // Métricas secundarias
+  let metaRow='';
+  if(esCardio && ritmoData){
+    const distStr = ritmoData.dist>0 ? `${ritmoData.dist.toFixed(2)} km` : '—';
+    const ritmoStr= ritmoData.ritmo>0 ? `${Math.floor(ritmoData.ritmo)}'${pad(Math.round((ritmoData.ritmo%1)*60))}"/km` : '—';
+    metaRow=`
+      <div class="hm-item"><div class="hm-label">Distancia</div><div class="hm-val">${distStr}</div></div>
+      <div class="hm-item"><div class="hm-label">Ritmo</div><div class="hm-val">${ritmoStr}</div></div>`;
+  } else {
+    const volStr = s.totalVolume ? `${Math.round(s.totalVolume).toLocaleString('es')} kg` : '—';
+    const nSeries = (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(s=>s.done).length,0);
+    const records = calcSesRecords(s);
+    metaRow=`
+      <div class="hm-item"><div class="hm-label">Volumen</div><div class="hm-val">${volStr}</div></div>
+      ${nSeries?`<div class="hm-item"><div class="hm-label">Series</div><div class="hm-val">${nSeries}</div></div>`:''}
+      ${records?`<div class="hm-item"><div class="hm-label">Récords</div><div class="hm-val">🏅 ${records}</div></div>`:''}`;
+  }
+
+  const exs = (s.exercises||[]).slice(0,3);
   return `
   <div class="hevy-card" onclick="openSesDetail('${s.id}')">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
@@ -1134,9 +1176,7 @@ function renderSesCard(s, hoy){
     <div style="font-size:18px;font-weight:800;color:var(--ink);margin-bottom:8px">${s.routineName||'Sesión libre'}</div>
     <div class="hevy-meta">
       <div class="hm-item"><div class="hm-label">Tiempo</div><div class="hm-val">${durStr}</div></div>
-      <div class="hm-item"><div class="hm-label">Volumen</div><div class="hm-val">${volStr}</div></div>
-      ${nSeries?`<div class="hm-item"><div class="hm-label">Series</div><div class="hm-val">${nSeries}</div></div>`:''}
-      ${records?`<div class="hm-item"><div class="hm-label">Récords</div><div class="hm-val">🏅 ${records}</div></div>`:''}
+      ${metaRow}
     </div>
     <div style="border-top:1px solid var(--border);padding-top:8px">
       ${exs.map(ex=>{ const e=getEx(ex.exId); const n=(ex.sets||[]).filter(s=>s.done).length; return e?`<div style="font-size:12px;color:var(--ink2);padding:2px 0">${n} serie${n!==1?'s':''} ${e.name}</div>`:''; }).join('')}
@@ -1226,7 +1266,10 @@ function openEditSesion(id){
   document.getElementById('edit-ses-id').value=id;
   document.getElementById('edit-ses-fecha').value=fechaStr;
   document.getElementById('edit-ses-nombre').value=s.routineName||'';
-  document.getElementById('edit-ses-dur').value=durMins||0;
+  // Convertir segundos a hh:mm
+  const totalSecs=s.elapsed||0;
+  const hh=Math.floor(totalSecs/3600), mm=Math.floor((totalSecs%3600)/60);
+  document.getElementById('edit-ses-dur').value=`${pad(hh)}:${pad(mm)}`;
   renderEditSesExs(s);
   closeSesDetail();
   openModal('modal-edit-ses');
@@ -1278,10 +1321,18 @@ function saveEditSesion(){
   const s=(forge.sessions||[]).find(x=>x.id===id); if(!s) return;
   const fecha=document.getElementById('edit-ses-fecha').value;
   const nombre=document.getElementById('edit-ses-nombre').value.trim();
-  const durMins=parseInt(document.getElementById('edit-ses-dur').value)||0;
+  const durRaw=document.getElementById('edit-ses-dur').value.trim();
+  // Parsear hh:mm o mm como fallback
+  let durSecs=0;
+  if(durRaw.includes(':')){
+    const [hh,mm]=(durRaw+':0').split(':').map(Number);
+    durSecs=(hh||0)*3600+(mm||0)*60;
+  } else {
+    durSecs=(parseInt(durRaw)||0)*60;
+  }
   if(fecha) s.date=new Date(fecha+'T12:00:00').getTime();
   if(nombre) s.routineName=nombre;
-  s.elapsed=durMins*60;
+  s.elapsed=durSecs;
   // Recalcular volumen
   s.totalVolume=s.exercises.reduce((a,ex)=>a+ex.sets.filter(s=>s.done&&s.weight).reduce((b,s2)=>b+(s2.weight||0)*(s2.reps||1),0),0);
   saveDB();
@@ -1756,23 +1807,60 @@ function renderKPIEjClave(){
   }).join('');
 }
 
-function getRunPR(exId){
-  let best={dist:0,ritmo:999};
+function getRunPRObj(exId){
+  let bestDist=0, bestRitmo=999;
   (forge.sessions||[]).forEach(s=>(s.exercises||[]).forEach(ex=>{
     if(ex.exId!==exId) return;
-    (ex.sets||[]).filter(s=>s.done&&s.distance).forEach(s=>{
-      const dist=parseFloat(s.distance)||0;
-      if(dist>best.dist) best.dist=dist;
-      if(s.time){
-        const [mm,ss2]=(s.time+'').split(':').map(Number);
-        const mins=(mm||0)+(ss2||0)/60;
-        const rit=dist>0?mins/dist:999;
-        if(rit<best.ritmo) best.ritmo=rit;
+    (ex.sets||[]).forEach(set=>{
+      const dist=parseFloat(set.distance)||0;
+      if(dist>bestDist) bestDist=dist;
+      if(set.time&&dist>0){
+        const p=(set.time+'').split(':');
+        const mins=(parseInt(p[0])||0)+(parseInt(p[1])||0)/60;
+        const rit=mins/dist;
+        if(rit>0&&rit<bestRitmo) bestRitmo=rit;
       }
     });
   }));
-  const ritmoStr=best.ritmo<900?`${Math.floor(best.ritmo)}'${pad(Math.round((best.ritmo%1)*60))}"/km`:'—';
-  return best.dist>0?`${best.dist}km · ${ritmoStr}`:'—';
+  return {dist:bestDist, ritmo:bestRitmo<900?bestRitmo:0};
+}
+
+function getRunPR(exId){
+  const pr=getRunPRObj(exId);
+  const ritmoStr=pr.ritmo>0?`${Math.floor(pr.ritmo)}'${pad(Math.round((pr.ritmo%1)*60))}"/km`:'—';
+  return pr.dist>0?`${pr.dist.toFixed(2)}km · ${ritmoStr}`:'—';
+}
+
+// Gráfico de ritmo — eje Y invertido (menor = más rápido = mejor)
+function renderLineChartRitmo(puntos){
+  function rl(v){ return `${Math.floor(v)}'${pad(Math.round((v%1)*60))}`; }
+  const W=320,H=140,PL=44,PB=28,PT=10,PR=10;
+  const vals=puntos.map(p=>p.val);
+  const minV=Math.min(...vals), maxV=Math.max(...vals);
+  const rng=maxV-minV||0.5;
+  const xs=puntos.map((_,i)=>PL+(i/(puntos.length-1))*(W-PL-PR));
+  const ys=puntos.map(p=>PT+((p.val-minV)/rng)*(H-PT-PB)); // invertido
+  const line=xs.map((x,i)=>`${i===0?'M':'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+  const area=line+` L${xs[xs.length-1].toFixed(1)},${(H-PB).toFixed(1)} L${xs[0].toFixed(1)},${(H-PB).toFixed(1)} Z`;
+  const yLabs=[maxV, minV+rng/2, minV].map(v=>{
+    const y=PT+((v-minV)/rng)*(H-PT-PB);
+    return `<text x="${PL-4}" y="${y.toFixed(1)}" class="chart-label" text-anchor="end" dominant-baseline="middle">${rl(v)}</text><line x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}" class="chart-grid"/>`;
+  }).join('');
+  const step=Math.max(1,Math.floor(puntos.length/5));
+  const xLabs=puntos.filter((_,i)=>i%step===0||i===puntos.length-1).map(p=>{
+    const i=puntos.indexOf(p);
+    return `<text x="${xs[i].toFixed(1)}" y="${H}" class="chart-label" text-anchor="middle">${p.fecha.slice(5)}</text>`;
+  }).join('');
+  const dots=puntos.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4" style="fill:var(--blue)"><title>${p.fecha}: ${rl(p.val)}/km</title></circle>`).join('');
+  return `<div style="font-size:10px;color:var(--ink3);margin-bottom:4px">Ritmo (min/km) — flecha arriba = más rápido</div>
+  <div class="chart-wrap"><svg class="chart-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" class="chart-axis"/>
+    <line x1="${PL}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" class="chart-axis"/>
+    ${yLabs}${xLabs}
+    <path d="${area}" fill="var(--blue)" opacity=".12"/>
+    <path d="${line}" stroke="var(--blue)" stroke-width="2" fill="none" stroke-linejoin="round"/>
+    ${dots}
+  </svg></div>`;
 }
 
 // ── Detalle ejercicio con gráfico ───────────────────────────────
@@ -1800,12 +1888,26 @@ function renderExDetail(exId){
     const ex=(s.exercises||[]).find(x=>x.exId===exId); if(!ex) return;
     const fecha=new Date(s.date).toISOString().split('T')[0];
     if(isRun){
-      const sets=(ex.sets||[]).filter(s=>s.done&&s.distance);
+      // Incluir sets done Y sets con distancia (para sesiones editadas que pueden tener done:false)
+      const sets=(ex.sets||[]).filter(set=>parseFloat(set.distance)>0);
       if(!sets.length) return;
-      const maxDist=Math.max(...sets.map(s=>parseFloat(s.distance)||0));
-      puntos.push({fecha,val:maxDist,label:`${maxDist}km`});
+      const totalDist=sets.reduce((a,set)=>a+parseFloat(set.distance||0),0);
+      let totalMins=0;
+      sets.forEach(set=>{
+        if(set.time){
+          const p=(set.time+'').split(':');
+          totalMins+=(parseInt(p[0])||0)+(parseInt(p[1])||0)/60;
+        }
+      });
+      const ritmo=totalDist>0&&totalMins>0?totalMins/totalDist:0;
+      const ritmoStr=ritmo>0?`${Math.floor(ritmo)}'${pad(Math.round((ritmo%1)*60))}"/km`:'';
+      const label=`${totalDist.toFixed(2)}km${ritmoStr?' · '+ritmoStr:''}`;
+      // Para el gráfico usamos ritmo como valor principal (menor = más rápido = mejor)
+      // Si no hay tiempo, usamos distancia
+      const val=ritmo>0?ritmo:totalDist;
+      puntos.push({fecha, val, valDist:totalDist, valRitmo:ritmo, label});
     } else {
-      const sets=(ex.sets||[]).filter(s=>s.done&&s.weight);
+      const sets=(ex.sets||[]).filter(set=>set.done&&set.weight);
       if(!sets.length) return;
       const mejor=sets.sort((a,b)=>b.weight-a.weight)[0];
       const val=showRM?est1RM(mejor.weight,mejor.reps||1):mejor.weight;
@@ -1816,20 +1918,48 @@ function renderExDetail(exId){
   const pr=getPR(exId);
   const prStr=isRun?getRunPR(exId):pr.weight>0?`${pr.weight} kg × ${pr.reps} reps (1RM est. ${est1RM(pr.weight,pr.reps||1)}kg)`:'Sin datos';
 
+  // Para carrera: mostrar dos gráficos — distancia y ritmo
+  let chartsHtml='';
+  if(isRun&&puntos.length>=2){
+    const puntosRitmo=puntos.filter(p=>p.valRitmo>0).map(p=>({fecha:p.fecha,val:p.valRitmo,label:p.label}));
+    const puntosDist=puntos.map(p=>({fecha:p.fecha,val:p.valDist,label:`${p.valDist.toFixed(2)}km`}));
+    // Ritmo: eje Y invertido (menor ritmo = más rápido) — etiquetas en min/km
+    chartsHtml=`
+      <div style="margin-bottom:12px">
+        <div class="card">${renderLineChart(puntosDist,'Distancia por sesión (km)')}</div>
+      </div>
+      ${puntosRitmo.length>=2?`<div style="margin-bottom:12px"><div class="card">${renderLineChartRitmo(puntosRitmo)}</div></div>`:''}`;
+  } else if(!isRun&&puntos.length>=2){
+    chartsHtml=`<div class="card" style="margin-bottom:12px">${renderLineChart(puntos,showRM?'1RM estimado (kg)':'Peso máx. (kg)')}</div>`;
+  } else {
+    chartsHtml=`<div class="empty" style="padding:32px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos</div><div class="empty-sub">Necesitas al menos 2 sesiones.</div></div>`;
+  }
+
+  // KPIs
+  let kpi1='—', kpi1label='';
+  let kpi2=puntos.length.toString(), kpi2label='Registros';
+  if(isRun){
+    const runPR=getRunPRObj(exId);
+    kpi1=runPR.dist>0?`${runPR.dist.toFixed(2)}km`:'—'; kpi1label='Dist. máx.';
+    kpi2=runPR.ritmo>0?`${Math.floor(runPR.ritmo)}'${pad(Math.round((runPR.ritmo%1)*60))}"/km`:'—'; kpi2label='Mejor ritmo';
+  } else {
+    kpi1=pr.weight>0?pr.weight+'kg':'—'; kpi1label='PR peso';
+  }
+
   document.getElementById('ex-detail-body').innerHTML=`
     <div style="padding:16px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
-        <div class="stat-box"><div class="stat-num" style="color:var(--orange)">${isRun?getRunPR(exId).split(' ')[0]||'—':pr.weight>0?pr.weight+'kg':'—'}</div><div class="stat-label">${isRun?'Dist. máx.':'PR peso'}</div></div>
-        <div class="stat-box"><div class="stat-num">${puntos.length}</div><div class="stat-label">Registros</div></div>
+        <div class="stat-box"><div class="stat-num" style="color:var(--orange);font-size:${kpi1.length>6?'18px':'24px'}">${kpi1}</div><div class="stat-label">${kpi1label}</div></div>
+        <div class="stat-box"><div class="stat-num" style="font-size:${kpi2.length>6?'18px':'24px'}">${kpi2}</div><div class="stat-label">${kpi2label}</div></div>
       </div>
-      ${puntos.length>=2?renderLineChart(puntos,isRun?'Distancia (km)':showRM?'1RM estimado (kg)':'Peso máx. (kg)'):'<div class="empty" style="padding:32px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos</div><div class="empty-sub">Necesitas al menos 2 sesiones.</div></div>'}
+      ${chartsHtml}
       <div style="margin-top:16px">
         <div class="section-label">Historial</div>
-        ${puntos.slice().reverse().map(p=>`
+        ${puntos.length?puntos.slice().reverse().map(p=>`
         <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
           <span style="color:var(--ink2)">${p.fecha}</span>
           <span style="font-weight:700;color:var(--ink)">${p.label}</span>
-        </div>`).join('')}
+        </div>`).join(''):'<div style="padding:16px 0;color:var(--ink3);font-size:13px">Sin registros aún</div>'}
       </div>
     </div>`;
 }
