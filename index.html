@@ -1311,30 +1311,28 @@ function renderEditSesExs(s){
     const isRun=e.type==='run'||e.type==='hiit';
     return `<div style="margin-bottom:14px;background:var(--bg3);border-radius:var(--r);padding:10px 12px">
       <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:8px">${e.name}</div>
-      ${ex.sets.map((set,si)=>`
+      ${ex.sets.map((set,si)=>isRun?`
+        <div style="margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:10px">
+          <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:5px">
+            <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
+            <input class="inp" type="text" placeholder="km (ej: 7.74)" value="${set.distance||''}" oninput="updateEditSet('${s.id}',${ei},${si},'distance',this.value)" style="padding:7px;font-size:13px">
+            <input class="inp" type="text" placeholder="mm:ss (ej: 53:19)" value="${set.time||''}" oninput="updateEditSet('${s.id}',${ei},${si},'time',this.value)" style="padding:7px;font-size:13px">
+            <button onclick="deleteEditSet('${s.id}',${ei},${si})" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:16px">✕</button>
+          </div>
+          <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:6px">
+            <div></div>
+            <input class="inp" type="number" placeholder="❤️ FC media (bpm)" value="${set.fc||''}" oninput="updateEditSet('${s.id}',${ei},${si},'fc',this.value)" style="padding:7px;font-size:12px;color:#f87171;border-color:#7f1d1d" inputmode="numeric">
+            <input class="inp" type="number" placeholder="👟 Pasos" value="${set.pasos||''}" oninput="updateEditSet('${s.id}',${ei},${si},'pasos',this.value)" style="padding:7px;font-size:12px;color:var(--blue);border-color:#1e3a8a" inputmode="numeric">
+          </div>
+        </div>
+      `:`
         <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px">
           <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
-          ${isRun?`
-            <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:4px">
-              <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
-              <input class="inp" type="text" placeholder="km" value="${set.distance||''}" oninput="updateEditSet('${s.id}',${ei},${si},'distance',this.value)" style="padding:7px;font-size:13px">
-              <input class="inp" type="text" placeholder="mm:ss" value="${set.time||''}" oninput="updateEditSet('${s.id}',${ei},${si},'time',this.value)" style="padding:7px;font-size:13px">
-              <button onclick="deleteEditSet('${s.id}',${ei},${si})" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:16px">✕</button>
-            </div>
-            <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:6px;margin-bottom:8px">
-              <div></div>
-              <input class="inp" type="number" placeholder="❤️ FC media (bpm)" value="${set.fc||''}" oninput="updateEditSet('${s.id}',${ei},${si},'fc',this.value)" style="padding:7px;font-size:12px;color:#f87171" inputmode="numeric">
-              <input class="inp" type="number" placeholder="👟 Pasos" value="${set.pasos||''}" oninput="updateEditSet('${s.id}',${ei},${si},'pasos',this.value)" style="padding:7px;font-size:12px;color:var(--blue)" inputmode="numeric">
-            </div>
-          `:`
-            <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px">
-              <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
-              <input class="inp" type="number" placeholder="kg" value="${set.weight||''}" oninput="updateEditSet('${s.id}',${ei},${si},'weight',this.value)" style="padding:7px;font-size:13px" inputmode="decimal">
-              <input class="inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateEditSet('${s.id}',${ei},${si},'reps',this.value)" style="padding:7px;font-size:13px" inputmode="numeric">
-              <button onclick="deleteEditSet('${s.id}',${ei},${si})" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:16px">✕</button>
-            </div>
-          `}
-        </div>`).join('')}
+          <input class="inp" type="number" placeholder="kg" value="${set.weight||''}" oninput="updateEditSet('${s.id}',${ei},${si},'weight',this.value)" style="padding:7px;font-size:13px" inputmode="decimal">
+          <input class="inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateEditSet('${s.id}',${ei},${si},'reps',this.value)" style="padding:7px;font-size:13px" inputmode="numeric">
+          <button onclick="deleteEditSet('${s.id}',${ei},${si})" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:16px">✕</button>
+        </div>
+      `).join('')}
       <button onclick="addEditSet('${s.id}',${ei})" style="background:none;border:none;color:var(--orange);cursor:pointer;font-size:12px;font-weight:600;padding:4px 0">+ Serie</button>
     </div>`;
   }).join('');
@@ -1342,9 +1340,52 @@ function renderEditSesExs(s){
 
 function updateEditSet(sesId,ei,si,field,val){
   const s=(forge.sessions||[]).find(x=>x.id===sesId); if(!s) return;
-  s.exercises[ei].sets[si][field]=field==='weight'||field==='reps'?parseFloat(val)||0:val;
+  const numFields=['weight','reps','fc','pasos'];
+  s.exercises[ei].sets[si][field]=numFields.includes(field)?parseFloat(val)||0:val;
 }
-function deleteEditSet(sesId,ei,si){
+
+function saveEditSesion(){
+  const id=document.getElementById('edit-ses-id').value;
+  const s=(forge.sessions||[]).find(x=>x.id===id); if(!s) return;
+  const fecha=document.getElementById('edit-ses-fecha').value;
+  const nombre=document.getElementById('edit-ses-nombre').value.trim();
+  const durRaw=document.getElementById('edit-ses-dur').value.trim();
+
+  let durSecs=0;
+  if(durRaw.includes(':')){
+    const parts=(durRaw+':0').split(':').map(Number);
+    durSecs=(parts[0]||0)*3600+(parts[1]||0)*60;
+  } else {
+    durSecs=(parseInt(durRaw)||0)*60;
+  }
+
+  if(fecha) s.date=new Date(fecha+'T12:00:00').getTime();
+  if(nombre) s.routineName=nombre;
+  s.elapsed=durSecs;
+
+  // Marcar todos los sets como done:true al editar manualmente
+  s.exercises.forEach(ex=>{
+    const e=getEx(ex.exId);
+    const isRun=e?.type==='run'||e?.type==='hiit';
+    ex.sets.forEach(set=>{
+      // Para cardio: marcar done si tiene distancia o tiempo
+      // Para fuerza: marcar done si tiene peso o reps
+      if(isRun) set.done = !!(parseFloat(set.distance)||set.time);
+      else set.done = !!(set.weight||set.reps);
+    });
+    // Limpiar sets vacíos
+    ex.sets=ex.sets.filter(set=>set.done);
+  });
+
+  // Recalcular volumen total (solo fuerza)
+  s.totalVolume=s.exercises.reduce((a,ex)=>
+    a+ex.sets.filter(s=>s.done&&s.weight).reduce((b,s2)=>b+(s2.weight||0)*(s2.reps||1),0),0);
+
+  saveDB();
+  closeModal('modal-edit-ses');
+  renderHome();
+  showToast('✓ Sesión actualizada',2000,'ok');
+}
   const s=(forge.sessions||[]).find(x=>x.id===sesId); if(!s) return;
   s.exercises[ei].sets.splice(si,1);
   renderEditSesExs(s);
