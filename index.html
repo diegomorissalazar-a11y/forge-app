@@ -41,7 +41,7 @@
 html, body { height: 100%; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; overscroll-behavior: none; }
 
 /* ══════════════════════════════════════
-   LAYOUT BASE — MÓVIL
+   LAYOUT — NAV SIEMPRE HORIZONTAL ABAJO
 ══════════════════════════════════════ */
 #app {
   display: flex;
@@ -51,7 +51,6 @@ html, body { height: 100%; background: var(--bg); color: var(--ink); font-family
   background: var(--bg);
 }
 
-/* El wrapper contiene TODAS las screens */
 #screens-wrapper {
   flex: 1;
   overflow: hidden;
@@ -66,12 +65,11 @@ html, body { height: 100%; background: var(--bg); color: var(--ink); font-family
   inset: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-bottom: 4px;
   -webkit-overflow-scrolling: touch;
 }
 .screen.active { display: flex; }
 
-/* Nav abajo en móvil */
+/* Nav horizontal abajo — siempre */
 .bottomnav {
   position: relative;
   flex-shrink: 0;
@@ -82,7 +80,6 @@ html, body { height: 100%; background: var(--bg); color: var(--ink); font-family
   border-top: 1px solid var(--border);
   z-index: 100;
 }
-
 .nav-btn {
   flex: 1;
   display: flex;
@@ -97,89 +94,25 @@ html, body { height: 100%; background: var(--bg); color: var(--ink); font-family
   font-family: var(--font-body);
   font-size: 8px;
   font-weight: 600;
-  letter-spacing: .5px;
+  letter-spacing: .3px;
   text-transform: uppercase;
   padding: 4px 2px;
   transition: color .15s;
+  border-top: 2px solid transparent;
 }
 .nav-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; }
-.nav-btn.active { color: var(--orange); }
+.nav-btn.active { color: var(--orange); border-top-color: var(--orange); }
 
-/* ══════════════════════════════════════
-   LAYOUT ESCRITORIO (≥ 900px)
-══════════════════════════════════════ */
+/* Escritorio: centrar contenido, nav sigue abajo */
 @media (min-width: 900px) {
-  html, body { background: #060606; }
-
-  #app {
-    flex-direction: row;
-    width: 100%;
-    max-width: 100%;
-    height: 100dvh;
-  }
-
-  /* Nav se convierte en sidebar izquierdo */
-  .bottomnav {
-    flex-direction: column;
-    width: 200px;
-    min-width: 200px;
-    height: 100dvh;
-    border-top: none;
-    border-right: 1px solid var(--border);
-    padding: 0;
-    justify-content: flex-start;
-    overflow: hidden;
-    background: var(--bg2);
-  }
-
-  /* Logo en el sidebar */
-  .bottomnav::before {
-    content: '';
-    display: block;
-    height: 60px;
-    min-height: 60px;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 36'%3E%3Ctext x='16' y='27' font-family='Georgia,serif' font-size='26' font-weight='900' font-style='italic' fill='%23f0f0f0'%3EF%3C/text%3E%3Ctext x='31' y='27' font-family='Georgia,serif' font-size='26' font-weight='900' font-style='italic' fill='%23e85d04'%3EO%3C/text%3E%3Ctext x='48' y='27' font-family='Georgia,serif' font-size='26' font-weight='900' font-style='italic' fill='%23f0f0f0'%3ERGE%3C/text%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: 16px center;
-  }
-
-  .nav-btn {
-    flex: none;
-    flex-direction: row;
-    justify-content: flex-start;
-    width: 100%;
-    padding: 13px 18px;
-    gap: 12px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: .3px;
-    border-radius: 0;
-    border-left: 3px solid transparent;
-    color: var(--ink2);
-    text-transform: none;
-  }
-  .nav-btn:hover { background: var(--bg3); color: var(--ink); }
-  .nav-btn.active {
-    background: #1a0a00;
-    color: var(--orange);
-    border-left-color: var(--orange);
-  }
-  .nav-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
-
-  /* Wrapper de contenido ocupa TODO el resto */
-  #screens-wrapper { flex: 1; min-width: 0; }
-
-  .screen { padding-bottom: 0; }
-
-  /* Modales centrados */
+  #screens-wrapper { max-width: 1000px; margin: 0 auto; width: 100%; }
+  .nav-btn { font-size: 10px; gap: 4px; }
+  .nav-btn svg { width: 22px; height: 22px; }
   .modal-overlay { align-items: center; padding: 24px; }
   .modal { border-radius: 16px; max-width: 520px; margin: 0 auto; }
-
-  /* Toast */
-  .toast { bottom: 24px; }
+  .toast { bottom: 80px; }
 }
+
 
 /* ── TOPBAR ── */
 .topbar {
@@ -538,8 +471,84 @@ svg.rest-ring { position: absolute; inset: -4px; width: calc(100% + 8px); height
 .porcion-nombre { font-size:13px; color:var(--ink2); }
 .porcion-meta { font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--green); }
 
-/* ══════════════════════════════════════
-   ── PLANIFICACIÓN (NUEVO) ──
+/* ══ HÁBITOS ESTILO LUMEN ══ */
+.lumen-stats-row { display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px; }
+.lumen-stat { border:1px solid var(--border);border-radius:10px;padding:14px 12px;text-align:center; }
+.lumen-stat-num { font-family:var(--font-display);font-size:36px;font-weight:900;line-height:1;color:var(--orange);font-style:italic; }
+.lumen-stat-label { font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-top:4px;font-weight:700; }
+.lumen-stat-sub { font-size:10px;color:var(--ink3);margin-top:2px; }
+.lumen-habit-block { margin-bottom:28px; }
+.lumen-habit-title { font-size:13px;font-weight:700;color:var(--ink);margin-bottom:2px; }
+.lumen-habit-sub { font-size:11px;color:var(--ink3);margin-bottom:10px; }
+.lumen-grid-wrap { overflow-x:auto;padding-bottom:4px; }
+.lumen-grid { display:grid;grid-template-rows:repeat(7,10px);grid-auto-flow:column;grid-auto-columns:10px;gap:2px;width:max-content; }
+.lumen-cell { width:10px;height:10px;border-radius:2px;background:var(--bg3);cursor:pointer;transition:opacity .1s; }
+.lumen-cell:hover { opacity:.75; }
+.lumen-cell.l0 { background:var(--bg3); }
+.lumen-cell.l1 { background:#3d2a00; }
+.lumen-cell.l2 { background:#7a4a00; }
+.lumen-cell.l3 { background:#c06a00; }
+.lumen-cell.l4 { background:var(--orange); }
+.lumen-cell.future { background:var(--bg3);opacity:.25;cursor:default; }
+.lumen-months { display:flex;margin-bottom:3px;font-size:9px;color:var(--ink3);letter-spacing:.5px;width:max-content; }
+.lumen-month-label { min-width:10px; }
+.lumen-legend { display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink3);margin-top:6px; }
+.lumen-legend-cell { width:10px;height:10px;border-radius:2px; }
+
+/* ══ CARDS ESTILO HEVY ══ */
+.hevy-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color .15s, transform .1s;
+}
+.hevy-card:active { transform: scale(.99); border-color: var(--border2); }
+.hevy-card-head {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.hevy-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--orange); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; flex-shrink: 0;
+}
+.hevy-meta-row {
+  display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.hevy-meta-item { display: flex; flex-direction: column; gap: 1px; }
+.hevy-meta-label { font-size: 11px; color: var(--ink3); }
+.hevy-meta-val   { font-size: 15px; font-weight: 700; color: var(--ink); }
+.hevy-ex-row     { padding: 4px 0; }
+
+/* ══ OVERLAY DETALLE SESIÓN ══ */
+.session-detail-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 500;
+  background: var(--bg);
+  flex-direction: column;
+  overflow: hidden;
+}
+.session-detail-overlay.show { display: flex; }
+.session-detail-topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  flex-shrink: 0;
+}
+.session-detail-back {
+  background: none; border: none; color: var(--ink2);
+  cursor: pointer; padding: 4px; display: flex; align-items: center;
+}
+.session-detail-title {
+  flex: 1; font-size: 16px; font-weight: 700; color: var(--ink);
+}
+#session-detail-content {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
 ══════════════════════════════════════ */
 .plan-block-card { background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:10px;overflow:hidden; }
 .plan-block-header { padding:14px 16px;display:flex;align-items:center;gap:12px; }
@@ -897,28 +906,11 @@ svg.rest-ring { position: absolute; inset: -4px; width: calc(100% + 8px); height
       <div id="user-initials-btn" onclick="showUserMenu()" style="width:32px;height:32px;border-radius:50%;background:var(--orange);color:#fff;display:none;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;"></div>
     </div>
   </div>
-  <div style="padding:16px;">
-    <!-- Bienvenida + fecha -->
-    <div id="home-bienvenida" style="margin-bottom:16px;"></div>
-    <!-- Banner plan activo -->
-    <div id="active-session-banner" style="display:none;"></div>
-    <!-- Stats rápidas -->
-    <div id="home-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;"></div>
-    <!-- Acción rápida -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">
-      <button class="btn btn-primary" onclick="gotoScreen('train')" style="gap:6px;">
-        <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M6.5 6.5h11M6.5 17.5h11M3 9l3.5 3-3.5 3M21 9l-3.5 3 3.5 3"/></svg>
-        Entrenar
-      </button>
-      <button class="btn btn-secondary" onclick="gotoScreen('food')" style="gap:6px;">
-        <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M12 2a7 7 0 0 1 7 7c0 4-3 6-3 9H8c0-3-3-5-3-9a7 7 0 0 1 7-7z"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
-        Nutrición
-      </button>
-    </div>
-    <!-- Últimas sesiones -->
-    <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--ink);margin-bottom:10px;">
-      📋 Últimos entrenamientos
-    </div>
+  <div style="padding:16px 16px 8px;">
+    <div id="home-bienvenida" style="margin-bottom:14px;"></div>
+    <div id="active-session-banner" style="display:none;margin-bottom:12px;"></div>
+    <div id="home-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;"></div>
+    <div style="font-size:11px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">Últimos entrenamientos</div>
     <div id="home-ultimas-sesiones"></div>
   </div>
 </div>
@@ -973,12 +965,12 @@ svg.rest-ring { position: absolute; inset: -4px; width: calc(100% + 8px); height
   <div class="tab-row">
     <button class="tab-btn active" onclick="switchStatTab('ejercicios',this)">Ejercicios</button>
     <button class="tab-btn" onclick="switchStatTab('cuerpo',this)">Cuerpo</button>
-    <button class="tab-btn" onclick="switchStatTab('rachas',this)">Rachas</button>
+    <button class="tab-btn" onclick="switchStatTab('fotos',this)">Fotos</button>
     <button class="tab-btn" onclick="switchStatTab('logros',this)">Logros</button>
   </div>
   <div id="stats-ejercicios" class="tab-panel active" style="padding:16px;"></div>
   <div id="stats-cuerpo" class="tab-panel" style="padding:16px;"></div>
-  <div id="stats-rachas" class="tab-panel" style="padding:16px;"></div>
+  <div id="stats-fotos" class="tab-panel"></div>
   <div id="stats-logros" class="tab-panel" style="padding:16px;"></div>
 </div>
 
@@ -1094,43 +1086,41 @@ svg.rest-ring { position: absolute; inset: -4px; width: calc(100% + 8px); height
     </div>
   </div>
 
-  <!-- Tabs: Hábitos / Avances / Fotos / Objetivos -->
   <div class="tab-row">
     <button class="tab-btn active" id="htab-habitos"  onclick="switchHabitsTab('habitos',this)">Hábitos</button>
-    <button class="tab-btn"        id="htab-avances"  onclick="switchHabitsTab('avances',this)">Avances</button>
+    <button class="tab-btn"        id="htab-avances"  onclick="switchHabitsTab('avances',this)">Cuerpo</button>
     <button class="tab-btn"        id="htab-fotos"    onclick="switchHabitsTab('fotos',this)">Fotos</button>
     <button class="tab-btn"        id="htab-objetivos"onclick="switchHabitsTab('objetivos',this)">Objetivos</button>
   </div>
 
-  <!-- Hábitos -->
-  <div id="hpanel-habitos" class="tab-panel active">
-    <div id="habits-resumen" style="padding:16px 16px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px;"></div>
-    <div id="habits-list" style="padding:12px 16px 16px;"></div>
+  <!-- TAB: HÁBITOS estilo Lumen -->
+  <div id="hpanel-habitos" class="tab-panel active" style="padding:16px;">
+    <div id="habits-lumen-content"></div>
   </div>
 
-  <!-- Avances (métricas corporales) -->
+  <!-- TAB: CUERPO -->
   <div id="hpanel-avances" class="tab-panel" style="padding:16px;">
     <div id="avances-content"></div>
   </div>
 
-  <!-- Fotos -->
+  <!-- TAB: FOTOS -->
   <div id="hpanel-fotos" class="tab-panel">
     <div style="padding:16px 16px 8px;display:flex;justify-content:space-between;align-items:center;">
-      <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--ink);">Fotos de progreso</div>
+      <div style="font-size:16px;font-weight:700;color:var(--ink);">Fotos de progreso</div>
       <button class="btn btn-primary btn-sm" onclick="openAddPhoto()">+ Añadir</button>
     </div>
     <div class="tab-row" style="margin:0 16px 12px;border-radius:8px;overflow:hidden;border:1px solid var(--border);">
       <button class="tab-btn active" onclick="switchPhotoTab('frente',this)"  style="font-size:10px;">Frente</button>
-      <button class="tab-btn"        onclick="switchPhotoTab('espalda',this)" style="font-size:10px;">Espalda</button>
       <button class="tab-btn"        onclick="switchPhotoTab('lateral',this)" style="font-size:10px;">Lateral</button>
+      <button class="tab-btn"        onclick="switchPhotoTab('espalda',this)" style="font-size:10px;">Espalda</button>
     </div>
-    <div id="photos-grid" class="photo-grid" style="padding-bottom:16px;"></div>
+    <div id="photos-grid" class="photo-grid" style="padding:0 16px 16px;"></div>
   </div>
 
-  <!-- Objetivos -->
+  <!-- TAB: OBJETIVOS -->
   <div id="hpanel-objetivos" class="tab-panel" style="padding:16px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--ink);">Mis objetivos</div>
+      <div style="font-size:16px;font-weight:700;color:var(--ink);">Mis objetivos</div>
       <button class="btn btn-primary btn-sm" onclick="openModalNuevoObjetivo()">+ Nuevo</button>
     </div>
     <div id="goals-list"></div>
@@ -1171,6 +1161,18 @@ svg.rest-ring { position: absolute; inset: -4px; width: calc(100% + 8px); height
 </div><!-- /app -->
 
 <div class="toast" id="toast"></div>
+
+<!-- ══════ OVERLAY: DETALLE SESIÓN ══════ -->
+<div id="session-detail-overlay" class="session-detail-overlay">
+  <div class="session-detail-topbar">
+    <button class="session-detail-back" onclick="cerrarDetalleSession()">
+      <svg viewBox="0 0 24 24" style="width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.5;"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="session-detail-title">Detalle de Entrenamiento</div>
+    <div style="width:30px;"></div>
+  </div>
+  <div id="session-detail-content"></div>
+</div>
 
 <!-- ══════ OVERLAY: EVALUACIÓN DE BLOQUE ══════ -->
 <div id="eval-overlay" class="eval-overlay">
@@ -2024,41 +2026,75 @@ function cancelDiagnostico() {
 // ═══════════════════════════════════════════════════════════════
 //  PANTALLA DE INICIO
 // ═══════════════════════════════════════════════════════════════
-function renderHome() {
-  // Bienvenida
-  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  const hoy = new Date();
-  const nombreUsuario = currentUser?.displayName?.split(' ')[0] || 'Diego';
-  document.getElementById('home-bienvenida').innerHTML = `
-    <div style="margin-bottom:4px;">
-      <span style="font-size:13px;color:var(--ink3);">${dias[hoy.getDay()]} ${hoy.getDate()} de ${meses[hoy.getMonth()]}</span>
-    </div>
-    <div style="font-family:var(--font-display);font-size:26px;font-weight:800;color:var(--ink);line-height:1.1;">
-      Hola, ${nombreUsuario} 👋
-    </div>`;
+// Mapa de músculos por tipo de ejercicio
+const MUSCLE_MAP = {
+  barbell:   { pecho:['ex_press_banca','ex_press_inclinado'], espalda:['ex_remo_barra','ex_peso_muerto','ex_peso_muerto_rum'], piernas:['ex_sentadilla','ex_sent_bulgara','ex_hip_thrust_id','ex_saltos_cajon'], hombros:['ex_press_hombros'], brazos:[] },
+  dumbbell:  { hombros:['ex_press_homb_manc'], piernas:['ex_sent_bulgara'], brazos:['ex_curl_femoral'] },
+  machine:   { espalda:['ex_jalon_pecho'], piernas:['ex_curl_femoral','ex_gemelos'] },
+};
 
-  // Banner plan activo
+function calcDivisionMuscular(session) {
+  const grupos = { Pecho:0, Espalda:0, Hombros:0, Piernas:0, Brazos:0, Glúteos:0, Cardio:0 };
+  (session.exercises||[]).forEach(ex => {
+    const exData = getExercise(ex.exId);
+    if (!exData) return;
+    const id   = ex.exId;
+    const tipo = (exData.type||'').toLowerCase();
+    const mus  = (exData.muscle||'').toLowerCase();
+    const sets = (ex.sets||[]).filter(s=>s.done).length || 1;
+
+    if (tipo==='run'||tipo==='hiit'||mus==='cardio')       grupos.Cardio   += sets;
+    else if (mus.includes('pecho')||id.includes('banca')||id.includes('inclinado')) grupos.Pecho += sets;
+    else if (mus.includes('espalda')||id.includes('remo')||id.includes('jalon')||id.includes('peso_muerto')) grupos.Espalda += sets;
+    else if (mus.includes('pierna')||id.includes('sentadilla')||id.includes('bulgara')||id.includes('femoral')||id.includes('gemelo')) grupos.Piernas += sets;
+    else if (mus.includes('hombro')||id.includes('hombros')) grupos.Hombros += sets;
+    else if (mus.includes('glut')||id.includes('hip_thrust')) grupos.Glúteos += sets;
+    else if (mus.includes('brazo')||mus.includes('tricep')||mus.includes('bicep')||id.includes('curl')||id.includes('tricep')) grupos.Brazos += sets;
+    else grupos.Pecho += sets; // fallback
+  });
+  const total = Object.values(grupos).reduce((a,b)=>a+b,0) || 1;
+  return Object.entries(grupos)
+    .filter(([,v])=>v>0)
+    .map(([k,v])=>({ nombre:k, pct: Math.round(v/total*100) }))
+    .sort((a,b)=>b.pct-a.pct);
+}
+
+function calcRecords(session) {
+  let records = 0;
+  (session.exercises||[]).forEach(ex => {
+    const pr = getPR(ex.exId);
+    const mejorSet = (ex.sets||[]).filter(s=>s.done&&s.weight).sort((a,b)=>b.weight-a.weight)[0];
+    if (mejorSet && mejorSet.weight >= (pr.weight||0) && mejorSet.weight > 0) records++;
+  });
+  return records;
+}
+
+function renderHome() {
+  const dias  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const hoy   = new Date();
+  const nombre = currentUser?.displayName?.split(' ')[0] || 'Diego';
+
+  document.getElementById('home-bienvenida').innerHTML = `
+    <div style="font-size:13px;color:var(--ink3);margin-bottom:2px;">${dias[hoy.getDay()]} ${hoy.getDate()} de ${meses[hoy.getMonth()]}</div>
+    <div style="font-family:var(--font-display);font-size:26px;font-weight:800;color:var(--ink);line-height:1.1;">Hola, ${nombre} 👋</div>`;
+
   renderPlanBannerHome();
 
-  // Stats rápidas
-  const sessions = forge.sessions || [];
-  const weekStart = new Date(hoy); weekStart.setDate(hoy.getDate() - hoy.getDay()); weekStart.setHours(0,0,0,0);
-  const estasSemana = sessions.filter(s => new Date(s.date) >= weekStart).length;
-  const streak = calcStreak();
-  const totalVol = sessions.slice(-10).reduce((a,s) => a+(s.totalVolume||0), 0);
+  const sessions  = forge.sessions || [];
+  const weekStart = new Date(hoy); weekStart.setDate(hoy.getDate()-hoy.getDay()); weekStart.setHours(0,0,0,0);
+  const estasSem  = sessions.filter(s=>new Date(s.date)>=weekStart).length;
 
   document.getElementById('home-stats').innerHTML = `
-    <div class="stat-box"><div class="stat-num">${estasSemana}</div><div class="stat-label">Esta semana</div></div>
-    <div class="stat-box"><div class="stat-num" style="color:var(--orange);">${streak}</div><div class="stat-label">Racha días</div></div>
-    <div class="stat-box"><div class="stat-num" style="font-size:20px;">${sessions.length}</div><div class="stat-label">Total sesiones</div></div>`;
+    <div class="stat-box"><div class="stat-num">${estasSem}</div><div class="stat-label">Esta semana</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--orange);">${calcStreak()}</div><div class="stat-label">Racha días</div></div>
+    <div class="stat-box"><div class="stat-num">${sessions.length}</div><div class="stat-label">Total sesiones</div></div>`;
 
-  // Últimas 10 sesiones
-  const ultimas = [...sessions].sort((a,b) => b.date - a.date).slice(0, 10);
+  const ultimas = [...sessions].sort((a,b)=>b.date-a.date).slice(0,15);
   const el = document.getElementById('home-ultimas-sesiones');
 
   if (!ultimas.length) {
-    el.innerHTML = `<div class="empty" style="padding:32px 0;">
+    el.innerHTML=`<div class="empty" style="padding:40px 0;">
       <div class="empty-icon">🏋</div>
       <div class="empty-text">Sin sesiones aún</div>
       <div class="empty-sub">Inicia tu primera rutina para ver el historial aquí.</div>
@@ -2067,45 +2103,145 @@ function renderHome() {
   }
 
   el.innerHTML = ultimas.map(s => {
-    const fecha = new Date(s.date);
-    const diasAtras = Math.floor((hoy - fecha) / 86400000);
-    const cuandoLabel = diasAtras === 0 ? 'Hoy' : diasAtras === 1 ? 'Ayer' : `Hace ${diasAtras} días`;
-    const fechaStr = fecha.toLocaleDateString('es', {day:'2-digit', month:'short'});
-    const ejercicios = (s.exercises || []);
-    const numEx = ejercicios.length;
-    const volStr = s.totalVolume ? `${s.totalVolume.toLocaleString()} kg vol.` : '';
-    const durStr = s.elapsed ? fmtTime(s.elapsed) : '';
+    const fecha      = new Date(s.date);
+    const diasAtras  = Math.floor((hoy - fecha) / 86400000);
+    const cuandoLabel= diasAtras===0?'Hoy':diasAtras===1?'Ayer':`Hace ${diasAtras} días`;
+    const fechaFull  = fecha.toLocaleDateString('es',{weekday:'long',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const dur        = s.elapsed ? fmtTime(s.elapsed) : '—';
+    const vol        = s.totalVolume ? `${Math.round(s.totalVolume).toLocaleString('es')} kg` : '—';
+    const totalSeries= (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(s=>s.done).length,0);
+    const records    = calcRecords(s);
+    const ejercicios = (s.exercises||[]).slice(0,3);
 
-    // Top 3 ejercicios con sus mejores sets
-    const topSets = ejercicios.slice(0,3).map(ex => {
-      const exData = getExercise(ex.exId);
-      const mejorSet = (ex.sets||[]).filter(s=>s.done&&s.weight).sort((a,b)=>b.weight-a.weight)[0];
-      if (!exData) return '';
-      return `<span class="rutina-ex-chip">${exData.name.split('(')[0].trim()}${mejorSet ? ` ${mejorSet.weight}kg` : ''}</span>`;
-    }).join('');
-
-    return `<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="verDetalleSession('${s.id}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-        <div>
-          <div style="font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--ink);">${s.routineName || 'Sesión libre'}</div>
-          <div style="font-size:11px;color:var(--ink3);margin-top:2px;">${cuandoLabel} · ${fechaStr}</div>
+    return `
+    <div class="hevy-card" onclick="verDetalleSession('${s.id}')">
+      <div class="hevy-card-head">
+        <div class="hevy-avatar">${nombre.slice(0,2).toUpperCase()}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:var(--ink);">${nombre.toLowerCase().replace(' ','')}</div>
+          <div style="font-size:11px;color:var(--ink3);">${cuandoLabel}</div>
         </div>
-        <div style="text-align:right;">
-          ${volStr ? `<div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--orange);">${volStr}</div>` : ''}
-          ${durStr ? `<div style="font-size:11px;color:var(--ink3);">${durStr}</div>` : ''}
-        </div>
+        <div style="font-size:18px;color:var(--ink3);">···</div>
       </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
-        <span style="font-size:10px;color:var(--ink3);margin-right:2px;">${numEx} ejerc.</span>
-        ${topSets}
+      <div style="font-size:18px;font-weight:800;color:var(--ink);margin-bottom:10px;">${s.routineName||'Sesión libre'}</div>
+      <div class="hevy-meta-row">
+        <div class="hevy-meta-item"><div class="hevy-meta-label">Tiempo</div><div class="hevy-meta-val">${dur}</div></div>
+        <div class="hevy-meta-item"><div class="hevy-meta-label">Volumen</div><div class="hevy-meta-val">${vol}</div></div>
+        ${totalSeries?`<div class="hevy-meta-item"><div class="hevy-meta-label">Series</div><div class="hevy-meta-val">${totalSeries}</div></div>`:''}
+        ${records?`<div class="hevy-meta-item"><div class="hevy-meta-label">Récords</div><div class="hevy-meta-val">🏅 ${records}</div></div>`:''}
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px;">
+        ${ejercicios.map(ex=>{
+          const exData=getExercise(ex.exId);
+          const numSeries=(ex.sets||[]).filter(s=>s.done).length;
+          return exData?`<div class="hevy-ex-row">
+            <div style="font-size:13px;color:var(--ink2);">${numSeries} ${numSeries===1?'serie':'series'} ${exData.name}</div>
+          </div>`:'';
+        }).join('')}
+        ${(s.exercises||[]).length>3?`<div style="font-size:12px;color:var(--orange);margin-top:4px;padding:2px 0;">Ver ${(s.exercises||[]).length-3} más ejercicio${(s.exercises||[]).length-3>1?'s':''}</div>`:''}
       </div>
     </div>`;
   }).join('');
 }
 
+// ── FICHA DETALLE DE SESIÓN ────────────────────────────────────
 function verDetalleSession(id) {
-  // Por ahora ir a stats — en futuro abrir detalle
-  gotoScreen('stats');
+  const s = (forge.sessions||[]).find(x=>x.id===id);
+  if (!s) return;
+
+  const fecha     = new Date(s.date);
+  const fechaFull = fecha.toLocaleDateString('es',{weekday:'long',day:'numeric',month:'short',year:'numeric'}) + ' - ' + fecha.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+  const dur       = s.elapsed ? fmtTime(s.elapsed) : '—';
+  const vol       = s.totalVolume ? `${Math.round(s.totalVolume).toLocaleString('es')} kg` : '—';
+  const totalSeries=(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(s=>s.done).length,0);
+  const records   = calcRecords(s);
+  const nombre    = currentUser?.displayName?.split(' ')[0] || 'Diego';
+  const division  = calcDivisionMuscular(s);
+
+  const el = document.getElementById('session-detail-content');
+  el.innerHTML = `
+    <!-- Cabecera -->
+    <div style="padding:16px;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <div class="hevy-avatar">${nombre.slice(0,2).toUpperCase()}</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink);">${nombre.toLowerCase()}</div>
+          <div style="font-size:11px;color:var(--ink3);">${fechaFull}</div>
+        </div>
+      </div>
+      <div style="font-size:22px;font-weight:800;color:var(--ink);margin-bottom:12px;">${s.routineName||'Sesión libre'}</div>
+      <div class="hevy-meta-row" style="margin-bottom:0;">
+        <div class="hevy-meta-item"><div class="hevy-meta-label">Tiempo</div><div class="hevy-meta-val">${dur}</div></div>
+        <div class="hevy-meta-item"><div class="hevy-meta-label">Volumen</div><div class="hevy-meta-val">${vol}</div></div>
+        <div class="hevy-meta-item"><div class="hevy-meta-label">Series</div><div class="hevy-meta-val">${totalSeries}</div></div>
+        ${records?`<div class="hevy-meta-item"><div class="hevy-meta-label">Récords</div><div class="hevy-meta-val">🏅 ${records}</div></div>`:''}
+      </div>
+    </div>
+
+    <!-- División muscular -->
+    ${division.length ? `
+    <div style="padding:16px;border-bottom:1px solid var(--border);">
+      <div style="font-size:11px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">División Muscular</div>
+      ${division.map(d=>`
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px;">
+            <span>${d.nombre}</span><span style="color:var(--ink3);">${d.pct}%</span>
+          </div>
+          <div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;">
+            <div style="height:100%;width:${d.pct}%;background:var(--orange);border-radius:4px;transition:width .4s;"></div>
+          </div>
+        </div>`).join('')}
+    </div>` : ''}
+
+    <!-- Ejercicios detalle -->
+    <div style="padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:11px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;">Entrenamiento</div>
+        <button onclick="editarSesion('${s.id}')" style="background:none;border:none;color:var(--orange);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body);">Editar entrenamiento</button>
+      </div>
+      ${(s.exercises||[]).map(ex => {
+        const exData = getExercise(ex.exId);
+        if (!exData) return '';
+        const sets = (ex.sets||[]).filter(s=>s.done);
+        const esCardio = exData.type==='run'||exData.type==='hiit';
+        return `
+        <div style="margin-bottom:20px;">
+          <div style="font-size:16px;font-weight:700;color:var(--orange);margin-bottom:8px;">${exData.name}</div>
+          ${esCardio ? `
+            <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;font-size:11px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;padding:0 4px;">
+              <span>Serie</span><span>Distancia / Tiempo</span>
+            </div>
+            ${sets.map((set,i)=>`
+            <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;padding:8px 4px;border-radius:6px;background:${i%2===0?'var(--bg3)':'transparent'};">
+              <span style="font-size:16px;font-weight:700;color:var(--ink);">${i+1}</span>
+              <span style="font-size:14px;color:var(--ink2);">${set.distance?set.distance+'km':''} ${set.time?set.time:'—'}</span>
+            </div>`).join('')}
+          ` : `
+            <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;font-size:11px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;padding:0 4px;">
+              <span>Serie</span><span>Peso y Reps</span>
+            </div>
+            ${sets.map((set,i)=>`
+            <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;padding:8px 4px;border-radius:6px;background:${i%2===0?'var(--bg3)':'transparent'};">
+              <span style="font-size:16px;font-weight:700;color:var(--ink);">${i+1}</span>
+              <span style="font-size:14px;color:var(--ink2);">${set.weight||0} kg × ${set.reps||0}</span>
+            </div>`).join('')}
+          `}
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  // Mostrar overlay
+  document.getElementById('session-detail-overlay').classList.add('show');
+}
+
+function cerrarDetalleSession() {
+  document.getElementById('session-detail-overlay').classList.remove('show');
+}
+
+function editarSesion(id) {
+  cerrarDetalleSession();
+  // Por ahora va a entrenamientos — se puede expandir
+  showToast('Función de edición próximamente', 2000);
 }
 function renderTrainHome() {
   if(activeSession){
@@ -2551,9 +2687,9 @@ function switchStatTab(tab,btn){
 function renderStats(){renderStatTab(statTab);}
 function renderStatTab(tab){
   if(tab==='ejercicios') renderStatsEjercicios();
-  if(tab==='cuerpo') renderStatsCuerpo();
-  if(tab==='rachas') renderStatsRachas();
-  if(tab==='logros') renderStatsLogros();
+  if(tab==='cuerpo')     renderStatsCuerpo();
+  if(tab==='fotos')      renderStatsFotos();
+  if(tab==='logros')     renderStatsLogros();
 }
 
 function renderStatsEjercicios(){
@@ -2773,6 +2909,44 @@ function renderStatsLogros(){
   const el=document.getElementById('stats-logros');const logros=forge.logros||[];
   if(!logros.length){el.innerHTML=`<div class="empty"><div class="empty-icon">🏆</div><div class="empty-text">Sin logros aún</div></div>`;return;}
   el.innerHTML=logros.map(l=>`<div class="logro-card"><div class="logro-icon">${l.icon}</div><div><div class="logro-title">${l.title}</div><div class="logro-sub">${l.sub}</div></div></div>`).join('');
+}
+
+function renderStatsFotos() {
+  const el = document.getElementById('stats-fotos');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="padding:16px 16px 8px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:16px;font-weight:700;color:var(--ink);">Fotos de progreso</div>
+      <button class="btn btn-primary btn-sm" onclick="openAddPhoto()">+ Añadir</button>
+    </div>
+    <div style="display:flex;gap:0;margin:0 16px 12px;border-radius:8px;overflow:hidden;border:1px solid var(--border);" id="stats-foto-tabs">
+      <button class="tab-btn active" onclick="switchStatsFotoTab('frente',this)"  style="font-size:10px;flex:1;">Frente</button>
+      <button class="tab-btn"        onclick="switchStatsFotoTab('lateral',this)" style="font-size:10px;flex:1;">Lateral</button>
+      <button class="tab-btn"        onclick="switchStatsFotoTab('espalda',this)" style="font-size:10px;flex:1;">Espalda</button>
+    </div>
+    <div id="stats-fotos-grid" class="photo-grid" style="padding:0 16px 16px;"></div>`;
+  renderStatsFotoGrid('frente');
+}
+
+function switchStatsFotoTab(tipo, btn) {
+  document.querySelectorAll('#stats-foto-tabs .tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderStatsFotoGrid(tipo);
+}
+
+function renderStatsFotoGrid(tipo) {
+  const el = document.getElementById('stats-fotos-grid');
+  if (!el) return;
+  const photos = (forge.photos||[]).filter(p=>p.tipo===tipo).sort((a,b)=>b.date.localeCompare(a.date));
+  el.innerHTML = photos.map(p=>`
+    <div class="photo-cell" onclick="viewPhoto('${p.id}')">
+      <img src="${p.data}" alt="${p.tipo}">
+      <div class="photo-date">${p.date}</div>
+    </div>`).join('') + `
+    <div class="photo-cell" onclick="openAddPhoto()">
+      <div class="photo-cell-add">+</div>
+      <div class="photo-cell-label">${tipo}</div>
+    </div>`;
 }
 
 // ═══════════════════════════════════
@@ -3644,7 +3818,176 @@ function getWeekKey(dateStr) {
 // ── Render principal ───────────────────────────────────────────
 function renderHabits() {
   cargarHabitosDefault();
-  const habitos = (forge.habitos || []).filter(h => h.activo);
+  renderHabitsLumen();
+}
+
+// ── HÁBITOS ESTILO LUMEN ────────────────────────────────────────
+const LUMEN_HABITOS = [
+  { id:'h_entreno',    nombre:'Días entrenados',   emoji:'🏋', color:'var(--orange)', tipo:'entreno',
+    desc:'Cada día que completaste un entrenamiento',
+    fn: (fecha) => {
+      const s = (forge.sessions||[]).find(s => new Date(s.date).toISOString().split('T')[0] === fecha);
+      return s ? 1 : 0;
+    }
+  },
+  { id:'h_alcohol',    nombre:'Días sin alcohol',   emoji:'🚫', color:'#22d3ee', tipo:'alcohol',
+    desc:'Cada día sin consumo de alcohol',
+    fn: (fecha) => {
+      const h = (forge.habitos||[]).find(x=>x.tipo==='alcohol');
+      if (!h) return -1; // no trackeado
+      const r = (h.registros||{})[fecha];
+      return r==='done' ? 1 : r==='failed' ? 0 : -1;
+    }
+  },
+  { id:'h_agua',       nombre:'Vasos de agua (10)',  emoji:'💧', color:'#60a5fa', tipo:'agua',
+    desc:'Cada día que completaste los 10 vasos',
+    fn: (fecha) => {
+      try {
+        const raw = localStorage.getItem('forge_food_'+fecha);
+        if (!raw) return -1;
+        const d = JSON.parse(raw);
+        return d.agua >= 10 ? 1 : d.agua >= 6 ? 0.5 : d.agua > 0 ? 0.25 : -1;
+      } catch { return -1; }
+    }
+  },
+];
+
+function renderHabitsLumen() {
+  const el = document.getElementById('habits-lumen-content');
+  if (!el) return;
+
+  const today    = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+
+  // Generar todos los días del año actual
+  const year   = today.getFullYear();
+  const jan1   = new Date(year, 0, 1);
+  const days   = [];
+  for (let d = new Date(jan1); d <= today || d.getFullYear() === year; d.setDate(d.getDate()+1)) {
+    days.push(new Date(d).toISOString().split('T')[0]);
+    if (d.getFullYear() > year) break;
+  }
+
+  // Stats globales de entrenamiento
+  const sessions  = forge.sessions || [];
+  const entreDias = new Set(sessions.map(s => new Date(s.date).toISOString().split('T')[0]));
+  const rachaActual = calcStreak();
+  const rachaMax    = calcMaxStreak();
+  const totalDias   = entreDias.size;
+
+  el.innerHTML = `
+    <!-- Stats arriba estilo Lumen -->
+    <div class="lumen-stats-row">
+      <div class="lumen-stat">
+        <div class="lumen-stat-num">${rachaActual}</div>
+        <div class="lumen-stat-label">Racha actual</div>
+        <div class="lumen-stat-sub">días seguidos</div>
+      </div>
+      <div class="lumen-stat">
+        <div class="lumen-stat-num">${rachaMax}</div>
+        <div class="lumen-stat-label">Mejor racha</div>
+        <div class="lumen-stat-sub">${rachaMax > 0 ? 'máximo histórico' : '—'}</div>
+      </div>
+      <div class="lumen-stat">
+        <div class="lumen-stat-num">${totalDias}</div>
+        <div class="lumen-stat-label">Días totales</div>
+        <div class="lumen-stat-sub">registrados</div>
+      </div>
+    </div>
+
+    <!-- Grid por hábito -->
+    ${LUMEN_HABITOS.map(hab => renderLumenGrid(hab, days, todayStr, year)).join('')}
+
+    <!-- Botón añadir hábito manual -->
+    <div style="text-align:center;margin-top:8px;">
+      <button class="btn btn-secondary btn-sm" onclick="switchHabitsTab('habitos', document.getElementById('htab-habitos'))">
+        Ver hábitos personalizados →
+      </button>
+    </div>`;
+}
+
+function renderLumenGrid(hab, days, todayStr, year) {
+  // Calcular valor para cada día
+  const valMap = {};
+  days.forEach(d => { valMap[d] = hab.fn(d); });
+
+  // Contar cumplidos
+  const cumplidos = days.filter(d => d <= todayStr && valMap[d] > 0).length;
+  const total     = days.filter(d => d <= todayStr).length;
+
+  // Construir meses labels
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  let monthsHtml = '<div class="lumen-months">';
+  let lastMonth  = -1;
+  // Ajustar al primer lunes antes del 1 de enero
+  const startDow = new Date(year, 0, 1).getDay(); // 0=dom
+  const offset   = (startDow + 6) % 7; // lunes=0
+
+  // Encabezados de meses
+  for (let m = 0; m < 12; m++) {
+    const col = Math.floor((new Date(year,m,1).getTime() - new Date(year,0,1).getTime()) / (7*86400000) * 7 / 7);
+    monthsHtml += `<div class="lumen-month-label" style="margin-left:${m===0?0:2}px;width:auto;min-width:36px;">${meses[m]}</div>`;
+  }
+  monthsHtml += '</div>';
+
+  // Células — empezar desde el lunes de la semana que contiene el 1 de enero
+  const gridStart = new Date(year, 0, 1);
+  gridStart.setDate(gridStart.getDate() - ((gridStart.getDay()+6)%7)); // retroceder al lunes
+
+  let cells = '';
+  const gridEnd = new Date(year, 11, 31);
+  for (let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate()+1)) {
+    const f   = d.toISOString().split('T')[0];
+    const val = valMap[f] ?? -1;
+    const isFuture = f > todayStr;
+    const isOtherYear = d.getFullYear() !== year;
+
+    let cls = 'lumen-cell ';
+    if (isOtherYear || isFuture) cls += 'future';
+    else if (val < 0)  cls += 'l0'; // sin datos
+    else if (val >= 1) cls += 'l4'; // completo
+    else if (val >= 0.5) cls += 'l3';
+    else if (val >= 0.25) cls += 'l2';
+    else cls += 'l1'; // fallido/parcial
+
+    const title = isFuture||isOtherYear ? '' : `title="${f}: ${val<0?'sin datos':val>=1?'cumplido':'parcial'}"`;
+    cells += `<div class="${cls}" ${title}></div>`;
+  }
+
+  return `
+  <div class="lumen-habit-block">
+    <div class="lumen-habit-title">${hab.emoji} ${hab.nombre}</div>
+    <div class="lumen-habit-sub">${hab.desc} · <strong style="color:var(--orange);">${cumplidos}</strong> de ${total} días</div>
+    <div class="lumen-grid-wrap">
+      ${monthsHtml}
+      <div class="lumen-grid">${cells}</div>
+    </div>
+    <div class="lumen-legend">
+      <span>Menos</span>
+      <div class="lumen-legend-cell l0" style="background:var(--bg3);border:1px solid var(--border);"></div>
+      <div class="lumen-legend-cell" style="background:#3d2a00;"></div>
+      <div class="lumen-legend-cell" style="background:#7a4a00;"></div>
+      <div class="lumen-legend-cell" style="background:#c06a00;"></div>
+      <div class="lumen-legend-cell" style="background:var(--orange);"></div>
+      <span>Más</span>
+    </div>
+  </div>`;
+}
+
+function calcMaxStreak() {
+  const dates = [...new Set((forge.sessions||[]).map(s => new Date(s.date).toISOString().split('T')[0]))].sort();
+  let max = 0, cur = 0, prev = null;
+  dates.forEach(d => {
+    if (!prev) { cur=1; }
+    else {
+      const diff = (new Date(d) - new Date(prev)) / 86400000;
+      cur = diff === 1 ? cur+1 : 1;
+    }
+    max = Math.max(max, cur);
+    prev = d;
+  });
+  return max;
+}
   const today   = new Date().toISOString().split('T')[0];
 
   // Resumen rápido
@@ -4032,12 +4375,7 @@ function archivarHabito(id) {
 // autoMarcarHabitoEntreno se llama directamente desde finishSession
 
 // ── Conectar con agua ──────────────────────────────────────────
-const _origToggleAgua = toggleAgua;
-function toggleAgua(vaso) {
-  _origToggleAgua(vaso);
-  const fd = getFoodData(foodFecha);
-  if (fd.agua >= 10) autoMarcarHabitoAgua(fd.agua);
-}
+// toggleAgua ya incluye autoMarcarHabitoAgua directamente — no se necesita hook
 
 // ═══════════════════════════════════════════════════════════════
 //  SISTEMA DE PLANIFICACIÓN — Macrociclo + Bloques + Clusters
@@ -4629,7 +4967,7 @@ function switchHabitsTab(tab, btn) {
   if(tab==='fotos')     { topBtn.textContent='+ Foto';     topBtn.onclick=openAddPhoto; }
   if(tab==='objetivos') { topBtn.textContent='+ Objetivo'; topBtn.onclick=openModalNuevoObjetivo; }
 
-  if(tab==='habitos')   renderHabits();
+  if(tab==='habitos')   renderHabitsLumen();
   if(tab==='avances')   renderAvances();
   if(tab==='fotos')     renderProgress();
   if(tab==='objetivos') renderGoals();
