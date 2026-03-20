@@ -784,7 +784,7 @@ select.inp{cursor:pointer}
       <input type="hidden" id="edit-ses-id">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="field"><label>Fecha</label><input class="inp" type="date" id="edit-ses-fecha"></div>
-        <div class="field"><label>Duración (hh:mm)</label><input class="inp" type="text" id="edit-ses-dur" placeholder="00:37" pattern="\d{1,2}:\d{2}" inputmode="numeric"></div>
+        <div class="field" id="edit-dur-field"><label>Duración (hh:mm)</label><input class="inp" type="text" id="edit-ses-dur" placeholder="00:37" pattern="\d{1,2}:\d{2}" inputmode="numeric"></div>
       </div>
       <div class="field"><label>Nombre</label><input class="inp" type="text" id="edit-ses-nombre"></div>
       <div class="section-label" style="margin-top:4px">Ejercicios y series</div>
@@ -1136,7 +1136,8 @@ function calcSesRitmo(s){
   (s.exercises||[]).forEach(ex=>{
     const e=getEx(ex.exId); if(!e) return;
     if(e.type!=='run'&&e.type!=='hiit') return;
-    (ex.sets||[]).filter(set=>set.done).forEach(set=>{
+    // Acepta sets con o sin done:true — solo necesita distancia o tiempo
+    (ex.sets||[]).filter(set=>parseFloat(set.distance)>0||set.time).forEach(set=>{
       const dist=parseFloat(set.distance)||0;
       if(dist>0) totalDist+=dist;
       if(set.time){
@@ -1148,6 +1149,10 @@ function calcSesRitmo(s){
       if(set.pasos) totalPasos+=parseInt(set.pasos)||0;
     });
   });
+  // Si no hay tiempo explícito pero sí hay elapsed en la sesión, usarlo para calcular ritmo
+  if(totalDist>0 && totalMins===0 && s.elapsed){
+    totalMins = s.elapsed/60;
+  }
   return {
     dist:totalDist,
     ritmo: totalDist>0&&totalMins>0 ? totalMins/totalDist : 0,
@@ -1295,10 +1300,19 @@ function openEditSesion(id){
   document.getElementById('edit-ses-id').value=id;
   document.getElementById('edit-ses-fecha').value=fechaStr;
   document.getElementById('edit-ses-nombre').value=s.routineName||'';
-  // Convertir segundos a hh:mm
-  const totalSecs=s.elapsed||0;
-  const hh=Math.floor(totalSecs/3600), mm=Math.floor((totalSecs%3600)/60);
-  document.getElementById('edit-ses-dur').value=`${pad(hh)}:${pad(mm)}`;
+
+  // Duración: solo mostrar para sesiones de fuerza
+  const esCardio = esSesSoloCardio(s);
+  const durField = document.getElementById('edit-dur-field');
+  if(esCardio){
+    durField.style.display='none';
+    document.getElementById('edit-ses-dur').value='';
+  } else {
+    durField.style.display='block';
+    const totalSecs=s.elapsed||0;
+    const hh=Math.floor(totalSecs/3600), mm=Math.floor((totalSecs%3600)/60);
+    document.getElementById('edit-ses-dur').value=`${pad(hh)}:${pad(mm)}`;
+  }
   renderEditSesExs(s);
   closeSesDetail();
   openModal('modal-edit-ses');
@@ -1349,35 +1363,45 @@ function saveEditSesion(){
   const s=(forge.sessions||[]).find(x=>x.id===id); if(!s) return;
   const fecha=document.getElementById('edit-ses-fecha').value;
   const nombre=document.getElementById('edit-ses-nombre').value.trim();
-  const durRaw=document.getElementById('edit-ses-dur').value.trim();
-
-  let durSecs=0;
-  if(durRaw.includes(':')){
-    const parts=(durRaw+':0').split(':').map(Number);
-    durSecs=(parts[0]||0)*3600+(parts[1]||0)*60;
-  } else {
-    durSecs=(parseInt(durRaw)||0)*60;
-  }
 
   if(fecha) s.date=new Date(fecha+'T12:00:00').getTime();
   if(nombre) s.routineName=nombre;
-  s.elapsed=durSecs;
 
-  // Marcar todos los sets como done:true al editar manualmente
+  // Marcar sets como done según si tienen datos
   s.exercises.forEach(ex=>{
     const e=getEx(ex.exId);
     const isRun=e?.type==='run'||e?.type==='hiit';
     ex.sets.forEach(set=>{
-      // Para cardio: marcar done si tiene distancia o tiempo
-      // Para fuerza: marcar done si tiene peso o reps
-      if(isRun) set.done = !!(parseFloat(set.distance)||set.time);
-      else set.done = !!(set.weight||set.reps);
+      set.done = isRun ? !!(parseFloat(set.distance)||set.time) : !!(set.weight||set.reps);
     });
-    // Limpiar sets vacíos
-    ex.sets=ex.sets.filter(set=>set.done);
+    ex.sets=ex.sets.filter(set=>isRun?(parseFloat(set.distance)||set.time):set.done);
   });
 
-  // Recalcular volumen total (solo fuerza)
+  // Duración: para cardio sumar tiempos de sets; para fuerza usar campo manual
+  if(esSesSoloCardio(s)){
+    let totalMins=0;
+    s.exercises.forEach(ex=>{
+      (ex.sets||[]).forEach(set=>{
+        if(set.time){
+          const p=(set.time+'').split(':');
+          totalMins+=(parseInt(p[0])||0)+(parseInt(p[1])||0)/60;
+        }
+      });
+    });
+    s.elapsed = Math.round(totalMins*60);
+  } else {
+    const durRaw=document.getElementById('edit-ses-dur').value.trim();
+    if(durRaw){
+      if(durRaw.includes(':')){
+        const parts=(durRaw+':0').split(':').map(Number);
+        s.elapsed=(parts[0]||0)*3600+(parts[1]||0)*60;
+      } else {
+        s.elapsed=(parseInt(durRaw)||0)*60;
+      }
+    }
+  }
+
+  // Recalcular volumen (solo fuerza)
   s.totalVolume=s.exercises.reduce((a,ex)=>
     a+ex.sets.filter(s=>s.done&&s.weight).reduce((b,s2)=>b+(s2.weight||0)*(s2.reps||1),0),0);
 
