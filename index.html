@@ -195,21 +195,6 @@ html, body { height: 100%; background: var(--bg); color: var(--ink); font-family
 }
 .topbar-logo span { color: var(--orange); }
 
-/* ── BOTTOM NAV ── */
-.bottomnav {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-  background: var(--bg2); border-top: 1px solid var(--border);
-  display: flex; height: 64px;
-}
-.nav-btn {
-  flex: 1; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 3px; background: none; border: none;
-  color: var(--ink3); cursor: pointer; font-family: var(--font-body);
-  font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
-}
-.nav-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; }
-.nav-btn.active { color: var(--orange); }
-
 /* ── BUTTONS ── */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -555,9 +540,6 @@ svg.rest-ring { position: absolute; inset: -4px; width: calc(100% + 8px); height
 .porcion-nombre { font-size:13px; color:var(--ink2); }
 .porcion-meta { font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--green); }
 
-/* Nav — reducir font-size para 6 items */
-.nav-btn { font-size: 8px; }
-
 /* ══════════════════════════════════════
    ── PLANIFICACIÓN (NUEVO) ──
 ══════════════════════════════════════ */
@@ -885,27 +867,23 @@ svg.rest-ring { position: absolute; inset: -4px; width: calc(100% + 8px); height
   </button>
   <button class="nav-btn" id="nav-train" onclick="gotoScreen('train')">
     <svg viewBox="0 0 24 24"><path d="M6.5 6.5h11M6.5 17.5h11M3 9l3.5 3-3.5 3M21 9l-3.5 3 3.5 3"/></svg>
-    Entrenar
-  </button>
-  <button class="nav-btn" id="nav-food" onclick="gotoScreen('food')">
-    <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 4-3 6-3 9H8c0-3-3-5-3-9a7 7 0 0 1 7-7z"/><line x1="8" y1="22" x2="16" y2="22"/><line x1="12" y1="17" x2="12" y2="22"/></svg>
-    Nutrición
+    Entrenamientos
   </button>
   <button class="nav-btn" id="nav-plan" onclick="gotoScreen('plan')">
-    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-    Plan
-  </button>
-  <button class="nav-btn" id="nav-habits" onclick="gotoScreen('habits')">
-    <svg viewBox="0 0 24 24"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z"/><path d="M8 12l3 3 5-5"/></svg>
-    Hábitos
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
+    Planifica
   </button>
   <button class="nav-btn" id="nav-stats" onclick="gotoScreen('stats')">
     <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
     Stats
   </button>
-  <button class="nav-btn" id="nav-progress" onclick="gotoScreen('progress')">
-    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-    Progreso
+  <button class="nav-btn" id="nav-food" onclick="gotoScreen('food')">
+    <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 4-3 6-3 9H8c0-3-3-5-3-9a7 7 0 0 1 7-7z"/><line x1="8" y1="22" x2="16" y2="22"/><line x1="12" y1="17" x2="12" y2="22"/></svg>
+    Nutrición
+  </button>
+  <button class="nav-btn" id="nav-habits" onclick="gotoScreen('habits')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M3 21v-2a9 9 0 0 1 18 0v2"/></svg>
+    Hábitos
   </button>
 </nav>
 
@@ -1113,13 +1091,52 @@ svg.rest-ring { position: absolute; inset: -4px; width: calc(100% + 8px); height
 <div id="screen-habits" class="screen">
   <div class="topbar">
     <div class="topbar-logo">F<span>O</span>RGE</div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;">Hábitos</div>
-      <button class="btn btn-primary btn-sm" onclick="openModalNuevoHabito()">+ Nuevo</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="btn btn-primary btn-sm" id="habits-topbar-btn" onclick="habitsTabAction()">+ Nuevo</button>
     </div>
   </div>
-  <div id="habits-resumen" style="padding:16px 16px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px;"></div>
-  <div id="habits-list" style="padding:12px 16px 16px;"></div>
+
+  <!-- Tabs: Hábitos / Avances / Fotos / Objetivos -->
+  <div class="tab-row">
+    <button class="tab-btn active" id="htab-habitos"  onclick="switchHabitsTab('habitos',this)">Hábitos</button>
+    <button class="tab-btn"        id="htab-avances"  onclick="switchHabitsTab('avances',this)">Avances</button>
+    <button class="tab-btn"        id="htab-fotos"    onclick="switchHabitsTab('fotos',this)">Fotos</button>
+    <button class="tab-btn"        id="htab-objetivos"onclick="switchHabitsTab('objetivos',this)">Objetivos</button>
+  </div>
+
+  <!-- Hábitos -->
+  <div id="hpanel-habitos" class="tab-panel active">
+    <div id="habits-resumen" style="padding:16px 16px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px;"></div>
+    <div id="habits-list" style="padding:12px 16px 16px;"></div>
+  </div>
+
+  <!-- Avances (métricas corporales) -->
+  <div id="hpanel-avances" class="tab-panel" style="padding:16px;">
+    <div id="avances-content"></div>
+  </div>
+
+  <!-- Fotos -->
+  <div id="hpanel-fotos" class="tab-panel">
+    <div style="padding:16px 16px 8px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--ink);">Fotos de progreso</div>
+      <button class="btn btn-primary btn-sm" onclick="openAddPhoto()">+ Añadir</button>
+    </div>
+    <div class="tab-row" style="margin:0 16px 12px;border-radius:8px;overflow:hidden;border:1px solid var(--border);">
+      <button class="tab-btn active" onclick="switchPhotoTab('frente',this)"  style="font-size:10px;">Frente</button>
+      <button class="tab-btn"        onclick="switchPhotoTab('espalda',this)" style="font-size:10px;">Espalda</button>
+      <button class="tab-btn"        onclick="switchPhotoTab('lateral',this)" style="font-size:10px;">Lateral</button>
+    </div>
+    <div id="photos-grid" class="photo-grid" style="padding-bottom:16px;"></div>
+  </div>
+
+  <!-- Objetivos -->
+  <div id="hpanel-objetivos" class="tab-panel" style="padding:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--ink);">Mis objetivos</div>
+      <button class="btn btn-primary btn-sm" onclick="openModalNuevoObjetivo()">+ Nuevo</button>
+    </div>
+    <div id="goals-list"></div>
+  </div>
 </div>
 
 <!-- ══════ SCREEN: PLANIFICACIÓN ══════ -->
@@ -1828,18 +1845,19 @@ let currentScreen='train';
 function gotoScreen(s) {
   document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
-  document.getElementById('screen-'+s).classList.add('active');
+  const sc = document.getElementById('screen-'+s);
+  if(sc) sc.classList.add('active');
   const nb = document.getElementById('nav-'+s);
   if(nb) nb.classList.add('active');
-  currentScreen=s;
-  if(s==='home')   renderHome();
-  if(s==='train')  renderTrainHome();
-  if(s==='food')   renderFood();
-  if(s==='plan')   renderPlan();
-  if(s==='habits') renderHabits();
-  if(s==='stats')  renderStats();
+  currentScreen = s;
+  if(s==='home')    renderHome();
+  if(s==='train')   renderTrainHome();
+  if(s==='food')    renderFood();
+  if(s==='plan')    renderPlan();
+  if(s==='habits')  renderHabits();
+  if(s==='stats')   renderStats();
   if(s==='progress') renderProgress();
-  if(s==='goals')  renderGoals();
+  if(s==='goals')   renderGoals();
 }
 function refreshCurrentScreen(){gotoScreen(currentScreen);}
 function openModal(id){document.getElementById(id).classList.add('open');}
@@ -4604,6 +4622,130 @@ function checkLogros() {
   renderPlanBannerHome();
 }
 
+// ── Tabs de la pantalla Hábitos ────────────────────────────────
+let habitsTab = 'habitos';
+
+function switchHabitsTab(tab, btn) {
+  habitsTab = tab;
+  document.querySelectorAll('#screen-habits .tab-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.querySelectorAll('#screen-habits .tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('hpanel-'+tab);
+  if(panel) panel.classList.add('active');
+
+  // Botón topbar contextual
+  const topBtn = document.getElementById('habits-topbar-btn');
+  if(tab==='habitos')   { topBtn.textContent='+ Hábito';   topBtn.onclick=openModalNuevoHabito; }
+  if(tab==='avances')   { topBtn.textContent='+ Medición'; topBtn.onclick=openModalMedicion; }
+  if(tab==='fotos')     { topBtn.textContent='+ Foto';     topBtn.onclick=openAddPhoto; }
+  if(tab==='objetivos') { topBtn.textContent='+ Objetivo'; topBtn.onclick=openModalNuevoObjetivo; }
+
+  if(tab==='habitos')   renderHabits();
+  if(tab==='avances')   renderAvances();
+  if(tab==='fotos')     renderProgress();
+  if(tab==='objetivos') renderGoals();
+}
+
+function habitsTabAction() {
+  switchHabitsTab(habitsTab, document.getElementById('htab-'+habitsTab));
+}
+
+// Avances = stats corporales completas
+function renderAvances() {
+  const el = document.getElementById('avances-content');
+  const metrics = [...(forge.bodyMetrics||[])].sort((a,b)=>a.date.localeCompare(b.date));
+
+  if(!metrics.length) {
+    el.innerHTML=`<div class="empty"><div class="empty-icon">📊</div>
+      <div class="empty-text">Sin mediciones aún</div>
+      <div class="empty-sub">Agrega tu primera medición para ver el progreso.</div>
+      <button class="btn btn-primary" onclick="openModalMedicion()" style="margin-top:16px;max-width:200px;">+ Agregar medición</button></div>`;
+    return;
+  }
+
+  const ultimo  = metrics[metrics.length-1];
+  const primero = metrics[0];
+  const dp = (a,b) => Math.round((parseFloat(a||0)-parseFloat(b||0))*10)/10;
+
+  el.innerHTML = `
+    <!-- Resumen último registro -->
+    <div style="background:var(--bg2);border-bottom:1px solid var(--border);padding:16px;">
+      <div style="font-size:11px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Última medición · ${ultimo.date}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+        ${statAvance('Peso','⚖️',ultimo.peso,'kg', dp(ultimo.peso,primero.peso))}
+        ${statAvance('Grasa','🔥',ultimo.grasa,'%', dp(ultimo.grasa,primero.grasa), true)}
+        ${statAvance('IMC','📊',ultimo.imc,'', dp(ultimo.imc,primero.imc), true)}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        ${statAvance('Muscular','💪',ultimo.muscular,'kg', dp(ultimo.muscular,primero.muscular))}
+        ${statAvance('6 Plieg.','📐',ultimo.pliegues?.p6,'mm', dp(ultimo.pliegues?.p6,primero.pliegues?.p6), true)}
+        ${statAvance('8 Plieg.','📐',ultimo.pliegues?.p8,'mm', dp(ultimo.pliegues?.p8,primero.pliegues?.p8), true)}
+      </div>
+    </div>
+
+    <!-- Gráfico peso -->
+    <div style="padding:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px;">📈 Evolución de peso</div>
+      <div class="card" style="margin-bottom:12px;">
+        ${renderLineChart(metrics.filter(m=>m.peso).map(m=>({x:m.date,y:parseFloat(m.peso)})),'var(--orange)')}
+      </div>
+
+      ${metrics.some(m=>m.pliegues?.p6) ? `
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px;">📐 Pliegues cutáneos</div>
+      <div class="card" style="margin-bottom:12px;">
+        ${renderLineChart(metrics.filter(m=>m.pliegues?.p6).map(m=>({x:m.date,y:m.pliegues.p6})),'var(--blue)')}
+      </div>` : ''}
+
+      ${metrics.some(m=>m.grasa) ? `
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px;">🔥 % Grasa corporal</div>
+      <div class="card" style="margin-bottom:12px;">
+        ${renderLineChart(metrics.filter(m=>m.grasa).map(m=>({x:m.date,y:parseFloat(m.grasa)})),'var(--red)')}
+      </div>` : ''}
+
+      <!-- Historial tabla -->
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px;">📋 Historial completo</div>
+      <div class="card">
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead><tr style="border-bottom:1px solid var(--border);">
+              <th style="padding:6px 8px;text-align:left;color:var(--ink3);font-size:10px;text-transform:uppercase;">Fecha</th>
+              <th style="padding:6px;text-align:center;color:var(--ink3);font-size:10px;">Peso</th>
+              <th style="padding:6px;text-align:center;color:var(--ink3);font-size:10px;">Grasa%</th>
+              <th style="padding:6px;text-align:center;color:var(--ink3);font-size:10px;">IMC</th>
+              <th style="padding:6px;text-align:center;color:var(--ink3);font-size:10px;">6P</th>
+              <th style="padding:6px;text-align:center;color:var(--ink3);font-size:10px;">8P</th>
+            </tr></thead>
+            <tbody>
+              ${[...metrics].reverse().map((m,i)=>`
+              <tr style="border-bottom:1px solid var(--border);background:${i%2===0?'var(--bg3)':'transparent'};">
+                <td style="padding:7px 8px;color:var(--ink2);">${m.date}</td>
+                <td style="padding:7px 6px;text-align:center;font-weight:700;color:var(--ink);">${m.peso||'—'}</td>
+                <td style="padding:7px 6px;text-align:center;color:${parseFloat(m.grasa||99)<30?'var(--green)':'var(--red)'};">${m.grasa||'—'}</td>
+                <td style="padding:7px 6px;text-align:center;color:var(--gold);">${m.imc||'—'}</td>
+                <td style="padding:7px 6px;text-align:center;color:var(--blue);">${m.pliegues?.p6||'—'}</td>
+                <td style="padding:7px 6px;text-align:center;color:var(--blue);">${m.pliegues?.p8||'—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}
+
+function statAvance(label, emoji, valor, unit, delta, menorEsMejor=false) {
+  const d = parseFloat(delta)||0;
+  const bueno = menorEsMejor ? d < 0 : d > 0;
+  const color = d===0 ? 'var(--ink3)' : bueno ? 'var(--green)' : 'var(--red)';
+  return `<div class="stat-box">
+    <div style="font-size:18px;margin-bottom:2px;">${emoji}</div>
+    <div style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--ink);line-height:1;">${valor||'—'}${unit?`<span style="font-size:11px;color:var(--ink3);margin-left:2px;">${unit}</span>`:''}</div>
+    <div style="font-size:9px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;">${label}</div>
+    ${d!==0?`<div style="font-size:10px;font-weight:700;color:${color};margin-top:2px;">${d>0?'+':''}${d}${unit}</div>`:''}
+  </div>`;
+}
+
+// Redirigir renderHabits y renderGoals para que actualicen
+// la pantalla combinada si es necesario
 // ═══════════════════════════════════
 //  MISC
 // ═══════════════════════════════════
