@@ -650,20 +650,11 @@ select.inp{cursor:pointer}
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-head">
-      <div class="modal-title">Añadir medición</div>
+      <div class="modal-title" id="med-modal-title">Añadir medición</div>
       <button class="bicon" onclick="closeModal('modal-med')"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
-    <div class="modal-body">
-      <div class="field"><label>Fecha</label><input class="inp" type="date" id="med-fecha"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>Peso (kg)</label><input class="inp" type="number" id="med-peso" step="0.1" placeholder="99.0"></div>
-        <div class="field"><label>IMC</label><input class="inp" type="number" id="med-imc" step="0.1" placeholder="28.0"></div>
-        <div class="field"><label>Grasa (%)</label><input class="inp" type="number" id="med-grasa" step="0.1" placeholder="28.3"></div>
-        <div class="field"><label>M. Muscular (kg)</label><input class="inp" type="number" id="med-musc" step="0.1" placeholder="36.7"></div>
-        <div class="field"><label>6 Pliegues (mm)</label><input class="inp" type="number" id="med-p6" step="0.5" placeholder="140"></div>
-        <div class="field"><label>8 Pliegues (mm)</label><input class="inp" type="number" id="med-p8" step="0.5" placeholder="186"></div>
-      </div>
-      <button class="btn btn-p" onclick="saveMed()" style="margin-top:4px">Guardar medición</button>
+    <div class="modal-body" id="med-modal-body">
+      <!-- Contenido dinámico según el paso -->
     </div>
   </div>
 </div>
@@ -2198,26 +2189,163 @@ function renderProgCuerpo(){
     </div>`;
 }
 
-function openMedModal(){
-  document.getElementById('med-fecha').value=today();
-  ['med-peso','med-imc','med-grasa','med-musc','med-p6','med-p8'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+// ── Mediciones: una métrica a la vez ──────────────────────────
+const MED_METRICAS = [
+  { key:'peso',     label:'Peso',              emoji:'⚖️',  unit:'kg',  step:'0.1', tipo:'number', placeholder:'99.0' },
+  { key:'grasa',    label:'Grasa corporal',    emoji:'🔥',  unit:'%',   step:'0.1', tipo:'number', placeholder:'28.3' },
+  { key:'muscular', label:'Masa muscular',     emoji:'💪',  unit:'kg',  step:'0.1', tipo:'number', placeholder:'36.7' },
+  { key:'imc',      label:'IMC',               emoji:'📊',  unit:'',    step:'0.1', tipo:'number', placeholder:'28.0' },
+  { key:'p6',       label:'6 Pliegues',        emoji:'📐',  unit:'mm',  step:'0.5', tipo:'number', placeholder:'140'  },
+  { key:'p8',       label:'8 Pliegues',        emoji:'📐',  unit:'mm',  step:'0.5', tipo:'number', placeholder:'186'  },
+];
+
+let medFechaActual = '';
+let medPaso = 'selector'; // 'selector' | 'valor'
+let medKeyActual = '';
+
+function openMedModal(fecha){
+  medFechaActual = fecha || today();
+  medPaso = 'selector';
+  document.getElementById('med-modal-title').textContent = 'Añadir medición';
+  renderMedModal();
   openModal('modal-med');
 }
-function saveMed(){
-  const fecha=document.getElementById('med-fecha').value; if(!fecha){ showToast('Selecciona fecha'); return; }
-  const m={
-    date:fecha,
-    peso:document.getElementById('med-peso').value||null,
-    imc:document.getElementById('med-imc').value||null,
-    grasa:document.getElementById('med-grasa').value||null,
-    muscular:document.getElementById('med-musc').value||null,
-    pliegues:{p6:document.getElementById('med-p6').value||null,p8:document.getElementById('med-p8').value||null}
-  };
+
+function renderMedModal(){
+  const body = document.getElementById('med-modal-body');
+
+  if(medPaso === 'selector'){
+    // Buscar si ya hay datos de esta fecha
+    const existing = (forge.bodyMetrics||[]).find(m=>m.date===medFechaActual);
+
+    body.innerHTML = `
+      <div class="field">
+        <label>Fecha</label>
+        <input class="inp" type="date" value="${medFechaActual}"
+          onchange="medFechaActual=this.value;renderMedModal()">
+      </div>
+      <div style="font-size:11px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:700">
+        ¿Qué quieres registrar?
+      </div>
+      ${MED_METRICAS.map(m=>{
+        const val = m.key==='p6'||m.key==='p8'
+          ? existing?.pliegues?.[m.key]
+          : existing?.[m.key];
+        return `<div onclick="abrirMedValor('${m.key}')"
+          style="display:flex;align-items:center;justify-content:space-between;
+          padding:13px 16px;border-radius:var(--r);margin-bottom:6px;
+          background:var(--bg3);border:1px solid var(--border2);cursor:pointer;
+          transition:border-color .1s"
+          onmouseover="this.style.borderColor='var(--orange)'"
+          onmouseout="this.style.borderColor='var(--border2)'">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:22px">${m.emoji}</span>
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--ink)">${m.label}</div>
+              ${val?`<div style="font-size:12px;color:var(--green)">Registrado: ${val}${m.unit}</div>`
+                   :`<div style="font-size:11px;color:var(--ink3)">Sin dato para esta fecha</div>`}
+            </div>
+          </div>
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>`;
+      }).join('')}`;
+  } else {
+    const m = MED_METRICAS.find(x=>x.key===medKeyActual);
+    const existing = (forge.bodyMetrics||[]).find(x=>x.date===medFechaActual);
+    const valActual = m.key==='p6'||m.key==='p8'
+      ? existing?.pliegues?.[m.key]||''
+      : existing?.[m.key]||'';
+
+    body.innerHTML = `
+      <button onclick="medPaso='selector';renderMedModal()"
+        style="background:none;border:none;color:var(--orange);cursor:pointer;
+        font-size:13px;font-weight:600;display:flex;align-items:center;gap:4px;
+        margin-bottom:16px;padding:0">
+        ← Volver
+      </button>
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:36px;margin-bottom:6px">${m.emoji}</div>
+        <div style="font-size:18px;font-weight:700;color:var(--ink)">${m.label}</div>
+        <div style="font-size:12px;color:var(--ink3);margin-top:2px">${medFechaActual}</div>
+      </div>
+      <div class="field">
+        <label>${m.label}${m.unit?' ('+m.unit+')':''}</label>
+        <input class="inp" id="med-val-input" type="${m.tipo}"
+          step="${m.step}" placeholder="${m.placeholder}"
+          value="${valActual}" inputmode="decimal"
+          style="font-size:20px;text-align:center;padding:16px"
+          autofocus>
+      </div>
+      <button class="btn btn-p" onclick="saveMedValor()" style="margin-top:4px">
+        ✓ Guardar ${m.label}
+      </button>
+      ${valActual?`<button onclick="borrarMedValor()" style="background:none;border:none;color:var(--red);
+        cursor:pointer;font-size:12px;width:100%;margin-top:10px;font-family:var(--fb)">
+        Borrar este dato
+      </button>`:''}`;
+
+    // Enfocar el input automáticamente
+    setTimeout(()=>document.getElementById('med-val-input')?.focus(), 100);
+  }
+}
+
+function abrirMedValor(key){
+  medKeyActual = key;
+  medPaso = 'valor';
+  const m = MED_METRICAS.find(x=>x.key===key);
+  document.getElementById('med-modal-title').textContent = m.label;
+  renderMedModal();
+}
+
+function saveMedValor(){
+  const input = document.getElementById('med-val-input');
+  const val = input?.value?.trim();
+  if(!val){ showToast('Ingresa un valor'); return; }
+
   if(!forge.bodyMetrics) forge.bodyMetrics=[];
-  forge.bodyMetrics=forge.bodyMetrics.filter(x=>x.date!==fecha);
-  forge.bodyMetrics.push(m);
-  forge.bodyMetrics.sort((a,b)=>a.date.localeCompare(b.date));
-  saveDB(); closeModal('modal-med'); showToast('✓ Medición guardada',2000,'ok'); renderProgCuerpo();
+  let m = forge.bodyMetrics.find(x=>x.date===medFechaActual);
+  if(!m){
+    m = {date:medFechaActual, peso:null, imc:null, grasa:null, muscular:null, pliegues:{p6:null,p8:null}};
+    forge.bodyMetrics.push(m);
+    forge.bodyMetrics.sort((a,b)=>a.date.localeCompare(b.date));
+  }
+  if(!m.pliegues) m.pliegues={p6:null,p8:null};
+
+  const numVal = parseFloat(val);
+  if(medKeyActual==='p6') m.pliegues.p6 = numVal;
+  else if(medKeyActual==='p8') m.pliegues.p8 = numVal;
+  else m[medKeyActual] = numVal;
+
+  saveDB();
+  showToast(`✓ ${MED_METRICAS.find(x=>x.key===medKeyActual).label} guardado`,2000,'ok');
+
+  // Volver al selector para seguir agregando
+  medPaso = 'selector';
+  document.getElementById('med-modal-title').textContent = 'Añadir medición';
+  renderMedModal();
+  renderProgCuerpo();
+}
+
+function borrarMedValor(){
+  if(!confirm('¿Borrar este dato?')) return;
+  const m = (forge.bodyMetrics||[]).find(x=>x.date===medFechaActual);
+  if(!m) return;
+  if(medKeyActual==='p6') m.pliegues.p6=null;
+  else if(medKeyActual==='p8') m.pliegues.p8=null;
+  else m[medKeyActual]=null;
+  saveDB();
+  medPaso='selector';
+  document.getElementById('med-modal-title').textContent='Añadir medición';
+  renderMedModal();
+  renderProgCuerpo();
+  showToast('Dato eliminado');
+}
+
+function saveMed(){
+  // Función legacy — redirige al nuevo flujo
+  openMedModal();
 }
 
 // ── Fotos ───────────────────────────────────────────────────────
