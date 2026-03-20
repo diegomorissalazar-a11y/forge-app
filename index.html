@@ -1042,19 +1042,36 @@ const EJERCICIOS_BASE = [
   {id:'ex_peso_muerto_rum',name:'Peso Muerto Rumano',      type:'barbell',    muscle:'piernas', restSec:90},
   {id:'ex_hip_thrust',    name:'Hip Thrust (Barra)',        type:'barbell',    muscle:'gluteos', restSec:90},
   {id:'ex_saltos_cajon',  name:'Saltos al Cajón',           type:'bodyweight', muscle:'piernas', restSec:90},
-  {id:'ex_correr_10k',    name:'Trote / Carrera',           type:'run',        muscle:'cardio',  restSec:0},
-  {id:'ex_hiit',          name:'HIIT Carrera',              type:'hiit',       muscle:'cardio',  restSec:60},
+  {id:'ex_correr',       name:'Carrera / Trote',           type:'run',        muscle:'cardio',  restSec:0},
+  {id:'ex_hiit',         name:'HIIT Carrera',               type:'hiit',       muscle:'cardio',  restSec:60},
 ];
 const RUTINAS_BASE = [
   {id:'r_lunes',   name:'Lunes — Tren Inferior A', emoji:'🦵', exercises:['ex_sentadilla','ex_peso_muerto','ex_saltos_cajon'],       restSec:180},
   {id:'r_martes',  name:'Martes — Tren Superior A',emoji:'🏋', exercises:['ex_press_banca','ex_remo_barra','ex_press_hombros'],     restSec:180},
   {id:'r_mierco',  name:'Miércoles — Tren Inf. B', emoji:'⚡', exercises:['ex_sent_bulgara','ex_peso_muerto_rum','ex_hip_thrust'], restSec:90},
   {id:'r_jueves',  name:'Jueves — Tren Sup. B',    emoji:'💪', exercises:['ex_press_inclinado','ex_jalon_pecho','ex_press_homb_manc'],restSec:90},
-  {id:'r_cardio',  name:'Domingo — Cardio',         emoji:'🏃', exercises:['ex_correr_10k'],                                       restSec:0},
+  {id:'r_cardio',  name:'Domingo — Cardio',         emoji:'🏃', exercises:['ex_correr'],                                       restSec:0},
 ];
 function initRutinas(){
   if(!forge.exercises) forge.exercises=[];
   if(!forge.routines)  forge.routines=[];
+
+  // Migrar ejercicios viejos de carrera → ex_correr
+  const viejos=['ex_correr_10k','ex_trote','ex_running'];
+  forge.exercises=forge.exercises.filter(e=>!viejos.includes(e.id));
+  if(forge.sessions){
+    forge.sessions.forEach(s=>{
+      (s.exercises||[]).forEach(ex=>{
+        if(viejos.includes(ex.exId)) ex.exId='ex_correr';
+      });
+    });
+  }
+  if(forge.routines){
+    forge.routines.forEach(r=>{
+      if(r.exercises) r.exercises=r.exercises.map(id=>viejos.includes(id)?'ex_correr':id);
+    });
+  }
+
   const exIds = new Set(forge.exercises.map(e=>e.id));
   EJERCICIOS_BASE.forEach(e=>{ if(!exIds.has(e.id)) forge.exercises.push(e); });
   const rIds  = new Set(forge.routines.map(r=>r.id));
@@ -1115,7 +1132,7 @@ function renderHomePlanBanner(){
 
 // Calcular ritmo promedio de una sesión de carrera
 function calcSesRitmo(s){
-  let totalDist=0, totalMins=0;
+  let totalDist=0, totalMins=0, fcSum=0, fcCount=0, totalPasos=0;
   (s.exercises||[]).forEach(ex=>{
     const e=getEx(ex.exId); if(!e) return;
     if(e.type!=='run'&&e.type!=='hiit') return;
@@ -1127,9 +1144,16 @@ function calcSesRitmo(s){
         const mm=parseInt(parts[0])||0, ss=parseInt(parts[1])||0;
         totalMins+=mm+ss/60;
       }
+      if(set.fc){ fcSum+=parseFloat(set.fc)||0; fcCount++; }
+      if(set.pasos) totalPasos+=parseInt(set.pasos)||0;
     });
   });
-  return {dist:totalDist, ritmo: totalDist>0&&totalMins>0 ? totalMins/totalDist : 0};
+  return {
+    dist:totalDist,
+    ritmo: totalDist>0&&totalMins>0 ? totalMins/totalDist : 0,
+    fcMedia: fcCount>0 ? Math.round(fcSum/fcCount) : 0,
+    pasos: totalPasos
+  };
 }
 
 function esSesSoloCardio(s){
@@ -1152,7 +1176,9 @@ function renderSesCard(s, hoy){
     const ritmoStr= ritmoData.ritmo>0 ? `${Math.floor(ritmoData.ritmo)}'${pad(Math.round((ritmoData.ritmo%1)*60))}"/km` : '—';
     metaRow=`
       <div class="hm-item"><div class="hm-label">Distancia</div><div class="hm-val">${distStr}</div></div>
-      <div class="hm-item"><div class="hm-label">Ritmo</div><div class="hm-val">${ritmoStr}</div></div>`;
+      <div class="hm-item"><div class="hm-label">Ritmo</div><div class="hm-val">${ritmoStr}</div></div>
+      ${ritmoData.fcMedia>0?`<div class="hm-item"><div class="hm-label">FC media</div><div class="hm-val" style="color:#f87171">❤️ ${ritmoData.fcMedia}</div></div>`:''}
+      ${ritmoData.pasos>0?`<div class="hm-item"><div class="hm-label">Pasos</div><div class="hm-val" style="color:var(--blue)">👟 ${ritmoData.pasos.toLocaleString('es')}</div></div>`:''}`;
   } else {
     const volStr = s.totalVolume ? `${Math.round(s.totalVolume).toLocaleString('es')} kg` : '—';
     const nSeries = (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(s=>s.done).length,0);
@@ -1242,7 +1268,10 @@ function openSesDetail(id){
           ${sets.map((set,i)=>`
           <div style="display:grid;grid-template-columns:48px 1fr;padding:7px 4px;border-radius:6px;background:${i%2===0?'var(--bg3)':'transparent'}">
             <span style="font-size:16px;font-weight:700;color:var(--ink)">${i+1}</span>
-            <span style="font-size:14px;color:var(--ink2)">${isRun?(set.distance?set.distance+'km':'')+(set.time?' '+set.time:'—'):(set.weight||0)+' kg × '+(set.reps||0)}</span>
+            <span style="font-size:14px;color:var(--ink2)">${isRun?
+              [set.distance?set.distance+'km':'',set.time||''].filter(Boolean).join(' · ')+
+              (set.fc?` ❤️${set.fc}bpm`:'')+(set.pasos?` 👟${parseInt(set.pasos).toLocaleString('es')}p`:'')
+              :(set.weight||0)+' kg × '+(set.reps||0)}</span>
           </div>`).join('')}
         </div>`;
       }).join('')}
@@ -1286,13 +1315,25 @@ function renderEditSesExs(s){
         <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px">
           <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
           ${isRun?`
-            <input class="inp" type="text" placeholder="km" value="${set.distance||''}" oninput="updateEditSet('${s.id}',${ei},${si},'distance',this.value)" style="padding:7px;font-size:13px">
-            <input class="inp" type="text" placeholder="mm:ss" value="${set.time||''}" oninput="updateEditSet('${s.id}',${ei},${si},'time',this.value)" style="padding:7px;font-size:13px">
+            <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:4px">
+              <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
+              <input class="inp" type="text" placeholder="km" value="${set.distance||''}" oninput="updateEditSet('${s.id}',${ei},${si},'distance',this.value)" style="padding:7px;font-size:13px">
+              <input class="inp" type="text" placeholder="mm:ss" value="${set.time||''}" oninput="updateEditSet('${s.id}',${ei},${si},'time',this.value)" style="padding:7px;font-size:13px">
+              <button onclick="deleteEditSet('${s.id}',${ei},${si})" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:16px">✕</button>
+            </div>
+            <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:6px;margin-bottom:8px">
+              <div></div>
+              <input class="inp" type="number" placeholder="❤️ FC media (bpm)" value="${set.fc||''}" oninput="updateEditSet('${s.id}',${ei},${si},'fc',this.value)" style="padding:7px;font-size:12px;color:#f87171" inputmode="numeric">
+              <input class="inp" type="number" placeholder="👟 Pasos" value="${set.pasos||''}" oninput="updateEditSet('${s.id}',${ei},${si},'pasos',this.value)" style="padding:7px;font-size:12px;color:var(--blue)" inputmode="numeric">
+            </div>
           `:`
-            <input class="inp" type="number" placeholder="kg" value="${set.weight||''}" oninput="updateEditSet('${s.id}',${ei},${si},'weight',this.value)" style="padding:7px;font-size:13px" inputmode="decimal">
-            <input class="inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateEditSet('${s.id}',${ei},${si},'reps',this.value)" style="padding:7px;font-size:13px" inputmode="numeric">
+            <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px">
+              <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
+              <input class="inp" type="number" placeholder="kg" value="${set.weight||''}" oninput="updateEditSet('${s.id}',${ei},${si},'weight',this.value)" style="padding:7px;font-size:13px" inputmode="decimal">
+              <input class="inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateEditSet('${s.id}',${ei},${si},'reps',this.value)" style="padding:7px;font-size:13px" inputmode="numeric">
+              <button onclick="deleteEditSet('${s.id}',${ei},${si})" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:16px">✕</button>
+            </div>
           `}
-          <button onclick="deleteEditSet('${s.id}',${ei},${si})" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:16px">✕</button>
         </div>`).join('')}
       <button onclick="addEditSet('${s.id}',${ei})" style="background:none;border:none;color:var(--orange);cursor:pointer;font-size:12px;font-weight:600;padding:4px 0">+ Serie</button>
     </div>`;
@@ -1313,7 +1354,7 @@ function addEditSet(sesId,ei){
   const e=getEx(s.exercises[ei].exId);
   const isRun=e?.type==='run'||e?.type==='hiit';
   const last=s.exercises[ei].sets[s.exercises[ei].sets.length-1]||{weight:0,reps:8};
-  s.exercises[ei].sets.push({type:isRun?'run':'weight',done:true,weight:last.weight,reps:last.reps,distance:'',time:''});
+  s.exercises[ei].sets.push({type:isRun?'run':'weight',done:true,weight:last.weight,reps:last.reps,distance:'',time:'',fc:'',pasos:''});
   renderEditSesExs(s);
 }
 function saveEditSesion(){
@@ -1409,7 +1450,7 @@ function renderRutinas(){
     const num=idx+1;
 
     // ¿Esta rutina tiene ejercicios clave del plan?
-    const esClavePlan=plan&&exs.some(e=>['ex_sentadilla','ex_press_banca','ex_correr_10k'].includes(e.id));
+    const esClavePlan=plan&&exs.some(e=>['ex_sentadilla','ex_press_banca','ex_correr'].includes(e.id));
     const cargas=plan?getCargasSemana(r.id):{};
     const tieneCarga=esClavePlan&&Object.keys(cargas).length>0;
 
@@ -1466,7 +1507,7 @@ function _doIniciarRutina(rutinaId, factor){
       exId, sets:Array.from({length:3},(_,i)=>({
         type:isRun?'run':'weight', done:false,
         weight:isRun?0:carga, reps:isRun?0:8,
-        distance:'', time:''
+        distance:'', time:'', fc:'', pasos:''
       }))
     };
   }).filter(Boolean);
@@ -1540,15 +1581,28 @@ function renderSexBlock(ex,ei){
 
 function renderSetRow(ei,si,set,isRun){
   const done=set.done;
+  if(isRun){
+    return `<div id="sr-${ei}-${si}" style="padding:10px 16px;border-bottom:1px solid var(--border);background:${done?'#0a1a0a':'transparent'}">
+      <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:6px;align-items:center;margin-bottom:6px">
+        <div class="set-num">${si+1}</div>
+        <input class="set-inp" type="text" placeholder="km (ej: 4.01)" value="${set.distance||''}" oninput="updateSet(${ei},${si},'distance',this.value)" style="font-size:14px">
+        <input class="set-inp" type="text" placeholder="mm:ss (ej: 22:44)" value="${set.time||''}" oninput="updateSet(${ei},${si},'time',this.value)" style="font-size:14px">
+      </div>
+      <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center">
+        <div></div>
+        <input class="set-inp" type="number" placeholder="FC media (bpm)" value="${set.fc||''}" oninput="updateSet(${ei},${si},'fc',this.value)" inputmode="numeric" style="font-size:13px;color:#f87171">
+        <input class="set-inp" type="number" placeholder="Pasos" value="${set.pasos||''}" oninput="updateSet(${ei},${si},'pasos',this.value)" inputmode="numeric" style="font-size:13px;color:var(--blue)">
+        <div class="set-check ${done?'done':''}" onclick="toggleSet(${ei},${si})">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+      </div>
+      ${set.fc||set.pasos?`<div style="padding:4px 0 0 34px;font-size:11px;color:var(--ink3)">${set.fc?`❤️ ${set.fc}bpm  `:''}${set.pasos?`👟 ${parseInt(set.pasos).toLocaleString('es')} pasos`:''}</div>`:''}
+    </div>`;
+  }
   return `<div class="set-row" id="sr-${ei}-${si}">
     <div class="set-num">${si+1}</div>
-    ${isRun?`
-      <input class="set-inp" type="text" placeholder="km" value="${set.distance||''}" oninput="updateSet(${ei},${si},'distance',this.value)" style="font-size:13px">
-      <input class="set-inp" type="text" placeholder="mm:ss" value="${set.time||''}" oninput="updateSet(${ei},${si},'time',this.value)" style="font-size:13px">
-    `:`
-      <input class="set-inp" type="number" placeholder="kg" value="${set.weight||''}" oninput="updateSet(${ei},${si},'weight',this.value)" inputmode="decimal">
-      <input class="set-inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateSet(${ei},${si},'reps',this.value)" inputmode="numeric">
-    `}
+    <input class="set-inp" type="number" placeholder="kg" value="${set.weight||''}" oninput="updateSet(${ei},${si},'weight',this.value)" inputmode="decimal">
+    <input class="set-inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateSet(${ei},${si},'reps',this.value)" inputmode="numeric">
     <div class="set-check ${done?'done':''}" onclick="toggleSet(${ei},${si})">
       <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
@@ -1573,7 +1627,7 @@ function addSetToEx(ei){
   const last=ex.sets[ex.sets.length-1]||{weight:0,reps:8};
   const e=getEx(ex.exId);
   const isRun=e?.type==='run'||e?.type==='hiit';
-  ex.sets.push({type:isRun?'run':'weight',done:false,weight:last.weight,reps:last.reps,distance:'',time:''});
+  ex.sets.push({type:isRun?'run':'weight',done:false,weight:last.weight,reps:last.reps,distance:'',time:'',fc:'',pasos:''});
   const container=document.getElementById('session-exs');
   container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
 }
@@ -1668,7 +1722,7 @@ function addRestTime(s){ restLeft=Math.min(restLeft+s,restTotal+s); updateRestUI
 const EJERCICIOS_CLAVE=[
   {id:'ex_sentadilla',  label:'Sentadilla', rutinaId:'r_lunes'},
   {id:'ex_press_banca', label:'Press Banca', rutinaId:'r_martes'},
-  {id:'ex_correr_10k',  label:'10K Trote',  rutinaId:'r_cardio'},
+  {id:'ex_correr',  label:'10K Trote',  rutinaId:'r_cardio'},
 ];
 
 function semanaActualPlan(plan){
@@ -1714,8 +1768,8 @@ function crearPlan(){
 
   const plan={
     id:'plan_'+Date.now(), nombre, inicio, totalSemanas,
-    cargas:{ex_sentadilla:sent, ex_press_banca:banca, ex_correr_10k:k10},
-    metas:{ex_sentadilla:sentMeta, ex_press_banca:bancaMeta, ex_correr_10k:k10Meta},
+    cargas:{ex_sentadilla:sent, ex_press_banca:banca, ex_correr:k10},
+    metas:{ex_sentadilla:sentMeta, ex_press_banca:bancaMeta, ex_correr:k10Meta},
     metas10kMin:k10Meta, bloques, activo:true, ciclo:1, createdAt:Date.now()
   };
   if(!forge.planes) forge.planes=[];
@@ -1764,7 +1818,7 @@ function renderProgEjercicios(){
     const isCardio=e.type==='run'||e.type==='hiit';
     return sesiones.some(s=>s.exercises?.some(ex=>ex.exId===e.id&&(ex.sets||[]).some(s=>s.done&&(s.weight>0||s.distance))));
   });
-  const clave=['ex_sentadilla','ex_press_banca','ex_correr_10k'];
+  const clave=['ex_sentadilla','ex_press_banca','ex_correr'];
   const clavesData=clave.map(id=>exs.find(e=>e.id===id)).filter(Boolean);
   const resto=exsConData.filter(e=>!clave.includes(e.id));
   const all=[...clavesData,...resto];
