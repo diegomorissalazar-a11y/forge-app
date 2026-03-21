@@ -2750,12 +2750,12 @@ function renderProgCuerpo(){
         <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:480px">
           <thead><tr style="border-bottom:1px solid var(--border);background:var(--bg3)">
             <th style="padding:8px 10px;text-align:left;color:var(--ink3);font-size:10px;text-transform:uppercase">Fecha</th>
-            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">Peso</th>
-            <th style="padding:8px 6px;text-align:center;color:var(--gold);font-size:10px">IMC</th>
-            <th style="padding:8px 6px;text-align:center;color:var(--green);font-size:10px">Grasa%</th>
-            <th style="padding:8px 6px;text-align:center;color:var(--blue);font-size:10px">Musc.</th>
-            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">6P</th>
-            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">8P</th>
+            <th onclick="openCuerpoChart('peso')" style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px;cursor:pointer" title="Ver gráfico">Peso ↗</th>
+            <th onclick="openCuerpoChart('imc')"  style="padding:8px 6px;text-align:center;color:var(--gold);font-size:10px;cursor:pointer" title="Ver gráfico">IMC ↗</th>
+            <th onclick="openCuerpoChart('grasa')" style="padding:8px 6px;text-align:center;color:var(--green);font-size:10px;cursor:pointer" title="Ver gráfico">Grasa% ↗</th>
+            <th onclick="openCuerpoChart('muscular')" style="padding:8px 6px;text-align:center;color:var(--blue);font-size:10px;cursor:pointer" title="Ver gráfico">Musc. ↗</th>
+            <th onclick="openCuerpoChart('p6')"  style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px;cursor:pointer" title="Ver gráfico">6P ↗</th>
+            <th onclick="openCuerpoChart('p8')"  style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px;cursor:pointer" title="Ver gráfico">8P ↗</th>
             <th style="width:28px"></th>
           </tr></thead>
           <tbody id="cuerpo-hist-tbody">
@@ -2770,12 +2770,12 @@ function renderMedRows(mets){
   return mets.map((m,i)=>`
   <tr id="med-row-${m.date}" style="border-bottom:1px solid var(--border);background:${i%2===0?'var(--bg3)':'transparent'}">
     <td style="padding:7px 10px;color:var(--ink2);white-space:nowrap;font-size:12px">${m.date}</td>
-    <td style="padding:7px 6px;text-align:center;font-weight:700;color:var(--ink)">${m.peso||'—'}</td>
-    <td style="padding:7px 6px;text-align:center;color:${parseFloat(m.grasa||99)<30?'var(--green)':'var(--red)'}">${m.grasa||'—'}</td>
-    <td style="padding:7px 6px;text-align:center;color:var(--green)">${m.muscular||'—'}</td>
-    <td style="padding:7px 6px;text-align:center;color:var(--gold)">${m.imc||'—'}</td>
-    <td style="padding:7px 6px;text-align:center;color:var(--blue)">${m.pliegues?.p6||'—'}</td>
-    <td style="padding:7px 6px;text-align:center;color:var(--blue)">${m.pliegues?.p8||'—'}</td>
+    <td onclick="openCuerpoChart('peso')"    style="padding:7px 6px;text-align:center;font-weight:700;color:var(--ink);cursor:pointer">${m.peso||'—'}</td>
+    <td onclick="openCuerpoChart('imc')"     style="padding:7px 6px;text-align:center;color:var(--gold);cursor:pointer">${m.imc||'—'}</td>
+    <td onclick="openCuerpoChart('grasa')"   style="padding:7px 6px;text-align:center;color:${parseFloat(m.grasa||99)<30?'var(--green)':'var(--red)'};cursor:pointer">${m.grasa||'—'}</td>
+    <td onclick="openCuerpoChart('muscular')" style="padding:7px 6px;text-align:center;color:var(--blue);cursor:pointer">${m.muscular||'—'}</td>
+    <td onclick="openCuerpoChart('p6')"      style="padding:7px 6px;text-align:center;color:var(--ink3);cursor:pointer">${m.pliegues?.p6||'—'}</td>
+    <td onclick="openCuerpoChart('p8')"      style="padding:7px 6px;text-align:center;color:var(--ink3);cursor:pointer">${m.pliegues?.p8||'—'}</td>
     <td style="padding:7px 6px;text-align:center">
       <button onclick="openEditMedRow('${m.date}')"
         style="background:none;border:none;color:var(--orange);cursor:pointer;font-size:14px;padding:2px 4px"
