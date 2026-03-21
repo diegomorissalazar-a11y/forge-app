@@ -1331,7 +1331,7 @@ function renderHome(){
     <div class="stat-box"><div class="stat-num" style="color:var(--orange)">${calcStreak()}</div><div class="stat-label">Racha días</div></div>
     <div class="stat-box"><div class="stat-num">${ses.length}</div><div class="stat-label">Total</div></div>`;
 
-  const ultimas = [...ses].sort((a,b)=>b.date-a.date).slice(0,15);
+  const ultimas = [...ses].sort((a,b)=>b.date-a.date);
   const el = document.getElementById('home-sessions');
   if(!ultimas.length){
     el.innerHTML=`<div class="empty"><div class="empty-icon">🏋</div><div class="empty-text">Sin sesiones aún</div><div class="empty-sub">Inicia tu primera rutina para ver el historial.</div></div>`;
@@ -1500,7 +1500,11 @@ function openSesDetail(id){
         const sets=(ex.sets||[]).filter(s=>s.done);
         const isRun=e.type==='run'||e.type==='hiit';
         return `<div style="margin-bottom:20px">
-          <div style="font-size:16px;font-weight:700;color:var(--orange);margin-bottom:8px">${e.name}</div>
+          <div onclick="closeSesDetail();goTo('progress');setTimeout(()=>openExDetail('${ex.exId}'),80)"
+            style="font-size:16px;font-weight:700;color:var(--orange);margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+            <span>${e.name}</span>
+            <span style="font-size:11px;font-weight:400;color:var(--ink3);letter-spacing:.5px">Ver progreso →</span>
+          </div>
           <div style="display:grid;grid-template-columns:48px 1fr;font-size:10px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;padding:4px;margin-bottom:2px">
             <span>Serie</span><span>${isRun?'Distancia / Tiempo':'Peso y Reps'}</span>
           </div>
@@ -1850,30 +1854,61 @@ function renderSessionView(){
 
 function renderSexBlock(ex,ei){
   const e=getEx(ex.exId); if(!e) return '';
-  const pr=getPR(ex.exId);
   const isRun=e.type==='run'||e.type==='hiit';
-  const prStr=pr.weight>0?`PR: ${pr.weight}kg`:'';
+  const pr=getPR(ex.exId);
 
-  // Última vez
-  const ultsesion=(forge.sessions||[]).filter(s=>s.exercises?.some(x=>x.exId===ex.exId)).sort((a,b)=>b.date-a.date)[0];
+  // ── Último registro ───────────────────────────────────────────
+  const ultsesion=(forge.sessions||[])
+    .filter(s=>s.exercises?.some(x=>x.exId===ex.exId))
+    .sort((a,b)=>b.date-a.date)[0];
   const ultEx=ultsesion?.exercises?.find(x=>x.exId===ex.exId);
-  const ultStr=ultEx?'Última: '+((ultEx.sets||[]).filter(s=>s.done&&s.weight).map(s=>`${s.weight}×${s.reps}`).join(', ')):'Primera vez';
+  let ultStr='Primera vez';
+  if(ultEx){
+    if(isRun){
+      const sets=(ultEx.sets||[]).filter(s=>parseFloat(s.distance)>0||s.time);
+      const dist=sets.reduce((a,s)=>a+(parseFloat(s.distance)||0),0);
+      const fc=sets.find(s=>s.fc);
+      const pasos=sets.find(s=>s.pasos);
+      ultStr=`Última: ${dist>0?dist.toFixed(2)+'km':'—'}`
+        +(fc?` · ❤️${fc.fc}bpm`:'')
+        +(pasos?` · 👟${parseInt(pasos.pasos).toLocaleString('es')}p`:'');
+    } else {
+      const sets=(ultEx.sets||[]).filter(s=>s.done&&s.weight);
+      ultStr=sets.length?'Última: '+sets.map(s=>`${s.weight}×${s.reps}`).join(', '):'Primera vez';
+    }
+  }
 
-  // Carga sugerida esta semana (plan)
+  // ── PR de carrera ─────────────────────────────────────────────
+  let prStr='';
+  if(isRun){
+    const runPR=getRunPRObj(ex.exId);
+    if(runPR.dist>0) prStr=`PR dist: ${runPR.dist.toFixed(2)}km`;
+    if(runPR.ritmo>0) prStr+=(prStr?' · ':'')+`Mejor ritmo: ${Math.floor(runPR.ritmo)}'${pad(Math.round((runPR.ritmo%1)*60))}"/km`;
+  } else {
+    if(pr.weight>0) prStr=`PR: ${pr.weight}kg × ${pr.reps} reps`;
+  }
+
+  // ── Carga sugerida (solo fuerza) ──────────────────────────────
   const cs=getCargasSemana(activeSession.routineId||'')[ex.exId];
   const csStr=cs&&!isRun?`📈 Carga sugerida esta semana: ${cs} kg`:'';
 
+  // ── Header con color según tipo ───────────────────────────────
+  const headerBg=isRun?'background:linear-gradient(90deg,#0a1a10,var(--bg2))':'';
+  const tipoTag=isRun?`<span style="background:#134e1a;color:#52b788;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-left:8px">🏃 Cardio</span>`:'';
+
   return `<div class="sex-block" id="sex-${ei}">
-    <div class="sex-head">
-      <div>
-        <div class="sex-name">${e.name}</div>
-        ${prStr?`<div class="sex-pr">🏅 ${prStr}</div>`:''}
+    <div class="sex-head" style="${headerBg}">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+          <div class="sex-name">${e.name}</div>${tipoTag}
+        </div>
+        ${prStr?`<div class="sex-pr" style="margin-top:2px;color:${isRun?'var(--green)':'var(--gold)'}">${isRun?'🏅':'🏅'} ${prStr}</div>`:''}
       </div>
       <button class="bicon" onclick="addSetToEx(${ei})">
         <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
     </div>
-    <div class="sex-prev">${ultStr}</div>
+    <div class="sex-prev" style="${isRun?'color:var(--green)':''}">${ultStr}</div>
     ${csStr?`<div class="carga-sugerida">✦ ${csStr}</div>`:''}
     ${ex.sets.map((set,si)=>renderSetRow(ei,si,set,isRun)).join('')}
   </div>`;
@@ -1915,11 +1950,18 @@ function updateSet(ei,si,field,val){
 }
 function toggleSet(ei,si){
   if(!activeSession) return;
-  const set=activeSession.exercises[ei].sets[si];
+  const ex=activeSession.exercises[ei];
+  const set=ex.sets[si];
+  const e=getEx(ex.exId);
+  const isRun=e?.type==='run'||e?.type==='hiit';
   set.done=!set.done;
   const row=document.getElementById(`sr-${ei}-${si}`);
-  if(row) row.querySelector('.set-check').classList.toggle('done',set.done);
-  if(set.done) startRest(activeSession.restSec||90, ei, si);
+  if(row){
+    row.querySelector('.set-check').classList.toggle('done',set.done);
+    if(isRun) row.style.background=set.done?'#0a1a0a':'transparent';
+  }
+  // Timer de descanso solo para ejercicios de fuerza
+  if(set.done&&!isRun) startRest(activeSession.restSec||90, ei, si);
 }
 function addSetToEx(ei){
   if(!activeSession) return;
@@ -2319,7 +2361,11 @@ function renderExDetail(exId){
 }
 
 function renderLineChart(puntos,yLabel){
-  const W=320,H=140,PL=44,PB=28,PT=10,PR=10;
+  // Ancho dinámico: mínimo 8px por punto, mínimo 320px, máximo 1200px
+  const PL=44,PB=28,PT=10,PR=10,H=140;
+  const minPxPunto = puntos.length > 30 ? 6 : puntos.length > 15 ? 8 : 10;
+  const W = Math.max(320, Math.min(1200, PL + PR + puntos.length * minPxPunto));
+
   const vals=puntos.map(p=>p.val);
   const minV=Math.min(...vals),maxV=Math.max(...vals);
   const rng=maxV-minV||1;
@@ -2327,28 +2373,32 @@ function renderLineChart(puntos,yLabel){
   const ys=puntos.map(p=>PT+(1-(p.val-minV)/rng)*(H-PT-PB));
   const line=xs.map((x,i)=>`${i===0?'M':'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
   const area=line+` L${xs[xs.length-1].toFixed(1)},${(H-PB).toFixed(1)} L${xs[0].toFixed(1)},${(H-PB).toFixed(1)} Z`;
-  // Etiquetas Y (3 puntos)
-  const yLabels=[minV,minV+rng/2,maxV].map((v,i)=>{
+
+  // Etiquetas Y
+  const yLabels=[minV,minV+rng/2,maxV].map(v=>{
     const y=PT+(1-(v-minV)/rng)*(H-PT-PB);
     return `<text x="${PL-4}" y="${y.toFixed(1)}" class="chart-label" text-anchor="end" dominant-baseline="middle">${Math.round(v*10)/10}</text>
     <line x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}" class="chart-grid"/>`;
   }).join('');
-  // Etiquetas X (máx 5 fechas)
-  const step=Math.max(1,Math.floor(puntos.length/5));
-  const xLabels=puntos.filter((_,i)=>i%step===0||i===puntos.length-1).map((p,_,arr)=>{
+
+  // Etiquetas X: mostrar máx ~10 etiquetas
+  const labelStep=Math.max(1,Math.floor(puntos.length/10));
+  const xLabels=puntos.filter((_,i)=>i%labelStep===0||i===puntos.length-1).map(p=>{
     const i=puntos.indexOf(p);
     return `<text x="${xs[i].toFixed(1)}" y="${H}" class="chart-label" text-anchor="middle">${p.fecha.slice(5)}</text>`;
   }).join('');
-  // Puntos con tooltip
+
+  // Dots: solo mostrar si hay pocos puntos, o solo los extremos + último si hay muchos
+  const dotR = puntos.length > 40 ? 2 : 3;
   const dots=puntos.map((p,i)=>`
-    <circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4" class="chart-dot">
+    <circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="${dotR}" class="chart-dot">
       <title>${p.fecha}: ${p.label}</title>
     </circle>`).join('');
 
   return `
-    <div style="font-size:10px;color:var(--ink3);margin-bottom:4px">${yLabel}</div>
-    <div class="chart-wrap">
-      <svg class="chart-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <div style="font-size:10px;color:var(--ink3);margin-bottom:4px">${yLabel} · <span style="color:var(--ink3)">${puntos.length} registros</span></div>
+    <div class="chart-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;cursor:grab">
+      <svg class="chart-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block">
         <line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" class="chart-axis"/>
         <line x1="${PL}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" class="chart-axis"/>
         ${yLabels}${xLabels}
@@ -2403,11 +2453,25 @@ function renderProgCuerpo(){
   document.getElementById('cuerpo-charts').innerHTML=charts+p6chart;
 
   // Historial tabla
+  // Filtro de año para el historial
+  const años=[...new Set(mets.map(m=>m.date.slice(0,4)))].sort().reverse();
+  const añoActual=new Date().getFullYear().toString();
+  const añoFiltro=window._cuerpoAñoFiltro||añoActual;
+  const metsFiltradas=[...mets].filter(m=>m.date.startsWith(añoFiltro)).reverse();
+
   document.getElementById('cuerpo-historial').innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div class="section-label" style="margin:0">Historial completo</div>
-      <div style="font-size:11px;color:var(--ink3)">Toca ✏ para editar una fila</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
+          ${años.map(a=>`<button onclick="window._cuerpoAñoFiltro='${a}';renderProgCuerpo()"
+            style="padding:3px 10px;border-radius:20px;border:1px solid ${a===añoFiltro?'var(--orange)':'var(--border2)'};
+            background:${a===añoFiltro?'#1a0a00':'var(--bg3)'};color:${a===añoFiltro?'var(--orange)':'var(--ink3)'};
+            font-size:11px;font-weight:600;cursor:pointer">${a}</button>`).join('')}
+        </div>
+      </div>
     </div>
+    <div style="font-size:11px;color:var(--ink3);margin-bottom:8px">${metsFiltradas.length} registros en ${añoFiltro} · Toca ✏ para editar</div>
     <div class="card" style="padding:0;overflow:hidden">
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:520px">
@@ -2422,7 +2486,7 @@ function renderProgCuerpo(){
             <th style="padding:8px 6px;width:32px"></th>
           </tr></thead>
           <tbody id="cuerpo-hist-tbody">
-            ${renderMedRows([...mets].reverse())}
+            ${renderMedRows(metsFiltradas)}
           </tbody>
         </table>
       </div>
