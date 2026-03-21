@@ -405,15 +405,13 @@ select.inp{cursor:pointer}
   </div>
   <!-- Cuerpo -->
   <div id="prog-cuerpo" class="tab-panel">
-    <div style="padding:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div class="section-label" style="margin:0">Medidas corporales</div>
-        <button class="btn btn-p btn-sm" onclick="openMedModal()">+ Añadir</button>
-      </div>
-      <div id="cuerpo-kpis" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px"></div>
-      <div id="cuerpo-charts"></div>
-      <div id="cuerpo-historial" style="margin-top:16px"></div>
+    <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div class="section-label" style="margin:0">Medidas corporales</div>
+      <button class="btn btn-p btn-sm" onclick="openMedModal()">+ Añadir</button>
     </div>
+    <div id="cuerpo-kpis" style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-bottom:1px solid var(--border)"></div>
+    <div id="cuerpo-charts" style="padding:16px"></div>
+    <div id="cuerpo-historial" style="padding:0 16px 16px"></div>
   </div>
   <!-- Fotos -->
   <div id="prog-fotos" class="tab-panel">
@@ -1661,30 +1659,6 @@ function addEditSet(sesId,ei){
   s.exercises[ei].sets.push({type:isRun?'run':'weight',done:true,weight:last.weight,reps:last.reps,distance:'',time:'',fc:'',pasos:''});
   renderEditSesExs(s);
 }
-function saveEditSesion(){
-  const id=document.getElementById('edit-ses-id').value;
-  const s=(forge.sessions||[]).find(x=>x.id===id); if(!s) return;
-  const fecha=document.getElementById('edit-ses-fecha').value;
-  const nombre=document.getElementById('edit-ses-nombre').value.trim();
-  const durRaw=document.getElementById('edit-ses-dur').value.trim();
-  // Parsear hh:mm o mm como fallback
-  let durSecs=0;
-  if(durRaw.includes(':')){
-    const [hh,mm]=(durRaw+':0').split(':').map(Number);
-    durSecs=(hh||0)*3600+(mm||0)*60;
-  } else {
-    durSecs=(parseInt(durRaw)||0)*60;
-  }
-  if(fecha) s.date=new Date(fecha+'T12:00:00').getTime();
-  if(nombre) s.routineName=nombre;
-  s.elapsed=durSecs;
-  // Recalcular volumen
-  s.totalVolume=s.exercises.reduce((a,ex)=>a+ex.sets.filter(s=>s.done&&s.weight).reduce((b,s2)=>b+(s2.weight||0)*(s2.reps||1),0),0);
-  saveDB();
-  closeModal('modal-edit-ses');
-  renderHome();
-  showToast('✓ Sesión actualizada',2000,'ok');
-}
 
 function calcDivMuscular(s){
   const grupos={Pecho:0,Espalda:0,Hombros:0,Piernas:0,Glúteos:0,Brazos:0,Cardio:0};
@@ -2415,10 +2389,10 @@ function renderExDetail(exId){
 }
 
 // Gráfico alto para pantalla de detalle (240px)
-function renderLineChartTall(puntos,yLabel){
+function renderLineChartTall(puntos,yLabel,color='var(--orange)'){
   const PL=44,PB=28,PT=12,PR=10,H=240;
   const minPxPunto=puntos.length>30?7:puntos.length>15?9:12;
-  const W=Math.max(Math.min(window.innerWidth||600,1200), PL+PR+puntos.length*minPxPunto);
+  const W=Math.max(Math.min((window.innerWidth||800)-32,1400), PL+PR+puntos.length*minPxPunto);
   const vals=puntos.map(p=>p.val);
   const minV=Math.min(...vals),maxV=Math.max(...vals),rng=maxV-minV||1;
   const xs=puntos.map((_,i)=>PL+(i/(puntos.length-1))*(W-PL-PR));
@@ -2435,7 +2409,7 @@ function renderLineChartTall(puntos,yLabel){
     return `<text x="${xs[i].toFixed(1)}" y="${H}" class="chart-label" text-anchor="middle">${p.fecha.slice(5)}</text>`;
   }).join('');
   const dotR=puntos.length>40?2:3;
-  const dots=puntos.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="${dotR}" class="chart-dot"><title>${p.fecha}: ${p.label}</title></circle>`).join('');
+  const dots=puntos.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="${dotR}" style="fill:${color}"><title>${p.fecha}: ${p.label}</title></circle>`).join('');
   return `
     <div style="font-size:11px;color:var(--ink3);margin-bottom:6px;font-weight:600">${yLabel} · ${puntos.length} sesiones</div>
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--r);background:var(--bg2);border:1px solid var(--border);padding:12px 0 0">
@@ -2443,8 +2417,8 @@ function renderLineChartTall(puntos,yLabel){
         <line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" class="chart-axis"/>
         <line x1="${PL}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" class="chart-axis"/>
         ${yLabs}${xLabs}
-        <path d="${area}" fill="var(--orange)" opacity=".15"/>
-        <path d="${line}" class="chart-line" stroke-width="2.5"/>
+        <path d="${area}" fill="${color}" opacity=".15"/>
+        <path d="${line}" class="chart-line" stroke="${color}" stroke-width="2.5"/>
         ${dots}
       </svg>
     </div>`;
@@ -2543,102 +2517,99 @@ function renderProgCuerpo(){
     if(!porFecha[f]){
       porFecha[f]=m;
     } else {
-      // Contar campos con datos
       const score=(x)=>[x.peso,x.grasa,x.muscular,x.imc,x.pliegues?.p6,x.pliegues?.p8].filter(v=>v!=null&&v!=='').length;
-      if(score(m)>score(porFecha[f])){
-        // El nuevo tiene más datos — fusionar: conservar todos los campos no-null
-        const merged={...porFecha[f]};
-        if(m.peso) merged.peso=m.peso;
-        if(m.grasa) merged.grasa=m.grasa;
-        if(m.muscular) merged.muscular=m.muscular;
-        if(m.imc) merged.imc=m.imc;
-        if(m.pliegues?.p6) { merged.pliegues=merged.pliegues||{}; merged.pliegues.p6=m.pliegues.p6; }
-        if(m.pliegues?.p8) { merged.pliegues=merged.pliegues||{}; merged.pliegues.p8=m.pliegues.p8; }
-        porFecha[f]=merged;
-      } else {
-        // El existente tiene más datos — igual fusionar campos nuevos
-        if(m.peso&&!porFecha[f].peso) porFecha[f].peso=m.peso;
-        if(m.grasa&&!porFecha[f].grasa) porFecha[f].grasa=m.grasa;
-        if(m.muscular&&!porFecha[f].muscular) porFecha[f].muscular=m.muscular;
-        if(m.imc&&!porFecha[f].imc) porFecha[f].imc=m.imc;
-        if(m.pliegues?.p6&&!porFecha[f].pliegues?.p6){ porFecha[f].pliegues=porFecha[f].pliegues||{}; porFecha[f].pliegues.p6=m.pliegues.p6; }
-        if(m.pliegues?.p8&&!porFecha[f].pliegues?.p8){ porFecha[f].pliegues=porFecha[f].pliegues||{}; porFecha[f].pliegues.p8=m.pliegues.p8; }
-      }
+      const merged={...(score(m)>score(porFecha[f])?m:porFecha[f])};
+      ['peso','grasa','muscular','imc'].forEach(k=>{ if(!merged[k]&&porFecha[f][k]) merged[k]=porFecha[f][k]; if(!merged[k]&&m[k]) merged[k]=m[k]; });
+      if(!merged.pliegues) merged.pliegues={};
+      if(!merged.pliegues.p6&&porFecha[f].pliegues?.p6) merged.pliegues.p6=porFecha[f].pliegues.p6;
+      if(!merged.pliegues.p6&&m.pliegues?.p6) merged.pliegues.p6=m.pliegues.p6;
+      if(!merged.pliegues.p8&&porFecha[f].pliegues?.p8) merged.pliegues.p8=porFecha[f].pliegues.p8;
+      if(!merged.pliegues.p8&&m.pliegues?.p8) merged.pliegues.p8=m.pliegues.p8;
+      porFecha[f]=merged;
     }
   });
   const mets=Object.values(porFecha).sort((a,b)=>a.date.localeCompare(b.date));
+
   if(!mets.length){
     document.getElementById('cuerpo-kpis').innerHTML='';
-    document.getElementById('cuerpo-charts').innerHTML=`<div class="empty" style="padding:40px 0"><div class="empty-icon">⚖️</div><div class="empty-text">Sin mediciones</div><div class="empty-sub">Añade tu primera medición.</div></div>`;
+    document.getElementById('cuerpo-charts').innerHTML=`<div class="empty" style="padding:60px 0"><div class="empty-icon">⚖️</div><div class="empty-text">Sin mediciones</div><div class="empty-sub">Toca "+ Añadir" para registrar tu primera medición.</div></div>`;
     document.getElementById('cuerpo-historial').innerHTML='';
     return;
   }
+
   const ult=mets[mets.length-1], pri=mets[0];
-  const d=(a,b)=>{ const v=parseFloat(a||0)-parseFloat(b||0); return (v>0?'+':'')+Math.round(v*10)/10; };
+  const delta=(a,b)=>{ const v=parseFloat(a||0)-parseFloat(b||0); return {v:Math.round(v*10)/10, str:(v>0?'+':'')+Math.round(v*10)/10}; };
 
-  document.getElementById('cuerpo-kpis').innerHTML=[
-    {label:'Peso',val:ult.peso,unit:'kg',delta:d(ult.peso,pri.peso),menos:false},
-    {label:'Grasa %',val:ult.grasa,unit:'%',delta:d(ult.grasa,pri.grasa),menos:true},
-    {label:'Muscular',val:ult.muscular,unit:'kg',delta:d(ult.muscular,pri.muscular),menos:false},
-  ].map(({label,val,unit,delta,menos})=>{
-    const dNum=parseFloat(delta||0);
-    const col=dNum===0?'var(--ink3)':((dNum>0)===!menos?'var(--green)':'var(--red)');
-    return `<div class="stat-box">
-      <div style="font-size:9px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">${label}</div>
-      <div style="font-family:var(--fd);font-size:24px;font-weight:800;color:var(--ink);line-height:1">${val||'—'}<span style="font-size:12px;color:var(--ink3)">${val?unit:''}</span></div>
-      ${dNum!==0?`<div style="font-size:10px;font-weight:700;color:${col};margin-top:2px">${delta}${unit}</div>`:''}
+  // ── KPIs grandes estilo ejercicios ─────────────────────────────
+  const dpeso=delta(ult.peso,pri.peso), dgrasa=delta(ult.grasa,pri.grasa), dimc=delta(ult.imc,pri.imc);
+  const pesoMin=Math.min(...mets.filter(m=>m.peso).map(m=>parseFloat(m.peso)));
+  const pesoMax=Math.max(...mets.filter(m=>m.peso).map(m=>parseFloat(m.peso)));
+  document.getElementById('cuerpo-kpis').innerHTML=`
+    <div style="padding:16px 12px;border-right:1px solid var(--border);text-align:center">
+      <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Peso actual</div>
+      <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:var(--ink);line-height:1">${ult.peso||'—'}<span style="font-size:14px;font-weight:400;color:var(--ink3)">kg</span></div>
+      <div style="font-size:11px;font-weight:700;color:${dpeso.v<0?'var(--green)':dpeso.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dpeso.v!==0?dpeso.str+'kg desde inicio':''}</div>
+      <div style="font-size:10px;color:var(--ink3);margin-top:2px">Mín ${pesoMin}kg · Máx ${pesoMax}kg</div>
+    </div>
+    <div style="padding:16px 12px;border-right:1px solid var(--border);text-align:center">
+      <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">IMC actual</div>
+      <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:var(--gold);line-height:1">${ult.imc||'—'}</div>
+      <div style="font-size:11px;font-weight:700;color:${dimc.v<0?'var(--green)':dimc.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dimc.v!==0?dimc.str+' desde inicio':''}</div>
+      <div style="font-size:10px;color:var(--ink3);margin-top:2px">${ult.imc?parseFloat(ult.imc)<25?'Normal':parseFloat(ult.imc)<30?'Sobrepeso':'Obesidad':''}</div>
+    </div>
+    <div style="padding:16px 12px;text-align:center">
+      <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Grasa corporal</div>
+      <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:${parseFloat(ult.grasa||99)<30?'var(--green)':'var(--orange)'};line-height:1">${ult.grasa||'—'}<span style="font-size:14px;font-weight:400;color:var(--ink3)">${ult.grasa?'%':''}</span></div>
+      <div style="font-size:11px;font-weight:700;color:${dgrasa.v<0?'var(--green)':dgrasa.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dgrasa.v!==0?dgrasa.str+'% desde inicio':''}</div>
+      <div style="font-size:10px;color:var(--ink3);margin-top:2px">${mets.filter(m=>m.grasa).length} registros</div>
     </div>`;
-  }).join('');
 
-  // Gráficos
-  const charts=[
-    {key:'peso',label:'Peso corporal (kg)'},
-    {key:'grasa',label:'Grasa corporal (%)'},
-    {key:'muscular',label:'Masa muscular (kg)'},
-    {key:'imc',label:'IMC'},
-  ].map(({key,label})=>{
-    const pts=mets.filter(m=>m[key]).map(m=>({fecha:m.date,val:parseFloat(m[key]),label:`${m[key]}`}));
-    if(pts.length<2) return '';
-    return `<div style="margin-bottom:16px"><div class="card">${renderLineChart(pts,label)}</div></div>`;
-  }).join('');
-
+  // ── Gráficos usando todo el ancho (renderLineChartTall) ────────
+  const GRAFICOS=[
+    {key:'peso',    label:'Peso corporal (kg)',    color:'var(--orange)'},
+    {key:'imc',     label:'IMC',                   color:'var(--gold)'},
+    {key:'grasa',   label:'Grasa corporal (%)',     color:'var(--green)'},
+    {key:'muscular',label:'Masa muscular (kg)',     color:'var(--blue)'},
+  ];
+  let chartsHtml='';
+  GRAFICOS.forEach(({key,label,color})=>{
+    const pts=mets.filter(m=>m[key]!=null&&m[key]!='').map(m=>({fecha:m.date,val:parseFloat(m[key]),label:`${m[key]}`}));
+    if(pts.length<2) return;
+    chartsHtml+=`<div style="margin-bottom:20px">${renderLineChartTall(pts,label,color)}</div>`;
+  });
   const p6=mets.filter(m=>m.pliegues?.p6);
-  const p6chart=p6.length>=2?`<div class="card" style="margin-bottom:16px">${renderLineChart(p6.map(m=>({fecha:m.date,val:m.pliegues.p6,label:`${m.pliegues.p6}mm`})),'Pliegues cutáneos (mm)')}</div>`:'';
+  if(p6.length>=2) chartsHtml+=`<div style="margin-bottom:20px">${renderLineChartTall(p6.map(m=>({fecha:m.date,val:m.pliegues.p6,label:`${m.pliegues.p6}mm`})),'Pliegues cutáneos 6P (mm)','var(--blue)')}</div>`;
+  if(!chartsHtml) chartsHtml=`<div class="empty" style="padding:32px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos</div><div class="empty-sub">Necesitas al menos 2 registros por métrica.</div></div>`;
+  document.getElementById('cuerpo-charts').innerHTML=chartsHtml;
 
-  document.getElementById('cuerpo-charts').innerHTML=charts+p6chart;
-
-  // Historial tabla
-  // Filtro de año para el historial
+  // ── Historial filtrado por año ─────────────────────────────────
   const años=[...new Set(mets.map(m=>m.date.slice(0,4)))].sort().reverse();
-  const añoActual=new Date().getFullYear().toString();
-  const añoFiltro=window._cuerpoAñoFiltro||añoActual;
+  const añoFiltro=window._cuerpoAñoFiltro||años[0]||'';
   const metsFiltradas=[...mets].filter(m=>m.date.startsWith(añoFiltro)).reverse();
 
   document.getElementById('cuerpo-historial').innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div class="section-label" style="margin:0">Historial completo</div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
-          ${años.map(a=>`<button onclick="window._cuerpoAñoFiltro='${a}';renderProgCuerpo()"
-            style="padding:3px 10px;border-radius:20px;border:1px solid ${a===añoFiltro?'var(--orange)':'var(--border2)'};
-            background:${a===añoFiltro?'#1a0a00':'var(--bg3)'};color:${a===añoFiltro?'var(--orange)':'var(--ink3)'};
-            font-size:11px;font-weight:600;cursor:pointer">${a}</button>`).join('')}
-        </div>
+      <div class="section-label" style="margin:0">Historial · ${mets.length} registros totales</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        ${años.map(a=>`<button onclick="window._cuerpoAñoFiltro='${a}';renderProgCuerpo()"
+          style="padding:3px 10px;border-radius:20px;border:1px solid ${a===añoFiltro?'var(--orange)':'var(--border2)'};
+          background:${a===añoFiltro?'#1a0a00':'var(--bg3)'};color:${a===añoFiltro?'var(--orange)':'var(--ink3)'};
+          font-size:11px;font-weight:600;cursor:pointer">${a}</button>`).join('')}
       </div>
     </div>
     <div style="font-size:11px;color:var(--ink3);margin-bottom:8px">${metsFiltradas.length} registros en ${añoFiltro} · Toca ✏ para editar</div>
     <div class="card" style="padding:0;overflow:hidden">
       <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:520px">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:480px">
           <thead><tr style="border-bottom:1px solid var(--border);background:var(--bg3)">
-            <th style="padding:8px 10px;text-align:left;color:var(--ink3);font-size:10px;text-transform:uppercase;white-space:nowrap">Fecha</th>
-            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">Peso kg</th>
-            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">Grasa %</th>
-            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">Musc. kg</th>
-            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">IMC</th>
-            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">6P mm</th>
-            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">8P mm</th>
-            <th style="padding:8px 6px;width:32px"></th>
+            <th style="padding:8px 10px;text-align:left;color:var(--ink3);font-size:10px;text-transform:uppercase">Fecha</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">Peso</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--gold);font-size:10px">IMC</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--green);font-size:10px">Grasa%</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--blue);font-size:10px">Musc.</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">6P</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px">8P</th>
+            <th style="width:28px"></th>
           </tr></thead>
           <tbody id="cuerpo-hist-tbody">
             ${renderMedRows(metsFiltradas)}
@@ -3393,39 +3364,107 @@ function onImpFile(e,n){
 function runImport(){
   const btn=document.getElementById('imp-run-btn'); btn.disabled=true; btn.textContent='⏳…';
   let log=[], pending=0;
-  if(impBuf.f1){ pending++; const r=new FileReader(); r.onload=e=>{ const res=importSesCSV(e.target.result); log.push(`🏋 ${res.new} sesiones · ${res.exNew} ejercicios nuevos`); if(--pending===0) doneImp(log,btn); }; r.readAsText(impBuf.f1,'UTF-8'); }
+  if(impBuf.f1){ pending++; const r=new FileReader(); r.onload=e=>{ const res=importSesCSV(e.target.result); log.push(`🏋 ${res.new} sesiones · ${res.exNew} ejercicios nuevos${res.sinFecha>0?' · ⚠ '+res.sinFecha+' filas sin fecha ignoradas':''}`); if(--pending===0) doneImp(log,btn); }; r.readAsText(impBuf.f1,'UTF-8'); }
   if(impBuf.f2){ pending++; const r=new FileReader(); r.onload=e=>{ const res=importMedCSV(e.target.result); log.push(`⚖️ ${res.new} mediciones`); if(--pending===0) doneImp(log,btn); }; r.readAsText(impBuf.f2,'UTF-8'); }
   if(!pending) doneImp(log,btn);
 }
 function doneImp(log,btn){ saveDB(); document.getElementById('imp-status').textContent=log.join('\n'); btn.textContent='✓ Importado'; btn.style.background='var(--green)'; setTimeout(()=>{ closeModal('modal-import'); renderAll(); },2000); }
+
+// Parsea fechas de Hevy que vienen en múltiples formatos:
+// "2024 Jan 06, 09:15 AM", "2024-01-06 09:15:00", "2024-01-06T09:15:00", "Jan 06, 2024", etc.
+function parseHevyDate(raw){
+  if(!raw) return null;
+  raw=raw.trim().replace(/"/g,'');
+
+  // Formato ISO o similar: 2024-01-06... → directo
+  if(/^\d{4}-\d{2}-\d{2}/.test(raw)){
+    const d=new Date(raw.replace(' ','T'));
+    if(!isNaN(d)) return d.getTime();
+  }
+
+  // Formato Hevy: "2024 Jan 06, 09:15 AM"
+  const m1=raw.match(/^(\d{4})\s+(\w{3})\s+(\d{1,2}),?\s+(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if(m1){
+    const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+    const mo=months[m1[2].toLowerCase()];
+    let h=parseInt(m1[4]), min=parseInt(m1[5]);
+    if(m1[6]&&m1[6].toUpperCase()==='PM'&&h<12) h+=12;
+    if(m1[6]&&m1[6].toUpperCase()==='AM'&&h===12) h=0;
+    const d=new Date(parseInt(m1[1]),mo,parseInt(m1[3]),h,min);
+    if(!isNaN(d)) return d.getTime();
+  }
+
+  // Formato "Jan 06, 2024" o "06 Jan 2024"
+  const m2=raw.match(/(\w{3})\s+(\d{1,2}),?\s+(\d{4})/i);
+  if(m2){
+    const d=new Date(`${m2[1]} ${m2[2]} ${m2[3]}`);
+    if(!isNaN(d)) return d.getTime();
+  }
+
+  // Último intento: new Date()
+  const d=new Date(raw);
+  return isNaN(d)?null:d.getTime();
+}
 
 function importSesCSV(text){
   const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(l=>l.trim());
   if(lines.length<2) return{new:0,exNew:0};
   const hdr=lines[0].split(',').map(h=>h.trim().replace(/"/g,'').toLowerCase());
   const sessions={}, exNew=new Set();
+  let sinFecha=0;
+
   for(let i=1;i<lines.length;i++){
-    const cols=parseCSV(lines[i]); const row={}; hdr.forEach((h,j)=>row[h]=(cols[j]||'').replace(/"/g,'').trim());
-    const title=row.title||row['workout name']||'';
-    const date=row.start_time||row.date||'';
-    const exName=row.exercise_title||row['exercise name']||'';
-    const weight=parseFloat(row.weight_kg||row.weight||0), reps=parseInt(row.reps||0);
-    const key=title+'|'+date;
-    if(!sessions[key]) sessions[key]={id:'s_h'+Math.abs(key.split('').reduce((a,c)=>a+c.charCodeAt(0),0)),routineId:null,routineName:title,date:new Date(date).getTime()||Date.now(),exercises:{},elapsed:parseInt(row.duration_seconds||row.duration||0),source:'hevy'};
+    const cols=parseCSV(lines[i]);
+    const row={};
+    hdr.forEach((h,j)=>row[h]=(cols[j]||'').replace(/"/g,'').trim());
+
+    const title   = row.title||row['workout name']||row['workout_name']||'';
+    const dateRaw = row.start_time||row['start time']||row.date||row.created_at||'';
+    const exName  = row.exercise_title||row['exercise title']||row['exercise name']||row['exercise_name']||'';
+    const weight  = parseFloat(row.weight_kg||row.weight||0);
+    const reps    = parseInt(row.reps||0);
+    const elapsed = parseInt(row.duration_seconds||row.duration||row['duration (seconds)'||0])||0;
+
+    const ts = parseHevyDate(dateRaw);
+    if(!ts){ sinFecha++; continue; } // saltar filas sin fecha parseable
+
+    const key=title+'|'+ts;
+    if(!sessions[key]){
+      sessions[key]={
+        id:'s_h'+Math.abs(key.split('').reduce((a,c)=>a+c.charCodeAt(0),0)+(ts%100000)),
+        routineId:null, routineName:title||'Entrenamiento',
+        date:ts, exercises:{}, elapsed, source:'hevy'
+      };
+    }
+
     if(exName&&!sessions[key].exercises[exName]){
       let ex=(forge.exercises||[]).find(e=>e.name.toLowerCase()===exName.toLowerCase());
-      if(!ex){ ex={id:'ex_h'+Date.now()+'_'+i,name:exName,type:'barbell',muscle:'',restSec:90}; forge.exercises.push(ex); exNew.add(ex.id); }
+      if(!ex){
+        ex={id:'ex_h'+Date.now()+'_'+i,name:exName,type:'barbell',muscle:'',restSec:90};
+        forge.exercises.push(ex);
+        exNew.add(ex.id);
+      }
       sessions[key].exercises[exName]={exId:ex.id,sets:[]};
     }
-    if(exName&&(weight||reps)) sessions[key].exercises[exName].sets.push({type:'weight',done:true,weight,reps});
+    if(exName&&(weight||reps)){
+      sessions[key].exercises[exName].sets.push({type:'weight',done:true,weight,reps,distance:'',time:'',fc:'',pasos:''});
+    }
   }
-  const arr=Object.values(sessions).map(s=>({...s,exercises:Object.values(s.exercises),totalVolume:Object.values(s.exercises).reduce((a,ex)=>a+ex.sets.reduce((b,s)=>b+(s.weight||0)*(s.reps||0),0),0)}));
+
+  const arr=Object.values(sessions).map(s=>({
+    ...s,
+    exercises:Object.values(s.exercises),
+    totalVolume:Object.values(s.exercises).reduce((a,ex)=>a+ex.sets.reduce((b,st)=>b+(st.weight||0)*(st.reps||0),0),0)
+  }));
+
   if(!forge.sessions) forge.sessions=[];
-  const existing=new Set(forge.sessions.map(s=>s.routineName+'|'+s.date));
-  const newSes=arr.filter(s=>!existing.has(s.routineName+'|'+s.date));
+  const existingIds=new Set(forge.sessions.map(s=>s.id));
+  const existingKeys=new Set(forge.sessions.map(s=>s.routineName+'|'+new Date(s.date).toDateString()));
+  const newSes=arr.filter(s=>!existingIds.has(s.id)&&!existingKeys.has(s.routineName+'|'+new Date(s.date).toDateString()));
   forge.sessions.push(...newSes);
   forge.sessions.sort((a,b)=>a.date-b.date);
-  return{new:newSes.length,exNew:exNew.size};
+
+  return{new:newSes.length, exNew:exNew.size, sinFecha};
 }
 function importMedCSV(text){
   const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(l=>l.trim());
