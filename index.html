@@ -1274,6 +1274,20 @@ function initRutinas(){
     // Hip thrust barra
     'empuje de caderas (barra)':       'ex_hip_thrust',
     'hip thrust (barra)':              'ex_hip_thrust',
+    // ── Carrera / Trote — todos los nombres posibles de Hevy ──
+    'trote':                           'ex_correr',
+    'trote semanal':                   'ex_correr',
+    'correr':                          'ex_correr',
+    'correr / trote':                  'ex_correr',
+    'carrera':                         'ex_correr',
+    'carrera / trote':                 'ex_correr',
+    'running':                         'ex_correr',
+    'run':                             'ex_correr',
+    'outdoor run':                     'ex_correr',
+    'outdoor running':                 'ex_correr',
+    'treadmill running':               'ex_correr',
+    'treadmill':                       'ex_correr',
+    'jogging':                         'ex_correr',
   };
 
   // Construir mapa id_duplicado → id_canonico
@@ -1286,18 +1300,52 @@ function initRutinas(){
     }
   });
 
-  // Si hay fusiones que hacer, reasignar en sesiones
+  // Si hay fusiones que hacer, reasignar en sesiones y migrar sets de cardio
   if(Object.keys(idFusionMap).length > 0){
     (forge.sessions||[]).forEach(s=>{
       (s.exercises||[]).forEach(ex=>{
-        if(idFusionMap[ex.exId]) ex.exId = idFusionMap[ex.exId];
+        if(idFusionMap[ex.exId]){
+          const nuevoId = idFusionMap[ex.exId];
+          ex.exId = nuevoId;
+          // Si el ejercicio destino es cardio, migrar sets a formato run
+          const exDest = EJERCICIOS_BASE.find(e=>e.id===nuevoId);
+          if(exDest?.type==='run'||exDest?.type==='hiit'){
+            ex.sets = (ex.sets||[]).map(set=>{
+              if(set.type==='run') return set; // ya migrado
+              // Intentar rescatar datos: peso→distancia, reps→nada
+              return {
+                type:'run', done: set.done||true,
+                distance: set.weight>0 ? String(set.weight) : (set.distance||''),
+                time: set.time||'',
+                fc: set.fc||'', pasos: set.pasos||'',
+                weight:0, reps:0
+              };
+            });
+          }
+        }
       });
     });
-    // Eliminar los ejercicios duplicados de la lista
     const idsAEliminar = new Set(Object.keys(idFusionMap));
     forge.exercises = forge.exercises.filter(e=>!idsAEliminar.has(e.id));
     saveDB();
   }
+
+  // También migrar sets de ex_correr que aún tengan type:'weight'
+  const runIds = new Set(['ex_correr', 'ex_hiit']);
+  (forge.sessions||[]).forEach(s=>{
+    (s.exercises||[]).forEach(ex=>{
+      if(!runIds.has(ex.exId)) return;
+      ex.sets=(ex.sets||[]).map(set=>{
+        if(set.type==='run') return set;
+        return {
+          type:'run', done:set.done||true,
+          distance: set.weight>0?String(set.weight):(set.distance||''),
+          time: set.time||'', fc: set.fc||'', pasos: set.pasos||'',
+          weight:0, reps:0
+        };
+      });
+    });
+  });
 
   const exIds = new Set(forge.exercises.map(e=>e.id));
   EJERCICIOS_BASE.forEach(e=>{ if(!exIds.has(e.id)) forge.exercises.push(e); });
