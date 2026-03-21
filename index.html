@@ -390,11 +390,11 @@ select.inp{cursor:pointer}
 <div id="s-progress" class="screen">
   <div class="topbar">
     <div class="tlogo">F<span>O</span>RGE</div>
-    <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Progreso</div>
+    <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Estadísticas</div>
   </div>
   <div class="tab-row">
     <button class="tab-btn on" onclick="switchProgTab('ejercicios',this)">Ejercicios</button>
-    <button class="tab-btn"   onclick="switchProgTab('cuerpo',this)">Cuerpo</button>
+    <button class="tab-btn"   onclick="switchProgTab('cuerpo',this)">Medidas corporales</button>
     <button class="tab-btn"   onclick="switchProgTab('fotos',this)">Fotos</button>
   </div>
   <!-- Ejercicios -->
@@ -519,7 +519,7 @@ select.inp{cursor:pointer}
   </button>
   <button class="nb" id="nb-progress" onclick="goTo('progress')">
     <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-    Progreso
+    Estadísticas
   </button>
   <button class="nb" id="nb-food"    onclick="goTo('food')">
     <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 4-3 6-3 9H8c0-3-3-5-3-9a7 7 0 0 1 7-7z"/><line x1="8" y1="22" x2="16" y2="22"/><line x1="12" y1="17" x2="12" y2="22"/></svg>
@@ -789,36 +789,15 @@ select.inp{cursor:pointer}
 
 <!-- MODAL: IMPORTAR CSV -->
 <div id="modal-import" class="modal-bg">
-  <div class="modal">
+  <div class="modal" style="max-height:96dvh">
     <div class="modal-handle"></div>
     <div class="modal-head">
-      <div class="modal-title">Importar desde Hevy</div>
-      <button class="bicon" onclick="closeModal('modal-import')"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <div class="modal-title" id="imp-title">Importar desde Hevy</div>
+      <button class="bicon" onclick="closeModal('modal-import');impReset()">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
-    <div class="modal-body">
-      <div style="background:var(--bg3);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--ink2);line-height:1.7;border-left:3px solid var(--orange)">
-        En Hevy: <strong>Perfil → Configuración → Exportar datos</strong><br>
-        Genera dos archivos CSV separados.
-      </div>
-      <div style="margin-bottom:12px">
-        <div class="section-label">📊 Entrenamientos (workout_history.csv)</div>
-        <div id="imp-drop-1" onclick="document.getElementById('imp-file-1').click()" style="border:2px dashed var(--border2);border-radius:var(--rl);padding:16px;text-align:center;cursor:pointer">
-          <div style="font-size:22px;margin-bottom:4px">🏋</div>
-          <div id="imp-lbl-1" style="font-size:12px;color:var(--ink3)">workout_history.csv</div>
-        </div>
-        <input type="file" id="imp-file-1" accept=".csv" style="display:none" onchange="onImpFile(event,1)">
-      </div>
-      <div style="margin-bottom:14px">
-        <div class="section-label">⚖️ Mediciones (measurements.csv — opcional)</div>
-        <div id="imp-drop-2" onclick="document.getElementById('imp-file-2').click()" style="border:2px dashed var(--border2);border-radius:var(--rl);padding:16px;text-align:center;cursor:pointer">
-          <div style="font-size:22px;margin-bottom:4px">📏</div>
-          <div id="imp-lbl-2" style="font-size:12px;color:var(--ink3)">measurements.csv (opcional)</div>
-        </div>
-        <input type="file" id="imp-file-2" accept=".csv" style="display:none" onchange="onImpFile(event,2)">
-      </div>
-      <button class="btn btn-p" id="imp-run-btn" onclick="runImport()" disabled>⬆ Importar</button>
-      <div id="imp-status" style="font-size:12px;color:var(--ink3);margin-top:10px;white-space:pre-line"></div>
-    </div>
+    <div class="modal-body" id="imp-body"></div>
   </div>
 </div>
 
@@ -2449,7 +2428,43 @@ function renderExDetail(exId){
   document.getElementById('ex-detail-body').innerHTML=`<div style="padding:16px">${kpis}${chartsHtml}${histHtml}</div>`;
 }
 
-// Gráfico alto para pantalla de detalle (240px)
+// Gráfico 100% ancho sin scroll — para overlay de cuerpo
+function renderLineChartFull(puntos,yLabel,color='var(--orange)'){
+  const PL=44,PB=28,PT=12,PR=10,H=260;
+  // Ancho interno del SVG — siempre adapta al contenedor via viewBox+100%
+  const W=Math.max(400, PL+PR+puntos.length*Math.max(8,Math.floor(900/puntos.length)));
+  const vals=puntos.map(p=>p.val);
+  const minV=Math.min(...vals),maxV=Math.max(...vals),rng=maxV-minV||1;
+  const xs=puntos.map((_,i)=>PL+(i/(puntos.length-1||1))*(W-PL-PR));
+  const ys=puntos.map(p=>PT+(1-(p.val-minV)/rng)*(H-PT-PB));
+  const line=xs.map((x,i)=>`${i===0?'M':'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+  const area=line+` L${xs[xs.length-1].toFixed(1)},${H-PB} L${xs[0].toFixed(1)},${H-PB} Z`;
+  const yLabs=[minV,minV+rng/2,maxV].map(v=>{
+    const y=PT+(1-(v-minV)/rng)*(H-PT-PB);
+    return `<text x="${PL-4}" y="${y.toFixed(1)}" class="chart-label" text-anchor="end" dominant-baseline="middle">${Math.round(v*10)/10}</text>
+    <line x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}" class="chart-grid"/>`;
+  }).join('');
+  const step=Math.max(1,Math.floor(puntos.length/10));
+  const xLabs=puntos.filter((_,i)=>i%step===0||i===puntos.length-1).map(p=>{
+    const i=puntos.indexOf(p);
+    return `<text x="${xs[i].toFixed(1)}" y="${H}" class="chart-label" text-anchor="middle">${p.fecha.slice(5)}</text>`;
+  }).join('');
+  const dotR=puntos.length>50?2:puntos.length>20?3:4;
+  const dots=puntos.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="${dotR}" style="fill:${color}"><title>${p.fecha}: ${p.label}</title></circle>`).join('');
+  return `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 0 0">
+      <svg width="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="display:block;height:${H}px">
+        <line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" class="chart-axis"/>
+        <line x1="${PL}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" class="chart-axis"/>
+        ${yLabs}${xLabs}
+        <path d="${area}" fill="${color}" opacity=".15"/>
+        <path d="${line}" class="chart-line" stroke="${color}" stroke-width="2.5"/>
+        ${dots}
+      </svg>
+    </div>`;
+}
+
+// Gráfico alto para pantalla de detalle (240px) — con scroll si es necesario
 function renderLineChartTall(puntos,yLabel,color='var(--orange)'){
   const PL=44,PB=28,PT=12,PR=10,H=240;
   const minPxPunto=puntos.length>30?7:puntos.length>15?9:12;
@@ -2574,6 +2589,8 @@ function renderLineChart(puntos,yLabel){
 // mets se pasa como parámetro para evitar recalcular
 let _cuerpoMets=null;
 function openCuerpoChart(key, mets){
+  mets = mets || _cuerpoMets;
+  if(!mets||!mets.length) return;
   _cuerpoMets=mets;
   const CONFIG={
     peso:    {label:'Peso corporal',    unit:'kg', color:'var(--orange)'},
@@ -2636,7 +2653,7 @@ function openCuerpoChart(key, mets){
       <div style="display:flex;gap:4px;flex-wrap:wrap">${filtroHtml}</div>
     </div>
     ${ptsFilt.length>=2
-      ? renderLineChartTall(ptsFilt, cfg.label+' '+cfg.unit, cfg.color)
+      ? `<div style="margin-bottom:4px;font-size:11px;color:var(--ink3);font-weight:600">${cfg.label}${cfg.unit?' ('+cfg.unit+')':''} · ${ptsFilt.length} registros</div>`+renderLineChartFull(ptsFilt, cfg.label, cfg.color)
       : `<div class="empty" style="padding:40px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos</div><div class="empty-sub">Necesitas al menos 2 registros en ${añoSel}.</div></div>`}
     <div style="margin-top:20px">
       <div class="section-label" style="margin-bottom:8px">Todos los registros · ${pts.length} total</div>
@@ -2686,20 +2703,23 @@ function renderProgCuerpo(){
   const dpeso=delta(ult.peso,pri.peso), dgrasa=delta(ult.grasa,pri.grasa), dimc=delta(ult.imc,pri.imc);
   const pesoMin=Math.min(...mets.filter(m=>m.peso).map(m=>parseFloat(m.peso)));
   const pesoMax=Math.max(...mets.filter(m=>m.peso).map(m=>parseFloat(m.peso)));
+  // Guardar mets globalmente para que los onclick puedan acceder
+  _cuerpoMets = mets;
+
   document.getElementById('cuerpo-kpis').innerHTML=`
-    <div onclick="openCuerpoChart('peso',mets)" style="padding:16px 12px;border-right:1px solid var(--border);text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+    <div onclick="openCuerpoChart('peso')" style="padding:16px 12px;border-right:1px solid var(--border);text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
       <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Peso actual</div>
       <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:var(--ink);line-height:1">${ult.peso||'—'}<span style="font-size:14px;font-weight:400;color:var(--ink3)">kg</span></div>
       <div style="font-size:11px;font-weight:700;color:${dpeso.v<0?'var(--green)':dpeso.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dpeso.v!==0?dpeso.str+'kg desde inicio':''}</div>
       <div style="font-size:10px;color:var(--ink3);margin-top:2px">Mín ${pesoMin}kg · Máx ${pesoMax}kg · 📈</div>
     </div>
-    <div onclick="openCuerpoChart('imc',mets)" style="padding:16px 12px;border-right:1px solid var(--border);text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+    <div onclick="openCuerpoChart('imc')" style="padding:16px 12px;border-right:1px solid var(--border);text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
       <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">IMC actual</div>
       <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:var(--gold);line-height:1">${ult.imc||'—'}</div>
       <div style="font-size:11px;font-weight:700;color:${dimc.v<0?'var(--green)':dimc.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dimc.v!==0?dimc.str+' desde inicio':''}</div>
       <div style="font-size:10px;color:var(--ink3);margin-top:2px">${ult.imc?parseFloat(ult.imc)<25?'Normal':parseFloat(ult.imc)<30?'Sobrepeso':'Obesidad':''} · 📈</div>
     </div>
-    <div onclick="openCuerpoChart('grasa',mets)" style="padding:16px 12px;text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+    <div onclick="openCuerpoChart('grasa')" style="padding:16px 12px;text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
       <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Grasa corporal</div>
       <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:${parseFloat(ult.grasa||99)<30?'var(--green)':'var(--orange)'};line-height:1">${ult.grasa||'—'}<span style="font-size:14px;font-weight:400;color:var(--ink3)">${ult.grasa?'%':''}</span></div>
       <div style="font-size:11px;font-weight:700;color:${dgrasa.v<0?'var(--green)':dgrasa.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dgrasa.v!==0?dgrasa.str+'% desde inicio':''}</div>
@@ -3479,23 +3499,279 @@ function checkLogros(){
 // ═══════════════════════════════════════════════════════════════
 //  IMPORTAR HEVY CSV
 // ═══════════════════════════════════════════════════════════════
+// ── IMPORTADOR HEVY — 2 pasos ─────────────────────────────────
 const impBuf={f1:null,f2:null};
-function openImport(){ impBuf.f1=null; impBuf.f2=null; openModal('modal-import'); }
+let impSesRevisadas=[];  // sesiones parseadas pendientes de confirmar
+
+function impReset(){
+  impBuf.f1=null; impBuf.f2=null; impSesRevisadas=[];
+}
+
+function openImport(){
+  impReset();
+  document.getElementById('imp-title').textContent='Importar desde Hevy';
+  renderImpStep1();
+  openModal('modal-import');
+}
+
+function renderImpStep1(){
+  document.getElementById('imp-body').innerHTML=`
+    <div style="background:var(--bg3);border-left:3px solid var(--orange);border-radius:var(--r);padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--ink2);line-height:1.7">
+      En Hevy: <strong>Perfil → Configuración → Exportar datos</strong><br>
+      Genera dos archivos CSV. Después de cargarlos podrás revisar cada sesión antes de guardar.
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="section-label">📊 Entrenamientos (workout_history.csv)</div>
+      <div onclick="document.getElementById('imp-f1').click()"
+        style="border:2px dashed var(--border2);border-radius:var(--rl);padding:20px;text-align:center;cursor:pointer;transition:border-color .1s"
+        onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='var(--border2)'">
+        <div style="font-size:28px;margin-bottom:6px">🏋</div>
+        <div id="imp-lbl-1" style="font-size:12px;color:var(--ink3)">Toca para seleccionar workout_history.csv</div>
+      </div>
+      <input type="file" id="imp-f1" accept=".csv" style="display:none" onchange="onImpFile(event,1)">
+    </div>
+    <div style="margin-bottom:16px">
+      <div class="section-label">⚖️ Mediciones (measurements.csv — opcional)</div>
+      <div onclick="document.getElementById('imp-f2').click()"
+        style="border:2px dashed var(--border2);border-radius:var(--rl);padding:16px;text-align:center;cursor:pointer;transition:border-color .1s"
+        onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='var(--border2)'">
+        <div style="font-size:22px;margin-bottom:4px">📏</div>
+        <div id="imp-lbl-2" style="font-size:12px;color:var(--ink3)">Toca para seleccionar measurements.csv</div>
+      </div>
+      <input type="file" id="imp-f2" accept=".csv" style="display:none" onchange="onImpFile(event,2)">
+    </div>
+    <button class="btn btn-p" id="imp-next-btn" onclick="impParsear()" disabled>
+      Analizar CSV →
+    </button>`;
+}
+
 function onImpFile(e,n){
   const f=e.target.files[0]; if(!f) return;
   impBuf['f'+n]=f;
   document.getElementById('imp-lbl-'+n).textContent='✓ '+f.name;
   document.getElementById('imp-lbl-'+n).style.color='var(--green)';
-  document.getElementById('imp-run-btn').disabled=!impBuf.f1;
+  if(n===1) document.getElementById('imp-next-btn').disabled=false;
 }
-function runImport(){
-  const btn=document.getElementById('imp-run-btn'); btn.disabled=true; btn.textContent='⏳…';
-  let log=[], pending=0;
-  if(impBuf.f1){ pending++; const r=new FileReader(); r.onload=e=>{ const res=importSesCSV(e.target.result); log.push(`🏋 ${res.new} sesiones · ${res.exNew} ejercicios nuevos${res.sinFecha>0?' · ⚠ '+res.sinFecha+' filas sin fecha ignoradas':''}`); if(--pending===0) doneImp(log,btn); }; r.readAsText(impBuf.f1,'UTF-8'); }
-  if(impBuf.f2){ pending++; const r=new FileReader(); r.onload=e=>{ const res=importMedCSV(e.target.result); log.push(`⚖️ ${res.new} mediciones`); if(--pending===0) doneImp(log,btn); }; r.readAsText(impBuf.f2,'UTF-8'); }
-  if(!pending) doneImp(log,btn);
+
+// ── PASO 1: parsear sin guardar, mostrar revisión ──────────────
+async function impParsear(){
+  const btn=document.getElementById('imp-next-btn');
+  btn.disabled=true; btn.textContent='⏳ Analizando…';
+
+  const text = await new Promise(res=>{ const r=new FileReader(); r.onload=e=>res(e.target.result); r.readAsText(impBuf.f1,'UTF-8'); });
+  const sesiones = parsearHevySinGuardar(text);
+
+  if(!sesiones.length){
+    btn.disabled=false; btn.textContent='Analizar CSV →';
+    document.getElementById('imp-body').innerHTML+=`<div style="color:var(--red);font-size:12px;margin-top:8px">No se encontraron sesiones válidas.</div>`;
+    return;
+  }
+
+  impSesRevisadas=sesiones;
+  renderImpStep2();
 }
-function doneImp(log,btn){ saveDB(); document.getElementById('imp-status').textContent=log.join('\n'); btn.textContent='✓ Importado'; btn.style.background='var(--green)'; setTimeout(()=>{ closeModal('modal-import'); renderAll(); },2000); }
+
+// Parsear CSV y devolver array de sesiones para revisar (sin guardar)
+function parsearHevySinGuardar(text){
+  const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2) return[];
+  const hdr=lines[0].split(',').map(h=>h.trim().replace(/"/g,'').toLowerCase());
+  const mapa={};
+
+  for(let i=1;i<lines.length;i++){
+    const cols=parseCSV(lines[i]);
+    const row={}; hdr.forEach((h,j)=>row[h]=(cols[j]||'').replace(/"/g,'').trim());
+    const title  = row.title||row['workout name']||row.workout_name||'';
+    const dateRaw= row.start_time||row['start time']||row.date||row.created_at||'';
+    const exName = row.exercise_title||row['exercise title']||row['exercise name']||row.exercise_name||'';
+    const weight = parseFloat(row.weight_kg||row.weight||0);
+    const reps   = parseInt(row.reps||0);
+    const elapsed= parseInt(row.duration_seconds||row.duration||row['duration (seconds)']||0);
+    const ts     = parseHevyDate(dateRaw);
+    if(!ts) continue;
+    const key=title+'|'+ts;
+    if(!mapa[key]) mapa[key]={
+      id:'s_h'+Math.abs(key.split('').reduce((a,c)=>a+c.charCodeAt(0),0)+(ts%100000)),
+      routineName:title||'Entrenamiento', date:ts, elapsed,
+      exercises:{}, source:'hevy',
+      // Para revisión:
+      _rutinaId:'', _ignorar:false
+    };
+    if(exName&&!mapa[key].exercises[exName]) mapa[key].exercises[exName]={exName,sets:[]};
+    if(exName&&(weight||reps)) mapa[key].exercises[exName].sets.push({weight,reps});
+  }
+  return Object.values(mapa).sort((a,b)=>a.date-b.date);
+}
+
+// ── PASO 2: pantalla de revisión ──────────────────────────────
+function renderImpStep2(){
+  document.getElementById('imp-title').textContent=`Revisar ${impSesRevisadas.length} sesiones`;
+  const existingIds=new Set((forge.sessions||[]).map(s=>s.id));
+  const rutinas=forge.routines||[];
+
+  // Mapa de nombres similares conocidos → ejercicio canónico
+  const NOMBRE_MAP=buildNombreMap();
+
+  let html=`
+    <div style="background:var(--bg3);border-left:3px solid var(--green);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--ink2);line-height:1.6">
+      Revisa cada sesión: <strong>asigna la rutina correcta</strong>, corrige fechas si es necesario, 
+      marca "Ignorar" las que no quieras importar. Los ejercicios similares ya están agrupados automáticamente.
+    </div>
+    <div style="font-size:11px;color:var(--ink3);margin-bottom:10px">
+      ${impSesRevisadas.length} sesiones · <span style="color:var(--green)">${impSesRevisadas.filter(s=>!existingIds.has(s.id)).length} nuevas</span> · 
+      <span style="color:var(--ink3)">${impSesRevisadas.filter(s=>existingIds.has(s.id)).length} ya existen</span>
+    </div>`;
+
+  impSesRevisadas.forEach((s,idx)=>{
+    const yaExiste=existingIds.has(s.id);
+    const fechaStr=new Date(s.date).toISOString().split('T')[0];
+    const durMin=Math.round((s.elapsed||0)/60);
+    // Nombres de ejercicios con su mapeo
+    const exHtml=Object.entries(s.exercises).map(([nombre,ex])=>{
+      const canonico=NOMBRE_MAP[nombre.toLowerCase().trim()];
+      const exForge=canonico?(forge.exercises||[]).find(e=>e.id===canonico):null;
+      const match=exForge?`<span style="color:var(--green);font-size:10px"> → ${exForge.name}</span>`:'';
+      return `<div style="font-size:11px;color:var(--ink2);padding:1px 0">${nombre}${match} <span style="color:var(--ink3)">(${ex.sets.length} series)</span></div>`;
+    }).join('');
+
+    html+=`
+    <div id="imp-ses-${idx}" style="background:${yaExiste?'var(--bg3)':'var(--bg2)'};border:1px solid ${yaExiste?'var(--border2)':'var(--border)'};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;${s._ignorar?'opacity:.4':''}">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px">${s.routineName}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <input type="date" value="${fechaStr}"
+              onchange="impSesRevisadas[${idx}].date=new Date(this.value+'T12:00:00').getTime()"
+              style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;color:var(--ink);padding:4px 8px;font-size:11px;cursor:pointer">
+            <select onchange="impSesRevisadas[${idx}]._rutinaId=this.value"
+              style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;color:${s._rutinaId?'var(--green)':'var(--ink3)'};padding:4px 8px;font-size:11px;cursor:pointer;max-width:160px">
+              <option value="">Sin rutina</option>
+              ${rutinas.map(r=>`<option value="${r.id}" ${s._rutinaId===r.id?'selected':''}>${r.name}</option>`).join('')}
+            </select>
+            <span style="font-size:10px;color:var(--ink3)">${durMin>0?durMin+'min':''}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          ${yaExiste?'<span style="font-size:9px;background:var(--border2);color:var(--ink3);padding:2px 6px;border-radius:4px">YA EXISTE</span>':''}
+          <button onclick="impToggleIgnorar(${idx})"
+            style="background:${s._ignorar?'var(--bg3)':'#1a0505'};border:1px solid ${s._ignorar?'var(--border2)':'var(--red)'};border-radius:5px;color:${s._ignorar?'var(--ink3)':'var(--red)'};font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">
+            ${s._ignorar?'Incluir':'Ignorar'}
+          </button>
+        </div>
+      </div>
+      <div style="padding:0 14px 10px;border-top:1px solid var(--border)">
+        ${exHtml}
+      </div>
+    </div>`;
+  });
+
+  const nImportar=impSesRevisadas.filter(s=>!s._ignorar).length;
+  html+=`
+    <div style="position:sticky;bottom:0;background:var(--bg2);padding:12px 0;border-top:1px solid var(--border);display:flex;gap:8px">
+      <button class="btn btn-s" style="width:auto" onclick="renderImpStep1();document.getElementById('imp-title').textContent='Importar desde Hevy'">← Volver</button>
+      <button class="btn btn-p" onclick="impConfirmar()" id="imp-confirmar-btn">
+        ✓ Importar <span id="imp-n-btn">${nImportar}</span> sesiones
+      </button>
+    </div>`;
+
+  document.getElementById('imp-body').innerHTML=html;
+}
+
+function impToggleIgnorar(idx){
+  impSesRevisadas[idx]._ignorar=!impSesRevisadas[idx]._ignorar;
+  const el=document.getElementById('imp-ses-'+idx);
+  if(el) el.style.opacity=impSesRevisadas[idx]._ignorar?'0.35':'1';
+  // Actualizar contador
+  const n=impSesRevisadas.filter(s=>!s._ignorar).length;
+  const nbtn=document.getElementById('imp-n-btn');
+  if(nbtn) nbtn.textContent=n;
+  // Cambiar texto del botón
+  const btn=el?.querySelector('button[onclick*="impToggleIgnorar"]');
+  if(btn){ btn.textContent=impSesRevisadas[idx]._ignorar?'Incluir':'Ignorar'; btn.style.color=impSesRevisadas[idx]._ignorar?'var(--ink3)':'var(--red)'; btn.style.borderColor=impSesRevisadas[idx]._ignorar?'var(--border2)':'var(--red)'; btn.style.background=impSesRevisadas[idx]._ignorar?'var(--bg3)':'#1a0505'; }
+}
+
+// Construir mapa nombre→id canónico (incluye FUSION_MAP + nombres alternativos)
+function buildNombreMap(){
+  const m={
+    'press de banca (barra)':'ex_press_banca','press banca (barra)':'ex_press_banca',
+    'press de banca inclinado (barra)':'ex_press_inclinado','press inclinado (barra)':'ex_press_inclinado',
+    'remo pendlay (barra)':'ex_remo_barra','remo con barra':'ex_remo_barra',
+    'press de hombros (barra)':'ex_press_hombros',
+    'peso muerto (barra)':'ex_peso_muerto',
+    'jalón al pecho (cable)':'ex_jalon_pecho','jalon al pecho (cable)':'ex_jalon_pecho',
+    'sentadilla (barra)':'ex_sentadilla',
+    'empuje de caderas (barra)':'ex_hip_thrust','hip thrust (barra)':'ex_hip_thrust',
+    'trote':'ex_correr','trote semanal':'ex_correr','correr':'ex_correr',
+    'running':'ex_correr','outdoor run':'ex_correr','outdoor running':'ex_correr',
+    'treadmill running':'ex_correr','treadmill':'ex_correr','jogging':'ex_correr',
+    'carrera':'ex_correr','carrera / trote':'ex_correr','correr / trote':'ex_correr',
+  };
+  // Agregar también ejercicios existentes por nombre exacto
+  (forge.exercises||[]).forEach(e=>{ m[e.name.toLowerCase().trim()]=e.id; });
+  return m;
+}
+
+// ── PASO 3: confirmar y guardar ───────────────────────────────
+function impConfirmar(){
+  const btn=document.getElementById('imp-confirmar-btn');
+  btn.disabled=true; btn.textContent='⏳ Guardando…';
+
+  const NOMBRE_MAP=buildNombreMap();
+  const aImportar=impSesRevisadas.filter(s=>!s._ignorar);
+  const existingIds=new Set((forge.sessions||[]).map(s=>s.id));
+  let nuevas=0, exNuevos=0;
+
+  aImportar.forEach(s=>{
+    if(existingIds.has(s.id)) return; // ya existe, saltar
+
+    // Convertir exercises de {nombre:{sets}} a array con exId
+    const exercises=Object.entries(s.exercises).map(([nombre,ex])=>{
+      const key=nombre.toLowerCase().trim();
+      const canonId=NOMBRE_MAP[key];
+      // Buscar o crear ejercicio
+      let exObj=(forge.exercises||[]).find(e=>e.id===canonId||e.name.toLowerCase().trim()===key);
+      if(!exObj){
+        const isRun=['trote','correr','running','jogging','carrera'].some(k=>key.includes(k));
+        exObj={id:'ex_h'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+               name:nombre,type:isRun?'run':'barbell',muscle:'',restSec:isRun?0:90};
+        forge.exercises.push(exObj);
+        exNuevos++;
+      }
+      const isRun=exObj.type==='run'||exObj.type==='hiit';
+      return {
+        exId:exObj.id,
+        sets:ex.sets.map(set=>isRun
+          ? {type:'run',done:true,distance:'',time:'',fc:'',pasos:'',weight:0,reps:0}
+          : {type:'weight',done:true,weight:set.weight,reps:set.reps,distance:'',time:'',fc:'',pasos:''})
+      };
+    });
+
+    const totalVol=exercises.reduce((a,ex)=>a+ex.sets.filter(s=>!['run','hiit'].includes((forge.exercises||[]).find(e=>e.id===ex.exId)?.type)).reduce((b,s)=>b+(s.weight||0)*(s.reps||0),0),0);
+    const sesion={
+      id:s.id, routineId:s._rutinaId||null,
+      routineName:s._rutinaId?(forge.routines||[]).find(r=>r.id===s._rutinaId)?.name||s.routineName:s.routineName,
+      date:s.date, exercises, elapsed:s.elapsed||0,
+      totalVolume:totalVol, source:'hevy'
+    };
+    if(!forge.sessions) forge.sessions=[];
+    forge.sessions.push(sesion);
+    existingIds.add(s.id);
+    nuevas++;
+  });
+
+  forge.sessions.sort((a,b)=>a.date-b.date);
+  saveDB();
+  setTimeout(()=>syncCloud(),800);
+
+  closeModal('modal-import');
+  impReset();
+  renderAll();
+  showToast(`✓ ${nuevas} sesiones importadas · ${exNuevos} ejercicios nuevos`,3000,'ok');
+}
+
+// Mantener alias para compatibilidad
+function runImport(){ impParsear(); }
+function doneImp(log,btn){}
 
 // Parsea fechas de Hevy que vienen en múltiples formatos:
 // "2024 Jan 06, 09:15 AM", "2024-01-06 09:15:00", "2024-01-06T09:15:00", "Jan 06, 2024", etc.
