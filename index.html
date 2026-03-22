@@ -2983,74 +2983,85 @@ function closeCuerpoChart(){
 }
 
 function renderProgCuerpo(){
-  // Deduplicar por fecha: quedarse con el registro más completo (más campos no-null)
   const porFecha={};
   (forge.bodyMetrics||[]).forEach(m=>{
     const f=m.date;
-    if(!porFecha[f]){
-      porFecha[f]=m;
-    } else {
+    if(!porFecha[f]){ porFecha[f]=m; }
+    else {
       const score=(x)=>[x.peso,x.grasa,x.muscular,x.imc,x.pliegues?.p6,x.pliegues?.p8].filter(v=>v!=null&&v!=='').length;
       const merged={...(score(m)>score(porFecha[f])?m:porFecha[f])};
       ['peso','grasa','muscular','imc'].forEach(k=>{ if(!merged[k]&&porFecha[f][k]) merged[k]=porFecha[f][k]; if(!merged[k]&&m[k]) merged[k]=m[k]; });
       if(!merged.pliegues) merged.pliegues={};
-      if(!merged.pliegues.p6&&porFecha[f].pliegues?.p6) merged.pliegues.p6=porFecha[f].pliegues.p6;
-      if(!merged.pliegues.p6&&m.pliegues?.p6) merged.pliegues.p6=m.pliegues.p6;
-      if(!merged.pliegues.p8&&porFecha[f].pliegues?.p8) merged.pliegues.p8=porFecha[f].pliegues.p8;
-      if(!merged.pliegues.p8&&m.pliegues?.p8) merged.pliegues.p8=m.pliegues.p8;
+      ['p6','p8'].forEach(k=>{ if(!merged.pliegues[k]&&porFecha[f].pliegues?.[k]) merged.pliegues[k]=porFecha[f].pliegues[k]; if(!merged.pliegues[k]&&m.pliegues?.[k]) merged.pliegues[k]=m.pliegues[k]; });
       porFecha[f]=merged;
     }
   });
-  const mets=Object.values(porFecha).sort((a,b)=>a.date.localeCompare(b.date));
+  const metsAll=Object.values(porFecha).sort((a,b)=>a.date.localeCompare(b.date));
+  _cuerpoMets=metsAll;
 
-  if(!mets.length){
+  if(!metsAll.length){
     document.getElementById('cuerpo-kpis').innerHTML='';
     document.getElementById('cuerpo-charts').innerHTML=`<div class="empty" style="padding:60px 0"><div class="empty-icon">⚖️</div><div class="empty-text">Sin mediciones</div><div class="empty-sub">Toca "+ Añadir" para registrar tu primera medición.</div></div>`;
     document.getElementById('cuerpo-historial').innerHTML='';
     return;
   }
 
+  const hoy12m=new Date(); hoy12m.setFullYear(hoy12m.getFullYear()-1);
+  const corte12m=hoy12m.toISOString().split('T')[0];
+  const filtroGlobal=window._cuerpoFiltroGlobal||'12m';
+  const metsBase=(filtroGlobal==='todo'?metsAll:metsAll.filter(m=>m.date>=corte12m));
+  const mets=metsBase.length>=2?metsBase:metsAll;
+
   const ult=mets[mets.length-1], pri=mets[0];
   const delta=(a,b)=>{ const v=parseFloat(a||0)-parseFloat(b||0); return {v:Math.round(v*10)/10, str:(v>0?'+':'')+Math.round(v*10)/10}; };
-
-  // ── KPIs grandes estilo ejercicios ─────────────────────────────
   const dpeso=delta(ult.peso,pri.peso), dgrasa=delta(ult.grasa,pri.grasa), dimc=delta(ult.imc,pri.imc);
-  const pesoMin=Math.min(...mets.filter(m=>m.peso).map(m=>parseFloat(m.peso)));
-  const pesoMax=Math.max(...mets.filter(m=>m.peso).map(m=>parseFloat(m.peso)));
-  // Guardar mets globalmente para que los onclick puedan acceder
-  _cuerpoMets = mets;
+  const pesosArr=mets.filter(m=>m.peso).map(m=>parseFloat(m.peso));
+  const pesoMin=Math.min(...pesosArr), pesoMax=Math.max(...pesosArr);
+  const periodoLabel=filtroGlobal==='12m'?'últimos 12m':'desde inicio';
+
+  const filtroGlobalHtml=`<div style="display:flex;gap:4px">
+    ${['todo','12m'].map(f=>`<button onclick="window._cuerpoFiltroGlobal='${f}';renderProgCuerpo()"
+      style="padding:3px 10px;border-radius:20px;border:1px solid ${f===filtroGlobal?'var(--orange)':'var(--border2)'};
+      background:${f===filtroGlobal?'#1a0a00':'var(--bg3)'};color:${f===filtroGlobal?'var(--orange)':'var(--ink3)'};
+      font-size:11px;font-weight:600;cursor:pointer">${f==='todo'?'Todo':'12 meses'}</button>`).join('')}
+  </div>`;
 
   document.getElementById('cuerpo-kpis').innerHTML=`
     <div onclick="openCuerpoChart('peso')" style="padding:16px 12px;border-right:1px solid var(--border);text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
       <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Peso actual</div>
       <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:var(--ink);line-height:1">${ult.peso||'—'}<span style="font-size:14px;font-weight:400;color:var(--ink3)">kg</span></div>
-      <div style="font-size:11px;font-weight:700;color:${dpeso.v<0?'var(--green)':dpeso.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dpeso.v!==0?dpeso.str+'kg desde inicio':''}</div>
-      <div style="font-size:10px;color:var(--ink3);margin-top:2px">Mín ${pesoMin}kg · Máx ${pesoMax}kg · 📈</div>
+      <div style="font-size:11px;font-weight:700;color:${dpeso.v<0?'var(--green)':dpeso.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dpeso.v!==0?dpeso.str+'kg '+periodoLabel:''}</div>
+      <div style="font-size:10px;color:var(--ink3);margin-top:2px">↓${pesoMin} · ↑${pesoMax}kg · 📈</div>
     </div>
     <div onclick="openCuerpoChart('imc')" style="padding:16px 12px;border-right:1px solid var(--border);text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
       <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">IMC actual</div>
       <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:var(--gold);line-height:1">${ult.imc||'—'}</div>
-      <div style="font-size:11px;font-weight:700;color:${dimc.v<0?'var(--green)':dimc.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dimc.v!==0?dimc.str+' desde inicio':''}</div>
+      <div style="font-size:11px;font-weight:700;color:${dimc.v<0?'var(--green)':dimc.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dimc.v!==0?dimc.str+' '+periodoLabel:''}</div>
       <div style="font-size:10px;color:var(--ink3);margin-top:2px">${ult.imc?parseFloat(ult.imc)<25?'Normal':parseFloat(ult.imc)<30?'Sobrepeso':'Obesidad':''} · 📈</div>
     </div>
     <div onclick="openCuerpoChart('grasa')" style="padding:16px 12px;text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
       <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Grasa corporal</div>
       <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:${parseFloat(ult.grasa||99)<30?'var(--green)':'var(--orange)'};line-height:1">${ult.grasa||'—'}<span style="font-size:14px;font-weight:400;color:var(--ink3)">${ult.grasa?'%':''}</span></div>
-      <div style="font-size:11px;font-weight:700;color:${dgrasa.v<0?'var(--green)':dgrasa.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dgrasa.v!==0?dgrasa.str+'% desde inicio':''}</div>
+      <div style="font-size:11px;font-weight:700;color:${dgrasa.v<0?'var(--green)':dgrasa.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dgrasa.v!==0?dgrasa.str+'% '+periodoLabel:''}</div>
       <div style="font-size:10px;color:var(--ink3);margin-top:2px">${mets.filter(m=>m.grasa).length} registros · 📈</div>
     </div>`;
 
-  // Gráficos ocultos por defecto — se abren al tocar un KPI
   document.getElementById('cuerpo-charts').innerHTML='';
 
-  // ── Historial filtrado por año ─────────────────────────────────
-  const años=[...new Set(mets.map(m=>m.date.slice(0,4)))].sort().reverse();
+  const años=[...new Set(metsAll.map(m=>m.date.slice(0,4)))].sort().reverse();
   const añoFiltro=window._cuerpoAñoFiltro||años[0]||'';
-  const metsFiltradas=[...mets].filter(m=>m.date.startsWith(añoFiltro)).reverse();
+  const metsFiltradas=[...metsAll].filter(m=>m.date.startsWith(añoFiltro)).reverse();
+  const pesosAño=metsFiltradas.filter(m=>m.peso).map(m=>parseFloat(m.peso));
+  const pMin=pesosAño.length?Math.min(...pesosAño):null;
+  const pMax=pesosAño.length?Math.max(...pesosAño):null;
+  const pMed=pesosAño.length?Math.round(pesosAño.reduce((a,b)=>a+b,0)/pesosAño.length*10)/10:null;
 
   document.getElementById('cuerpo-historial').innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div class="section-label" style="margin:0">Historial · ${mets.length} registros totales</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div class="section-label" style="margin:0">Historial · ${metsAll.length} totales</div>
+        ${filtroGlobalHtml}
+      </div>
       <div style="display:flex;gap:4px;flex-wrap:wrap">
         ${años.map(a=>`<button onclick="window._cuerpoAñoFiltro='${a}';renderProgCuerpo()"
           style="padding:3px 10px;border-radius:20px;border:1px solid ${a===añoFiltro?'var(--orange)':'var(--border2)'};
@@ -3058,18 +3069,33 @@ function renderProgCuerpo(){
           font-size:11px;font-weight:600;cursor:pointer">${a}</button>`).join('')}
       </div>
     </div>
+    ${pesosAño.length>=2?`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-bottom:10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden">
+      <div style="padding:10px;text-align:center;border-right:1px solid var(--border)">
+        <div style="font-size:9px;color:var(--green);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px">▼ Mínimo</div>
+        <div style="font-family:var(--fd);font-size:22px;font-weight:800;color:var(--green)">${pMin}<span style="font-size:10px;font-weight:400;color:var(--ink3)">kg</span></div>
+      </div>
+      <div style="padding:10px;text-align:center;border-right:1px solid var(--border)">
+        <div style="font-size:9px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px">◎ Promedio</div>
+        <div style="font-family:var(--fd);font-size:22px;font-weight:800;color:var(--ink)">${pMed}<span style="font-size:10px;font-weight:400;color:var(--ink3)">kg</span></div>
+      </div>
+      <div style="padding:10px;text-align:center">
+        <div style="font-size:9px;color:var(--red);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px">▲ Máximo</div>
+        <div style="font-family:var(--fd);font-size:22px;font-weight:800;color:var(--red)">${pMax}<span style="font-size:10px;font-weight:400;color:var(--ink3)">kg</span></div>
+      </div>
+    </div>`:''}
     <div style="font-size:11px;color:var(--ink3);margin-bottom:8px">${metsFiltradas.length} registros en ${añoFiltro} · Toca ✏ para editar</div>
     <div class="card" style="padding:0;overflow:hidden">
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:480px">
           <thead><tr style="border-bottom:1px solid var(--border);background:var(--bg3)">
             <th style="padding:8px 10px;text-align:left;color:var(--ink3);font-size:10px;text-transform:uppercase">Fecha</th>
-            <th onclick="openCuerpoChart('peso')" style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px;cursor:pointer" title="Ver gráfico">Peso ↗</th>
-            <th onclick="openCuerpoChart('imc')"  style="padding:8px 6px;text-align:center;color:var(--gold);font-size:10px;cursor:pointer" title="Ver gráfico">IMC ↗</th>
-            <th onclick="openCuerpoChart('grasa')" style="padding:8px 6px;text-align:center;color:var(--green);font-size:10px;cursor:pointer" title="Ver gráfico">Grasa% ↗</th>
-            <th onclick="openCuerpoChart('muscular')" style="padding:8px 6px;text-align:center;color:var(--blue);font-size:10px;cursor:pointer" title="Ver gráfico">Musc. ↗</th>
-            <th onclick="openCuerpoChart('p6')"  style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px;cursor:pointer" title="Ver gráfico">6P ↗</th>
-            <th onclick="openCuerpoChart('p8')"  style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px;cursor:pointer" title="Ver gráfico">8P ↗</th>
+            <th onclick="openCuerpoChart('peso')"    style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px;cursor:pointer">Peso ↗</th>
+            <th onclick="openCuerpoChart('imc')"     style="padding:8px 6px;text-align:center;color:var(--gold);font-size:10px;cursor:pointer">IMC ↗</th>
+            <th onclick="openCuerpoChart('grasa')"   style="padding:8px 6px;text-align:center;color:var(--green);font-size:10px;cursor:pointer">Grasa% ↗</th>
+            <th onclick="openCuerpoChart('muscular')" style="padding:8px 6px;text-align:center;color:var(--blue);font-size:10px;cursor:pointer">Musc. ↗</th>
+            <th onclick="openCuerpoChart('p6')"      style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px;cursor:pointer">6P ↗</th>
+            <th onclick="openCuerpoChart('p8')"      style="padding:8px 6px;text-align:center;color:var(--ink3);font-size:10px;cursor:pointer">8P ↗</th>
             <th style="width:28px"></th>
           </tr></thead>
           <tbody id="cuerpo-hist-tbody">
@@ -3079,6 +3105,7 @@ function renderProgCuerpo(){
       </div>
     </div>`;
 }
+
 
 function renderMedRows(mets){
   return mets.map((m,i)=>`
