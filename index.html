@@ -94,6 +94,11 @@ nav{flex-shrink:0;display:flex;height:58px;background:var(--bg2);border-top:1px 
 .empty-text{font-family:var(--fd);font-size:20px;font-weight:700;color:var(--ink);margin-bottom:6px}
 .empty-sub{font-size:13px;color:var(--ink3);line-height:1.5}
 
+/* Date picker 3 selectores */
+.dp-wrap{display:grid;grid-template-columns:1fr 2fr 1fr;gap:6px}
+.dp-sel{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--ink);font-family:var(--fb);font-size:15px;padding:11px 8px;cursor:pointer;outline:none;width:100%;-webkit-appearance:none;appearance:none;text-align:center}
+.dp-sel:focus{border-color:var(--orange)}
+
 /* Date input — picker nativo en iOS/Android */
 input[type="date"].inp, input[type="date"]{
   -webkit-appearance:none;
@@ -650,8 +655,8 @@ select.inp{cursor:pointer}
     <div id="cuerpo-chart-title" style="font-size:15px;font-weight:700;color:var(--ink)"></div>
     <div style="width:34px"></div>
   </div>
-  <div id="cuerpo-chart-kpis" style="display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--border)"></div>
-  <div id="cuerpo-chart-body" style="flex:1;overflow-y:auto;padding:16px"></div>
+  <div id="cuerpo-chart-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--border);flex-shrink:0"></div>
+  <div id="cuerpo-chart-body" style="flex:1;overflow-y:auto;padding:16px 20px"></div>
 </div>
 
 <!-- MODAL: DATOS PERSONALES -->
@@ -672,7 +677,7 @@ select.inp{cursor:pointer}
         </div>
         <div class="field">
           <label>Fecha de nacimiento</label>
-          <input class="inp" type="date" id="dp-nacimiento">
+          <div id="dp-nacimiento-wrap"></div>
         </div>
       </div>
       <div id="dp-resumen" style="background:var(--bg3);border-radius:var(--r);padding:12px;margin-bottom:14px;font-size:13px;color:var(--ink2);line-height:1.8;display:none"></div>
@@ -830,7 +835,7 @@ select.inp{cursor:pointer}
       <div class="field"><label>Vista</label>
         <select class="inp" id="foto-tipo"><option value="frente">Frente</option><option value="lateral">Lateral</option><option value="espalda">Espalda</option></select>
       </div>
-      <div class="field"><label>Fecha</label><input class="inp" type="date" id="foto-fecha"></div>
+      <div class="field"><label>Fecha</label><div id="foto-fecha-wrap"></div></div>
       <div onclick="document.getElementById('foto-file').click()" style="border:2px dashed var(--border2);border-radius:var(--rl);padding:24px;text-align:center;cursor:pointer;margin-bottom:12px">
         <div id="foto-preview" style="font-size:13px;color:var(--ink3)">📷 Toca para seleccionar foto</div>
       </div>
@@ -867,7 +872,7 @@ select.inp{cursor:pointer}
         📚 Basado en RP/Israetel para intermedios: <strong>16 semanas</strong> de progresión lineal +2.5% semanal en los 3 ejercicios clave.
       </div>
       <div class="field"><label>Nombre del plan</label><input class="inp" id="plan-nombre" value="Ciclo Fuerza + 10K"></div>
-      <div class="field"><label>Fecha de inicio</label><input class="inp" type="date" id="plan-inicio"></div>
+      <div class="field"><label>Fecha de inicio</label><div id="plan-inicio-wrap"></div></div>
       <div style="font-size:11px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:700">Cargas de partida</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="field"><label>Sentadilla (kg)</label><input class="inp" type="number" id="plan-sent" value="75.9" step="0.5"></div>
@@ -894,7 +899,7 @@ select.inp{cursor:pointer}
       <div style="background:var(--bg3);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--ink2);margin-bottom:14px;border-left:3px solid var(--orange)">
         💡 Puedes poner una fecha pasada para cargar sesiones que ya hiciste.
       </div>
-      <div class="field"><label>Fecha</label><input class="inp" type="date" id="free-ses-fecha"></div>
+      <div class="field"><label>Fecha</label><div id="free-ses-fecha-wrap"></div></div>
       <div class="field"><label>Nombre</label><input class="inp" type="text" id="free-ses-nombre" placeholder="Ej: Tren Superior, Piernas..."></div>
       <button class="btn btn-p" onclick="doStartFreeSession()">▶ Iniciar sesión</button>
     </div>
@@ -912,7 +917,7 @@ select.inp{cursor:pointer}
     <div class="modal-body">
       <input type="hidden" id="edit-ses-id">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>Fecha</label><input class="inp" type="date" id="edit-ses-fecha"></div>
+        <div class="field"><label>Fecha</label><div id="edit-ses-fecha-wrap"></div></div>
         <div class="field" id="edit-dur-field"><label>Duración (hh:mm)</label><input class="inp" type="text" id="edit-ses-dur" placeholder="00:37" pattern="\d{1,2}:\d{2}" inputmode="numeric"></div>
       </div>
       <div class="field"><label>Nombre</label><input class="inp" type="text" id="edit-ses-nombre"></div>
@@ -1627,7 +1632,7 @@ function openEditSesion(id){
   const fechaStr=new Date(s.date).toISOString().split('T')[0];
   const durMins=Math.floor((s.elapsed||0)/60);
   document.getElementById('edit-ses-id').value=id;
-  document.getElementById('edit-ses-fecha').value=fechaStr;
+  document.getElementById('edit-ses-fecha-wrap').innerHTML=renderDatePicker('edit-ses-fecha',fechaStr);
   document.getElementById('edit-ses-nombre').value=s.routineName||'';
 
   // Duración: solo mostrar para sesiones de fuerza
@@ -1690,7 +1695,7 @@ function updateEditSet(sesId,ei,si,field,val){
 function saveEditSesion(){
   const id=document.getElementById('edit-ses-id').value;
   const s=(forge.sessions||[]).find(x=>x.id===id); if(!s) return;
-  const fecha=document.getElementById('edit-ses-fecha').value;
+  const fecha=getDatePickerValue('edit-ses-fecha');
   const nombre=document.getElementById('edit-ses-nombre').value.trim();
 
   if(fecha) s.date=new Date(fecha+'T12:00:00').getTime();
@@ -1894,13 +1899,12 @@ function _doIniciarRutina(rutinaId, factor){
 }
 
 function startFreeSession(){
-  // Pedir fecha — útil para cargar sesiones pasadas
-  document.getElementById('free-ses-fecha').value=today();
+  document.getElementById('free-ses-fecha-wrap').innerHTML=renderDatePicker('free-ses-fecha', today());
   document.getElementById('free-ses-nombre').value='Sesión libre';
   openModal('modal-free-ses');
 }
 function doStartFreeSession(){
-  const fecha=document.getElementById('free-ses-fecha').value||today();
+  const fecha=getDatePickerValue('free-ses-fecha')||today();
   const nombre=document.getElementById('free-ses-nombre').value.trim()||'Sesión libre';
   closeModal('modal-free-ses');
   activeSession={
@@ -2377,7 +2381,7 @@ function getCargasSemana(rutinaId){
 
 function crearPlan(){
   const nombre=document.getElementById('plan-nombre').value.trim()||'Ciclo Fuerza + 10K';
-  const inicio=document.getElementById('plan-inicio').value;
+  const inicio=getDatePickerValue('plan-inicio');
   if(!inicio){ showToast('Selecciona la fecha de inicio'); return; }
   const sent  =parseFloat(document.getElementById('plan-sent').value)||75.9;
   const banca =parseFloat(document.getElementById('plan-banca').value)||65;
@@ -2910,30 +2914,39 @@ function openCuerpoChart(key, mets){
   document.getElementById('cuerpo-chart-title').textContent=cfg.label;
   document.getElementById('cuerpo-chart-ov').style.display='flex';
 
-  // KPIs de esta métrica
+  // KPIs de esta métrica (todos los registros)
   const vals=key==='p6'||key==='p8'
     ? mets.filter(m=>m.pliegues?.[key]).map(m=>parseFloat(m.pliegues[key]))
     : mets.filter(m=>m[key]!=null&&m[key]!='').map(m=>parseFloat(m[key]));
   const ult=vals[vals.length-1], pri=vals[0];
-  const min=Math.min(...vals), max=Math.max(...vals);
+  const vMin=Math.min(...vals), vMax=Math.max(...vals);
+  const vProm=Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10;
   const delta=Math.round((ult-pri)*10)/10;
-  const dStr=(delta>0?'+':'')+delta+cfg.unit;
+  const dStr=(delta>0?'+':'')+delta+(cfg.unit||'');
   const menorEsMejor=key==='grasa'||key==='imc'||key==='p6'||key==='p8'||key==='peso';
   const dColor=delta===0?'var(--ink3)':(delta<0)===menorEsMejor?'var(--green)':'var(--red)';
 
   document.getElementById('cuerpo-chart-kpis').innerHTML=`
-    <div style="padding:14px 12px;border-right:1px solid var(--border);text-align:center">
-      <div style="font-size:9px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px">Actual</div>
-      <div style="font-family:var(--fd);font-size:28px;font-weight:900;color:${cfg.color};line-height:1">${ult||'—'}<span style="font-size:12px;color:var(--ink3)">${cfg.unit}</span></div>
+    <div style="padding:12px 10px;border-right:1px solid var(--border);text-align:center">
+      <div style="font-size:8px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px">Actual</div>
+      <div style="font-family:var(--fd);font-size:26px;font-weight:900;color:${cfg.color};line-height:1">${ult||'—'}<span style="font-size:11px;color:var(--ink3)">${cfg.unit}</span></div>
     </div>
-    <div style="padding:14px 12px;border-right:1px solid var(--border);text-align:center">
-      <div style="font-size:9px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px">Progresión</div>
-      <div style="font-family:var(--fd);font-size:28px;font-weight:900;color:${dColor};line-height:1">${dStr}</div>
+    <div style="padding:12px 10px;border-right:1px solid var(--border);text-align:center">
+      <div style="font-size:8px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px">Progresión</div>
+      <div style="font-family:var(--fd);font-size:26px;font-weight:900;color:${dColor};line-height:1">${dStr}</div>
       <div style="font-size:10px;color:var(--ink3);margin-top:2px">${vals.length} registros</div>
     </div>
-    <div style="padding:14px 12px;text-align:center">
-      <div style="font-size:9px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px">Rango</div>
-      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-top:4px">${min}–${max}${cfg.unit}</div>
+    <div style="padding:12px 10px;border-right:1px solid var(--border);text-align:center">
+      <div style="font-size:8px;color:var(--green);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px">▼ Mínimo</div>
+      <div style="font-family:var(--fd);font-size:26px;font-weight:900;color:var(--green);line-height:1">${vMin}<span style="font-size:11px;color:var(--ink3)">${cfg.unit}</span></div>
+    </div>
+    <div style="padding:12px 10px;border-right:1px solid var(--border);text-align:center">
+      <div style="font-size:8px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px">◎ Promedio</div>
+      <div style="font-family:var(--fd);font-size:26px;font-weight:900;color:var(--ink);line-height:1">${vProm}<span style="font-size:11px;color:var(--ink3)">${cfg.unit}</span></div>
+    </div>
+    <div style="padding:12px 10px;text-align:center">
+      <div style="font-size:8px;color:var(--red);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px">▲ Máximo</div>
+      <div style="font-family:var(--fd);font-size:26px;font-weight:900;color:var(--red);line-height:1">${vMax}<span style="font-size:11px;color:var(--ink3)">${cfg.unit}</span></div>
     </div>`;
 
   // Gráfico
@@ -2961,13 +2974,33 @@ function openCuerpoChart(key, mets){
     cfg.color
   );
 
+  // Stats del período filtrado
+  const valsFilt=ptsFilt.map(p=>p.val);
+  const statsHtml = valsFilt.length>=2 ? `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:12px;margin-bottom:4px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden">
+      <div style="padding:10px;text-align:center;border-right:1px solid var(--border)">
+        <div style="font-size:8px;color:var(--green);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px">▼ Mínimo</div>
+        <div style="font-family:var(--fd);font-size:20px;font-weight:800;color:var(--green)">${Math.min(...valsFilt)}<span style="font-size:10px;color:var(--ink3)">${cfg.unit}</span></div>
+      </div>
+      <div style="padding:10px;text-align:center;border-right:1px solid var(--border)">
+        <div style="font-size:8px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px">◎ Promedio</div>
+        <div style="font-family:var(--fd);font-size:20px;font-weight:800;color:var(--ink)">${Math.round(valsFilt.reduce((a,b)=>a+b,0)/valsFilt.length*10)/10}<span style="font-size:10px;color:var(--ink3)">${cfg.unit}</span></div>
+      </div>
+      <div style="padding:10px;text-align:center">
+        <div style="font-size:8px;color:var(--red);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px">▲ Máximo</div>
+        <div style="font-family:var(--fd);font-size:20px;font-weight:800;color:var(--red)">${Math.max(...valsFilt)}<span style="font-size:10px;color:var(--ink3)">${cfg.unit}</span></div>
+      </div>
+    </div>` : '';
+
   document.getElementById('cuerpo-chart-body').innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
-      <div style="font-size:11px;color:var(--ink3)">${ptsFilt.length} registros</div>
+      <div style="font-size:11px;color:var(--ink3)">${ptsFilt.length} registros en período</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap">${filtroHtml}</div>
     </div>
     ${ptsFilt.length>=2
-      ? `<div style="margin-bottom:4px;font-size:11px;color:var(--ink3);font-weight:600">${cfg.label}${cfg.unit?' ('+cfg.unit+')':''} · ${ptsFilt.length} registros</div>`+renderLineChartFull(ptsFilt, cfg.label, cfg.color)
+      ? `<div style="margin-bottom:4px;font-size:11px;color:var(--ink3);font-weight:600">${cfg.label}${cfg.unit?' ('+cfg.unit+')':''} · ${ptsFilt.length} registros</div>`
+        + renderLineChartFull(ptsFilt, cfg.label, cfg.color)
+        + statsHtml
       : `<div class="empty" style="padding:40px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos en este período</div><div class="empty-sub">Prueba con "Todo" para ver el historial completo.</div></div>`}
     <div style="margin-top:20px">
       <div class="section-label" style="margin-bottom:8px">Todos los registros · ${pts.length} total</div>
@@ -3133,10 +3166,8 @@ function openEditMedRow(fecha){
 
   // Reemplazar la fila con inputs editables
   row.innerHTML=`
-    <td style="padding:4px 6px">
-      <input type="date" value="${m.date}"
-        style="background:var(--bg4);border:1px solid var(--orange);border-radius:5px;color:var(--ink);padding:5px;font-size:11px;width:120px"
-        id="edit-med-fecha-${fecha}">
+    <td style="padding:4px 6px" colspan="1">
+      ${renderDatePicker('emd-'+fecha.replace(/-/g,''), fecha)}
     </td>
     <td style="padding:4px 3px"><input type="number" step="0.1" value="${m.peso||''}" placeholder="—"
       style="${styleInp()}" id="em-peso-${fecha}"></td>
@@ -3163,7 +3194,8 @@ function styleInp(){
 }
 
 function saveEditMedRow(fechaOriginal){
-  const nuevaFecha=document.getElementById('edit-med-fecha-'+fechaOriginal)?.value||fechaOriginal;
+  const dpId='emd-'+fechaOriginal.replace(/-/g,'');
+  const nuevaFecha=getDatePickerValue(dpId)||fechaOriginal;
   const peso    =parseFloat(document.getElementById('em-peso-'+fechaOriginal)?.value)||null;
   const grasa   =parseFloat(document.getElementById('em-grasa-'+fechaOriginal)?.value)||null;
   const muscular=parseFloat(document.getElementById('em-musc-'+fechaOriginal)?.value)||null;
@@ -3216,15 +3248,15 @@ function calcIMC(peso,estCm){
 function openDatosPersonales(){
   const dp=getDatosPersonales();
   document.getElementById('dp-estatura').value=dp.estatura||'';
-  document.getElementById('dp-nacimiento').value=dp.nacimiento||'';
+  document.getElementById('dp-nacimiento-wrap').innerHTML=renderDatePicker('dp-nac', dp.nacimiento||today());
   actualizarResumenPerfil(dp);
-  document.getElementById('dp-estatura').oninput=
-  document.getElementById('dp-nacimiento').oninput=()=>actualizarResumenPerfil({
+  document.getElementById('dp-estatura').oninput=()=>actualizarResumenPerfil({
     estatura:document.getElementById('dp-estatura').value,
-    nacimiento:document.getElementById('dp-nacimiento').value
+    nacimiento:getDatePickerValue('dp-nac')
   });
   openModal('modal-perfil');
 }
+function actualizarResumenPerfil(dp){}  // simplificado — se recalcula al guardar
 function actualizarResumenPerfil(dp){
   const res=document.getElementById('dp-resumen'); if(!res) return;
   const edad=calcEdad(dp.nacimiento);
@@ -3239,7 +3271,7 @@ function actualizarResumenPerfil(dp){
 }
 function saveDatosPersonales(){
   const estatura=parseFloat(document.getElementById('dp-estatura').value)||null;
-  const nacimiento=document.getElementById('dp-nacimiento').value||null;
+  const nacimiento=getDatePickerValue('dp-nac')||null;
   saveDatosPersonalesData({estatura,nacimiento});
   // Recalcular IMC en todas las mediciones que tienen peso
   if(estatura&&forge.bodyMetrics){
@@ -3289,8 +3321,11 @@ function renderMedModal(){
     body.innerHTML = `
       <div class="field">
         <label>Fecha</label>
-        <input class="inp" type="date" value="${medFechaActual}"
-          onchange="medFechaActual=this.value;renderMedModal()">
+        ${renderDatePicker('medmod', medFechaActual)}
+        <div style="margin-top:6px;text-align:right">
+          <button onclick="medFechaActual=getDatePickerValue('medmod');renderMedModal()" 
+            class="btn btn-s btn-sm" style="width:auto">Confirmar fecha</button>
+        </div>
       </div>
       <div style="font-size:11px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:700">
         ¿Qué quieres registrar?
@@ -3437,7 +3472,7 @@ function renderProgFotos(){
 function openAddPhoto(){
   pendingFoto=null;
   document.getElementById('foto-tipo').value=photoTab;
-  document.getElementById('foto-fecha').value=today();
+  document.getElementById('foto-fecha-wrap').innerHTML=renderDatePicker('foto-fecha', today());
   document.getElementById('foto-preview').innerHTML='📷 Toca para seleccionar foto';
   document.getElementById('foto-preview').style.cssText='font-size:13px;color:var(--ink3)';
   document.getElementById('foto-save-btn').disabled=true;
@@ -3455,7 +3490,7 @@ function handleFotoFile(e){
 }
 function savePhoto(){
   if(!pendingFoto) return;
-  const p={id:'ph_'+Date.now(),tipo:document.getElementById('foto-tipo').value,date:document.getElementById('foto-fecha').value,data:pendingFoto};
+  const p={id:'ph_'+Date.now(),tipo:document.getElementById('foto-tipo').value,date:getDatePickerValue('foto-fecha'),data:pendingFoto};
   if(!forge.photos) forge.photos=[];
   forge.photos.push(p); saveDB(); closeModal('modal-foto'); showToast('✓ Foto guardada',2000,'ok'); renderProgFotos();
 }
@@ -3660,7 +3695,7 @@ let perfilTab='habitos';
 function renderPerfil(){
   const btn=document.getElementById('perfil-action-btn');
   if(perfilTab==='habitos')  { btn.textContent='';        btn.style.display='none'; renderHabitsLumen(); }
-  if(perfilTab==='plan')     { btn.textContent='+ Plan';  btn.style.display='inline-flex'; btn.onclick=()=>{ document.getElementById('plan-inicio').value=today(); openModal('modal-plan'); }; renderPerfilPlan(); }
+  if(perfilTab==='plan')     { btn.textContent='+ Plan';  btn.style.display='inline-flex'; btn.onclick=()=>{ document.getElementById('plan-inicio-wrap').innerHTML=renderDatePicker('plan-inicio',today()); openModal('modal-plan'); }; renderPerfilPlan(); }
   if(perfilTab==='logros')   { btn.style.display='none'; renderLogros(); }
 }
 function switchPerfilTab(tab,btn2){
@@ -3756,7 +3791,7 @@ function renderPerfilPlan(){
   const el=document.getElementById('perfil-plan'); if(!el) return;
   const plan=(forge.planes||[]).find(p=>p.activo);
   if(!plan){
-    el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin plan activo</div><div class="empty-sub">Crea tu plan de 16 semanas con progresión +2.5% semanal en los 3 ejercicios clave.</div><button class="btn btn-p" onclick="document.getElementById('plan-inicio').value=today();openModal('modal-plan')" style="margin-top:16px">🚀 Crear plan</button></div>`;
+    el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin plan activo</div><div class="empty-sub">Crea tu plan de 16 semanas con progresión +2.5% semanal en los 3 ejercicios clave.</div><button class="btn btn-p" onclick="document.getElementById('plan-inicio-wrap').innerHTML=renderDatePicker('plan-inicio',today());openModal('modal-plan')" style="margin-top:16px">🚀 Crear plan</button></div>`;
     return;
   }
   const semG=semanaActualPlan(plan);
@@ -3981,9 +4016,11 @@ function renderImpStep2(){
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px">${s.routineName}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <input type="date" value="${fechaStr}"
-              onchange="impSesRevisadas[${idx}].date=new Date(this.value+'T12:00:00').getTime()"
-              style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;color:var(--ink);padding:4px 8px;font-size:11px;cursor:pointer">
+            <div style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:4px;min-width:200px" id="dp-imp-${idx}">
+              ${renderDatePicker('imp'+idx, fechaStr)}
+            </div>
+            <button onclick="impSesRevisadas[${idx}].date=new Date(getDatePickerValue('imp${idx}')+'T12:00:00').getTime();showToast('Fecha actualizada',1200,'ok')"
+              style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--orange);font-size:11px;font-weight:600;padding:4px 8px;cursor:pointer;white-space:nowrap">✓ Ok</button>
             <select onchange="impSesRevisadas[${idx}]._rutinaId=this.value"
               style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;color:${s._rutinaId?'var(--green)':'var(--ink3)'};padding:4px 8px;font-size:11px;cursor:pointer;max-width:160px">
               <option value="">Sin rutina</option>
@@ -4233,7 +4270,56 @@ function importMedCSV(text){
 function parseCSV(line){ const r=[]; let cur='',inQ=false; for(const ch of line){ if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){r.push(cur.trim());cur='';}else{cur+=ch;} } r.push(cur.trim()); return r; }
 
 // ═══════════════════════════════════════════════════════════════
-//  INIT
+//  DATE PICKER — 3 selectores (día / mes / año)
+// ═══════════════════════════════════════════════════════════════
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function renderDatePicker(id, valorISO){
+  // valorISO: 'YYYY-MM-DD' o '' para hoy
+  const d = valorISO ? new Date(valorISO+'T12:00:00') : new Date();
+  const dd = d.getDate(), mm = d.getMonth()+1, yy = d.getFullYear();
+  const añoActual = new Date().getFullYear();
+
+  const dias = Array.from({length:31},(_,i)=>`<option value="${i+1}" ${dd===i+1?'selected':''}>${String(i+1).padStart(2,'0')}</option>`).join('');
+  const meses = MESES.map((m,i)=>`<option value="${i+1}" ${mm===i+1?'selected':''}>${m}</option>`).join('');
+  const años = Array.from({length:10},(_,i)=>{
+    const y=añoActual-8+i;
+    return `<option value="${y}" ${yy===y?'selected':''}>${y}</option>`;
+  }).join('');
+
+  return `<div class="dp-wrap" id="dp-${id}">
+    <select class="dp-sel" id="dp-d-${id}">${dias}</select>
+    <select class="dp-sel" id="dp-m-${id}">${meses}</select>
+    <select class="dp-sel" id="dp-y-${id}">${años}</select>
+  </div>`;
+}
+
+function getDatePickerValue(id){
+  const d=document.getElementById('dp-d-'+id)?.value;
+  const m=document.getElementById('dp-m-'+id)?.value;
+  const y=document.getElementById('dp-y-'+id)?.value;
+  if(!d||!m||!y) return today();
+  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+function setDatePickerValue(id, valorISO){
+  if(!valorISO) return;
+  const parts=valorISO.split('-');
+  const y=parseInt(parts[0]),m=parseInt(parts[1]),d=parseInt(parts[2]);
+  const sd=document.getElementById('dp-d-'+id);
+  const sm=document.getElementById('dp-m-'+id);
+  const sy=document.getElementById('dp-y-'+id);
+  if(sd) sd.value=d;
+  if(sm) sm.value=m;
+  if(sy){
+    // Si el año no existe en las opciones, agregarlo
+    if(![...sy.options].find(o=>parseInt(o.value)===y)){
+      sy.insertBefore(new Option(y,y),sy.firstChild);
+    }
+    sy.value=y;
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 loadDB();
 </script>
