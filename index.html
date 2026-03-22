@@ -37,8 +37,8 @@ html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--fb
    LAYOUT
 ═══════════════════════════════════════ */
 #app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
-#wrap{flex:1;overflow:hidden;position:relative;min-height:0}
-.screen{display:none;flex-direction:column;position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+#wrap{flex:1;overflow:hidden;position:relative;min-height:0;display:flex;flex-direction:column}
+.screen{display:none;flex-direction:column;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;width:100%}
 .screen.on{display:flex}
 
 /* Nav abajo */
@@ -49,7 +49,8 @@ nav{flex-shrink:0;display:flex;height:58px;background:var(--bg2);border-top:1px 
 
 /* Escritorio */
 @media(min-width:900px){
-  #wrap{max-width:960px;margin:0 auto;width:100%}
+  #app{max-width:980px;margin:0 auto;width:100%;box-shadow:0 0 60px rgba(0,0,0,.5)}
+  html,body{background:#050505}
   .nb{font-size:10px;gap:4px}
   .nb svg{width:22px;height:22px}
 }
@@ -696,25 +697,64 @@ select.inp{cursor:pointer}
 </div>
 
 <!-- MODAL: NUEVA RUTINA -->
-<div id="modal-rutina" class="modal-bg">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-head">
-      <div class="modal-title" id="modal-rutina-title">Nueva rutina</div>
-      <button class="bicon" onclick="closeModal('modal-rutina')"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+<!-- EDITOR DE RUTINA — pantalla completa -->
+<div id="rutina-editor" style="display:none;position:fixed;inset:0;z-index:300;background:var(--bg);flex-direction:column">
+  <!-- Topbar -->
+  <div class="topbar">
+    <button class="bicon" onclick="cerrarEditorRutina()">
+      <svg viewBox="0 0 24 24" style="width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <input id="re-nombre" class="inp" placeholder="Nombre de la rutina" style="flex:1;margin:0 10px;background:transparent;border:none;border-bottom:1px solid var(--border2);border-radius:0;font-size:16px;font-weight:700;padding:4px 0" oninput="re.nombre=this.value">
+    <button class="btn btn-p btn-sm" onclick="guardarEditorRutina()">Guardar</button>
+  </div>
+
+  <!-- Config rápida -->
+  <div style="display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:11px;color:var(--ink3)">Emoji</span>
+      <input id="re-emoji" class="inp" value="🏋" style="width:48px;text-align:center;font-size:18px;padding:4px;border-radius:var(--r)" maxlength="2" oninput="re.emoji=this.value">
     </div>
-    <div class="modal-body">
-      <input type="hidden" id="r-edit-id">
-      <div class="field"><label>Nombre</label><input class="inp" id="r-name" placeholder="Ej: Lunes — Tren Inferior A"></div>
-      <div class="field"><label>Emoji</label><input class="inp" id="r-emoji" value="🏋" style="width:70px;text-align:center;font-size:20px" maxlength="2"></div>
-      <div class="field"><label>Descanso entre series</label>
-        <select class="inp" id="r-rest">
-          <option value="60">1 min</option><option value="90" selected>1:30 min</option>
-          <option value="120">2 min</option><option value="180">3 min</option>
-        </select>
-      </div>
-      <button class="btn btn-p" onclick="saveRutina()">Guardar rutina</button>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:11px;color:var(--ink3)">Descanso</span>
+      <select id="re-rest" class="inp" style="padding:5px 8px;font-size:12px;width:auto" onchange="re.restSec=parseInt(this.value)">
+        <option value="60">1 min</option><option value="90" selected>1:30</option>
+        <option value="120">2 min</option><option value="180">3 min</option><option value="300">5 min</option>
+      </select>
     </div>
+    <button onclick="reToggleSeccion('calentamiento')" id="re-btn-cal"
+      style="padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--ink3);font-size:11px;font-weight:600;cursor:pointer">
+      🔥 Calentamiento
+    </button>
+    <button onclick="reToggleSeccion('enfriamiento')" id="re-btn-enf"
+      style="padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--ink3);font-size:11px;font-weight:600;cursor:pointer">
+      🧊 Enfriamiento
+    </button>
+  </div>
+
+  <!-- Lista de ejercicios -->
+  <div id="re-lista" style="flex:1;overflow-y:auto;padding:12px 16px"></div>
+
+  <!-- Botón agregar ejercicio -->
+  <div style="padding:10px 16px;border-top:1px solid var(--border);flex-shrink:0">
+    <button class="btn btn-s" onclick="reAbrirSelectorEx()">+ Agregar ejercicio</button>
+  </div>
+</div>
+
+<!-- Selector de ejercicio para el editor -->
+<div id="re-selector-ex" style="display:none;position:fixed;inset:0;z-index:400;background:var(--bg);flex-direction:column">
+  <div class="topbar">
+    <button class="bicon" onclick="document.getElementById('re-selector-ex').style.display='none'">
+      <svg viewBox="0 0 24 24" style="width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div style="font-size:15px;font-weight:700">Seleccionar ejercicio</div>
+    <div style="width:34px"></div>
+  </div>
+  <div style="padding:10px 16px;flex-shrink:0">
+    <input class="inp" id="re-search-ex" placeholder="Buscar ejercicio…" oninput="reRenderSelectorEx(this.value)" style="width:100%">
+  </div>
+  <div id="re-ex-list" style="flex:1;overflow-y:auto"></div>
+  <div style="padding:10px 16px;border-top:1px solid var(--border);flex-shrink:0">
+    <button class="btn btn-s btn-sm" onclick="reAbrirNuevoEx()">+ Crear ejercicio nuevo</button>
   </div>
 </div>
 
@@ -2023,23 +2063,242 @@ function addExToSession(exId){
 }
 
 // ── GESTIÓN RUTINAS ─────────────────────────────────────────────
-function openNewRutina(){ document.getElementById('r-edit-id').value=''; document.getElementById('r-name').value=''; document.getElementById('modal-rutina-title').textContent='Nueva rutina'; openModal('modal-rutina'); }
-function openEditRutina(id){ const r=(forge.routines||[]).find(x=>x.id===id); if(!r) return; document.getElementById('r-edit-id').value=id; document.getElementById('r-name').value=r.name; document.getElementById('r-emoji').value=r.emoji||'🏋'; document.getElementById('r-rest').value=r.restSec||90; document.getElementById('modal-rutina-title').textContent='Editar rutina'; openModal('modal-rutina'); }
-function saveRutina(){
-  const nombre=document.getElementById('r-name').value.trim(); if(!nombre){ showToast('Ingresa un nombre'); return; }
-  const editId=document.getElementById('r-edit-id').value;
-  if(!forge.routines) forge.routines=[];
-  const r={id:editId||'r_'+Date.now(),name:nombre,emoji:document.getElementById('r-emoji').value||'🏋',restSec:parseInt(document.getElementById('r-rest').value)||90,exercises:editId?(forge.routines.find(x=>x.id===editId)?.exercises||[]):[]};
-  if(editId){ const i=forge.routines.findIndex(x=>x.id===editId); if(i>=0) forge.routines[i]=r; } else forge.routines.push(r);
-  saveDB(); closeModal('modal-rutina'); showToast('✓ Rutina guardada',2000,'ok'); renderRutinas();
+// ── EDITOR DE RUTINAS ─────────────────────────────────────────
+// Estado temporal del editor
+let re = { id:'', nombre:'', emoji:'🏋', restSec:90, ejercicios:[], seccion:'principal' };
+// ejercicios: [{exId, seccion:'calentamiento'|'principal'|'enfriamiento', series:[{peso,reps,tipo}], restSec}]
+
+function openNewRutina(){
+  re = {id:'', nombre:'', emoji:'🏋', restSec:90, ejercicios:[]};
+  abrirEditorRutina();
 }
+
+function openEditRutina(id){
+  const r=(forge.routines||[]).find(x=>x.id===id); if(!r) return;
+  re = {
+    id: r.id,
+    nombre: r.name,
+    emoji: r.emoji||'🏋',
+    restSec: r.restSec||90,
+    ejercicios: (r.exercises||[]).map(exId=>({
+      exId,
+      seccion: r._secciones?.[exId]||'principal',
+      series: r._series?.[exId]||[{peso:0,reps:8},{peso:0,reps:8},{peso:0,reps:8}],
+      restSec: r._restEx?.[exId]||r.restSec||90
+    }))
+  };
+  abrirEditorRutina();
+}
+
+function abrirEditorRutina(){
+  document.getElementById('re-nombre').value = re.nombre;
+  document.getElementById('re-emoji').value  = re.emoji;
+  document.getElementById('re-rest').value   = re.restSec;
+  reRenderLista();
+  document.getElementById('rutina-editor').style.display='flex';
+}
+
+function cerrarEditorRutina(){
+  document.getElementById('rutina-editor').style.display='none';
+}
+
+function reToggleSeccion(sec){
+  const btn=document.getElementById('re-btn-'+sec.slice(0,3));
+  const tiene=re.ejercicios.some(e=>e.seccion===sec);
+  if(tiene){
+    re.ejercicios=re.ejercicios.filter(e=>e.seccion!==sec);
+    if(btn){btn.style.background='var(--bg3)';btn.style.color='var(--ink3)';btn.style.borderColor='var(--border2)';}
+  } else {
+    // Agregar placeholder de sección — el usuario añadirá ejercicios después
+    showToast(`Sección ${sec} activada — agrega ejercicios y asígnalos`,3000);
+    if(btn){btn.style.background='#0a1a0a';btn.style.color='var(--green)';btn.style.borderColor='var(--green)';}
+  }
+  reRenderLista();
+}
+
+function reRenderLista(){
+  const container=document.getElementById('re-lista');
+  const secciones=[
+    {key:'calentamiento', label:'🔥 Calentamiento', color:'var(--gold)'},
+    {key:'principal',     label:'🏋 Principal',      color:'var(--orange)'},
+    {key:'enfriamiento',  label:'🧊 Enfriamiento',   color:'var(--blue)'},
+  ];
+
+  let html='';
+  secciones.forEach(sec=>{
+    const exs=re.ejercicios.filter(e=>e.seccion===sec.key);
+    if(!exs.length && sec.key!=='principal') return;
+
+    html+=`<div style="margin-bottom:20px">
+      <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${sec.color};font-weight:700;margin-bottom:8px">${sec.label}</div>`;
+
+    if(!exs.length){
+      html+=`<div style="border:1px dashed var(--border2);border-radius:var(--rl);padding:16px;text-align:center;color:var(--ink3);font-size:13px">
+        Sin ejercicios — toca "+ Agregar ejercicio"</div>`;
+    } else {
+      exs.forEach((ex,idx)=>{
+        const globalIdx=re.ejercicios.indexOf(ex);
+        const e=getEx(ex.exId);
+        if(!e) return;
+        const isRun=e.type==='run'||e.type==='hiit';
+        html+=`
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:8px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;flex-direction:column;gap:3px;cursor:ns-resize;color:var(--ink3);padding:0 4px" title="Arrastrar para reordenar">
+              <svg viewBox="0 0 16 10" width="16" height="10" fill="var(--ink3)"><rect width="16" height="2" rx="1"/><rect y="4" width="16" height="2" rx="1"/><rect y="8" width="16" height="2" rx="1"/></svg>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:700;color:var(--ink)">${e.name}</div>
+              <div style="font-size:11px;color:var(--ink3);margin-top:1px">${e.type} · ${e.muscle||'—'}</div>
+            </div>
+            <div style="display:flex;gap:4px">
+              <select onchange="reMoveSec(${globalIdx},this.value)"
+                style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--ink3);font-size:10px;padding:3px 6px;cursor:pointer">
+                <option value="calentamiento" ${ex.seccion==='calentamiento'?'selected':''}>🔥 Cal.</option>
+                <option value="principal"     ${ex.seccion==='principal'?'selected':''}>🏋 Princ.</option>
+                <option value="enfriamiento"  ${ex.seccion==='enfriamiento'?'selected':''}>🧊 Enf.</option>
+              </select>
+              <button onclick="reQuitarEx(${globalIdx})"
+                style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 6px">✕</button>
+            </div>
+          </div>
+          <!-- Descanso del ejercicio -->
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:11px;color:var(--ink3)">
+            <span>Descanso:</span>
+            <select onchange="re.ejercicios[${globalIdx}].restSec=parseInt(this.value)"
+              style="background:var(--bg2);border:1px solid var(--border2);border-radius:4px;color:var(--ink2);font-size:11px;padding:2px 6px">
+              <option value="30" ${ex.restSec===30?'selected':''}>30s</option>
+              <option value="60" ${ex.restSec===60?'selected':''}>1 min</option>
+              <option value="90" ${ex.restSec===90?'selected':''}>1:30</option>
+              <option value="120" ${ex.restSec===120?'selected':''}>2 min</option>
+              <option value="180" ${ex.restSec===180?'selected':''}>3 min</option>
+              <option value="300" ${ex.restSec===300?'selected':''}>5 min</option>
+            </select>
+          </div>
+          <!-- Series -->
+          ${isRun?`
+          <div style="padding:10px 12px;font-size:12px;color:var(--ink3)">
+            Ejercicio de cardio — los datos se registran durante la sesión (km, tiempo, FC, pasos).
+          </div>`:`
+          <div style="padding:8px 12px">
+            <div style="display:grid;grid-template-columns:32px 1fr 1fr auto;gap:6px;font-size:10px;color:var(--ink3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">
+              <span>#</span><span>Peso kg</span><span>Reps</span><span></span>
+            </div>
+            ${(ex.series||[]).map((s,si)=>`
+            <div style="display:grid;grid-template-columns:32px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:5px">
+              <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
+              <input type="number" value="${s.peso||''}" placeholder="kg"
+                oninput="re.ejercicios[${globalIdx}].series[${si}].peso=parseFloat(this.value)||0"
+                class="inp" style="padding:7px;font-size:13px;text-align:center" inputmode="decimal">
+              <input type="number" value="${s.reps||''}" placeholder="reps"
+                oninput="re.ejercicios[${globalIdx}].series[${si}].reps=parseInt(this.value)||0"
+                class="inp" style="padding:7px;font-size:13px;text-align:center" inputmode="numeric">
+              <button onclick="reQuitarSerie(${globalIdx},${si})"
+                style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 4px">✕</button>
+            </div>`).join('')}
+            <button onclick="reAgregarSerie(${globalIdx})"
+              style="background:none;border:none;color:var(--orange);cursor:pointer;font-size:12px;font-weight:600;padding:4px 0;display:block">
+              + Serie
+            </button>
+          </div>`}
+        </div>`;
+      });
+    }
+    html+='</div>';
+  });
+
+  container.innerHTML=html||'<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin ejercicios</div><div class="empty-sub">Toca "+ Agregar ejercicio" para empezar.</div></div>';
+}
+
+function reMoveSec(idx,sec){
+  if(re.ejercicios[idx]) re.ejercicios[idx].seccion=sec;
+  reRenderLista();
+}
+function reQuitarEx(idx){ re.ejercicios.splice(idx,1); reRenderLista(); }
+function reQuitarSerie(exIdx,serIdx){ re.ejercicios[exIdx].series.splice(serIdx,1); reRenderLista(); }
+function reAgregarSerie(exIdx){
+  const last=re.ejercicios[exIdx].series.slice(-1)[0]||{peso:0,reps:8};
+  re.ejercicios[exIdx].series.push({peso:last.peso,reps:last.reps});
+  reRenderLista();
+}
+
+function reAbrirSelectorEx(){
+  document.getElementById('re-search-ex').value='';
+  reRenderSelectorEx('');
+  document.getElementById('re-selector-ex').style.display='flex';
+}
+function reRenderSelectorEx(q){
+  const exs=(forge.exercises||[]).filter(e=>!q||e.name.toLowerCase().includes(q.toLowerCase()));
+  document.getElementById('re-ex-list').innerHTML=exs.map(e=>`
+    <div onclick="reAgregarEx('${e.id}')" class="prog-ex-row" style="cursor:pointer">
+      <div style="flex:1">
+        <div class="prog-ex-name">${e.name}</div>
+        <div class="prog-ex-sub">${e.type} · ${e.muscle||'—'}</div>
+      </div>
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>`).join('')||'<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Sin resultados</div></div>';
+}
+function reAgregarEx(exId){
+  const e=getEx(exId);
+  const isRun=e?.type==='run'||e?.type==='hiit';
+  re.ejercicios.push({
+    exId,
+    seccion:'principal',
+    series: isRun?[]:[{peso:0,reps:8},{peso:0,reps:8},{peso:0,reps:8}],
+    restSec: re.restSec
+  });
+  document.getElementById('re-selector-ex').style.display='none';
+  reRenderLista();
+}
+function reAbrirNuevoEx(){
+  // Reutilizar modal de nuevo ejercicio
+  document.getElementById('ex-edit-id').value='';
+  document.getElementById('ex-name').value='';
+  document.getElementById('re-selector-ex').style.display='none';
+  openModal('modal-ejercicio');
+}
+
+function guardarEditorRutina(){
+  const nombre=document.getElementById('re-nombre').value.trim();
+  if(!nombre){ showToast('Ingresa un nombre para la rutina'); return; }
+  if(!forge.routines) forge.routines=[];
+
+  const r={
+    id: re.id||'r_'+Date.now(),
+    name: nombre,
+    emoji: document.getElementById('re-emoji').value||'🏋',
+    restSec: parseInt(document.getElementById('re-rest').value)||90,
+    exercises: re.ejercicios.map(e=>e.exId),
+    // Guardar metadatos extra
+    _secciones: Object.fromEntries(re.ejercicios.map(e=>[e.exId,e.seccion])),
+    _series:    Object.fromEntries(re.ejercicios.map(e=>[e.exId,e.series])),
+    _restEx:    Object.fromEntries(re.ejercicios.map(e=>[e.exId,e.restSec])),
+  };
+
+  if(re.id){
+    const idx=forge.routines.findIndex(x=>x.id===re.id);
+    if(idx>=0) forge.routines[idx]=r; else forge.routines.push(r);
+  } else {
+    forge.routines.push(r);
+  }
+  saveDB();
+  cerrarEditorRutina();
+  renderRutinas();
+  showToast('✓ Rutina guardada',2000,'ok');
+}
+
+// Compat — alias viejos
+function saveRutina(){ guardarEditorRutina(); }
 function saveEjercicio(){
   const nombre=document.getElementById('ex-name').value.trim(); if(!nombre){ showToast('Ingresa un nombre'); return; }
   const editId=document.getElementById('ex-edit-id').value;
   if(!forge.exercises) forge.exercises=[];
   const e={id:editId||'ex_'+Date.now(),name:nombre,type:document.getElementById('ex-type').value,muscle:document.getElementById('ex-muscle').value,restSec:parseInt(document.getElementById('ex-rest').value)||90};
   if(editId){ const i=forge.exercises.findIndex(x=>x.id===editId); if(i>=0) forge.exercises[i]=e; } else forge.exercises.push(e);
-  saveDB(); closeModal('modal-ejercicio'); showToast('✓ Ejercicio guardado',2000,'ok');
+  saveDB(); closeModal('modal-ejercicio');
+  showToast('✓ Ejercicio creado',2000,'ok');
+  // Si viene del editor de rutina, agregarlo automáticamente
+  if(document.getElementById('rutina-editor').style.display==='flex') reAgregarEx(e.id);
 }
 
 // ── TIMER DE DESCANSO ────────────────────────────────────────────
@@ -2428,7 +2687,8 @@ function renderExDetail(exId){
   document.getElementById('ex-detail-body').innerHTML=`<div style="padding:16px">${kpis}${chartsHtml}${histHtml}</div>`;
 }
 
-// Gráfico 100% ancho sin scroll — para overlay de cuerpo
+// Ancho real disponible (respeta max-width del app en desktop)
+function getChartW(){ return Math.min(window.innerWidth, 980) - 32; }
 function renderLineChartFull(puntos,yLabel,color='var(--orange)'){
   const PL=44,PB=28,PT=12,PR=10,H=260;
   // Ancho interno del SVG — siempre adapta al contenedor via viewBox+100%
@@ -2464,14 +2724,13 @@ function renderLineChartFull(puntos,yLabel,color='var(--orange)'){
     </div>`;
 }
 
-// Gráfico alto para pantalla de detalle (240px) — con scroll si es necesario
+// Gráfico alto para pantalla de detalle (240px) — sin scroll, usa todo el ancho
 function renderLineChartTall(puntos,yLabel,color='var(--orange)'){
   const PL=44,PB=28,PT=12,PR=10,H=240;
-  const minPxPunto=puntos.length>30?7:puntos.length>15?9:12;
-  const W=Math.max(Math.min((window.innerWidth||800)-32,1400), PL+PR+puntos.length*minPxPunto);
+  const W=Math.max(400, PL+PR+puntos.length*Math.max(8,Math.floor(900/Math.max(puntos.length,1))));
   const vals=puntos.map(p=>p.val);
   const minV=Math.min(...vals),maxV=Math.max(...vals),rng=maxV-minV||1;
-  const xs=puntos.map((_,i)=>PL+(i/(puntos.length-1))*(W-PL-PR));
+  const xs=puntos.map((_,i)=>PL+(i/(puntos.length-1||1))*(W-PL-PR));
   const ys=puntos.map(p=>PT+(1-(p.val-minV)/rng)*(H-PT-PB));
   const line=xs.map((x,i)=>`${i===0?'M':'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
   const area=line+` L${xs[xs.length-1].toFixed(1)},${H-PB} L${xs[0].toFixed(1)},${H-PB} Z`;
@@ -2488,8 +2747,8 @@ function renderLineChartTall(puntos,yLabel,color='var(--orange)'){
   const dots=puntos.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="${dotR}" style="fill:${color}"><title>${p.fecha}: ${p.label}</title></circle>`).join('');
   return `
     <div style="font-size:11px;color:var(--ink3);margin-bottom:6px;font-weight:600">${yLabel} · ${puntos.length} sesiones</div>
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--r);background:var(--bg2);border:1px solid var(--border);padding:12px 0 0">
-      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block">
+    <div style="border-radius:var(--r);background:var(--bg2);border:1px solid var(--border);padding:12px 0 0">
+      <svg width="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="display:block;height:${H}px">
         <line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" class="chart-axis"/>
         <line x1="${PL}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" class="chart-axis"/>
         ${yLabs}${xLabs}
@@ -2503,11 +2762,10 @@ function renderLineChartTall(puntos,yLabel,color='var(--orange)'){
 function renderLineChartRitmoTall(puntos){
   function rl(v){ return `${Math.floor(v)}'${pad(Math.round((v%1)*60))}`; }
   const PL=44,PB=28,PT=12,PR=10,H=200;
-  const minPxPunto=puntos.length>30?7:9;
-  const W=Math.max(Math.min(window.innerWidth||600,1200), PL+PR+puntos.length*minPxPunto);
+  const W=Math.max(400, PL+PR+puntos.length*Math.max(8,Math.floor(900/Math.max(puntos.length,1))));
   const vals=puntos.map(p=>p.val);
   const minV=Math.min(...vals),maxV=Math.max(...vals),rng=maxV-minV||0.5;
-  const xs=puntos.map((_,i)=>PL+(i/(puntos.length-1))*(W-PL-PR));
+  const xs=puntos.map((_,i)=>PL+(i/(puntos.length-1||1))*(W-PL-PR));
   const ys=puntos.map(p=>PT+((p.val-minV)/rng)*(H-PT-PB));
   const line=xs.map((x,i)=>`${i===0?'M':'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
   const area=line+` L${xs[xs.length-1].toFixed(1)},${H-PB} L${xs[0].toFixed(1)},${H-PB} Z`;
@@ -2523,8 +2781,8 @@ function renderLineChartRitmoTall(puntos){
   const dots=puntos.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="3" style="fill:var(--blue)"><title>${p.fecha}: ${rl(p.val)}/km</title></circle>`).join('');
   return `
     <div style="font-size:11px;color:var(--ink3);margin-bottom:6px;font-weight:600">Ritmo (min/km) — flecha arriba = más rápido</div>
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--r);background:var(--bg2);border:1px solid var(--border);padding:12px 0 0">
-      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block">
+    <div style="border-radius:var(--r);background:var(--bg2);border:1px solid var(--border);padding:12px 0 0">
+      <svg width="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="display:block;height:${H}px">
         <line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" class="chart-axis"/>
         <line x1="${PL}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" class="chart-axis"/>
         ${yLabs}${xLabs}
