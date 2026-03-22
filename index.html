@@ -94,6 +94,19 @@ nav{flex-shrink:0;display:flex;height:58px;background:var(--bg2);border-top:1px 
 .empty-text{font-family:var(--fd);font-size:20px;font-weight:700;color:var(--ink);margin-bottom:6px}
 .empty-sub{font-size:13px;color:var(--ink3);line-height:1.5}
 
+/* Date input — picker nativo en iOS/Android */
+input[type="date"].inp, input[type="date"]{
+  -webkit-appearance:none;
+  appearance:none;
+  cursor:pointer;
+}
+input[type="date"]::-webkit-calendar-picker-indicator{
+  filter:invert(0.7);
+  cursor:pointer;
+  padding:0;
+  margin-left:4px;
+}
+
 /* Input */
 .inp{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:11px 14px;color:var(--ink);font-family:var(--fb);font-size:14px;outline:none;transition:border-color .15s}
 .inp:focus{border-color:var(--orange)}
@@ -2532,6 +2545,23 @@ function renderLineChartRitmo(puntos){
   </svg></div>`;
 }
 
+// Helper: genera botones de filtro reutilizables
+// filtros: array de claves ('todo','12m','2024'...)
+// seleccionado: clave activa
+// onclickFn: string de JS para el onclick (recibe el filtro como parámetro)
+// color: color activo
+function buildFiltroHtml(filtros, seleccionado, onclickFn, color='var(--orange)'){
+  const labels={'todo':'Todo','12m':'12 meses'};
+  return filtros.map(f=>{
+    const activo = f===seleccionado;
+    const label = labels[f]||f;
+    return `<button onclick="${onclickFn(f)}"
+      style="padding:3px 10px;border-radius:20px;border:1px solid ${activo?color:'var(--border2)'};
+      background:${activo?'rgba(255,255,255,.06)':'var(--bg3)'};
+      color:${activo?color:'var(--ink3)'};font-size:11px;font-weight:600;cursor:pointer">${label}</button>`;
+  }).join('');
+}
+
 // ── Detalle ejercicio con gráfico ───────────────────────────────
 function openExDetail(exId){
   showRM=false;
@@ -2627,34 +2657,52 @@ function renderExDetail(exId){
       </div>`;
   }
 
-  // ── Gráfico grande ───────────────────────────────────────────
-  let chartsHtml='';
-  if(isRun&&puntos.length>=2){
-    const pDist=puntos.map(p=>({fecha:p.fecha,val:p.valDist,label:`${p.valDist.toFixed(2)}km`}));
-    const pRitmo=puntos.filter(p=>p.valRitmo>0).map(p=>({fecha:p.fecha,val:p.valRitmo,label:p.label}));
+  // ── Historial agrupado con filtro Todo / 12m / año ────────────
+  const hoy12m = new Date(); hoy12m.setFullYear(hoy12m.getFullYear()-1);
+  const fechaCorte12m = hoy12m.toISOString().split('T')[0];
+  const años=[...new Set(sesiones.map(s=>s.fecha.slice(0,4)))].sort().reverse();
+
+  // Estado del filtro: 'todo' | '12m' | '2026' | '2025' ...
+  const filtroSel = window._exDetailFiltro || '12m';
+  window._exDetailFiltro = filtroSel;
+
+  const sesFiltradas = (()=>{
+    if(filtroSel==='todo') return sesiones.slice().reverse();
+    if(filtroSel==='12m')  return sesiones.filter(s=>s.fecha>=fechaCorte12m).reverse();
+    return sesiones.filter(s=>s.fecha.startsWith(filtroSel)).reverse();
+  })();
+
+  // Puntos del gráfico según filtro
+  const puntosGraf = (()=>{
+    if(filtroSel==='todo') return puntos;
+    if(filtroSel==='12m')  return puntos.filter(p=>p.fecha>=fechaCorte12m);
+    return puntos.filter(p=>p.fecha.startsWith(filtroSel));
+  })();
+
+  // Construir gráfico filtrado
+  if(isRun&&puntosGraf.length>=2){
+    const pDist=puntosGraf.map(p=>({fecha:p.fecha,val:p.valDist,label:`${p.valDist.toFixed(2)}km`}));
+    const pRitmo=puntosGraf.filter(p=>p.valRitmo>0).map(p=>({fecha:p.fecha,val:p.valRitmo,label:p.label}));
     chartsHtml=`
       <div style="margin-bottom:16px">${renderLineChartTall(pDist,'Distancia (km)')}</div>
       ${pRitmo.length>=2?`<div style="margin-bottom:16px">${renderLineChartRitmoTall(pRitmo)}</div>`:''}`;
-  } else if(!isRun&&puntos.length>=2){
-    chartsHtml=`<div style="margin-bottom:16px">${renderLineChartTall(puntos,showRM?'1RM estimado (kg)':'Peso máx. levantado (kg)')}</div>`;
+  } else if(!isRun&&puntosGraf.length>=2){
+    chartsHtml=`<div style="margin-bottom:16px">${renderLineChartTall(puntosGraf,showRM?'1RM estimado (kg)':'Peso máx. levantado (kg)')}</div>`;
   } else {
-    chartsHtml=`<div class="empty" style="padding:32px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos</div><div class="empty-sub">Necesitas al menos 2 sesiones para ver el gráfico.</div></div>`;
+    chartsHtml=`<div class="empty" style="padding:32px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos en este período</div></div>`;
   }
 
-  // ── Historial agrupado por año ───────────────────────────────
-  const años=[...new Set(sesiones.map(s=>s.fecha.slice(0,4)))].sort().reverse();
-  const añoSel=window._exDetailAño||(años[0]||'');
-  const sesFiltradas=sesiones.filter(s=>s.fecha.startsWith(añoSel)).reverse();
+  const botonesHtml = buildFiltroHtml(
+    ['todo','12m',...años],
+    filtroSel,
+    (f)=>`window._exDetailFiltro='${f}';renderExDetail('${exId}')`,
+    'var(--orange)'
+  );
 
   const histHtml=`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div class="section-label" style="margin:0">Historial por sesión</div>
-      <div style="display:flex;gap:4px">
-        ${años.map(a=>`<button onclick="window._exDetailAño='${a}';renderExDetail('${exId}')"
-          style="padding:3px 10px;border-radius:20px;border:1px solid ${a===añoSel?'var(--orange)':'var(--border2)'};
-          background:${a===añoSel?'#1a0a00':'var(--bg3)'};color:${a===añoSel?'var(--orange)':'var(--ink3)'};
-          font-size:11px;font-weight:600;cursor:pointer">${a}</button>`).join('')}
-      </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+      <div class="section-label" style="margin:0">Historial · ${sesFiltradas.length} sesiones</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${botonesHtml}</div>
     </div>
     ${sesFiltradas.map(s=>{
       if(isRun){
@@ -2893,26 +2941,34 @@ function openCuerpoChart(key, mets){
     ? mets.filter(m=>m.pliegues?.[key]).map(m=>({fecha:m.date,val:parseFloat(m.pliegues[key]),label:`${m.pliegues[key]}${cfg.unit}`}))
     : mets.filter(m=>m[key]!=null&&m[key]!='').map(m=>({fecha:m.date,val:parseFloat(m[key]),label:`${m[key]}${cfg.unit}`}));
 
-  // Filtro de año
+  // Filtro Todo / 12m / año
+  const hoy12m=new Date(); hoy12m.setFullYear(hoy12m.getFullYear()-1);
+  const corte12m=hoy12m.toISOString().split('T')[0];
   const años=[...new Set(pts.map(p=>p.fecha.slice(0,4)))].sort().reverse();
-  const añoSel=window._cuerpoChartAño||años[0]||'';
-  const ptsFilt=pts.filter(p=>p.fecha.startsWith(añoSel));
+  const filtroSel=window._cuerpoChartFiltro||'12m';
+  window._cuerpoChartFiltro=filtroSel;
 
-  const filtroHtml=años.map(a=>`
-    <button onclick="window._cuerpoChartAño='${a}';openCuerpoChart('${key}',_cuerpoMets)"
-      style="padding:3px 10px;border-radius:20px;border:1px solid ${a===añoSel?cfg.color:'var(--border2)'};
-      background:${a===añoSel?'rgba(255,255,255,.05)':'var(--bg3)'};
-      color:${a===añoSel?cfg.color:'var(--ink3)'};font-size:11px;font-weight:600;cursor:pointer">${a}
-    </button>`).join('');
+  const ptsFilt=(()=>{
+    if(filtroSel==='todo') return pts;
+    if(filtroSel==='12m')  return pts.filter(p=>p.fecha>=corte12m);
+    return pts.filter(p=>p.fecha.startsWith(filtroSel));
+  })();
+
+  const filtroHtml=buildFiltroHtml(
+    ['todo','12m',...años],
+    filtroSel,
+    (f)=>`window._cuerpoChartFiltro='${f}';openCuerpoChart('${key}')`,
+    cfg.color
+  );
 
   document.getElementById('cuerpo-chart-body').innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div style="font-size:11px;color:var(--ink3)">${ptsFilt.length} registros en ${añoSel}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
+      <div style="font-size:11px;color:var(--ink3)">${ptsFilt.length} registros</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap">${filtroHtml}</div>
     </div>
     ${ptsFilt.length>=2
       ? `<div style="margin-bottom:4px;font-size:11px;color:var(--ink3);font-weight:600">${cfg.label}${cfg.unit?' ('+cfg.unit+')':''} · ${ptsFilt.length} registros</div>`+renderLineChartFull(ptsFilt, cfg.label, cfg.color)
-      : `<div class="empty" style="padding:40px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos</div><div class="empty-sub">Necesitas al menos 2 registros en ${añoSel}.</div></div>`}
+      : `<div class="empty" style="padding:40px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos en este período</div><div class="empty-sub">Prueba con "Todo" para ver el historial completo.</div></div>`}
     <div style="margin-top:20px">
       <div class="section-label" style="margin-bottom:8px">Todos los registros · ${pts.length} total</div>
       ${pts.slice().reverse().map(p=>`
