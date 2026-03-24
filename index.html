@@ -196,16 +196,16 @@ select.inp{cursor:pointer}
 .carga-sugerida{display:flex;align-items:center;gap:8px;padding:6px 16px;background:#0a1a0a;border-bottom:1px solid var(--border);font-size:11px;color:var(--green)}
 
 /* Rest overlay */
-.rest-ov{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.95);flex-direction:column;align-items:center;justify-content:center}
+.rest-ov{display:none;position:fixed;bottom:66px;left:50%;transform:translateX(-50%);z-index:300;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:14px 20px;flex-direction:row;align-items:center;gap:16px;box-shadow:0 8px 32px rgba(0,0,0,.7);min-width:min(90vw,400px);max-width:500px}
 .rest-ov.on{display:flex}
-.rest-circle{position:relative;width:180px;height:180px;margin:20px 0}
+.rest-circle{position:relative;width:72px;height:72px;flex-shrink:0}
 .rest-circle svg{position:absolute;inset:0;transform:rotate(-90deg)}
-#rc-fill{stroke-dasharray:502;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear}
+#rc-fill{stroke-dasharray:201;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear}
 .rest-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.rest-secs{font-family:var(--fd);font-size:52px;font-weight:900;color:#fff;line-height:1}
-.rest-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3)}
-.rest-next{font-size:13px;color:var(--ink2);margin-bottom:16px}
-.rest-title{font-family:var(--fd);font-size:28px;font-weight:800;letter-spacing:3px;color:var(--orange);margin-bottom:8px}
+.rest-secs{font-family:var(--fd);font-size:22px;font-weight:900;color:#fff;line-height:1}
+.rest-label{font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);display:none}
+.rest-next{font-size:12px;color:var(--ink2)}
+.rest-title{font-family:var(--fd);font-size:16px;font-weight:800;letter-spacing:2px;color:var(--orange)}
 
 /* ═══════════════════════════════════════
    SCREEN: PROGRESO (gráficos)
@@ -554,21 +554,25 @@ select.inp{cursor:pointer}
 
 <!-- REST OVERLAY -->
 <div id="rest-ov" class="rest-ov">
-  <div class="rest-title">DESCANSO</div>
+  <!-- Círculo pequeño -->
   <div class="rest-circle">
-    <svg viewBox="0 0 180 180" width="180" height="180">
-      <circle cx="90" cy="90" r="80" stroke="var(--bg3)" stroke-width="6" fill="none"/>
-      <circle id="rc-fill" cx="90" cy="90" r="80" stroke="var(--green)" stroke-width="6" fill="none" stroke-dasharray="502" stroke-dashoffset="0" stroke-linecap="round"/>
+    <svg viewBox="0 0 72 72" width="72" height="72">
+      <circle cx="36" cy="36" r="32" stroke="var(--bg3)" stroke-width="5" fill="none"/>
+      <circle id="rc-fill" cx="36" cy="36" r="32" stroke="var(--green)" stroke-width="5" fill="none" stroke-dasharray="201" stroke-dashoffset="0" stroke-linecap="round"/>
     </svg>
     <div class="rest-num">
       <div class="rest-secs" id="rest-secs">90</div>
-      <div class="rest-label">segundos</div>
     </div>
   </div>
-  <div class="rest-next" id="rest-next"></div>
-  <div style="display:flex;gap:10px">
-    <button class="btn btn-s btn-sm" onclick="skipRest()">Saltar</button>
-    <button class="btn btn-sm" style="background:var(--bg3);color:var(--ink3);border:1px solid var(--border2);width:auto" onclick="addRestTime(15)">+15s</button>
+  <!-- Info -->
+  <div style="flex:1;min-width:0">
+    <div class="rest-title">DESCANSO</div>
+    <div class="rest-next" id="rest-next"></div>
+  </div>
+  <!-- Botones -->
+  <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+    <button class="btn btn-p btn-sm" onclick="skipRest()" style="padding:6px 14px;font-size:11px">Saltar</button>
+    <button class="btn btn-s btn-sm" onclick="addRestTime(15)" style="padding:6px 14px;font-size:11px">+15s</button>
   </div>
 </div>
 
@@ -2319,10 +2323,23 @@ function saveEjercicio(){
 }
 
 // ── TIMER DE DESCANSO ────────────────────────────────────────────
+// Crear contexto de audio para el beep
+let _audioCtx=null;
+function getAudioCtx(){ if(!_audioCtx) try{ _audioCtx=new(window.AudioContext||window.webkitAudioContext)(); }catch(e){} return _audioCtx; }
+function beep(freq=880, dur=0.08, vol=0.3){
+  const ctx=getAudioCtx(); if(!ctx) return;
+  const osc=ctx.createOscillator(), gain=ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.frequency.value=freq; osc.type='sine';
+  gain.gain.setValueAtTime(vol,ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime+dur);
+}
+function vibrar(pattern=[50]){ try{ navigator.vibrate&&navigator.vibrate(pattern); }catch(e){} }
+
 function startRest(secs, ei, si){
   restTotal=secs; restLeft=secs;
   const exs=activeSession?.exercises||[];
-  // Encontrar siguiente set no hecho
   let nextTxt='';
   for(let i=ei;i<exs.length;i++){
     for(let j=(i===ei?si+1:0);j<exs[i].sets.length;j++){
@@ -2336,17 +2353,29 @@ function startRest(secs, ei, si){
   clearInterval(restTimer);
   restTimer=setInterval(()=>{
     restLeft--;
-    if(restLeft<=0){ clearInterval(restTimer); skipRest(); return; }
+    if(restLeft<=0){ clearInterval(restTimer); skipRest(); beep(660,0.15,0.4); vibrar([100,50,100,50,200]); return; }
     updateRestUI();
+    // Sonido + vibración en cada segundo de los últimos 10
+    if(restLeft<=10){
+      beep(restLeft<=3?1200:880, 0.06, 0.25);
+      vibrar([30]);
+    }
   },1000);
 }
+
 function updateRestUI(){
-  document.getElementById('rest-secs').textContent=restLeft;
+  const el=document.getElementById('rest-secs'); if(!el) return;
+  el.textContent=restLeft;
+  // Color del número: blanco → naranja → rojo en últimos 10s
+  el.style.color=restLeft<=5?'var(--red)':restLeft<=10?'var(--orange)':'#fff';
+  // Anillo: verde → rojo en últimos 10s
+  const fill=document.getElementById('rc-fill'); if(!fill) return;
+  fill.style.stroke=restLeft<=10?'var(--red)':'var(--green)';
   const pct=restLeft/restTotal;
-  document.getElementById('rc-fill').style.strokeDashoffset=502*(1-pct);
+  fill.style.strokeDashoffset=201*(1-pct); // r=32 → circunferencia≈201
 }
 function skipRest(){ clearInterval(restTimer); document.getElementById('rest-ov').classList.remove('on'); }
-function addRestTime(s){ restLeft=Math.min(restLeft+s,restTotal+s); updateRestUI(); }
+function addRestTime(s){ restLeft=Math.min(restLeft+s,restTotal+60); updateRestUI(); }
 
 // ═══════════════════════════════════════════════════════════════
 //  PLAN DE PROGRESIÓN (+2.5% semanal)
