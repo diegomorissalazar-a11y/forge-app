@@ -1786,6 +1786,50 @@ function calcDivMuscular(s){
 let activeSession=null, sesTimer=null, sesSeconds=0;
 let restTimer=null, restTotal=0, restLeft=0, pendingNextEx=null;
 
+// Timestamps para timers precisos (no se detienen en segundo plano)
+let _sesStartTs=null;      // timestamp Date.now() cuando inició la sesión
+let _sesAccum=0;           // segundos acumulados antes de pausas
+let _restEndTs=null;       // timestamp cuando termina el descanso
+let _wakeLock=null;        // Wake Lock API
+
+// Solicitar Wake Lock para mantener pantalla activa durante sesión
+async function pedirWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      _wakeLock=await navigator.wakeLock.request('screen');
+    }
+  }catch(e){}
+}
+function liberarWakeLock(){
+  try{ _wakeLock?.release(); _wakeLock=null; }catch(e){}
+}
+
+// Page Visibility API — recalcular tiempos al volver al primer plano
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){
+    // Corregir sesión si hay una activa
+    if(activeSession && _sesStartTs){
+      const elapsed=Math.floor((Date.now()-_sesStartTs)/1000)+_sesAccum;
+      sesSeconds=elapsed;
+      const el=document.getElementById('ses-timer');
+      if(el) el.textContent=fmtTime(sesSeconds);
+    }
+    // Corregir descanso si hay uno activo
+    if(_restEndTs){
+      const left=Math.ceil((_restEndTs-Date.now())/1000);
+      if(left<=0){
+        skipRest();
+        beep(660,0.15,0.4); vibrar([100,50,100,50,200]);
+      } else {
+        restLeft=left;
+        updateRestUI();
+      }
+    }
+    // Re-solicitar wake lock si se perdió
+    if(activeSession) pedirWakeLock();
+  }
+});
+
 function renderTrain(){
   if(activeSession){
     document.getElementById('train-home').style.display='none';
@@ -1896,8 +1940,7 @@ function _doIniciarRutina(rutinaId, factor){
     date:Date.now(), exercises, elapsed:0, totalVolume:0,
     restSec:r.restSec||90
   };
-  sesSeconds=0;
-  sesTimer=setInterval(()=>{ sesSeconds++; document.getElementById('ses-timer').textContent=fmtTime(sesSeconds); },1000);
+  _iniciarTimerSesion();
   renderTrain();
   showToast('¡A entrenar! 💪',2000,'ok');
 }
@@ -1917,7 +1960,7 @@ function doStartFreeSession(){
     exercises:[], elapsed:0, totalVolume:0, restSec:90
   };
   sesSeconds=0;
-  sesTimer=setInterval(()=>{ sesSeconds++; document.getElementById('ses-timer').textContent=fmtTime(sesSeconds); },1000);
+  _iniciarTimerSesion();
   renderTrain();
 }
 
@@ -2337,8 +2380,23 @@ function beep(freq=880, dur=0.08, vol=0.3){
 }
 function vibrar(pattern=[50]){ try{ navigator.vibrate&&navigator.vibrate(pattern); }catch(e){} }
 
+function _iniciarTimerSesion(){
+  clearInterval(sesTimer);
+  sesSeconds=0; _sesAccum=0;
+  _sesStartTs=Date.now();
+  pedirWakeLock();
+  sesTimer=setInterval(()=>{
+    // Siempre calcular desde timestamp — preciso aunque vuelva del segundo plano
+    sesSeconds=Math.floor((Date.now()-_sesStartTs)/1000)+_sesAccum;
+    const el=document.getElementById('ses-timer');
+    if(el) el.textContent=fmtTime(sesSeconds);
+  },500); // cada 500ms para mayor precisión
+}
+
 function startRest(secs, ei, si){
   restTotal=secs; restLeft=secs;
+  _restEndTs=Date.now()+(secs*1000);  // timestamp absoluto de fin
+
   const exs=activeSession?.exercises||[];
   let nextTxt='';
   for(let i=ei;i<exs.length;i++){
@@ -2351,31 +2409,47 @@ function startRest(secs, ei, si){
   document.getElementById('rest-ov').classList.add('on');
   updateRestUI();
   clearInterval(restTimer);
+  let _lastBeepSec=-1;
   restTimer=setInterval(()=>{
-    restLeft--;
-    if(restLeft<=0){ clearInterval(restTimer); skipRest(); beep(660,0.15,0.4); vibrar([100,50,100,50,200]); return; }
-    updateRestUI();
-    // Sonido + vibración en cada segundo de los últimos 10
-    if(restLeft<=10){
-      beep(restLeft<=3?1200:880, 0.06, 0.25);
-      vibrar([30]);
+    const left=Math.ceil((_restEndTs-Date.now())/1000);
+    if(left<=0){
+      restLeft=0; updateRestUI();
+      clearInterval(restTimer); _restEndTs=null;
+      skipRest(); beep(660,0.15,0.4); vibrar([100,50,100,50,200]); return;
     }
-  },1000);
+    if(left!==restLeft){
+      restLeft=left;
+      updateRestUI();
+      // Beep solo 1 vez por segundo aunque el interval corra más seguido
+      if(restLeft<=10 && restLeft!==_lastBeepSec){
+        _lastBeepSec=restLeft;
+        beep(restLeft<=3?1200:880, 0.06, 0.25);
+        vibrar([30]);
+      }
+    }
+  },250); // 250ms — preciso y no pierde segundos al volver del bg
 }
 
 function updateRestUI(){
   const el=document.getElementById('rest-secs'); if(!el) return;
   el.textContent=restLeft;
-  // Color del número: blanco → naranja → rojo en últimos 10s
   el.style.color=restLeft<=5?'var(--red)':restLeft<=10?'var(--orange)':'#fff';
-  // Anillo: verde → rojo en últimos 10s
   const fill=document.getElementById('rc-fill'); if(!fill) return;
   fill.style.stroke=restLeft<=10?'var(--red)':'var(--green)';
-  const pct=restLeft/restTotal;
-  fill.style.strokeDashoffset=201*(1-pct); // r=32 → circunferencia≈201
+  const pct=restTotal>0?restLeft/restTotal:0;
+  fill.style.strokeDashoffset=201*(1-pct);
 }
-function skipRest(){ clearInterval(restTimer); document.getElementById('rest-ov').classList.remove('on'); }
-function addRestTime(s){ restLeft=Math.min(restLeft+s,restTotal+60); updateRestUI(); }
+function skipRest(){
+  clearInterval(restTimer);
+  _restEndTs=null;
+  document.getElementById('rest-ov').classList.remove('on');
+}
+function addRestTime(s){
+  if(_restEndTs) _restEndTs+=s*1000;  // mover el timestamp de fin
+  restLeft=Math.ceil((_restEndTs-Date.now())/1000);
+  restTotal=Math.max(restTotal,restLeft);
+  updateRestUI();
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  PLAN DE PROGRESIÓN (+2.5% semanal)
