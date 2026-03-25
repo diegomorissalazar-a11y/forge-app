@@ -1032,9 +1032,24 @@ function mergeDB(local, remote) {
   // Exercises: por id
   const exIds = new Set((local.exercises||[]).map(e=>e.id));
   (remote.exercises||[]).forEach(e=>{ if(!exIds.has(e.id)) m.exercises.push(e); });
-  // Routines
+  // Routines: merge inteligente — no agregar duplicados por nombre
+  const IDS_BASE_SET = new Set(['r_lunes','r_martes','r_mierco','r_jueves','r_cardio']);
   const rIds = new Set((local.routines||[]).map(r=>r.id));
-  (remote.routines||[]).forEach(r=>{ if(!rIds.has(r.id)) m.routines.push(r); });
+  const rNombres = new Set((local.routines||[]).map(r=>r.name.toLowerCase().trim()));
+  (remote.routines||[]).forEach(r=>{
+    if(rIds.has(r.id)) return; // ya existe por ID
+    const n = r.name.toLowerCase().trim();
+    if(rNombres.has(n)) return; // ya existe por nombre exacto
+    // Si es una copia de rutina base (nombre similar) y ya tenemos la base → ignorar
+    const esCopiaBase = !IDS_BASE_SET.has(r.id) &&
+      ['tren inferior a','tren superior a','tren inferior b','tren superior b','cardio'].some(k=>n.includes(k));
+    const tenemosSuBase = [...m.routines].some(x => IDS_BASE_SET.has(x.id) && x.name.toLowerCase().includes(
+      ['tren inferior a','tren superior a','tren inferior b','tren superior b','cardio'].find(k=>n.includes(k))||'__'
+    ));
+    if(esCopiaBase && tenemosSuBase) return; // es duplicado → ignorar
+    m.routines.push(r);
+    rNombres.add(n);
+  });
   // bodyMetrics: por fecha
   const mDates = new Set((local.bodyMetrics||[]).map(x=>x.date));
   (remote.bodyMetrics||[]).forEach(x=>{ if(!mDates.has(x.date)) m.bodyMetrics.push(x); });
