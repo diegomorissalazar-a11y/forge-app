@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0d0d0d">
+<meta name="theme-color" content="#f2f4f7">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232563eb'/><text x='4' y='25' font-family='Arial' font-weight='900' font-style='italic' font-size='22' fill='white'>F</text></svg>">
 <title>FORGE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700;1,800;1,900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -36,7 +37,7 @@ html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--fb
 /* ═══════════════════════════════════════
    LAYOUT
 ═══════════════════════════════════════ */
-#app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100dvh;overflow:hidden;width:100%}
 #wrap{flex:1;overflow:hidden;position:relative;min-height:0;display:flex;flex-direction:column}
 .screen{display:none;flex-direction:column;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;width:100%}
 .screen.on{display:flex}
@@ -47,10 +48,10 @@ nav{flex-shrink:0;display:flex;height:58px;background:var(--bg2);border-top:1px 
 .nb svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8}
 .nb.on{color:var(--orange);border-top-color:var(--orange)}
 
-/* Escritorio */
+/* Escritorio — sin barra lateral, ancho completo con máximo centrado */
 @media(min-width:900px){
-  #app{max-width:980px;margin:0 auto;width:100%;box-shadow:0 0 60px rgba(0,0,0,.5)}
-  html,body{background:#050505}
+  html,body{background:var(--bg);overflow:hidden}
+  #app{max-width:600px;margin:0 auto;box-shadow:0 0 40px rgba(0,0,0,.08);border-left:1px solid var(--border);border-right:1px solid var(--border)}
   .nb{font-size:10px;gap:4px}
   .nb svg{width:22px;height:22px}
 }
@@ -126,7 +127,7 @@ select.inp{cursor:pointer}
 .toast.ok{border-color:var(--green);color:var(--green)}
 
 /* Modal */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:400;align-items:flex-end;justify-content:center}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:400;align-items:flex-end;justify-content:center}
 .modal-bg.on{display:flex}
 @media(min-width:600px){.modal-bg{align-items:center}}
 .modal{background:var(--bg2);border-radius:var(--rl) var(--rl) 0 0;width:100%;max-width:520px;max-height:92dvh;overflow-y:auto}
@@ -193,10 +194,10 @@ select.inp{cursor:pointer}
 .set-check svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5}
 
 /* Objetivo de carga (progresión automática) */
-.carga-sugerida{display:flex;align-items:center;gap:8px;padding:6px 16px;background:#0a1a0a;border-bottom:1px solid var(--border);font-size:11px;color:var(--green)}
+.carga-sugerida{display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:11px;color:var(--green)}
 
 /* Rest overlay */
-.rest-ov{display:none;position:fixed;bottom:66px;left:50%;transform:translateX(-50%);z-index:300;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:14px 20px;flex-direction:row;align-items:center;gap:16px;box-shadow:0 8px 32px rgba(0,0,0,.7);min-width:min(90vw,400px);max-width:500px}
+.rest-ov{display:none;position:fixed;bottom:66px;left:50%;transform:translateX(-50%);z-index:300;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:14px 20px;flex-direction:row;align-items:center;gap:16px;box-shadow:0 8px 32px rgba(0,0,0,.3);min-width:min(90vw,400px);max-width:500px}
 .rest-ov.on{display:flex}
 .rest-circle{position:relative;width:72px;height:72px;flex-shrink:0}
 .rest-circle svg{position:absolute;inset:0;transform:rotate(-90deg)}
@@ -310,10 +311,10 @@ select.inp{cursor:pointer}
 .semana-num.cur{color:var(--orange)}
 .semana-info{flex:1;font-size:13px;color:var(--ink2)}
 .semana-done{font-size:16px}
-.carga-tag{display:inline-block;background:#1a0a00;border:1px solid var(--orange);border-radius:4px;padding:2px 8px;font-size:10px;color:var(--orange);font-weight:700;letter-spacing:.5px;margin-left:4px}
+.carga-tag{display:inline-block;background:var(--bg4);border:1px solid var(--orange);border-radius:4px;padding:2px 8px;font-size:10px;color:var(--orange);font-weight:700;letter-spacing:.5px;margin-left:4px}
 
 /* User menu */
-#user-menu{display:none;position:fixed;top:56px;right:16px;z-index:300;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);min-width:200px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+#user-menu{display:none;position:fixed;top:56px;right:16px;z-index:300;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);min-width:200px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.15)}
 #user-menu.on{display:block}
 .um-item{display:flex;align-items:center;gap:10px;padding:12px 16px;font-size:13px;color:var(--ink2);cursor:pointer;transition:background .1s}
 .um-item:hover{background:var(--bg3)}
@@ -1982,17 +1983,17 @@ function renderRutinas(){
     let diaTag='';
     if(diaRut>=0){
       const label=diasFalta===0?'HOY':diasFalta===1?'Mañana':diasOrden[diaRut].charAt(0).toUpperCase()+diasOrden[diaRut].slice(1);
-      const bg=diasFalta===0?'var(--orange)':diasFalta===1?'#1a1200':'var(--bg3)';
+      const bg=diasFalta===0?'var(--orange)':diasFalta===1?'var(--bg4)':'var(--bg3)';
       const col=diasFalta===0?'#fff':diasFalta===1?'var(--gold)':'var(--ink3)';
       diaTag=`<span style="background:${bg};color:${col};font-size:9px;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">${label}</span>`;
     }
 
-    const cargaHint=tieneCarga?`<div style="background:#0a1a0a;border-top:1px solid var(--border);padding:7px 16px;font-size:11px;color:var(--green)">
+    const cargaHint=tieneCarga?`<div style="background:var(--bg3);border-top:1px solid var(--border);padding:7px 16px;font-size:11px;color:var(--green)">
       ✦ Carga plan sem ${semG}: ${exs.filter(e=>cargas[e.id]).map(e=>`${e.name.split('(')[0].trim()} ${cargas[e.id]}kg`).join(' · ')}
     </div>`:'';
 
     // Banner sugerida
-    const bannerSugerida=esSugerida?`<div style="background:linear-gradient(90deg,rgba(37,99,235,.12),var(--bg2));padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+    const bannerSugerida=esSugerida?`<div style="background:linear-gradient(90deg,rgba(37,99,235,.06),var(--bg2));padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
       <span style="font-size:10px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase">⚡ Sugerida — ${diasFalta===0?'HOY':diasFalta===1?'Mañana':diaRut>=0?(diasOrden[diaRut].charAt(0).toUpperCase()+diasOrden[diaRut].slice(1)):'Próxima'}</span>
     </div>`:'';
 
@@ -2030,7 +2031,7 @@ function renderRutinas(){
           return `<div style="padding:10px 16px;border-bottom:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
               <div style="font-size:13px;font-weight:700;color:var(--ink)">${e.name}</div>
-              ${c?`<span style="font-size:10px;background:#0a1a0a;border:1px solid var(--green);color:var(--green);padding:2px 8px;border-radius:4px;font-weight:700">Plan: ${c}kg</span>`:
+              ${c?`<span style="font-size:10px;background:var(--bg3);border:1px solid var(--green);color:var(--green);padding:2px 8px;border-radius:4px;font-weight:700">Plan: ${c}kg</span>`:
                 pr.weight?`<span style="font-size:10px;color:var(--gold)">PR: ${pr.weight}kg</span>`:''}
             </div>
             ${isRun?`<div style="font-size:11px;color:var(--ink3)">Cardio — km, tiempo, FC y pasos</div>`:
@@ -2067,7 +2068,7 @@ function abrirMenuRutina(rutinaId, btn){
   m.id='menu-rutina-ctx';
   m.style.cssText=`position:fixed;top:${rect.bottom+4}px;right:${window.innerWidth-rect.right}px;
     background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);
-    z-index:500;min-width:160px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4)`;
+    z-index:500;min-width:160px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.15)`;
   m.innerHTML=`
     <div onclick="openEditRutina('${rutinaId}');document.getElementById('menu-rutina-ctx')?.remove()"
       style="padding:12px 16px;font-size:13px;color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:8px"
@@ -2324,7 +2325,7 @@ function toggleSet(ei,si){
   const row=document.getElementById(`sr-${ei}-${si}`);
   if(row){
     row.querySelector('.set-check').classList.toggle('done',set.done);
-    if(isRun) row.style.background=set.done?'#0a1a0a':'transparent';
+    if(isRun) row.style.background=set.done?'var(--bg3)':'transparent';
   }
   // Timer de descanso solo para ejercicios de fuerza
   if(set.done&&!isRun) startRest(activeSession.restSec||90, ei, si);
@@ -2532,7 +2533,7 @@ function reToggleSeccion(sec){
   } else {
     // Agregar placeholder de sección — el usuario añadirá ejercicios después
     showToast(`Sección ${sec} activada — agrega ejercicios y asígnalos`,3000);
-    if(btn){btn.style.background='#0a1a0a';btn.style.color='var(--green)';btn.style.borderColor='var(--green)';}
+    if(btn){btn.style.background='var(--bg3)';btn.style.color='var(--green)';btn.style.borderColor='var(--green)';}
   }
   reRenderLista();
 }
@@ -3555,7 +3556,7 @@ function renderProgCuerpo(){
   const filtroGlobalHtml=`<div style="display:flex;gap:4px">
     ${['todo','12m'].map(f=>`<button onclick="window._cuerpoFiltroGlobal='${f}';renderProgCuerpo()"
       style="padding:3px 10px;border-radius:20px;border:1px solid ${f===filtroGlobal?'var(--orange)':'var(--border2)'};
-      background:${f===filtroGlobal?'#1a0a00':'var(--bg3)'};color:${f===filtroGlobal?'var(--orange)':'var(--ink3)'};
+      background:${f===filtroGlobal?'var(--bg4)':'var(--bg3)'};color:${f===filtroGlobal?'var(--orange)':'var(--ink3)'};
       font-size:11px;font-weight:600;cursor:pointer">${f==='todo'?'Todo':'12 meses'}</button>`).join('')}
   </div>`;
 
@@ -3598,7 +3599,7 @@ function renderProgCuerpo(){
       <div style="display:flex;gap:4px;flex-wrap:wrap">
         ${años.map(a=>`<button onclick="window._cuerpoAñoFiltro='${a}';renderProgCuerpo()"
           style="padding:3px 10px;border-radius:20px;border:1px solid ${a===añoFiltro?'var(--orange)':'var(--border2)'};
-          background:${a===añoFiltro?'#1a0a00':'var(--bg3)'};color:${a===añoFiltro?'var(--orange)':'var(--ink3)'};
+          background:${a===añoFiltro?'var(--bg4)':'var(--bg3)'};color:${a===añoFiltro?'var(--orange)':'var(--ink3)'};
           font-size:11px;font-weight:600;cursor:pointer">${a}</button>`).join('')}
       </div>
     </div>
@@ -4159,7 +4160,7 @@ function renderIdeas(){
     {id:'colacion_am',label:'🍎 Colación'},{id:'colacion_pm',label:'🥛 PM'},
   ];
   document.getElementById('ideas-filtro').innerHTML=filtros.map(f=>`
-    <button onclick="ideasFiltro='${f.id}';renderIdeas()" style="padding:5px 12px;border-radius:20px;border:1px solid ${ideasFiltro===f.id?'var(--orange)':'var(--border2)'};background:${ideasFiltro===f.id?'#1a0a00':'var(--bg3)'};color:${ideasFiltro===f.id?'var(--orange)':'var(--ink2)'};font-size:11px;font-weight:600;cursor:pointer">${f.label}</button>`).join('');
+    <button onclick="ideasFiltro='${f.id}';renderIdeas()" style="padding:5px 12px;border-radius:20px;border:1px solid ${ideasFiltro===f.id?'var(--orange)':'var(--border2)'};background:${ideasFiltro===f.id?'var(--bg4)':'var(--bg3)'};color:${ideasFiltro===f.id?'var(--orange)':'var(--ink2)'};font-size:11px;font-weight:600;cursor:pointer">${f.label}</button>`).join('');
   const lista=IDEAS[ideasFiltro]||[];
   const c=COMIDAS.find(x=>x.id===ideasFiltro);
   document.getElementById('ideas-list').innerHTML=`
