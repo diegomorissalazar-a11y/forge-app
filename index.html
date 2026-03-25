@@ -17,11 +17,11 @@
    VARIABLES
 ═══════════════════════════════════════ */
 :root {
-  --bg:#0d0d0d; --bg2:#141414; --bg3:#1a1a1a; --bg4:#222;
-  --border:#2a2a2a; --border2:#383838;
-  --ink:#f0f0f0; --ink2:#aaa; --ink3:#666;
-  --orange:#e85d04; --orange2:#ff6b1a;
-  --green:#52b788; --red:#e63946; --gold:#ffd166; --blue:#4361ee;
+  --bg:#111318; --bg2:#1c1f26; --bg3:#242830; --bg4:#2e333d;
+  --border:#2e333d; --border2:#3a3f4a;
+  --ink:#f2f4f7; --ink2:#9aa0ae; --ink3:#5a6270;
+  --orange:#2563eb; --orange2:#3b82f6;
+  --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --blue:#2563eb;
   --fd: 'Barlow Condensed', sans-serif;
   --fb: 'Barlow', sans-serif;
   --r:8px; --rl:14px;
@@ -734,7 +734,7 @@ select.inp{cursor:pointer}
   </div>
 
   <!-- Config rápida -->
-  <div style="display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;flex-shrink:0">
+    <div style="display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;flex-shrink:0">
     <div style="display:flex;align-items:center;gap:6px">
       <span style="font-size:11px;color:var(--ink3)">Emoji</span>
       <input id="re-emoji" class="inp" value="🏋" style="width:48px;text-align:center;font-size:18px;padding:4px;border-radius:var(--r)" maxlength="2" oninput="re.emoji=this.value">
@@ -746,14 +746,6 @@ select.inp{cursor:pointer}
         <option value="120">2 min</option><option value="180">3 min</option><option value="300">5 min</option>
       </select>
     </div>
-    <button onclick="reToggleSeccion('calentamiento')" id="re-btn-cal"
-      style="padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--ink3);font-size:11px;font-weight:600;cursor:pointer">
-      🔥 Calentamiento
-    </button>
-    <button onclick="reToggleSeccion('enfriamiento')" id="re-btn-enf"
-      style="padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--ink3);font-size:11px;font-weight:600;cursor:pointer">
-      🧊 Enfriamiento
-    </button>
   </div>
 
   <!-- Lista de ejercicios -->
@@ -1465,6 +1457,22 @@ function initRutinas(){
   EJERCICIOS_BASE.forEach(e=>{ if(!exIds.has(e.id)) forge.exercises.push(e); });
   const rIds  = new Set(forge.routines.map(r=>r.id));
   RUTINAS_BASE.forEach(r=>{ if(!rIds.has(r.id)) forge.routines.push(r); });
+
+  // ── Deduplicar rutinas por nombre similar ─────────────────────
+  // Agrupar por nombre normalizado, conservar la que tiene más ejercicios o _series definidas
+  const rutinaMap={};
+  forge.routines.forEach(r=>{
+    const key=r.name.toLowerCase().trim().replace(/\s+/g,' ');
+    if(!rutinaMap[key]){
+      rutinaMap[key]=r;
+    } else {
+      // Conservar la que tiene más info (_series, ejercicios)
+      const scoreA=Object.keys(rutinaMap[key]._series||{}).length + (rutinaMap[key].exercises||[]).length;
+      const scoreB=Object.keys(r._series||{}).length + (r.exercises||[]).length;
+      if(scoreB>scoreA) rutinaMap[key]=r;
+    }
+  });
+  forge.routines=Object.values(rutinaMap);
   saveDB();
 }
 
@@ -2003,7 +2011,7 @@ function renderRutinas(){
         </div>
         <div style="display:flex;align-items:center;gap:2px">
           <svg id="rutina-chevron-${r.id}" viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
-          <button class="bicon" onclick="event.stopPropagation();openEditRutina('${r.id}')">
+          <button class="bicon" onclick="event.stopPropagation();abrirMenuRutina('${r.id}',this)">
             <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
           </button>
         </div>
@@ -2048,6 +2056,41 @@ function renderRutinas(){
 
   document.getElementById('train-topbar-right').innerHTML=`
     <button class="btn btn-p btn-sm" onclick="openNewRutina()">+ Nueva</button>`;
+}
+
+function abrirMenuRutina(rutinaId, btn){
+  // Mini menú contextual
+  const existing=document.getElementById('menu-rutina-ctx');
+  if(existing) existing.remove();
+  const rect=btn.getBoundingClientRect();
+  const m=document.createElement('div');
+  m.id='menu-rutina-ctx';
+  m.style.cssText=`position:fixed;top:${rect.bottom+4}px;right:${window.innerWidth-rect.right}px;
+    background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);
+    z-index:500;min-width:160px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4)`;
+  m.innerHTML=`
+    <div onclick="openEditRutina('${rutinaId}');document.getElementById('menu-rutina-ctx')?.remove()"
+      style="padding:12px 16px;font-size:13px;color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:8px"
+      onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+      ✏️ Editar rutina
+    </div>
+    <div style="height:1px;background:var(--border)"></div>
+    <div onclick="deleteRutina('${rutinaId}');document.getElementById('menu-rutina-ctx')?.remove()"
+      style="padding:12px 16px;font-size:13px;color:var(--red);cursor:pointer;display:flex;align-items:center;gap:8px"
+      onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+      🗑 Eliminar rutina
+    </div>`;
+  document.body.appendChild(m);
+  setTimeout(()=>document.addEventListener('click',()=>m.remove(),{once:true}),10);
+}
+
+function deleteRutina(rutinaId){
+  const r=(forge.routines||[]).find(x=>x.id===rutinaId); if(!r) return;
+  if(!confirm(`¿Eliminar "${r.name}"?\nEsto no elimina las sesiones ya registradas.`)) return;
+  forge.routines=forge.routines.filter(x=>x.id!==rutinaId);
+  saveDB();
+  renderRutinas();
+  showToast('Rutina eliminada');
 }
 
 function toggleRutinaDetalle(rutinaId){
@@ -2150,44 +2193,49 @@ function renderSexBlock(ex,ei){
   const isRun=e.type==='run'||e.type==='hiit';
   const pr=getPR(ex.exId);
 
-  // ── Último registro ───────────────────────────────────────────
+  // ── Último registro de esta misma rutina ──────────────────────
   const ultsesion=(forge.sessions||[])
     .filter(s=>s.exercises?.some(x=>x.exId===ex.exId))
     .sort((a,b)=>b.date-a.date)[0];
   const ultEx=ultsesion?.exercises?.find(x=>x.exId===ex.exId);
-  let ultStr='Primera vez';
-  if(ultEx){
-    if(isRun){
-      const sets=(ultEx.sets||[]).filter(s=>parseFloat(s.distance)>0||s.time);
-      const dist=sets.reduce((a,s)=>a+(parseFloat(s.distance)||0),0);
-      const fc=sets.find(s=>s.fc);
-      const pasos=sets.find(s=>s.pasos);
-      ultStr=`Última: ${dist>0?dist.toFixed(2)+'km':'—'}`
-        +(fc?` · ❤️${fc.fc}bpm`:'')
-        +(pasos?` · 👟${parseInt(pasos.pasos).toLocaleString('es')}p`:'');
-    } else {
-      const sets=(ultEx.sets||[]).filter(s=>s.done&&s.weight);
-      ultStr=sets.length?'Última: '+sets.map(s=>`${s.weight}×${s.reps}`).join(', '):'Primera vez';
-    }
+  const ultSets=(ultEx?.sets||[]).filter(s=>s.done&&(s.weight||s.distance||s.time));
+
+  // Texto resumen para cardio
+  let ultCardioStr='';
+  if(isRun && ultEx){
+    const sets=(ultEx.sets||[]).filter(s=>parseFloat(s.distance)>0||s.time);
+    const dist=sets.reduce((a,s)=>a+(parseFloat(s.distance)||0),0);
+    const fc=sets.find(s=>s.fc);
+    const pasos=sets.find(s=>s.pasos);
+    ultCardioStr=dist>0?`${dist.toFixed(2)}km`:'';
+    if(fc) ultCardioStr+=` · ❤️${fc.fc}bpm`;
+    if(pasos) ultCardioStr+=` · 👟${parseInt(pasos.pasos).toLocaleString('es')}p`;
   }
 
-  // ── PR de carrera ─────────────────────────────────────────────
+  // ── PR ────────────────────────────────────────────────────────
   let prStr='';
   if(isRun){
     const runPR=getRunPRObj(ex.exId);
-    if(runPR.dist>0) prStr=`PR dist: ${runPR.dist.toFixed(2)}km`;
-    if(runPR.ritmo>0) prStr+=(prStr?' · ':'')+`Mejor ritmo: ${Math.floor(runPR.ritmo)}'${pad(Math.round((runPR.ritmo%1)*60))}"/km`;
+    if(runPR.dist>0) prStr=`PR: ${runPR.dist.toFixed(2)}km`;
+    if(runPR.ritmo>0) prStr+=(prStr?' · ':'')+`${Math.floor(runPR.ritmo)}'${pad(Math.round((runPR.ritmo%1)*60))}"/km`;
   } else {
     if(pr.weight>0) prStr=`PR: ${pr.weight}kg × ${pr.reps} reps`;
   }
 
-  // ── Carga sugerida (solo fuerza) ──────────────────────────────
   const cs=getCargasSemana(activeSession.routineId||'')[ex.exId];
   const csStr=cs&&!isRun?`📈 Carga sugerida esta semana: ${cs} kg`:'';
+  const headerBg=isRun?'background:linear-gradient(90deg,rgba(34,197,94,.08),var(--bg2))':'';
+  const tipoTag=isRun?`<span style="background:rgba(34,197,94,.15);color:var(--green);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-left:8px">🏃 Cardio</span>`:'';
 
-  // ── Header con color según tipo ───────────────────────────────
-  const headerBg=isRun?'background:linear-gradient(90deg,#0a1a10,var(--bg2))':'';
-  const tipoTag=isRun?`<span style="background:#134e1a;color:#52b788;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-left:8px">🏃 Cardio</span>`:'';
+  // ── Header columnas al estilo Hevy ────────────────────────────
+  const colHeader = isRun ? '' : `
+    <div style="display:grid;grid-template-columns:28px 1fr 1fr 1fr auto;gap:6px;padding:5px 16px;background:var(--bg3);border-bottom:1px solid var(--border)">
+      <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase">Serie</span>
+      <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase">Anterior</span>
+      <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase;text-align:center">KG</span>
+      <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase;text-align:center">Reps</span>
+      <span style="width:34px"></span>
+    </div>`;
 
   return `<div class="sex-block" id="sex-${ei}">
     <div class="sex-head" style="${headerBg}">
@@ -2195,7 +2243,8 @@ function renderSexBlock(ex,ei){
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
           <div class="sex-name">${e.name}</div>${tipoTag}
         </div>
-        ${prStr?`<div class="sex-pr" style="margin-top:2px;color:${isRun?'var(--green)':'var(--gold)'}">${isRun?'🏅':'🏅'} ${prStr}</div>`:''}
+        ${prStr?`<div class="sex-pr" style="margin-top:2px;color:${isRun?'var(--green)':'var(--gold)'}">🏅 ${prStr}</div>`:''}
+        ${isRun&&ultCardioStr?`<div style="font-size:11px;color:var(--green);margin-top:2px">Última: ${ultCardioStr}</div>`:''}
       </div>
       <button class="bicon" onclick="abrirReemplazarEx(${ei})" title="Reemplazar ejercicio" style="color:var(--ink3)">
         <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
@@ -2204,35 +2253,21 @@ function renderSexBlock(ex,ei){
         <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
     </div>
-    <div class="sex-prev" style="${isRun?'color:var(--green)':''}">${ultStr}</div>
     ${csStr?`<div class="carga-sugerida">✦ ${csStr}</div>`:''}
-    ${ex.sets.map((set,si)=>renderSetRow(ei,si,set,isRun)).join('')}
+    ${colHeader}
+    ${ex.sets.map((set,si)=>renderSetRow(ei,si,set,isRun,ultSets[si])).join('')}
   </div>`;
 }
 
-function renderSetRow(ei,si,set,isRun){
+function renderSetRow(ei,si,set,isRun,ultSet){
   const done=set.done;
-
-  // Etiquetas de referencia de peso (solo para fuerza)
-  let refHtml='';
-  if(!isRun){
-    const partes=[];
-    if(set._pesoSugerido&&set._fuente){
-      const icono=set._fuente==='plan'?'📋':set._fuente==='rutina'?'⚙️':'';
-      const color=set._fuente==='plan'?'var(--green)':'var(--orange)';
-      const label=set._fuente==='plan'?'Plan':'Rutina';
-      partes.push(`<span style="color:${color};font-weight:700">${icono} ${label}: ${set._pesoSugerido}kg</span>`);
-    }
-    if(set._pesoHistorial&&set._pesoHistorial!==set._pesoSugerido){
-      partes.push(`<span style="color:var(--ink3)">🕐 Último: ${set._pesoHistorial}kg</span>`);
-    }
-    if(partes.length){
-      refHtml=`<div style="grid-column:2/-1;font-size:10px;display:flex;gap:10px;padding:2px 0 4px;flex-wrap:wrap">${partes.join('')}</div>`;
-    }
-  }
+  // Texto del set anterior
+  const anteriorTxt = ultSet
+    ? (isRun ? (ultSet.distance?`${ultSet.distance}km`:'—') : `${ultSet.weight}kg×${ultSet.reps}`)
+    : '—';
 
   if(isRun){
-    return `<div id="sr-${ei}-${si}" style="padding:10px 16px;border-bottom:1px solid var(--border);background:${done?'#0a1a0a':'transparent'}">
+    return `<div id="sr-${ei}-${si}" style="padding:10px 16px;border-bottom:1px solid var(--border);background:${done?'rgba(34,197,94,.06)':'transparent'}">
       <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:6px;align-items:center;margin-bottom:6px">
         <div class="set-num">${si+1}</div>
         <input class="set-inp" type="text" placeholder="km (ej: 4.01)" value="${set.distance||''}" oninput="updateSet(${ei},${si},'distance',this.value)" style="font-size:14px">
@@ -2246,12 +2281,25 @@ function renderSetRow(ei,si,set,isRun){
           <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
       </div>
-      ${set.fc||set.pasos?`<div style="padding:4px 0 0 34px;font-size:11px;color:var(--ink3)">${set.fc?`❤️ ${set.fc}bpm  `:''}${set.pasos?`👟 ${parseInt(set.pasos).toLocaleString('es')} pasos`:''}</div>`:''}
     </div>`;
   }
 
-  return `<div class="set-row" id="sr-${ei}-${si}" style="flex-wrap:wrap">
-    <div class="set-num">${si+1}</div>
+  // Etiquetas de referencia de peso
+  let refHtml='';
+  const partes=[];
+  if(set._pesoSugerido&&set._fuente){
+    const icono=set._fuente==='plan'?'📋':set._fuente==='rutina'?'⚙️':'';
+    const color=set._fuente==='plan'?'var(--green)':'var(--orange)';
+    const label=set._fuente==='plan'?'Plan':'Rutina';
+    partes.push(`<span style="color:${color};font-weight:700">${icono} ${label}: ${set._pesoSugerido}kg</span>`);
+  }
+  if(partes.length){
+    refHtml=`<div style="grid-column:2/-1;font-size:10px;display:flex;gap:10px;padding:1px 0 4px;flex-wrap:wrap">${partes.join('')}</div>`;
+  }
+
+  return `<div class="set-row" id="sr-${ei}-${si}" style="flex-wrap:wrap;background:${done?'rgba(34,197,94,.06)':'transparent'};grid-template-columns:28px 1fr 1fr 1fr auto">
+    <div class="set-num" style="color:${done?'var(--green)':'var(--ink3)'}">${si+1}</div>
+    <div style="font-size:12px;color:var(--ink3);display:flex;align-items:center;padding:0 4px">${anteriorTxt}</div>
     <input class="set-inp" type="number" placeholder="kg" value="${set.weight||''}" oninput="updateSet(${ei},${si},'weight',this.value)" inputmode="decimal">
     <input class="set-inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateSet(${ei},${si},'reps',this.value)" inputmode="numeric">
     <div class="set-check ${done?'done':''}" onclick="toggleSet(${ei},${si})">
