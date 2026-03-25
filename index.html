@@ -1455,47 +1455,24 @@ function initRutinas(){
 
   const exIds = new Set(forge.exercises.map(e=>e.id));
   EJERCICIOS_BASE.forEach(e=>{ if(!exIds.has(e.id)) forge.exercises.push(e); });
-  const rIds  = new Set(forge.routines.map(r=>r.id));
-  RUTINAS_BASE.forEach(r=>{ if(!rIds.has(r.id)) forge.routines.push(r); });
 
-  // ── Deduplicar rutinas por nombre similar ─────────────────────
-  // Normalizar: quitar tildes, abreviaturas, espacios extra
-  function normalizarNombre(n){
-    return n.toLowerCase()
-      .replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u')
-      .replace(/\binf\.?\b/g,'inferior').replace(/\bsup\.?\b/g,'superior')
-      .replace(/\s+/g,' ').trim();
-  }
-  const rutinaMap={};
-  forge.routines.forEach(r=>{
-    const key=normalizarNombre(r.name);
-    if(!rutinaMap[key]){
-      rutinaMap[key]=r;
-    } else {
-      // Conservar la que tiene ID base (r_lunes etc.) o más ejercicios
-      const esBase=(id)=>['r_lunes','r_martes','r_mierco','r_jueves','r_cardio'].includes(id);
-      if(esBase(r.id) && !esBase(rutinaMap[key].id)){
-        // Fusionar: conservar ID base pero tomar ejercicios del que tenga más
-        const merged={...r};
-        if((rutinaMap[key].exercises||[]).length>(r.exercises||[]).length){
-          merged.exercises=rutinaMap[key].exercises;
-          merged._series=rutinaMap[key]._series;
-          merged._restEx=rutinaMap[key]._restEx;
-        }
-        rutinaMap[key]=merged;
-      } else if(!esBase(r.id) && esBase(rutinaMap[key].id)){
-        // Mantener el base, solo actualizar si tiene más ejercicios
-        if((r.exercises||[]).length>(rutinaMap[key].exercises||[]).length){
-          rutinaMap[key].exercises=r.exercises;
-        }
-      } else {
-        const scoreA=Object.keys(rutinaMap[key]._series||{}).length+(rutinaMap[key].exercises||[]).length;
-        const scoreB=Object.keys(r._series||{}).length+(r.exercises||[]).length;
-        if(scoreB>scoreA) rutinaMap[key]=r;
-      }
-    }
+  // ── Deduplicar rutinas: si hay IDs base Y copias con otro ID del mismo nombre, quitar las copias ──
+  const IDS_BASE=new Set(['r_lunes','r_martes','r_mierco','r_jueves','r_cardio']);
+  const nombresBase=new Set(RUTINAS_BASE.map(r=>r.name.toLowerCase().trim()));
+
+  // Eliminar duplicados que son copias de las base (mismo nombre pero ID distinto)
+  forge.routines=forge.routines.filter(r=>{
+    if(IDS_BASE.has(r.id)) return true; // siempre conservar las base
+    const n=r.name.toLowerCase().trim();
+    // Si tiene nombre de rutina base pero ID distinto → es duplicado, eliminar
+    if(nombresBase.has(n)) return false;
+    return true; // conservar rutinas personalizadas
   });
-  forge.routines=Object.values(rutinaMap);
+
+  // Agregar las base que falten
+  const rIds=new Set(forge.routines.map(r=>r.id));
+  RUTINAS_BASE.forEach(r=>{ if(!rIds.has(r.id)) forge.routines.push({...r}); });
+
   saveDB();
 }
 
@@ -2922,26 +2899,16 @@ function crearPlan(){
   forge.planes.forEach(p=>p.activo=false);
   forge.planes.push(plan);
 
-  // ── Restaurar las 5 rutinas del plan si no existen ────────────
-  if(!forge.routines) forge.routines=[];
-  const idsExistentes=new Set(forge.routines.map(r=>r.id));
-  const nombresExistentes=new Set(forge.routines.map(r=>r.name.toLowerCase().trim()));
-  let rutinasAgregadas=0;
-  RUTINAS_BASE.forEach(r=>{
-    const yaExistePorId=idsExistentes.has(r.id);
-    const yaExistePorNombre=nombresExistentes.has(r.name.toLowerCase().trim());
-    if(!yaExistePorId && !yaExistePorNombre){
-      forge.routines.push({...r});
-      rutinasAgregadas++;
-    }
-  });
+  // ── Reemplazar TODAS las rutinas con exactamente las 5 del plan ──
+  // Conservar solo rutinas creadas manualmente (sin ID base)
+  const IDS_BASE=new Set(['r_lunes','r_martes','r_mierco','r_jueves','r_cardio']);
+  const rutinasManuales=(forge.routines||[]).filter(r=>!IDS_BASE.has(r.id));
+  // Las 5 base siempre se reemplazan con la versión fresca
+  forge.routines=[...RUTINAS_BASE.map(r=>({...r})), ...rutinasManuales];
 
   saveDB();
   closeModal('modal-plan');
-  const msg=rutinasAgregadas>0
-    ? `🚀 Plan creado · ${rutinasAgregadas} rutinas restauradas`
-    : '🚀 Plan de 16 semanas creado';
-  showToast(msg,3000,'ok');
+  showToast('🚀 Plan creado · 5 rutinas listas',3000,'ok');
   renderPerfil();
   renderHome();
   if(currentScreen==='train') renderTrain();
