@@ -804,6 +804,13 @@ select.inp{cursor:pointer}
         </select>
       </div>
       <div class="field"><label>Descanso (seg)</label><input class="inp" type="number" id="ex-rest" value="90" min="30" max="360"></div>
+      <div class="field">
+        <label>Video YouTube (opcional)</label>
+        <input class="inp" id="ex-youtube" placeholder="https://youtube.com/watch?v=..." oninput="exPreviewYT(this.value)">
+        <div id="ex-yt-preview" style="margin-top:8px;display:none;border-radius:var(--r);overflow:hidden;aspect-ratio:16/9">
+          <iframe id="ex-yt-iframe" width="100%" height="100%" frameborder="0" allowfullscreen style="display:block"></iframe>
+        </div>
+      </div>
       <button class="btn btn-p" onclick="saveEjercicio()">Guardar ejercicio</button>
     </div>
   </div>
@@ -2240,10 +2247,17 @@ function renderSexBlock(ex,ei){
 
   const cs=getCargasSemana(activeSession.routineId||'')[ex.exId];
   const csStr=cs&&!isRun?`📈 Carga sugerida esta semana: ${cs} kg`:'';
-  const headerBg=isRun?'background:linear-gradient(90deg,rgba(34,197,94,.08),var(--bg2))':'';
-  const tipoTag=isRun?`<span style="background:rgba(34,197,94,.15);color:var(--green);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-left:8px">🏃 Cardio</span>`:'';
+  const headerBg=isRun?'background:linear-gradient(90deg,rgba(22,163,74,.06),var(--bg2))':'';
+  const tipoTag=isRun?`<span style="background:rgba(22,163,74,.12);color:var(--green);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-left:8px">🏃 Cardio</span>`:'';
 
-  // ── Header columnas al estilo Hevy ────────────────────────────
+  // ── Video YouTube si el ejercicio lo tiene ────────────────────
+  const ytHtml = e.youtubeId ? `
+    <div style="margin:0 16px 10px;border-radius:var(--r);overflow:hidden;aspect-ratio:16/9;background:#000">
+      <iframe src="https://www.youtube.com/embed/${e.youtubeId}?rel=0&modestbranding=1"
+        width="100%" height="100%" frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen style="display:block"></iframe>
+    </div>` : '';
   const colHeader = isRun ? '' : `
     <div style="display:grid;grid-template-columns:28px 1fr 1fr 1fr auto;gap:6px;padding:5px 16px;background:var(--bg3);border-bottom:1px solid var(--border)">
       <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase">Serie</span>
@@ -2270,6 +2284,7 @@ function renderSexBlock(ex,ei){
       </button>
     </div>
     ${csStr?`<div class="carga-sugerida">✦ ${csStr}</div>`:''}
+    ${ytHtml}
     ${colHeader}
     ${ex.sets.map((set,si)=>renderSetRow(ei,si,set,isRun,ultSets[si])).join('')}
   </div>`;
@@ -2688,9 +2703,11 @@ function reAgregarEx(exId){
   reRenderLista();
 }
 function reAbrirNuevoEx(){
-  // Reutilizar modal de nuevo ejercicio
   document.getElementById('ex-edit-id').value='';
   document.getElementById('ex-name').value='';
+  document.getElementById('ex-youtube').value='';
+  document.getElementById('ex-yt-preview').style.display='none';
+  document.getElementById('ex-yt-iframe').src='';
   document.getElementById('re-selector-ex').style.display='none';
   openModal('modal-ejercicio');
 }
@@ -2730,17 +2747,41 @@ function guardarEditorRutina(){
   showToast('✓ Rutina guardada',2000,'ok');
 }
 
-// Compat — alias viejos
-function saveRutina(){ guardarEditorRutina(); }
+function ytIdFromUrl(url){
+  if(!url) return '';
+  const m = url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : '';
+}
+function exPreviewYT(url){
+  const id = ytIdFromUrl(url);
+  const preview = document.getElementById('ex-yt-preview');
+  const iframe  = document.getElementById('ex-yt-iframe');
+  if(id){
+    iframe.src = `https://www.youtube.com/embed/${id}`;
+    preview.style.display = 'block';
+  } else {
+    iframe.src = '';
+    preview.style.display = 'none';
+  }
+}
+
 function saveEjercicio(){
   const nombre=document.getElementById('ex-name').value.trim(); if(!nombre){ showToast('Ingresa un nombre'); return; }
   const editId=document.getElementById('ex-edit-id').value;
+  const ytUrl=document.getElementById('ex-youtube').value.trim();
+  const ytId=ytIdFromUrl(ytUrl);
   if(!forge.exercises) forge.exercises=[];
-  const e={id:editId||'ex_'+Date.now(),name:nombre,type:document.getElementById('ex-type').value,muscle:document.getElementById('ex-muscle').value,restSec:parseInt(document.getElementById('ex-rest').value)||90};
+  const e={
+    id:editId||'ex_'+Date.now(),
+    name:nombre,
+    type:document.getElementById('ex-type').value,
+    muscle:document.getElementById('ex-muscle').value,
+    restSec:parseInt(document.getElementById('ex-rest').value)||90,
+  };
+  if(ytId) e.youtubeId=ytId;
   if(editId){ const i=forge.exercises.findIndex(x=>x.id===editId); if(i>=0) forge.exercises[i]=e; } else forge.exercises.push(e);
   saveDB(); closeModal('modal-ejercicio');
   showToast('✓ Ejercicio creado',2000,'ok');
-  // Si viene del editor de rutina, agregarlo automáticamente
   if(document.getElementById('rutina-editor').style.display==='flex') reAgregarEx(e.id);
 }
 
