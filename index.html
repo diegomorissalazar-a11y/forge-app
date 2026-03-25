@@ -203,7 +203,7 @@ select.inp{cursor:pointer}
 .rest-circle svg{position:absolute;inset:0;transform:rotate(-90deg)}
 #rc-fill{stroke-dasharray:201;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear}
 .rest-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.rest-secs{font-family:var(--fd);font-size:22px;font-weight:900;color:#fff;line-height:1}
+.rest-secs{font-family:var(--fd);font-size:22px;font-weight:900;color:var(--ink);line-height:1}
 .rest-label{font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);display:none}
 .rest-next{font-size:12px;color:var(--ink2)}
 .rest-title{font-family:var(--fd);font-size:16px;font-weight:800;letter-spacing:2px;color:var(--orange)}
@@ -1355,7 +1355,7 @@ const EJERCICIOS_BASE = [
   {id:'ex_press_inclinado',name:'Press Inclinado (Barra)', type:'barbell',    muscle:'pecho',   restSec:120},
   {id:'ex_jalon_pecho',   name:'Jalón al Pecho (Cable)',   type:'cable',      muscle:'espalda', restSec:90},
   {id:'ex_press_homb_manc',name:'Press Hombros (Mancuerna)',type:'dumbbell',  muscle:'hombros', restSec:90},
-  {id:'ex_sent_bulgara',  name:'Sentadilla Búlgara',       type:'dumbbell',   muscle:'piernas', restSec:90},
+  {id:'ex_sent_bulgara',  name:'Sentadilla Búlgara',       type:'dumbbell',   muscle:'piernas', restSec:120, bilateral:true},
   {id:'ex_peso_muerto_rum',name:'Peso Muerto Rumano',      type:'barbell',    muscle:'piernas', restSec:90},
   {id:'ex_hip_thrust',    name:'Hip Thrust (Barra)',        type:'barbell',    muscle:'gluteos', restSec:90},
   {id:'ex_saltos_cajon',  name:'Saltos al Cajón',           type:'bodyweight', muscle:'piernas', restSec:90},
@@ -1786,7 +1786,7 @@ function renderEditSesExs(s){
       `:`
         <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px">
           <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
-          <input class="inp" type="number" placeholder="kg" value="${set.weight||''}" oninput="updateEditSet('${s.id}',${ei},${si},'weight',this.value)" style="padding:7px;font-size:13px" inputmode="decimal">
+          <input class="inp" type="text" placeholder="kg" value="${set.weight||''}" oninput="updateEditSet('${s.id}',${ei},${si},'weight',this.value)" style="padding:7px;font-size:13px" inputmode="decimal">
           <input class="inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateEditSet('${s.id}',${ei},${si},'reps',this.value)" style="padding:7px;font-size:13px" inputmode="numeric">
           <button onclick="deleteEditSet('${s.id}',${ei},${si})" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:16px">✕</button>
         </div>
@@ -2294,6 +2294,10 @@ function renderSexBlock(ex,ei){
       <button class="bicon" onclick="abrirReemplazarEx(${ei})" title="Reemplazar ejercicio" style="color:var(--ink3)">
         <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
       </button>
+      <button class="bicon" onclick="abrirDescansoEx(${ei})" title="Descanso" style="color:var(--ink3);font-size:11px;font-weight:700;gap:2px">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span style="font-size:10px;font-weight:700" id="rest-lbl-${ei}">${_exRestSec(ex.exId, activeSession)}s</span>
+      </button>
       <button class="bicon" onclick="addSetToEx(${ei})">
         <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
@@ -2307,13 +2311,17 @@ function renderSexBlock(ex,ei){
 
 function renderSetRow(ei,si,set,isRun,ultSet){
   const done=set.done;
-  // Texto del set anterior
   const anteriorTxt = ultSet
     ? (isRun ? (ultSet.distance?`${ultSet.distance}km`:'—') : `${ultSet.weight}kg×${ultSet.reps}`)
     : '—';
 
+  // ¿Es ejercicio bilateral?
+  const ex=activeSession?.exercises[ei];
+  const eDef=getEx(ex?.exId);
+  const isBilateral=eDef?.bilateral===true;
+
   if(isRun){
-    return `<div id="sr-${ei}-${si}" style="padding:10px 16px;border-bottom:1px solid var(--border);background:${done?'rgba(34,197,94,.06)':'transparent'}">
+    return `<div id="sr-${ei}-${si}" style="padding:10px 16px;border-bottom:1px solid var(--border);background:${done?'rgba(22,163,74,.06)':'transparent'}">
       <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:6px;align-items:center;margin-bottom:6px">
         <div class="set-num">${si+1}</div>
         <input class="set-inp" type="text" placeholder="km (ej: 4.01)" value="${set.distance||''}" oninput="updateSet(${ei},${si},'distance',this.value)" style="font-size:14px">
@@ -2330,27 +2338,44 @@ function renderSetRow(ei,si,set,isRun,ultSet){
     </div>`;
   }
 
-  // Etiquetas de referencia de peso
   let refHtml='';
-  const partes=[];
   if(set._pesoSugerido&&set._fuente){
-    const icono=set._fuente==='plan'?'📋':set._fuente==='rutina'?'⚙️':'';
+    const icono=set._fuente==='plan'?'📋':'⚙️';
     const color=set._fuente==='plan'?'var(--green)':'var(--orange)';
     const label=set._fuente==='plan'?'Plan':'Rutina';
-    partes.push(`<span style="color:${color};font-weight:700">${icono} ${label}: ${set._pesoSugerido}kg</span>`);
-  }
-  if(partes.length){
-    refHtml=`<div style="grid-column:2/-1;font-size:10px;display:flex;gap:10px;padding:1px 0 4px;flex-wrap:wrap">${partes.join('')}</div>`;
+    refHtml=`<div style="grid-column:2/-1;font-size:10px;padding:1px 0 4px"><span style="color:${color};font-weight:700">${icono} ${label}: ${set._pesoSugerido}kg</span></div>`;
   }
 
-  return `<div class="set-row" id="sr-${ei}-${si}" style="flex-wrap:wrap;background:${done?'rgba(34,197,94,.06)':'transparent'};grid-template-columns:28px 1fr 1fr 1fr auto">
-    <div class="set-num" style="color:${done?'var(--green)':'var(--ink3)'}">${si+1}</div>
+  // Bilateral: botones L / R en lugar del check único
+  const ladoL = set._ladoL || false; // izquierda completada
+  const ladoR = set._ladoR || false; // derecha completada
+  const ambos = ladoL && ladoR;
+
+  const checkHtml = isBilateral
+    ? `<div style="display:flex;gap:4px;align-items:center">
+        <button onclick="toggleLado(${ei},${si},'L')" style="
+          width:30px;height:30px;border-radius:50%;border:2px solid ${ladoL?'var(--green)':'var(--border2)'};
+          background:${ladoL?'var(--green)':'var(--bg3)'};color:${ladoL?'#fff':'var(--ink3)'};
+          font-size:11px;font-weight:800;cursor:pointer;font-family:var(--fb)">L</button>
+        <button onclick="toggleLado(${ei},${si},'R')" style="
+          width:30px;height:30px;border-radius:50%;border:2px solid ${ladoR?'var(--green)':'var(--border2)'};
+          background:${ladoR?'var(--green)':'var(--bg3)'};color:${ladoR?'#fff':'var(--ink3)'};
+          font-size:11px;font-weight:800;cursor:pointer;font-family:var(--fb)">R</button>
+      </div>`
+    : `<div class="set-check ${done?'done':''}" onclick="toggleSet(${ei},${si})">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>`;
+
+  const bgColor = isBilateral
+    ? (ambos ? 'rgba(22,163,74,.06)' : ladoL||ladoR ? 'rgba(37,99,235,.04)' : 'transparent')
+    : (done ? 'rgba(22,163,74,.06)' : 'transparent');
+
+  return `<div class="set-row" id="sr-${ei}-${si}" style="flex-wrap:wrap;background:${bgColor};grid-template-columns:28px 1fr 1fr 1fr auto">
+    <div class="set-num" style="color:${(done||ambos)?'var(--green)':'var(--ink3)'}">${si+1}</div>
     <div style="font-size:12px;color:var(--ink3);display:flex;align-items:center;padding:0 4px">${anteriorTxt}</div>
-    <input class="set-inp" type="number" placeholder="kg" value="${set.weight||''}" oninput="updateSet(${ei},${si},'weight',this.value)" inputmode="decimal">
+    <input class="set-inp" type="text" placeholder="kg" value="${set.weight||''}" oninput="updateSet(${ei},${si},'weight',this.value)" inputmode="decimal">
     <input class="set-inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateSet(${ei},${si},'reps',this.value)" inputmode="numeric">
-    <div class="set-check ${done?'done':''}" onclick="toggleSet(${ei},${si})">
-      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-    </div>
+    ${checkHtml}
     ${refHtml}
   </div>`;
 }
@@ -2360,6 +2385,26 @@ function updateSet(ei,si,field,val){
   const v=normDec(val);
   activeSession.exercises[ei].sets[si][field]=field==='weight'||field==='reps'?parseFloat(v)||0:v;
 }
+function toggleLado(ei,si,lado){
+  if(!activeSession) return;
+  const ex=activeSession.exercises[ei];
+  const set=ex.sets[si];
+  const eDef=getEx(ex.exId);
+  const field = lado==='L' ? '_ladoL' : '_ladoR';
+  set[field] = !set[field];
+  const ambos = set._ladoL && set._ladoR;
+  // Solo marcar done y arrancar descanso cuando ambos lados completados
+  if(ambos && !set.done){
+    set.done=true;
+    startRest(eDef?.restSec || activeSession.restSec || 120, ei, si);
+  } else if(!ambos){
+    set.done=false;
+  }
+  // Re-renderizar solo esta fila
+  const container=document.getElementById('session-exs');
+  container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
+}
+
 function toggleSet(ei,si){
   if(!activeSession) return;
   const ex=activeSession.exercises[ei];
@@ -2373,7 +2418,10 @@ function toggleSet(ei,si){
     if(isRun) row.style.background=set.done?'var(--bg3)':'transparent';
   }
   // Timer de descanso solo para ejercicios de fuerza
-  if(set.done&&!isRun) startRest(activeSession.restSec||90, ei, si);
+  if(set.done&&!isRun){
+    const restSec=activeSession.exercises[ei]._restSec || getEx(ex.exId)?.restSec || activeSession.restSec||90;
+    startRest(restSec, ei, si);
+  }
 }
 function addSetToEx(ei){
   if(!activeSession) return;
@@ -2441,6 +2489,48 @@ function addExToSession(exId){
   closeModal('modal-ejercicio');
   const container=document.getElementById('session-exs');
   container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
+}
+
+function _exRestSec(exId, ses){
+  // Descanso específico del ejercicio en esta sesión, o el de la rutina, o 90s
+  const ex=(ses?.exercises||[]).find(e=>e.exId===exId);
+  if(ex?._restSec) return ex._restSec;
+  const eDef=getEx(exId);
+  return eDef?.restSec || ses?.restSec || 90;
+}
+
+function abrirDescansoEx(ei){
+  if(!activeSession) return;
+  const ex=activeSession.exercises[ei];
+  const actual=_exRestSec(ex.exId, activeSession);
+  const opciones=[30,45,60,90,120,150,180,240,300];
+  const html=opciones.map(s=>{
+    const min=Math.floor(s/60), seg=s%60;
+    const label=min>0?(seg>0?`${min}:${String(seg).padStart(2,'0')}`:`${min} min`):`${s}s`;
+    const sel=s===actual;
+    return `<button onclick="setDescansoEx(${ei},${s})" style="
+      padding:10px;border-radius:var(--r);border:2px solid ${sel?'var(--orange)':'var(--border)'};
+      background:${sel?'var(--orange)':'var(--bg2)'};color:${sel?'#fff':'var(--ink)'};
+      font-family:var(--fb);font-size:14px;font-weight:700;cursor:pointer;text-align:center">
+      ${label}
+    </button>`;
+  }).join('');
+
+  const eDef=getEx(ex.exId);
+  document.getElementById('modal-ejercicio').querySelector('.modal-title').textContent=`⏱ Descanso — ${eDef?.name||'Ejercicio'}`;
+  document.getElementById('modal-ejercicio').querySelector('.modal-body').innerHTML=`
+    <div style="font-size:12px;color:var(--ink3);margin-bottom:12px">Selecciona el tiempo de descanso entre series para este ejercicio:</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${html}</div>`;
+  openModal('modal-ejercicio');
+}
+
+function setDescansoEx(ei, secs){
+  if(!activeSession) return;
+  activeSession.exercises[ei]._restSec = secs;
+  const lbl=document.getElementById(`rest-lbl-${ei}`);
+  if(lbl) lbl.textContent=secs+'s';
+  closeModal('modal-ejercicio');
+  showToast(`⏱ Descanso: ${secs}s`,1500,'ok');
 }
 
 // ── Reemplazar ejercicio en sesión activa ──────────────────────
@@ -2654,8 +2744,8 @@ function reRenderLista(){
             ${(ex.series||[]).map((s,si)=>`
             <div style="display:grid;grid-template-columns:32px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:5px">
               <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
-              <input type="number" value="${s.peso||''}" placeholder="kg"
-                oninput="re.ejercicios[${globalIdx}].series[${si}].peso=parseFloat(this.value)||0"
+              <input type="text" value="${s.peso||''}" placeholder="kg"
+                oninput="re.ejercicios[${globalIdx}].series[${si}].peso=parseFloat(normDec(this.value))||0"
                 class="inp" style="padding:7px;font-size:13px;text-align:center" inputmode="decimal">
               <input type="number" value="${s.reps||''}" placeholder="reps"
                 oninput="re.ejercicios[${globalIdx}].series[${si}].reps=parseInt(this.value)||0"
@@ -3947,8 +4037,8 @@ function renderMedModal(){
       </div>
       <div class="field">
         <label>${m.label}${m.unit?' ('+m.unit+')':''}</label>
-        <input class="inp" id="med-val-input" type="${m.tipo}"
-          step="${m.step}" placeholder="${m.placeholder}"
+        <input class="inp" id="med-val-input" type="text"
+          placeholder="${m.placeholder}"
           value="${valActual}" inputmode="decimal"
           style="font-size:20px;text-align:center;padding:16px"
           autofocus>
@@ -3976,7 +4066,7 @@ function abrirMedValor(key){
 
 function saveMedValor(){
   const input = document.getElementById('med-val-input');
-  const val = input?.value?.trim();
+  const val = normDec(input?.value?.trim());
   if(!val){ showToast('Ingresa un valor'); return; }
 
   if(!forge.bodyMetrics) forge.bodyMetrics=[];
@@ -4408,7 +4498,79 @@ function renderPerfilPlan(){
           ${activo?`<span style="background:var(--orange);color:#fff;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700">ACTIVO</span>`:''}
         </div>
       </div>`;
-    }).join('')}`;
+    }).join('')}
+
+    <div class="section-label" style="margin-top:20px">Control de sincronización</div>
+    <div class="card" style="margin-bottom:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px">Rutinas en app</div>
+      <div style="font-size:12px;color:var(--ink3);margin-bottom:12px">${(forge.routines||[]).length} rutinas guardadas localmente</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-p" onclick="syncDesdeFirebase()" style="font-size:12px">
+          ☁️ Descargar desde Firebase (sobreescribir local)
+        </button>
+        <button class="btn btn-s" onclick="syncHaciaFirebase()" style="font-size:12px">
+          ⬆️ Subir local a Firebase (sobreescribir nube)
+        </button>
+        <button class="btn btn-r" onclick="limpiarRutinasLocal()" style="font-size:12px;color:#fff">
+          🗑 Limpiar rutinas duplicadas
+        </button>
+      </div>
+    </div>`;
+}
+
+async function syncDesdeFirebase(){
+  const user=firebase.auth().currentUser;
+  if(!user){ showToast('Debes estar autenticado',2000); return; }
+  showToast('Descargando desde Firebase…',2000);
+  try{
+    const ref=firebase.firestore().collection('users').doc(user.uid).collection('data').doc('forge');
+    const snap=await ref.get();
+    if(!snap.exists){ showToast('Sin datos en Firebase',2000); return; }
+    const remoto=snap.data();
+    // Firebase es fuente de verdad — sobreescribir todo excepto sesiones (merge)
+    const sesLocal=forge.sessions||[];
+    forge={...forge,...remoto};
+    // Merge sesiones: conservar todas sin duplicar
+    const sesIds=new Set((remoto.sessions||[]).map(s=>s.id));
+    sesLocal.forEach(s=>{ if(!sesIds.has(s.id)) forge.sessions.push(s); });
+    saveDB();
+    renderTrain();
+    renderHome();
+    renderPerfil();
+    showToast(`✅ Sincronizado: ${(forge.routines||[]).length} rutinas`,2500,'ok');
+  }catch(e){ showToast('Error: '+e.message,3000); }
+}
+
+async function syncHaciaFirebase(){
+  const user=firebase.auth().currentUser;
+  if(!user){ showToast('Debes estar autenticado',2000); return; }
+  if(!confirm('¿Sobreescribir Firebase con los datos locales actuales?\n\nEsto reemplazará las rutinas en la nube.')) return;
+  showToast('Subiendo a Firebase…',2000);
+  try{
+    const ref=firebase.firestore().collection('users').doc(user.uid).collection('data').doc('forge');
+    await ref.set(forge);
+    showToast('✅ Firebase actualizado',2500,'ok');
+  }catch(e){ showToast('Error: '+e.message,3000); }
+}
+
+function limpiarRutinasLocal(){
+  const IDS_BASE=['r_lunes','r_martes','r_mierco','r_jueves','r_cardio'];
+  const NOMBRES_BASE=['tren inferior a','tren superior a','tren inferior b','tren superior b','cardio'];
+  const antes=(forge.routines||[]).length;
+  // Eliminar copias de rutinas base con ID distinto
+  forge.routines=(forge.routines||[]).filter(r=>{
+    if(IDS_BASE.includes(r.id)) return true;
+    const n=r.name.toLowerCase();
+    return !NOMBRES_BASE.some(nb=>n.includes(nb));
+  });
+  // Agregar las 5 base si faltan
+  IDS_BASE.forEach((id,i)=>{
+    if(!forge.routines.find(r=>r.id===id)) forge.routines.push({...RUTINAS_BASE[i]});
+  });
+  saveDB();
+  renderTrain();
+  renderPerfil();
+  showToast(`✅ ${antes-(forge.routines||[]).length} duplicadas eliminadas · ${(forge.routines||[]).length} rutinas`,3000,'ok');
 }
 
 // ── Logros ─────────────────────────────────────────────────────
@@ -4893,16 +5055,40 @@ function setDatePickerValue(id, valorISO){
 }
 
 // ── Normalizar decimales: coma → punto en iOS ─────────────────
-function normDec(val){ return (val||'').toString().replace(',','.'); }
+// ── Normalizar decimales: coma → punto, limpiar caracteres inválidos ──
+function normDec(val){
+  if(val===null||val===undefined) return '';
+  return val.toString()
+    .replace(/,/g,'.')           // todas las comas → punto
+    .replace(/[^0-9.]/g,'')     // quitar todo excepto dígitos y punto
+    .replace(/\.(?=.*\.)/g,''); // si hay múltiples puntos, dejar solo el último
+}
 
-// Interceptar coma en todos los inputs decimales globalmente
+// Listener global: interceptar coma en CUALQUIER input decimal o numérico
 document.addEventListener('input', e=>{
   const el=e.target;
-  if(el.inputMode==='decimal'||el.dataset.dec){
-    const v=el.value; const fixed=v.replace(',','.');
-    if(v!==fixed){ const pos=el.selectionStart; el.value=fixed; try{el.setSelectionRange(pos,pos);}catch(e){} }
+  const esDecimal=el.inputMode==='decimal'||el.dataset.dec;
+  if(!esDecimal) return;
+  const v=el.value;
+  // Reemplazar coma por punto en tiempo real
+  if(v.includes(',')){
+    const pos=el.selectionStart;
+    el.value=v.replace(/,/g,'.');
+    try{ el.setSelectionRange(pos,pos); }catch(_){}
   }
-});
+}, {passive:true});
+
+// También interceptar keypress de coma → punto (para teclados físicos y algunos Android)
+document.addEventListener('keydown', e=>{
+  const el=e.target;
+  if((el.inputMode==='decimal'||el.dataset.dec) && e.key===','){
+    e.preventDefault();
+    const pos=el.selectionStart, end=el.selectionEnd;
+    el.value=el.value.slice(0,pos)+'.'+el.value.slice(end);
+    try{ el.setSelectionRange(pos+1,pos+1); }catch(_){}
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+  }
+}, {passive:false});
 
 // ═══════════════════════════════════════════════════════════════
 loadDB();
