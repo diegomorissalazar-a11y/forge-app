@@ -1623,10 +1623,15 @@ function renderSesCard(s, hoy){
     const volStr = s.totalVolume ? `${Math.round(s.totalVolume).toLocaleString('es')} kg` : '—';
     const nSeries = (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(s=>s.done).length,0);
     const records = calcSesRecords(s);
+    // FC: puede venir del campo top-level o del primer set de cardio de la sesión
+    const fcVal = s.fcMedia || s.fc || 0;
+    const kcalVal = s.kcal || 0;
     metaRow=`
       <div class="hm-item"><div class="hm-label">Volumen</div><div class="hm-val">${volStr}</div></div>
       ${nSeries?`<div class="hm-item"><div class="hm-label">Series</div><div class="hm-val">${nSeries}</div></div>`:''}
-      ${records?`<div class="hm-item"><div class="hm-label">Récords</div><div class="hm-val">🏅 ${records}</div></div>`:''}`;
+      ${records?`<div class="hm-item"><div class="hm-label">Récords</div><div class="hm-val">🏅 ${records}</div></div>`:''}
+      ${fcVal>0?`<div class="hm-item"><div class="hm-label">FC media</div><div class="hm-val" style="color:#f87171">❤️ ${fcVal} bpm</div></div>`:''}
+      ${kcalVal>0?`<div class="hm-item"><div class="hm-label">Calorías</div><div class="hm-val" style="color:var(--gold)">🔥 ${kcalVal} kcal</div></div>`:''}`;
   }
 
   // Emoji e ícono según tipo de sesión
