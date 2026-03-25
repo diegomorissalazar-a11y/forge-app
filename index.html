@@ -1276,7 +1276,17 @@ function renderAll() {
 function fmtTime(s){ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60; return h>0?`${h}:${pad(m)}:${pad(ss)}`:`${pad(m)}:${pad(ss)}`; }
 function pad(n){ return String(n).padStart(2,'0'); }
 function fmtDate(ts){ return new Date(ts).toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'}); }
-function today(){ return new Date().toISOString().split('T')[0]; }
+// Convertir timestamp a fecha local YYYY-MM-DD (evita desfase UTC en Santiago UTC-3/UTC-4)
+function localDateStr(ts){
+  const d=new Date(ts);
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function today(){
+  return localDateStr(Date.now());
+}
 function showToast(msg,dur=2200,type='') {
   const t=document.getElementById('toast'); if(!t) return;
   t.textContent=msg; t.className='toast on'+(type?' '+type:'');
@@ -1306,7 +1316,7 @@ function getPR(exId){
   return best;
 }
 function calcStreak(){
-  const dates=[...new Set((forge.sessions||[]).map(s=>new Date(s.date).toISOString().split('T')[0]))].sort().reverse();
+  const dates=[...new Set((forge.sessions||[]).map(s=>localDateStr(s.date)))].sort().reverse();
   const todayStr=today(); let streak=0,cur=todayStr;
   for(const d of dates){
     const diff=Math.round((new Date(cur)-new Date(d))/86400000);
@@ -1316,7 +1326,7 @@ function calcStreak(){
   return streak;
 }
 function calcMaxStreak(){
-  const dates=[...new Set((forge.sessions||[]).map(s=>new Date(s.date).toISOString().split('T')[0]))].sort();
+  const dates=[...new Set((forge.sessions||[]).map(s=>localDateStr(s.date)))].sort();
   let max=0,cur=0,prev=null;
   dates.forEach(d=>{
     const diff=prev?Math.round((new Date(d)-new Date(prev))/86400000):1;
@@ -1588,7 +1598,12 @@ function esSesSoloCardio(s){
 
 function renderSesCard(s, hoy){
   const fecha    = new Date(s.date);
-  const dias     = Math.floor((hoy-fecha)/86400000);
+  // Comparar por fecha local (no UTC) para evitar desfase en Santiago UTC-3
+  const hoyStr  = `${hoy.getFullYear()}-${hoy.getMonth()}-${hoy.getDate()}`;
+  const fStr    = `${fecha.getFullYear()}-${fecha.getMonth()}-${fecha.getDate()}`;
+  const hoyMid  = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  const fMid    = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+  const dias    = Math.round((hoyMid - fMid) / 86400000);
   const cuando   = dias===0?'Hoy':dias===1?'Ayer':`Hace ${dias} días`;
   const durStr   = s.elapsed?fmtTime(s.elapsed):'—';
   const esCardio = esSesSoloCardio(s);
@@ -1724,7 +1739,7 @@ function deleteSesion(id){
 function openEditSesion(id){
   const s=(forge.sessions||[]).find(x=>x.id===id); if(!s) return;
   // Precargamos el modal de edición
-  const fechaStr=new Date(s.date).toISOString().split('T')[0];
+  const fechaStr=localDateStr(s.date);
   const durMins=Math.floor((s.elapsed||0)/60);
   document.getElementById('edit-ses-id').value=id;
   document.getElementById('edit-ses-fecha-wrap').innerHTML=renderDatePicker('edit-ses-fecha',fechaStr);
@@ -3148,7 +3163,7 @@ function renderExDetail(exId){
 
   (forge.sessions||[]).sort((a,b)=>a.date-b.date).forEach(s=>{
     const ex=(s.exercises||[]).find(x=>x.exId===exId); if(!ex) return;
-    const fecha=new Date(s.date).toISOString().split('T')[0];
+    const fecha=localDateStr(s.date);
 
     if(isRun){
       const sets=(ex.sets||[]).filter(set=>parseFloat(set.distance)>0||set.time);
@@ -3220,7 +3235,7 @@ function renderExDetail(exId){
 
   // ── Historial agrupado con filtro Todo / 12m / año ────────────
   const hoy12m = new Date(); hoy12m.setFullYear(hoy12m.getFullYear()-1);
-  const fechaCorte12m = hoy12m.toISOString().split('T')[0];
+  const fechaCorte12m = localDateStr(hoy12m);
   const años=[...new Set(sesiones.map(s=>s.fecha.slice(0,4)))].sort().reverse();
 
   // Estado del filtro: 'todo' | '12m' | '2026' | '2025' ...
@@ -3513,7 +3528,7 @@ function openCuerpoChart(key, mets){
 
   // Filtro Todo / 12m / año
   const hoy12m=new Date(); hoy12m.setFullYear(hoy12m.getFullYear()-1);
-  const corte12m=hoy12m.toISOString().split('T')[0];
+  const corte12m=localDateStr(hoy12m);
   const años=[...new Set(pts.map(p=>p.fecha.slice(0,4)))].sort().reverse();
   const filtroSel=window._cuerpoChartFiltro||'12m';
   window._cuerpoChartFiltro=filtroSel;
@@ -3597,7 +3612,7 @@ function renderProgCuerpo(){
   }
 
   const hoy12m=new Date(); hoy12m.setFullYear(hoy12m.getFullYear()-1);
-  const corte12m=hoy12m.toISOString().split('T')[0];
+  const corte12m=localDateStr(hoy12m);
   const filtroGlobal=window._cuerpoFiltroGlobal||'12m';
   const metsBase=(filtroGlobal==='todo'?metsAll:metsAll.filter(m=>m.date>=corte12m));
   const mets=metsBase.length>=2?metsBase:metsAll;
@@ -4128,7 +4143,7 @@ function saveFD(d){ localStorage.setItem('ff_'+d.fecha,JSON.stringify(d)); }
 
 function cambiarDia(delta){
   const d=new Date(foodFecha+'T12:00:00'); d.setDate(d.getDate()+delta);
-  foodFecha=d.toISOString().split('T')[0]; renderFood();
+  foodFecha=localDateStr(d); renderFood();
 }
 function switchFoodTab(tab,btn){
   foodFoodTab=tab;
@@ -4267,7 +4282,7 @@ function switchPerfilTab(tab,btn2){
 function renderHabitsLumen(){
   const el=document.getElementById('perfil-habitos'); if(!el) return;
   const ses=forge.sessions||[];
-  const entreDias=new Set(ses.map(s=>new Date(s.date).toISOString().split('T')[0]));
+  const entreDias=new Set(ses.map(s=>localDateStr(s.date)));
   const streak=calcStreak(), maxStr=calcMaxStreak(), total=entreDias.size;
   const year=new Date().getFullYear();
   const todayStr=today();
@@ -4299,7 +4314,7 @@ function renderLumenHabitoGrid(titulo,subtitulo,year,todayStr,valFn){
 
   let cells='', cumplidos=0, totalDias=0;
   for(let d=new Date(gridStart);d<=gridEnd;d.setDate(d.getDate()+1)){
-    const f=d.toISOString().split('T')[0];
+    const f=localDateStr(d);
     const isOther=d.getFullYear()!==year, isFuture=f>todayStr;
     let cls='lc';
     if(isOther||isFuture){ cls+=' fut'; }
@@ -4557,7 +4572,7 @@ function renderImpStep2(){
 
   impSesRevisadas.forEach((s,idx)=>{
     const yaExiste=existingIds.has(s.id);
-    const fechaStr=new Date(s.date).toISOString().split('T')[0];
+    const fechaStr=localDateStr(s.date);
     const durMin=Math.round((s.elapsed||0)/60);
     // Nombres de ejercicios con su mapeo
     const exHtml=Object.entries(s.exercises).map(([nombre,ex])=>{
