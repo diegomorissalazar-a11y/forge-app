@@ -830,6 +830,32 @@ select.inp{cursor:pointer}
   </div>
 </div>
 
+<!-- MODAL: POST SESIÓN -->
+<div id="modal-post-sesion" class="modal-bg">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="modal-title">🏁 Sesión completada</div>
+    </div>
+    <div class="modal-body">
+      <div id="post-ses-resumen"></div>
+      <div style="font-size:13px;color:var(--ink2);margin-bottom:14px">Agrega datos opcionales de tu monitor cardíaco:</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div class="field">
+          <label>❤️ FC media (bpm)</label>
+          <input class="inp" type="number" id="post-ses-fc" placeholder="ej: 145" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>🔥 Calorías (kcal)</label>
+          <input class="inp" type="number" id="post-ses-kcal" placeholder="ej: 380" inputmode="numeric">
+        </div>
+      </div>
+      <button class="btn btn-p" onclick="guardarPostSesion()">✓ Guardar sesión</button>
+      <button class="btn btn-s" onclick="guardarPostSesion()" style="margin-top:8px;color:var(--ink3)">Omitir y guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: REEMPLAZAR EJERCICIO EN SESIÓN -->
 <div id="modal-reemplazar-ex" class="modal-bg">
   <div class="modal" style="max-height:90dvh">
@@ -1964,7 +1990,7 @@ function renderRutinas(){
 
     return `<div class="rutina-card" style="border-color:${borderColor}">
       ${bannerSugerida}
-      <div class="rutina-head">
+      <div class="rutina-head" onclick="toggleRutinaDetalle('${r.id}')" style="cursor:pointer">
         <div style="position:relative">
           <div class="rutina-emoji">${r.emoji||'🏋'}</div>
           <div style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:${esSugerida?'var(--orange)':btnColor};color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">${num}</div>
@@ -1975,12 +2001,38 @@ function renderRutinas(){
           </div>
           <div class="rutina-meta">${exs.length} ejerc. · Desc. ${fmtTime(r.restSec||90)} · ${ultstxt}</div>
         </div>
-        <button class="bicon" onclick="event.stopPropagation();openEditRutina('${r.id}')">
-          <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-        </button>
+        <div style="display:flex;align-items:center;gap:2px">
+          <svg id="rutina-chevron-${r.id}" viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+          <button class="bicon" onclick="event.stopPropagation();openEditRutina('${r.id}')">
+            <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+          </button>
+        </div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 12px">
+      <!-- Chips resumen -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 10px">
         ${exs.map(e=>{ const c=cargas[e.id]; return `<span style="border:1px solid ${c?'var(--green)':'var(--border2)'};border-radius:20px;padding:3px 10px;font-size:11px;color:${c?'var(--green)':'var(--ink2)'};background:var(--bg3)">${e.name.split('(')[0].trim()}${c?' '+c+'kg':''}</span>`; }).join('')}
+      </div>
+      <!-- Detalle expandible -->
+      <div id="rutina-detalle-${r.id}" style="display:none;border-top:1px solid var(--border)">
+        ${exs.map(e=>{
+          const c=cargas[e.id];
+          const series=r._series?.[e.id]||[];
+          const pr=getPR(e.id);
+          const isRun=e.type==='run'||e.type==='hiit';
+          return `<div style="padding:10px 16px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+              <div style="font-size:13px;font-weight:700;color:var(--ink)">${e.name}</div>
+              ${c?`<span style="font-size:10px;background:#0a1a0a;border:1px solid var(--green);color:var(--green);padding:2px 8px;border-radius:4px;font-weight:700">Plan: ${c}kg</span>`:
+                pr.weight?`<span style="font-size:10px;color:var(--gold)">PR: ${pr.weight}kg</span>`:''}
+            </div>
+            ${isRun?`<div style="font-size:11px;color:var(--ink3)">Cardio — km, tiempo, FC y pasos</div>`:
+              series.length?series.map((s,i)=>`<div style="display:flex;gap:10px;font-size:12px;color:var(--ink2);margin-bottom:2px">
+                <span style="color:var(--ink3);min-width:18px">${i+1}</span>
+                <span style="font-weight:600">${s.peso||c||'—'}kg × ${s.reps||8} reps</span>
+              </div>`).join(''):
+              `<div style="font-size:11px;color:var(--ink3)">3 series · ${c||pr.weight||'—'}kg × 8 reps</div>`}
+          </div>`;
+        }).join('')}
       </div>
       ${cargaHint}
       <button onclick="iniciarRutina('${r.id}')"
@@ -1996,6 +2048,15 @@ function renderRutinas(){
 
   document.getElementById('train-topbar-right').innerHTML=`
     <button class="btn btn-p btn-sm" onclick="openNewRutina()">+ Nueva</button>`;
+}
+
+function toggleRutinaDetalle(rutinaId){
+  const det=document.getElementById('rutina-detalle-'+rutinaId);
+  const chev=document.getElementById('rutina-chevron-'+rutinaId);
+  if(!det) return;
+  const abierto=det.style.display!=='none';
+  det.style.display=abierto?'none':'block';
+  if(chev) chev.style.transform=abierto?'':'rotate(180deg)';
 }
 
 function iniciarRutina(rutinaId){
@@ -2237,10 +2298,33 @@ function finishSession(){
   activeSession.elapsed=sesSeconds;
   activeSession.totalVolume=activeSession.exercises.reduce((a,ex)=>
     a+ex.sets.filter(s=>s.done&&s.weight).reduce((b,s)=>b+(s.weight||0)*(s.reps||1),0),0);
+  // Mostrar modal post-sesión para FC y kcal
+  abrirPostSesion();
+}
+
+function abrirPostSesion(){
+  const vol=Math.round(activeSession.totalVolume||0);
+  const dur=fmtTime(activeSession.elapsed||0);
+  document.getElementById('post-ses-resumen').innerHTML=`
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+      <div class="hm-item"><div class="hm-label">Duración</div><div class="hm-val">${dur}</div></div>
+      ${vol>0?`<div class="hm-item"><div class="hm-label">Volumen</div><div class="hm-val">${vol.toLocaleString('es')} kg</div></div>`:''}
+    </div>`;
+  document.getElementById('post-ses-fc').value='';
+  document.getElementById('post-ses-kcal').value='';
+  openModal('modal-post-sesion');
+}
+
+function guardarPostSesion(){
+  const fc=parseInt(document.getElementById('post-ses-fc').value)||0;
+  const kcal=parseInt(document.getElementById('post-ses-kcal').value)||0;
+  if(fc>0) activeSession.fcMedia=fc;
+  if(kcal>0) activeSession.kcal=kcal;
   if(!forge.sessions) forge.sessions=[];
   forge.sessions.push({...activeSession});
   saveDB();
   checkLogros();
+  closeModal('modal-post-sesion');
   const vol=Math.round(activeSession.totalVolume||0);
   showToast(`✓ Sesión guardada · ${vol.toLocaleString('es')} kg`,3000,'ok');
   activeSession=null; sesSeconds=0;
@@ -2558,7 +2642,6 @@ function guardarEditorRutina(){
     emoji: document.getElementById('re-emoji').value||'🏋',
     restSec: parseInt(document.getElementById('re-rest').value)||90,
     exercises: re.ejercicios.map(e=>e.exId),
-    // Guardar metadatos extra
     _secciones: Object.fromEntries(re.ejercicios.map(e=>[e.exId,e.seccion])),
     _series:    Object.fromEntries(re.ejercicios.map(e=>[e.exId,e.series])),
     _restEx:    Object.fromEntries(re.ejercicios.map(e=>[e.exId,e.restSec])),
@@ -2568,7 +2651,14 @@ function guardarEditorRutina(){
     const idx=forge.routines.findIndex(x=>x.id===re.id);
     if(idx>=0) forge.routines[idx]=r; else forge.routines.push(r);
   } else {
-    forge.routines.push(r);
+    // Evitar duplicados por nombre similar
+    const similar=forge.routines.findIndex(x=>x.name.toLowerCase()===nombre.toLowerCase());
+    if(similar>=0){
+      if(!confirm(`Ya existe una rutina llamada "${forge.routines[similar].name}". ¿Reemplazarla?`)) return;
+      forge.routines[similar]=r;
+    } else {
+      forge.routines.push(r);
+    }
   }
   saveDB();
   cerrarEditorRutina();
