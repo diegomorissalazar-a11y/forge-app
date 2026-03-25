@@ -1459,17 +1459,40 @@ function initRutinas(){
   RUTINAS_BASE.forEach(r=>{ if(!rIds.has(r.id)) forge.routines.push(r); });
 
   // ── Deduplicar rutinas por nombre similar ─────────────────────
-  // Agrupar por nombre normalizado, conservar la que tiene más ejercicios o _series definidas
+  // Normalizar: quitar tildes, abreviaturas, espacios extra
+  function normalizarNombre(n){
+    return n.toLowerCase()
+      .replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u')
+      .replace(/\binf\.?\b/g,'inferior').replace(/\bsup\.?\b/g,'superior')
+      .replace(/\s+/g,' ').trim();
+  }
   const rutinaMap={};
   forge.routines.forEach(r=>{
-    const key=r.name.toLowerCase().trim().replace(/\s+/g,' ');
+    const key=normalizarNombre(r.name);
     if(!rutinaMap[key]){
       rutinaMap[key]=r;
     } else {
-      // Conservar la que tiene más info (_series, ejercicios)
-      const scoreA=Object.keys(rutinaMap[key]._series||{}).length + (rutinaMap[key].exercises||[]).length;
-      const scoreB=Object.keys(r._series||{}).length + (r.exercises||[]).length;
-      if(scoreB>scoreA) rutinaMap[key]=r;
+      // Conservar la que tiene ID base (r_lunes etc.) o más ejercicios
+      const esBase=(id)=>['r_lunes','r_martes','r_mierco','r_jueves','r_cardio'].includes(id);
+      if(esBase(r.id) && !esBase(rutinaMap[key].id)){
+        // Fusionar: conservar ID base pero tomar ejercicios del que tenga más
+        const merged={...r};
+        if((rutinaMap[key].exercises||[]).length>(r.exercises||[]).length){
+          merged.exercises=rutinaMap[key].exercises;
+          merged._series=rutinaMap[key]._series;
+          merged._restEx=rutinaMap[key]._restEx;
+        }
+        rutinaMap[key]=merged;
+      } else if(!esBase(r.id) && esBase(rutinaMap[key].id)){
+        // Mantener el base, solo actualizar si tiene más ejercicios
+        if((r.exercises||[]).length>(rutinaMap[key].exercises||[]).length){
+          rutinaMap[key].exercises=r.exercises;
+        }
+      } else {
+        const scoreA=Object.keys(rutinaMap[key]._series||{}).length+(rutinaMap[key].exercises||[]).length;
+        const scoreB=Object.keys(r._series||{}).length+(r.exercises||[]).length;
+        if(scoreB>scoreA) rutinaMap[key]=r;
+      }
     }
   });
   forge.routines=Object.values(rutinaMap);
@@ -1992,8 +2015,8 @@ function renderRutinas(){
     </div>`:'';
 
     // Banner sugerida
-    const bannerSugerida=esSugerida?`<div style="background:linear-gradient(90deg,#1a0800 0%,var(--bg2) 100%);padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
-      <span style="font-size:10px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase">⚡ Sugerida — ${diaHoyNombre.charAt(0).toUpperCase()+diaHoyNombre.slice(1)}</span>
+    const bannerSugerida=esSugerida?`<div style="background:linear-gradient(90deg,rgba(37,99,235,.12),var(--bg2));padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase">⚡ Sugerida — ${diasFalta===0?'HOY':diasFalta===1?'Mañana':diaRut>=0?(diasOrden[diaRut].charAt(0).toUpperCase()+diasOrden[diaRut].slice(1)):'Próxima'}</span>
     </div>`:'';
 
     return `<div class="rutina-card" style="border-color:${borderColor}">
