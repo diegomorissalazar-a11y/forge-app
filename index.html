@@ -17,11 +17,11 @@
    VARIABLES
 ═══════════════════════════════════════ */
 :root {
-  --bg:#111318; --bg2:#1c1f26; --bg3:#242830; --bg4:#2e333d;
-  --border:#2e333d; --border2:#3a3f4a;
-  --ink:#f2f4f7; --ink2:#9aa0ae; --ink3:#5a6270;
-  --orange:#2563eb; --orange2:#3b82f6;
-  --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --blue:#2563eb;
+  --bg:#f2f4f7; --bg2:#ffffff; --bg3:#f8f9fb; --bg4:#eef0f4;
+  --border:#e2e5ea; --border2:#d0d5dd;
+  --ink:#101828; --ink2:#475467; --ink3:#98a2b3;
+  --orange:#2563eb; --orange2:#1d4ed8;
+  --green:#16a34a; --red:#dc2626; --gold:#d97706; --blue:#2563eb;
   --fd: 'Barlow Condensed', sans-serif;
   --fb: 'Barlow', sans-serif;
   --r:8px; --rl:14px;
@@ -1330,11 +1330,11 @@ const EJERCICIOS_BASE = [
   {id:'ex_hiit',         name:'HIIT Carrera',               type:'hiit',       muscle:'cardio',  restSec:60},
 ];
 const RUTINAS_BASE = [
-  {id:'r_lunes',   name:'Lunes — Tren Inferior A', emoji:'🦵', exercises:['ex_sentadilla','ex_peso_muerto','ex_saltos_cajon'],       restSec:180},
-  {id:'r_martes',  name:'Martes — Tren Superior A',emoji:'🏋', exercises:['ex_press_banca','ex_remo_barra','ex_press_hombros'],     restSec:180},
-  {id:'r_mierco',  name:'Miércoles — Tren Inf. B', emoji:'⚡', exercises:['ex_sent_bulgara','ex_peso_muerto_rum','ex_hip_thrust'], restSec:90},
-  {id:'r_jueves',  name:'Jueves — Tren Sup. B',    emoji:'💪', exercises:['ex_press_inclinado','ex_jalon_pecho','ex_press_homb_manc'],restSec:90},
-  {id:'r_cardio',  name:'Domingo — Cardio',         emoji:'🏃', exercises:['ex_correr'],                                       restSec:0},
+  {id:'r_lunes',   name:'Lunes — Tren Inferior A',  emoji:'🦵', exercises:['ex_sentadilla','ex_peso_muerto','ex_saltos_cajon'],        restSec:180},
+  {id:'r_martes',  name:'Martes — Tren Superior A', emoji:'🏋', exercises:['ex_press_banca','ex_remo_barra','ex_press_hombros'],      restSec:180},
+  {id:'r_mierco',  name:'Miércoles — Tren Inferior B', emoji:'⚡', exercises:['ex_sent_bulgara','ex_peso_muerto_rum','ex_hip_thrust'], restSec:90},
+  {id:'r_jueves',  name:'Jueves — Tren Superior B', emoji:'💪', exercises:['ex_press_inclinado','ex_jalon_pecho','ex_press_homb_manc'],restSec:90},
+  {id:'r_cardio',  name:'Domingo — Cardio',          emoji:'🏃', exercises:['ex_correr'],                                             restSec:0},
 ];
 function initRutinas(){
   if(!forge.exercises) forge.exercises=[];
@@ -2886,12 +2886,8 @@ function crearPlan(){
   const k10Meta  =parseFloat(document.getElementById('plan-10k-meta').value)||50;
   const totalSemanas=16;
 
-  // Generar bloques de 4 semanas
   const bloqueNombres=['Acumulación (Vol. alto)','Transmutación (Fuerza)','Intensificación (Pico)','Realización (Test)'];
-  const bloques=bloqueNombres.map((nombre,i)=>{
-    const semInicio=i*4+1, semFin=(i+1)*4;
-    return {nombre, semInicio, semFin};
-  });
+  const bloques=bloqueNombres.map((nombre,i)=>({nombre, semInicio:i*4+1, semFin:(i+1)*4}));
 
   const plan={
     id:'plan_'+Date.now(), nombre, inicio, totalSemanas,
@@ -2902,11 +2898,30 @@ function crearPlan(){
   if(!forge.planes) forge.planes=[];
   forge.planes.forEach(p=>p.activo=false);
   forge.planes.push(plan);
+
+  // ── Restaurar las 5 rutinas del plan si no existen ────────────
+  if(!forge.routines) forge.routines=[];
+  const idsExistentes=new Set(forge.routines.map(r=>r.id));
+  const nombresExistentes=new Set(forge.routines.map(r=>r.name.toLowerCase().trim()));
+  let rutinasAgregadas=0;
+  RUTINAS_BASE.forEach(r=>{
+    const yaExistePorId=idsExistentes.has(r.id);
+    const yaExistePorNombre=nombresExistentes.has(r.name.toLowerCase().trim());
+    if(!yaExistePorId && !yaExistePorNombre){
+      forge.routines.push({...r});
+      rutinasAgregadas++;
+    }
+  });
+
   saveDB();
   closeModal('modal-plan');
-  showToast('🚀 Plan de 16 semanas creado',3000,'ok');
+  const msg=rutinasAgregadas>0
+    ? `🚀 Plan creado · ${rutinasAgregadas} rutinas restauradas`
+    : '🚀 Plan de 16 semanas creado';
+  showToast(msg,3000,'ok');
   renderPerfil();
   renderHome();
+  if(currentScreen==='train') renderTrain();
 }
 
 // ═══════════════════════════════════════════════════════════════
