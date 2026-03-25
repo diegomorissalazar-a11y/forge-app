@@ -572,7 +572,10 @@ select.inp{cursor:pointer}
   <!-- Botones -->
   <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
     <button class="btn btn-p btn-sm" onclick="skipRest()" style="padding:6px 14px;font-size:11px">Saltar</button>
-    <button class="btn btn-s btn-sm" onclick="addRestTime(15)" style="padding:6px 14px;font-size:11px">+15s</button>
+    <div style="display:flex;gap:4px">
+      <button class="btn btn-s btn-sm" onclick="addRestTime(-15)" style="padding:6px 10px;font-size:11px">−15s</button>
+      <button class="btn btn-s btn-sm" onclick="addRestTime(15)"  style="padding:6px 10px;font-size:11px">+15s</button>
+    </div>
   </div>
 </div>
 
@@ -823,6 +826,37 @@ select.inp{cursor:pointer}
     </div>
     <div class="modal-body" id="med-modal-body">
       <!-- Contenido dinámico según el paso -->
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REEMPLAZAR EJERCICIO EN SESIÓN -->
+<div id="modal-reemplazar-ex" class="modal-bg">
+  <div class="modal" style="max-height:90dvh">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Reemplazar ejercicio</div>
+        <div id="reex-nombre-actual" style="font-size:11px;color:var(--ink3);margin-top:2px"></div>
+      </div>
+      <button class="bicon" onclick="closeModal('modal-reemplazar-ex')">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input class="inp" id="reex-search" placeholder="Buscar ejercicio…" oninput="reexRenderLista(this.value)" style="margin-bottom:10px">
+      <!-- Opciones de alcance -->
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);cursor:pointer">
+          <input type="radio" name="reex-scope" value="sesion" checked id="reex-solo-sesion">
+          Solo esta sesión
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);cursor:pointer">
+          <input type="radio" name="reex-scope" value="rutina" id="reex-y-rutina">
+          Esta sesión + rutina
+        </label>
+      </div>
+      <div id="reex-lista" style="max-height:340px;overflow-y:auto"></div>
     </div>
   </div>
 </div>
@@ -1692,8 +1726,9 @@ function renderEditSesExs(s){
 
 function updateEditSet(sesId,ei,si,field,val){
   const s=(forge.sessions||[]).find(x=>x.id===sesId); if(!s) return;
+  const v=normDec(val);
   const numFields=['weight','reps','fc','pasos'];
-  s.exercises[ei].sets[si][field]=numFields.includes(field)?parseFloat(val)||0:val;
+  s.exercises[ei].sets[si][field]=numFields.includes(field)?parseFloat(v)||0:v;
 }
 
 function saveEditSesion(){
@@ -1848,6 +1883,7 @@ function roundCarga(kg, tipo){
   return Math.round(kg*2)/2; // 0.5kg
 }
 
+
 function renderRutinas(){
   const list=document.getElementById('rutinas-list');
   const rutinas=forge.routines||[];
@@ -1856,43 +1892,86 @@ function renderRutinas(){
   const plan=(forge.planes||[]).find(p=>p.activo);
   const semG=plan?semanaActualPlan(plan):0;
 
-  // Ordenar: rutinas del plan primero (en orden del día), luego el resto
-  const diasOrden=['lunes','martes','miércoles','jueves','viernes','sábado','domingo'];
-  const sorted=[...rutinas].sort((a,b)=>{
-    const ia=diasOrden.findIndex(d=>a.name.toLowerCase().includes(d));
-    const ib=diasOrden.findIndex(d=>b.name.toLowerCase().includes(d));
-    if(ia>=0&&ib>=0) return ia-ib;
-    if(ia>=0) return -1;
-    if(ib>=0) return 1;
-    return 0;
-  });
+  // Día actual
+  const ahora=new Date();
+  const diasOrden=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const diaHoyIdx=ahora.getDay(); // 0=dom … 6=sab
+  const diaHoyNombre=diasOrden[diaHoyIdx];
+
+  // ¿Ya entrenó hoy con alguna rutina?
+  const inicioHoy=new Date(ahora); inicioHoy.setHours(0,0,0,0);
+  const sesionesForgadas=forge.sessions||[];
+  const yaEntrenóHoy=sesionesForgadas.some(s=>s.date>=inicioHoy.getTime()&&s.routineId);
+
+  // Detectar qué día le corresponde a cada rutina según su nombre
+  function diaDeRutina(r){
+    const n=r.name.toLowerCase();
+    return diasOrden.findIndex(d=>n.includes(d));
+  }
+
+  // Cuántos días faltan para la próxima ocurrencia de ese día
+  function diasHasta(diaRutinaIdx){
+    if(diaRutinaIdx<0) return 999; // sin día definido, va al final
+    let diff=diaRutinaIdx-diaHoyIdx;
+    if(diff<0) diff+=7;
+    // Si es hoy pero ya entrenó, mostrarla como "en 7 días"
+    if(diff===0&&yaEntrenóHoy) diff=7;
+    return diff;
+  }
+
+  // Ordenar por proximidad al día de hoy
+  const sorted=[...rutinas].sort((a,b)=>diasHasta(diaDeRutina(a))-diasHasta(diaDeRutina(b)));
+
+  // La primera con día definido y que toque hoy (o la más próxima) es la sugerida
+  const primero=sorted[0];
+  const sugeridaId=(primero&&diaDeRutina(primero)>=0)?primero.id:null;
 
   list.innerHTML=sorted.map((r,idx)=>{
     const exs=(r.exercises||[]).map(id=>getEx(id)).filter(Boolean);
-    const ultsesion=(forge.sessions||[]).filter(s=>s.routineId===r.id).sort((a,b)=>b.date-a.date)[0];
+    const ultsesion=sesionesForgadas.filter(s=>s.routineId===r.id).sort((a,b)=>b.date-a.date)[0];
     const ultstxt=ultsesion?'Último: '+fmtDate(ultsesion.date):'Sin sesiones aún';
     const num=idx+1;
+    const esSugerida=r.id===sugeridaId;
+    const diasFalta=diasHasta(diaDeRutina(r));
+    const diaRut=diaDeRutina(r);
 
-    // ¿Esta rutina tiene ejercicios clave del plan?
     const esClavePlan=plan&&exs.some(e=>['ex_sentadilla','ex_press_banca','ex_correr'].includes(e.id));
     const cargas=plan?getCargasSemana(r.id):{};
     const tieneCarga=esClavePlan&&Object.keys(cargas).length>0;
 
-    const planTag=esClavePlan?`<span style="background:var(--green);color:#fff;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-left:6px">Plan · Sem ${semG}</span>`:'';
     const btnColor=esClavePlan?'var(--green)':'var(--orange)';
+    const borderColor=esSugerida?'var(--orange)':esClavePlan?'var(--green)':'var(--border2)';
+
+    const planTag=esClavePlan?`<span style="background:var(--green);color:#fff;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">Plan · Sem ${semG}</span>`:'';
+
+    // Etiqueta de día/proximidad
+    let diaTag='';
+    if(diaRut>=0){
+      const label=diasFalta===0?'HOY':diasFalta===1?'Mañana':diasOrden[diaRut].charAt(0).toUpperCase()+diasOrden[diaRut].slice(1);
+      const bg=diasFalta===0?'var(--orange)':diasFalta===1?'#1a1200':'var(--bg3)';
+      const col=diasFalta===0?'#fff':diasFalta===1?'var(--gold)':'var(--ink3)';
+      diaTag=`<span style="background:${bg};color:${col};font-size:9px;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">${label}</span>`;
+    }
+
     const cargaHint=tieneCarga?`<div style="background:#0a1a0a;border-top:1px solid var(--border);padding:7px 16px;font-size:11px;color:var(--green)">
       ✦ Carga plan sem ${semG}: ${exs.filter(e=>cargas[e.id]).map(e=>`${e.name.split('(')[0].trim()} ${cargas[e.id]}kg`).join(' · ')}
     </div>`:'';
 
-    return `<div class="rutina-card" style="${esClavePlan?'border-color:'+btnColor+';':''}">
+    // Banner sugerida
+    const bannerSugerida=esSugerida?`<div style="background:linear-gradient(90deg,#1a0800 0%,var(--bg2) 100%);padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase">⚡ Sugerida — ${diaHoyNombre.charAt(0).toUpperCase()+diaHoyNombre.slice(1)}</span>
+    </div>`:'';
+
+    return `<div class="rutina-card" style="border-color:${borderColor}">
+      ${bannerSugerida}
       <div class="rutina-head">
         <div style="position:relative">
           <div class="rutina-emoji">${r.emoji||'🏋'}</div>
-          <div style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:${btnColor};color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">${num}</div>
+          <div style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:${esSugerida?'var(--orange)':btnColor};color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">${num}</div>
         </div>
         <div class="rutina-info">
-          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px">
-            <div class="rutina-name">${r.name}</div>${planTag}
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+            <div class="rutina-name">${r.name}</div>${planTag}${diaTag}
           </div>
           <div class="rutina-meta">${exs.length} ejerc. · Desc. ${fmtTime(r.restSec||90)} · ${ultstxt}</div>
         </div>
@@ -1900,16 +1979,21 @@ function renderRutinas(){
           <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
         </button>
       </div>
-      <div style="padding:0 16px 12px;display:flex;flex-wrap:wrap">
-        ${exs.map(e=>{
-          const c=cargas[e.id];
-          return `<span class="ex-chip" style="${c?'border-color:var(--green);color:var(--green)':''}">${e.name.split('(')[0].trim()}${c?' '+c+'kg':''}</span>`;
-        }).join('')}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 12px">
+        ${exs.map(e=>{ const c=cargas[e.id]; return `<span style="border:1px solid ${c?'var(--green)':'var(--border2)'};border-radius:20px;padding:3px 10px;font-size:11px;color:${c?'var(--green)':'var(--ink2)'};background:var(--bg3)">${e.name.split('(')[0].trim()}${c?' '+c+'kg':''}</span>`; }).join('')}
       </div>
       ${cargaHint}
-      <button class="btn" style="border-radius:0 0 var(--rl) var(--rl);margin:0;background:${btnColor};color:#fff" onclick="iniciarRutina('${r.id}')">▶ ${esClavePlan?'Iniciar (Plan)':'Iniciar rutina'}</button>
+      <button onclick="iniciarRutina('${r.id}')"
+        style="width:100%;padding:13px;background:${esSugerida?'var(--orange)':esClavePlan?'var(--green)':'var(--bg3)'};
+        color:${esSugerida||esClavePlan?'#fff':'var(--ink2)'};border:none;font-family:var(--fb);
+        font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;gap:8px;
+        border-top:1px solid var(--border);border-radius:0 0 var(--rl) var(--rl)">
+        ▶ ${esClavePlan?'INICIAR (PLAN)':'INICIAR'}
+      </button>
     </div>`;
   }).join('');
+
   document.getElementById('train-topbar-right').innerHTML=`
     <button class="btn btn-p btn-sm" onclick="openNewRutina()">+ Nueva</button>`;
 }
@@ -1921,20 +2005,50 @@ function iniciarRutina(rutinaId){
 function _doIniciarRutina(rutinaId, factor){
   const r=(forge.routines||[]).find(x=>x.id===rutinaId); if(!r) return;
   const cargaSemana=getCargasSemana(rutinaId);
+
   const exercises=(r.exercises||[]).map(exId=>{
     const e=getEx(exId); if(!e) return null;
-    const pr=getPR(exId);
-    const baseCarga=cargaSemana[exId]||pr.weight||0;
-    const carga=roundCarga(baseCarga*factor, e.type);
     const isRun=e.type==='run'||e.type==='hiit';
-    return {
-      exId, sets:Array.from({length:3},(_,i)=>({
+
+    // Peso sugerido: plan > editor de rutina > PR histórico
+    const cargaPlan=cargaSemana[exId]||0;
+    const seriesRutina=(r._series?.[exId])||[];
+    const prHistorial=getPR(exId);
+
+    // Último peso REAL usado en una sesión completada (no el PR máximo, sino el más reciente)
+    let ultimoPesoReal=0;
+    const sesionesOrdenadas=(forge.sessions||[]).filter(s=>s.routineId===r.id).sort((a,b)=>b.date-a.date);
+    for(const ses of sesionesOrdenadas){
+      const ex=ses.exercises?.find(x=>x.exId===exId);
+      const sets=ex?.sets?.filter(s=>s.done&&s.weight>0);
+      if(sets?.length){ ultimoPesoReal=sets[0].weight; break; }
+    }
+
+    // Número de series: del editor si existe, sino 3
+    const nSeries=seriesRutina.length||3;
+
+    const sets=Array.from({length:nSeries},(_,i)=>{
+      // Peso sugerido para esta serie: plan > serie definida en editor > último real > PR
+      const pesoPlan=cargaPlan?roundCarga(cargaPlan*factor,e.type):0;
+      const pesoEditor=seriesRutina[i]?.peso||0;
+      const repsEditor=seriesRutina[i]?.reps||8;
+      const pesoSugerido=pesoPlan||pesoEditor||ultimoPesoReal||prHistorial.weight||0;
+      const pesoHistorial=ultimoPesoReal||prHistorial.weight||0;
+
+      return {
         type:isRun?'run':'weight', done:false,
-        weight:isRun?0:carga, reps:isRun?0:8,
-        distance:'', time:'', fc:'', pasos:''
-      }))
-    };
+        weight:isRun?0:pesoSugerido,
+        reps:isRun?0:repsEditor,
+        distance:'',time:'',fc:'',pasos:'',
+        // Metadatos para mostrar referencias
+        _pesoSugerido: isRun?0:pesoPlan||pesoEditor||0,
+        _pesoHistorial: isRun?0:pesoHistorial,
+        _fuente: pesoPlan?'plan':pesoEditor?'rutina':pesoHistorial?'historial':''
+      };
+    });
+    return {exId, sets};
   }).filter(Boolean);
+
   activeSession={
     id:'s_'+Date.now(), routineId:r.id, routineName:r.name,
     date:Date.now(), exercises, elapsed:0, totalVolume:0,
@@ -2022,6 +2136,9 @@ function renderSexBlock(ex,ei){
         </div>
         ${prStr?`<div class="sex-pr" style="margin-top:2px;color:${isRun?'var(--green)':'var(--gold)'}">${isRun?'🏅':'🏅'} ${prStr}</div>`:''}
       </div>
+      <button class="bicon" onclick="abrirReemplazarEx(${ei})" title="Reemplazar ejercicio" style="color:var(--ink3)">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      </button>
       <button class="bicon" onclick="addSetToEx(${ei})">
         <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
@@ -2034,6 +2151,25 @@ function renderSexBlock(ex,ei){
 
 function renderSetRow(ei,si,set,isRun){
   const done=set.done;
+
+  // Etiquetas de referencia de peso (solo para fuerza)
+  let refHtml='';
+  if(!isRun){
+    const partes=[];
+    if(set._pesoSugerido&&set._fuente){
+      const icono=set._fuente==='plan'?'📋':set._fuente==='rutina'?'⚙️':'';
+      const color=set._fuente==='plan'?'var(--green)':'var(--orange)';
+      const label=set._fuente==='plan'?'Plan':'Rutina';
+      partes.push(`<span style="color:${color};font-weight:700">${icono} ${label}: ${set._pesoSugerido}kg</span>`);
+    }
+    if(set._pesoHistorial&&set._pesoHistorial!==set._pesoSugerido){
+      partes.push(`<span style="color:var(--ink3)">🕐 Último: ${set._pesoHistorial}kg</span>`);
+    }
+    if(partes.length){
+      refHtml=`<div style="grid-column:2/-1;font-size:10px;display:flex;gap:10px;padding:2px 0 4px;flex-wrap:wrap">${partes.join('')}</div>`;
+    }
+  }
+
   if(isRun){
     return `<div id="sr-${ei}-${si}" style="padding:10px 16px;border-bottom:1px solid var(--border);background:${done?'#0a1a0a':'transparent'}">
       <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:6px;align-items:center;margin-bottom:6px">
@@ -2052,19 +2188,22 @@ function renderSetRow(ei,si,set,isRun){
       ${set.fc||set.pasos?`<div style="padding:4px 0 0 34px;font-size:11px;color:var(--ink3)">${set.fc?`❤️ ${set.fc}bpm  `:''}${set.pasos?`👟 ${parseInt(set.pasos).toLocaleString('es')} pasos`:''}</div>`:''}
     </div>`;
   }
-  return `<div class="set-row" id="sr-${ei}-${si}">
+
+  return `<div class="set-row" id="sr-${ei}-${si}" style="flex-wrap:wrap">
     <div class="set-num">${si+1}</div>
     <input class="set-inp" type="number" placeholder="kg" value="${set.weight||''}" oninput="updateSet(${ei},${si},'weight',this.value)" inputmode="decimal">
     <input class="set-inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateSet(${ei},${si},'reps',this.value)" inputmode="numeric">
     <div class="set-check ${done?'done':''}" onclick="toggleSet(${ei},${si})">
       <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
+    ${refHtml}
   </div>`;
 }
 
 function updateSet(ei,si,field,val){
   if(!activeSession) return;
-  activeSession.exercises[ei].sets[si][field]=field==='weight'||field==='reps'?parseFloat(val)||0:val;
+  const v=normDec(val);
+  activeSession.exercises[ei].sets[si][field]=field==='weight'||field==='reps'?parseFloat(v)||0:v;
 }
 function toggleSet(ei,si){
   if(!activeSession) return;
@@ -2126,7 +2265,93 @@ function addExToSession(exId){
   container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
 }
 
-// ── GESTIÓN RUTINAS ─────────────────────────────────────────────
+// ── Reemplazar ejercicio en sesión activa ──────────────────────
+let _reexIdx = -1; // índice del ejercicio a reemplazar
+
+function abrirReemplazarEx(ei){
+  _reexIdx = ei;
+  const exId = activeSession?.exercises[ei]?.exId;
+  const e = getEx(exId);
+  document.getElementById('reex-nombre-actual').textContent = `Reemplazar: ${e?.name||'—'}`;
+  document.getElementById('reex-search').value = '';
+  document.getElementById('reex-solo-sesion').checked = true;
+  reexRenderLista('');
+  openModal('modal-reemplazar-ex');
+}
+
+function reexRenderLista(q){
+  const exActualId = activeSession?.exercises[_reexIdx]?.exId;
+  const exs = (forge.exercises||[])
+    .filter(e => e.id !== exActualId) // excluir el actual
+    .filter(e => !q || e.name.toLowerCase().includes(q.toLowerCase()));
+
+  document.getElementById('reex-lista').innerHTML = exs.length
+    ? exs.map(e=>`
+        <div onclick="reexConfirmar('${e.id}')" class="prog-ex-row" style="cursor:pointer">
+          <div style="flex:1">
+            <div class="prog-ex-name">${e.name}</div>
+            <div class="prog-ex-sub">${e.type} · ${e.muscle||'—'}</div>
+          </div>
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--orange);fill:none;stroke-width:2.5;flex-shrink:0">
+            <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+            <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+        </div>`).join('')
+    : '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Sin resultados</div></div>';
+}
+
+function reexConfirmar(nuevoExId){
+  if(_reexIdx < 0 || !activeSession) return;
+  const ei = _reexIdx;
+  const exAnterior = activeSession.exercises[ei];
+  const eNuevo = getEx(nuevoExId);
+  const isRun = eNuevo?.type==='run'||eNuevo?.type==='hiit';
+  const scope = document.querySelector('input[name="reex-scope"]:checked')?.value || 'sesion';
+
+  // Reemplazar en la sesión activa
+  exAnterior.exId = nuevoExId;
+  // Resetear sets al formato correcto del nuevo ejercicio
+  const nSeries = exAnterior.sets.length || 3;
+  exAnterior.sets = Array.from({length: nSeries}, (_,i) => {
+    const setViejo = exAnterior.sets[i] || {};
+    return isRun
+      ? {type:'run', done:false, distance:'', time:'', fc:'', pasos:'', weight:0, reps:0}
+      : {type:'weight', done:false, weight:setViejo.weight||0, reps:setViejo.reps||8,
+         distance:'', time:'', fc:'', pasos:'',
+         _pesoSugerido:0, _pesoHistorial:0, _fuente:''};
+  });
+
+  // Si scope = rutina, también actualizar la rutina base
+  if(scope === 'rutina' && activeSession.routineId){
+    const rutina = (forge.routines||[]).find(r=>r.id===activeSession.routineId);
+    if(rutina){
+      const exAnteriorId = Object.keys(rutina._secciones||{}).find(k=>
+        rutina.exercises[rutina.exercises.indexOf(k)] === exAnterior.exId
+      );
+      // Reemplazar en el array de ejercicios de la rutina
+      const idxRut = rutina.exercises.findIndex(id=>id===Object.keys(rutina._secciones||{})[ei]||id===activeSession.exercises[ei]?.exId);
+      // Buscar el id anterior antes del reemplazo — lo buscamos por posición
+      const idxPos = ei < rutina.exercises.length ? ei : -1;
+      if(idxPos >= 0){
+        const idViejo = rutina.exercises[idxPos];
+        rutina.exercises[idxPos] = nuevoExId;
+        // Migrar metadatos (_secciones, _series, _restEx)
+        if(rutina._secciones?.[idViejo]){ rutina._secciones[nuevoExId]=rutina._secciones[idViejo]; delete rutina._secciones[idViejo]; }
+        if(rutina._series?.[idViejo]){    rutina._series[nuevoExId]=rutina._series[idViejo];       delete rutina._series[idViejo]; }
+        if(rutina._restEx?.[idViejo]){   rutina._restEx[nuevoExId]=rutina._restEx[idViejo];        delete rutina._restEx[idViejo]; }
+      }
+      saveDB();
+      showToast(`✓ Reemplazado en sesión y rutina`,2500,'ok');
+    }
+  } else {
+    showToast(`✓ Reemplazado solo en esta sesión`,2000,'ok');
+  }
+
+  closeModal('modal-reemplazar-ex');
+  // Re-renderizar la sesión
+  const container = document.getElementById('session-exs');
+  container.innerHTML = activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
+}
 // ── EDITOR DE RUTINAS ─────────────────────────────────────────
 // Estado temporal del editor
 let re = { id:'', nombre:'', emoji:'🏋', restSec:90, ejercicios:[], seccion:'principal' };
@@ -2366,17 +2591,35 @@ function saveEjercicio(){
 }
 
 // ── TIMER DE DESCANSO ────────────────────────────────────────────
-// Crear contexto de audio para el beep
+// ── Audio: desbloquear AudioContext en iOS con el primer toque ─
 let _audioCtx=null;
-function getAudioCtx(){ if(!_audioCtx) try{ _audioCtx=new(window.AudioContext||window.webkitAudioContext)(); }catch(e){} return _audioCtx; }
+function getAudioCtx(){
+  if(!_audioCtx){
+    try{ _audioCtx=new(window.AudioContext||window.webkitAudioContext)(); }catch(e){}
+  }
+  // iOS requiere resume() después de crearlo
+  if(_audioCtx&&_audioCtx.state==='suspended'){
+    _audioCtx.resume().catch(()=>{});
+  }
+  return _audioCtx;
+}
+
+// Desbloquear en el primer toque del usuario (necesario en iOS Safari)
+document.addEventListener('touchstart', ()=>{
+  const ctx=getAudioCtx();
+  if(ctx&&ctx.state==='suspended') ctx.resume();
+}, {once:false, passive:true});
+
 function beep(freq=880, dur=0.08, vol=0.3){
   const ctx=getAudioCtx(); if(!ctx) return;
-  const osc=ctx.createOscillator(), gain=ctx.createGain();
-  osc.connect(gain); gain.connect(ctx.destination);
-  osc.frequency.value=freq; osc.type='sine';
-  gain.gain.setValueAtTime(vol,ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
-  osc.start(ctx.currentTime); osc.stop(ctx.currentTime+dur);
+  try{
+    const osc=ctx.createOscillator(), gain=ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value=freq; osc.type='sine';
+    gain.gain.setValueAtTime(vol,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime+dur);
+  }catch(e){}
 }
 function vibrar(pattern=[50]){ try{ navigator.vibrate&&navigator.vibrate(pattern); }catch(e){} }
 
@@ -2421,10 +2664,17 @@ function startRest(secs, ei, si){
       restLeft=left;
       updateRestUI();
       // Beep solo 1 vez por segundo aunque el interval corra más seguido
-      if(restLeft<=10 && restLeft!==_lastBeepSec){
+      if(restLeft<=5 && restLeft!==_lastBeepSec){
         _lastBeepSec=restLeft;
-        beep(restLeft<=3?1200:880, 0.06, 0.25);
-        vibrar([30]);
+        if(restLeft<=3){
+          // Doble pitido urgente en los últimos 3s
+          beep(1200, 0.1, 0.5);
+          setTimeout(()=>beep(1200, 0.1, 0.5), 120);
+        } else {
+          // Pitido simple en 4s y 5s
+          beep(880, 0.12, 0.45);
+        }
+        vibrar([40]);
       }
     }
   },250); // 250ms — preciso y no pierde segundos al volver del bg
@@ -2445,7 +2695,11 @@ function skipRest(){
   document.getElementById('rest-ov').classList.remove('on');
 }
 function addRestTime(s){
-  if(_restEndTs) _restEndTs+=s*1000;  // mover el timestamp de fin
+  if(!_restEndTs) return;
+  _restEndTs+=s*1000;
+  // No permitir bajar de 5 segundos
+  const minTs=Date.now()+5000;
+  if(_restEndTs<minTs) _restEndTs=minTs;
   restLeft=Math.ceil((_restEndTs-Date.now())/1000);
   restTotal=Math.max(restTotal,restLeft);
   updateRestUI();
@@ -4422,6 +4676,18 @@ function setDatePickerValue(id, valorISO){
     sy.value=y;
   }
 }
+
+// ── Normalizar decimales: coma → punto en iOS ─────────────────
+function normDec(val){ return (val||'').toString().replace(',','.'); }
+
+// Interceptar coma en todos los inputs decimales globalmente
+document.addEventListener('input', e=>{
+  const el=e.target;
+  if(el.inputMode==='decimal'||el.dataset.dec){
+    const v=el.value; const fixed=v.replace(',','.');
+    if(v!==fixed){ const pos=el.selectionStart; el.value=fixed; try{el.setSelectionRange(pos,pos);}catch(e){} }
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════
 loadDB();
