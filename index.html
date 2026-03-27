@@ -6,8 +6,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f2f4f7">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232563eb'/><text x='4' y='25' font-family='Arial' font-weight='900' font-style='italic' font-size='22' fill='white'>F</text></svg>">
-<title>FORGE</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232563eb'/><text x='4' y='25' font-family='Arial' font-weight='900' font-style='italic' font-size='22' fill='white'>M</text></svg>">
+<title>Melcat</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700;1,800;1,900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -332,7 +332,7 @@ select.inp{cursor:pointer}
 
 <!-- AUTH -->
 <div id="auth">
-  <div class="auth-logo">F<span>O</span>RGE</div>
+  <div class="auth-logo">M<span>E</span>LCAT</div>
   <div class="auth-sub">Entrenamiento Personal</div>
   <div class="auth-tabs">
     <button class="auth-tab on" id="atab-in"  onclick="authMode('in')">Entrar</button>
@@ -357,7 +357,7 @@ select.inp{cursor:pointer}
 <!-- ══ SCREEN: INICIO ══ -->
 <div id="s-home" class="screen on">
   <div class="topbar">
-    <div class="tlogo">F<span>O</span>RGE</div>
+    <div class="tlogo">M<span>E</span>LCAT</div>
     <div style="display:flex;align-items:center;gap:8px">
       <div id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--green)"></div>
       <div id="user-btn" onclick="toggleUserMenu()" style="width:32px;height:32px;border-radius:50%;background:var(--orange);color:#fff;display:none;align-items:center;justify-content:center;font-size:12px;font-weight:800;cursor:pointer"></div>
@@ -375,7 +375,7 @@ select.inp{cursor:pointer}
 <!-- ══ SCREEN: ENTRENAR ══ -->
 <div id="s-train" class="screen">
   <div class="topbar">
-    <div class="tlogo">F<span>O</span>RGE</div>
+    <div class="tlogo">M<span>E</span>LCAT</div>
     <div id="train-topbar-right" style="display:flex;align-items:center;gap:8px">
       <span style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Rutinas</span>
     </div>
@@ -409,7 +409,7 @@ select.inp{cursor:pointer}
 <!-- ══ SCREEN: PROGRESO ══ -->
 <div id="s-progress" class="screen">
   <div class="topbar">
-    <div class="tlogo">F<span>O</span>RGE</div>
+    <div class="tlogo">M<span>E</span>LCAT</div>
     <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Estadísticas</div>
   </div>
   <div class="tab-row">
@@ -456,7 +456,7 @@ select.inp{cursor:pointer}
 <!-- ══ SCREEN: NUTRICIÓN ══ -->
 <div id="s-food" class="screen">
   <div class="topbar">
-    <div class="tlogo">F<span>O</span>RGE</div>
+    <div class="tlogo">M<span>E</span>LCAT</div>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="food-fecha-lbl" style="font-size:11px;color:var(--ink3)"></span>
       <button onclick="cambiarDia(-1)" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:18px;line-height:1">‹</button>
@@ -517,7 +517,7 @@ select.inp{cursor:pointer}
 <!-- ══ SCREEN: PERFIL ══ -->
 <div id="s-perfil" class="screen">
   <div class="topbar">
-    <div class="tlogo">F<span>O</span>RGE</div>
+    <div class="tlogo">M<span>E</span>LCAT</div>
     <button class="btn btn-p btn-sm" id="perfil-action-btn">+ Nuevo</button>
   </div>
   <div class="tab-row">
@@ -4788,7 +4788,7 @@ function checkLogros(){
   const logros=forge.logros||[];
   const ids=new Set(logros.map(l=>l.id));
   const nuevos=[];
-  if(ses.length===1&&!ids.has('first')) nuevos.push({id:'first',icon:'🔥',title:'Primera sesión',sub:'¡Comenzaste tu viaje en FORGE!'});
+  if(ses.length===1&&!ids.has('first')) nuevos.push({id:'first',icon:'🔥',title:'Primera sesión',sub:'¡Comenzaste tu viaje en Melcat!'});
   if(ses.length>=10&&!ids.has('ten')) nuevos.push({id:'ten',icon:'💪',title:'10 sesiones',sub:'Constancia que construye resultados.'});
   if(ses.length>=50&&!ids.has('fifty')) nuevos.push({id:'fifty',icon:'🏆',title:'50 sesiones',sub:'Eres un atleta serio.'});
   if(calcStreak()>=7&&!ids.has('week')) nuevos.push({id:'week',icon:'⚡',title:'Racha de 7 días',sub:'¡Una semana sin parar!'});
