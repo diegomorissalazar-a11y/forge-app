@@ -416,6 +416,7 @@ select.inp{cursor:pointer}
     <button class="tab-btn on" onclick="switchProgTab('ejercicios',this)">Ejercicios</button>
     <button class="tab-btn"   onclick="switchProgTab('cuerpo',this)">Medidas corporales</button>
     <button class="tab-btn"   onclick="switchProgTab('fotos',this)">Fotos</button>
+    <button class="tab-btn"   onclick="switchProgTab('plan',this)">Plan</button>
   </div>
   <!-- Ejercicios -->
   <div id="prog-ejercicios" class="tab-panel on">
@@ -445,6 +446,10 @@ select.inp{cursor:pointer}
       <button class="tab-btn"   onclick="switchPhotoTab('espalda',this)">Espalda</button>
     </div>
     <div id="photos-grid" class="photo-grid"></div>
+  </div>
+  <!-- Plan -->
+  <div id="prog-plan" class="tab-panel" style="padding:16px">
+    <div id="prog-plan-content"></div>
   </div>
 </div>
 
@@ -558,7 +563,8 @@ select.inp{cursor:pointer}
   <!-- Círculo pequeño -->
   <div class="rest-circle">
     <svg viewBox="0 0 72 72" width="72" height="72">
-      <circle cx="36" cy="36" r="32" stroke="var(--bg3)" stroke-width="5" fill="none"/>
+      <circle cx="36" cy="36" r="32" fill="var(--ink)" opacity=".08"/>
+      <circle cx="36" cy="36" r="32" stroke="var(--border2)" stroke-width="5" fill="none"/>
       <circle id="rc-fill" cx="36" cy="36" r="32" stroke="var(--green)" stroke-width="5" fill="none" stroke-dasharray="201" stroke-dashoffset="0" stroke-linecap="round"/>
     </svg>
     <div class="rest-num">
@@ -2790,15 +2796,62 @@ function reAbrirSelectorEx(){
   document.getElementById('re-selector-ex').style.display='flex';
 }
 function reRenderSelectorEx(q){
-  const exs=(forge.exercises||[]).filter(e=>!q||e.name.toLowerCase().includes(q.toLowerCase()));
-  document.getElementById('re-ex-list').innerHTML=exs.map(e=>`
+  const ql=q.toLowerCase();
+  const todos=(forge.exercises||[])
+    .filter(e=>!q||e.name.toLowerCase().includes(ql))
+    .sort((a,b)=>a.name.localeCompare(b.name,'es'));
+
+  const filas=todos.map(e=>`
     <div onclick="reAgregarEx('${e.id}')" class="prog-ex-row" style="cursor:pointer">
       <div style="flex:1">
         <div class="prog-ex-name">${e.name}</div>
         <div class="prog-ex-sub">${e.type} · ${e.muscle||'—'}</div>
       </div>
       <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </div>`).join('')||'<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Sin resultados</div></div>';
+    </div>`).join('');
+
+  // Fila "Otro" siempre al final
+  const otroHtml=`
+    <div class="prog-ex-row" style="border-top:2px solid var(--border);cursor:default">
+      <div style="flex:1">
+        <div class="prog-ex-name" style="color:var(--ink3)">➕ Otro — agregar nuevo</div>
+        <div class="prog-ex-sub">Escribe el nombre y se guardará en tu lista</div>
+      </div>
+    </div>
+    <div style="padding:10px 16px;background:var(--bg3);border-bottom:1px solid var(--border)">
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="inp" id="re-otro-nombre" placeholder="Nombre del ejercicio…"
+          value="${q}" style="flex:1;font-size:13px"
+          onkeydown="if(event.key==='Enter') reAgregarOtro()">
+        <button class="btn btn-p btn-sm" onclick="reAgregarOtro()">Agregar</button>
+      </div>
+    </div>`;
+
+  document.getElementById('re-ex-list').innerHTML=
+    (filas||'<div class="empty" style="padding:20px"><div class="empty-icon">🔍</div><div class="empty-text">Sin resultados</div></div>')
+    + otroHtml;
+}
+
+function reAgregarOtro(){
+  const input=document.getElementById('re-otro-nombre');
+  const nombre=(input?.value||'').trim();
+  if(!nombre){ showToast('Escribe el nombre del ejercicio'); return; }
+  if(!forge.exercises) forge.exercises=[];
+  // Verificar que no exista ya
+  const existe=forge.exercises.find(e=>e.name.toLowerCase()===nombre.toLowerCase());
+  if(existe){ reAgregarEx(existe.id); return; }
+  // Crear ejercicio nuevo con valores por defecto
+  const nuevoEx={
+    id:'ex_'+Date.now(),
+    name: nombre,
+    type:'bodyweight',
+    muscle:'core',
+    restSec:90
+  };
+  forge.exercises.push(nuevoEx);
+  saveDB();
+  reAgregarEx(nuevoEx.id);
+  showToast(`✓ "${nombre}" guardado en ejercicios`,2000,'ok');
 }
 function reAgregarEx(exId){
   const e=getEx(exId);
@@ -3089,6 +3142,7 @@ let progTab='ejercicios', photoTab='frente', showRM=false;
 function renderProgress(){
   if(progTab==='ejercicios') renderProgEjercicios();
   else if(progTab==='cuerpo') renderProgCuerpo();
+  else if(progTab==='plan') renderProgPlan();
   else renderProgFotos();
 }
 function switchProgTab(tab,btn){
@@ -4123,6 +4177,126 @@ function saveMed(){
 
 // ── Fotos ───────────────────────────────────────────────────────
 let pendingFoto=null;
+function renderProgPlan(){
+  const el=document.getElementById('prog-plan-content'); if(!el) return;
+  const plan=(forge.planes||[]).find(p=>p.activo);
+  if(!plan){
+    el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin plan activo</div><div class="empty-sub">Crea un plan desde Perfil → Plan</div></div>`;
+    return;
+  }
+
+  const semG=semanaActualPlan(plan);
+  const ses=forge.sessions||[];
+  const inicioDate=new Date(plan.inicio+'T12:00:00');
+
+  // ── Progresión ejercicios clave ───────────────────────────────
+  const clavesHtml=EJERCICIOS_CLAVE.map(ec=>{
+    const e=getEx(ec.id); if(!e) return '';
+    const isRun=e.type==='run'||e.type==='hiit';
+    const meta=plan.metas?.[ec.id]||0;
+    const base=plan.cargas?.[ec.id]||0;
+    const puntos=[];
+    for(let s=1;s<=semG;s++){
+      const semIni=new Date(inicioDate); semIni.setDate(semIni.getDate()+(s-1)*7);
+      const semFin=new Date(semIni); semFin.setDate(semFin.getDate()+7);
+      const sessSem=ses.filter(x=>{ const d=new Date(x.date); return d>=semIni&&d<semFin; });
+      let realVal=null;
+      sessSem.forEach(sx=>{
+        const exData=(sx.exercises||[]).find(ex=>ex.exId===ec.id);
+        if(!exData) return;
+        if(isRun){
+          const dist=(exData.sets||[]).reduce((a,st)=>a+(parseFloat(st.distance)||0),0);
+          if(dist>0) realVal=dist;
+        } else {
+          const maxW=Math.max(0,...(exData.sets||[]).filter(st=>st.done&&st.weight).map(st=>parseFloat(st.weight)||0));
+          if(maxW>0) realVal=maxW;
+        }
+      });
+      const sugerido=roundCarga(base*Math.pow(1.025,s-1), e.type||'barbell');
+      puntos.push({sem:s, real:realVal, sugerido});
+    }
+    const W=300, H=80, pad=10;
+    const vals=[...puntos.map(p=>p.sugerido), ...puntos.filter(p=>p.real).map(p=>p.real), meta].filter(Boolean);
+    const minV=Math.min(...vals)*0.97, maxV=Math.max(...vals)*1.03;
+    const xs=puntos.map((_,i)=>pad+(i/(Math.max(puntos.length-1,1)))*(W-pad*2));
+    const yv=v=>H-pad-(v-minV)/(maxV-minV)*(H-pad*2);
+    const lineS=puntos.map((p,i)=>`${i===0?'M':'L'}${xs[i].toFixed(1)},${yv(p.sugerido).toFixed(1)}`).join(' ');
+    const realPts=puntos.filter(p=>p.real!==null);
+    const lineR=realPts.length>1?realPts.map((p,i)=>{const idx=puntos.indexOf(p);return `${i===0?'M':'L'}${xs[idx].toFixed(1)},${yv(p.real).toFixed(1)}`;}).join(' '):'';
+    const dots=puntos.map((p,i)=>p.real!==null?`<circle cx="${xs[i].toFixed(1)}" cy="${yv(p.real).toFixed(1)}" r="3.5" fill="${p.real>=p.sugerido?'var(--green)':'var(--gold)'}"/>`:``).join('');
+    const metaLine=meta>0?`<line x1="${pad}" y1="${yv(meta).toFixed(1)}" x2="${W-pad}" y2="${yv(meta).toFixed(1)}" stroke="var(--red)" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>`:'';
+    const ultimo=puntos.filter(p=>p.real!==null).pop();
+    const pctMeta=meta&&ultimo?Math.min(100,Math.round((ultimo.real/meta)*100)):0;
+    const unidad=isRun?'km':'kg';
+    return `<div class="card" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:14px;font-weight:800;color:var(--ink)">${e.name}</div>
+        <div style="text-align:right">
+          ${ultimo?`<div style="font-size:16px;font-weight:800;color:var(--orange)">${ultimo.real}${unidad}</div>`:''}
+          ${meta?`<div style="font-size:10px;color:var(--ink3)">Meta: ${meta}${unidad}${pctMeta>0?' · '+pctMeta+'%':''}</div>`:''}
+        </div>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;margin-bottom:8px">
+        ${metaLine}
+        <path d="${lineS}" fill="none" stroke="var(--border2)" stroke-width="1.5" stroke-dasharray="4,3"/>
+        ${lineR?`<path d="${lineR}" fill="none" stroke="var(--orange)" stroke-width="2.5"/>`:''}
+        ${dots}
+      </svg>
+      <div style="display:flex;align-items:center;gap:12px;font-size:10px;color:var(--ink3)">
+        <span><span style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--border2);vertical-align:middle"></span> Sugerido</span>
+        <span><span style="display:inline-block;width:14px;height:2px;background:var(--orange);vertical-align:middle"></span> Real</span>
+        ${meta?`<span><span style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--red);vertical-align:middle;opacity:.5"></span> Meta</span>`:''}
+      </div>
+      ${pctMeta>0?`<div style="margin-top:8px;background:var(--bg3);border-radius:3px;height:5px;overflow:hidden"><div style="width:${pctMeta}%;height:100%;background:var(--orange)"></div></div>`:''}
+    </div>`;
+  }).join('');
+
+  // ── Semanas ───────────────────────────────────────────────────
+  const semanasHtml=Array.from({length:semG},(_,i)=>{
+    const s=i+1;
+    const semIni=new Date(inicioDate); semIni.setDate(semIni.getDate()+(s-1)*7);
+    const semFin=new Date(semIni); semFin.setDate(semFin.getDate()+7);
+    const sessSem=ses.filter(x=>{ const d=new Date(x.date); return d>=semIni&&d<semFin; });
+    const bloque=(plan.bloques||[]).find(b=>s>=b.semInicio&&s<=b.semFin);
+    const esActual=s===semG;
+    const filas=sessSem.map(sx=>{
+      const dur=sx.elapsed?fmtTime(sx.elapsed):'—';
+      const vol=sx.totalVolume?`${Math.round(sx.totalVolume).toLocaleString('es')}kg`:'';
+      const exResumen=(sx.exercises||[]).slice(0,2).map(ex=>{
+        const eDef=getEx(ex.exId);
+        const maxW=Math.max(0,...(ex.sets||[]).filter(st=>st.done&&st.weight).map(st=>parseFloat(st.weight)||0));
+        return eDef&&maxW>0?`${eDef.name.split('(')[0].trim()} ${maxW}kg`:'';
+      }).filter(Boolean).join(' · ');
+      return `<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">${sx.routineName||'Sesión libre'}</div>
+          ${exResumen?`<div style="font-size:11px;color:var(--ink3);margin-top:2px">${exResumen}</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:8px">
+          <div style="font-size:11px;color:var(--ink2)">${dur}</div>
+          ${vol?`<div style="font-size:10px;color:var(--ink3)">${vol}</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="card" style="margin-bottom:10px;${esActual?'border-color:var(--orange)':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div>
+          <span style="font-size:13px;font-weight:800;color:${esActual?'var(--orange)':'var(--ink)'}">Semana ${s}</span>
+          ${bloque?`<span style="font-size:10px;color:var(--ink3);margin-left:6px">${bloque.nombre.split('(')[0].trim()}</span>`:''}
+        </div>
+        <span style="font-size:11px;font-weight:700;color:${sessSem.length>0?'var(--green)':'var(--ink3)'}">${sessSem.length} sesión${sessSem.length!==1?'es':''}</span>
+      </div>
+      ${filas||`<div style="font-size:12px;color:var(--ink3);padding:4px 0">Sin entrenamientos esta semana</div>`}
+    </div>`;
+  }).reverse().join('');
+
+  el.innerHTML=`
+    <div class="section-label" style="margin-bottom:10px">Progresión ejercicios clave</div>
+    ${clavesHtml}
+    <div class="section-label" style="margin:16px 0 10px">Historial por semana</div>
+    ${semanasHtml}`;
+}
+
 function renderProgFotos(){
   const fotos=(forge.photos||[]).filter(p=>p.tipo===photoTab).sort((a,b)=>b.date.localeCompare(a.date));
   const el=document.getElementById('photos-grid');
@@ -4389,20 +4563,20 @@ function renderHabitsLumen(){
       <div class="lumen-stat"><div class="lumen-num">${total}</div><div class="lumen-lbl">Días totales</div><div class="lumen-sub">registrados</div></div>
     </div>
     ${renderLumenHabitoGrid('🏋 Días entrenados','Cada día que completaste un entrenamiento',year,todayStr,d=>entreDias.has(d)?1:-1)}
-    ${renderLumenHabitoGrid('🚫 Días sin alcohol','Marcado desde la sección de hábitos manuales',year,todayStr,d=>{
+    ${renderLumenHabitoGrid('🚫 Días sin alcohol','Verde = sin alcohol · Rojo = bebiste · Toca un día para marcar',year,todayStr,d=>{
       const h=(forge.habitos||[]).find(x=>x.tipo==='alcohol');
-      if(!h) return -1;
+      if(!h) return 1; // sin registro = sin alcohol (verde)
       const r=(h.registros||{})[d];
-      return r==='done'?1:r==='failed'?0:-1;
-    })}
+      return r==='bebio'?0:1; // bebio=rojo, sin registro=verde
+    }, 'alcohol')}
     ${renderLumenHabitoGrid('💧 Meta de agua (10 vasos)','Días que alcanzaste los 10 vasos',year,todayStr,d=>{
       try{ const r=localStorage.getItem('ff_'+d); if(!r) return -1; const fd=JSON.parse(r); return fd.agua>=10?1:fd.agua>=6?0.5:fd.agua>0?0.25:-1; }catch{ return -1; }
     })}`;
 }
 
-function renderLumenHabitoGrid(titulo,subtitulo,year,todayStr,valFn){
+function renderLumenHabitoGrid(titulo,subtitulo,year,todayStr,valFn,tipo=''){
   const start=new Date(year,0,1);
-  const dow0=(start.getDay()+6)%7; // 0=lunes
+  const dow0=(start.getDay()+6)%7;
   const gridStart=new Date(year,0,1); gridStart.setDate(1-dow0);
   const gridEnd=new Date(year,11,31);
   const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -4412,6 +4586,7 @@ function renderLumenHabitoGrid(titulo,subtitulo,year,todayStr,valFn){
     const f=localDateStr(d);
     const isOther=d.getFullYear()!==year, isFuture=f>todayStr;
     let cls='lc';
+    const clickable=tipo==='alcohol'&&!isOther&&!isFuture;
     if(isOther||isFuture){ cls+=' fut'; }
     else {
       const v=valFn(f);
@@ -4420,37 +4595,52 @@ function renderLumenHabitoGrid(titulo,subtitulo,year,todayStr,valFn){
       else if(v>=0.5) cls+=' l3';
       else if(v>=0.25) cls+=' l2';
       else if(v===0) cls+=' l1';
-      // v<0 = sin datos → lc (gris base)
     }
-    cells+=`<div class="${cls}"></div>`;
+    cells+=clickable
+      ? `<div class="${cls}" onclick="toggleAlcohol('${f}')" style="cursor:pointer" title="${f}"></div>`
+      : `<div class="${cls}"></div>`;
   }
 
-  // Meses headers
   let monthsHtml='<div class="lumen-months">';
   for(let m=0;m<12;m++){
-    const d=new Date(year,m,1);
-    const col=Math.floor(((d-gridStart)/86400000)/7);
-    monthsHtml+=`<div class="lumen-month" style="width:${m===11?'auto':'calc(var(--w, 10px)*4 + 6px)'}; min-width:28px">${meses[m]}</div>`;
+    monthsHtml+=`<div class="lumen-month" style="min-width:28px">${meses[m]}</div>`;
   }
   monthsHtml+='</div>';
 
+  const etiqueta=tipo==='alcohol'
+    ? `<strong style="color:var(--green)">${cumplidos}</strong> de ${totalDias} días sin alcohol`
+    : `<strong style="color:var(--orange)">${cumplidos}</strong> de ${totalDias} días`;
+
   return `<div class="lumen-block">
     <div class="lumen-block-title">${titulo}</div>
-    <div class="lumen-block-sub">${subtitulo} · <strong style="color:var(--orange)">${cumplidos}</strong> de ${totalDias} días</div>
+    <div class="lumen-block-sub">${subtitulo} · ${etiqueta}</div>
     <div class="lumen-grid-wrap">
       ${monthsHtml}
       <div class="lgrid">${cells}</div>
     </div>
     <div class="lumen-legend">
-      <span>Menos</span>
-      <div class="ll" style="background:var(--bg3);border:1px solid var(--border)"></div>
-      <div class="ll" style="background:#3d2a00"></div>
-      <div class="ll" style="background:#7a4a00"></div>
-      <div class="ll" style="background:#c06a00"></div>
-      <div class="ll" style="background:var(--orange)"></div>
-      <span>Más</span>
+      ${tipo==='alcohol'
+        ? `<span>Bebiste</span><div class="ll" style="background:var(--red);opacity:.7"></div><div class="ll" style="background:var(--green);opacity:.4"></div><div class="ll" style="background:var(--green)"></div><span>Sin alcohol</span>`
+        : `<span>Menos</span><div class="ll" style="background:var(--bg3);border:1px solid var(--border)"></div><div class="ll" style="background:var(--orange);opacity:.3"></div><div class="ll" style="background:var(--orange);opacity:.6"></div><div class="ll" style="background:var(--orange)"></div><span>Más</span>`}
     </div>
   </div>`;
+}
+
+function toggleAlcohol(fecha){
+  if(!forge.habitos) forge.habitos=[];
+  let h=forge.habitos.find(x=>x.tipo==='alcohol');
+  if(!h){ h={id:'hab_alcohol',tipo:'alcohol',registros:{}}; forge.habitos.push(h); }
+  if(!h.registros) h.registros={};
+  // Toggle: si ya marcado como bebió → borrar, si no → marcar
+  if(h.registros[fecha]==='bebio'){
+    delete h.registros[fecha];
+    showToast('✓ Día marcado sin alcohol',1500,'ok');
+  } else {
+    h.registros[fecha]='bebio';
+    showToast('🍷 Día marcado con alcohol',1500);
+  }
+  saveDB();
+  renderHabitsLumen();
 }
 
 // ── Plan de progresión ────────────────────────────────────────
