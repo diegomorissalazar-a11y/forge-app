@@ -1366,7 +1366,7 @@ const EJERCICIOS_BASE = [
   {id:'ex_hip_thrust',    name:'Hip Thrust (Barra)',        type:'barbell',    muscle:'gluteos', restSec:90},
   {id:'ex_saltos_cajon',  name:'Saltos al Cajón',           type:'bodyweight', muscle:'piernas', restSec:90},
   {id:'ex_correr',       name:'Carrera / Trote',           type:'run',        muscle:'cardio',  restSec:0},
-  {id:'ex_hiit',         name:'HIIT Carrera',               type:'hiit',       muscle:'cardio',  restSec:60},
+  {id:'ex_hiit',         name:'HIIT Carrera',               type:'hiit',       muscle:'cardio',  restSec:60, youtubeId:'qO0hUgxd-d4'},
   {id:'ex_curl_femoral', name:'Curl Femoral (Máquina)',     type:'machine',    muscle:'piernas', restSec:60},
   {id:'ex_elev_lateral', name:'Elevaciones Laterales',      type:'dumbbell',   muscle:'hombros', restSec:60},
   {id:'ex_crunch',       name:'Crunch Abdominal',           type:'bodyweight', muscle:'core',    restSec:45},
@@ -2807,12 +2807,13 @@ function reRenderSelectorEx(q){
     .sort((a,b)=>a.name.localeCompare(b.name,'es'));
 
   const filas=todos.map(e=>`
-    <div onclick="reAgregarEx('${e.id}')" class="prog-ex-row" style="cursor:pointer">
-      <div style="flex:1">
+    <div class="prog-ex-row" style="cursor:pointer">
+      <div style="flex:1" onclick="reAgregarEx('${e.id}')">
         <div class="prog-ex-name">${e.name}</div>
-        <div class="prog-ex-sub">${e.type} · ${e.muscle||'—'}</div>
+        <div class="prog-ex-sub">${e.type} · ${e.muscle||'—'}${e.youtubeId?' · 🎬':''}</div>
       </div>
-      <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <button onclick="event.stopPropagation();abrirEditarEjercicio('${e.id}')" style="background:none;border:none;cursor:pointer;padding:6px 8px;color:var(--ink3);font-size:15px" title="Editar">✏️</button>
+      <svg onclick="reAgregarEx('${e.id}')" viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </div>`).join('');
 
   // Fila "Otro" siempre al final
@@ -2876,6 +2877,25 @@ function reAbrirNuevoEx(){
   document.getElementById('ex-youtube').value='';
   document.getElementById('ex-yt-preview').style.display='none';
   document.getElementById('ex-yt-iframe').src='';
+  document.getElementById('re-selector-ex').style.display='none';
+  openModal('modal-ejercicio');
+}
+function abrirEditarEjercicio(exId){
+  const e=getEx(exId); if(!e) return;
+  document.getElementById('ex-edit-id').value=e.id;
+  document.getElementById('ex-name').value=e.name;
+  document.getElementById('ex-type').value=e.type||'bodyweight';
+  document.getElementById('ex-muscle').value=e.muscle||'core';
+  document.getElementById('ex-rest').value=e.restSec||90;
+  const ytUrl=e.youtubeId?'https://www.youtube.com/watch?v='+e.youtubeId:'';
+  document.getElementById('ex-youtube').value=ytUrl;
+  if(e.youtubeId){
+    document.getElementById('ex-yt-iframe').src='https://www.youtube.com/embed/'+e.youtubeId;
+    document.getElementById('ex-yt-preview').style.display='block';
+  } else {
+    document.getElementById('ex-yt-iframe').src='';
+    document.getElementById('ex-yt-preview').style.display='none';
+  }
   document.getElementById('re-selector-ex').style.display='none';
   openModal('modal-ejercicio');
 }
