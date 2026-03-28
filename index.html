@@ -1046,7 +1046,7 @@ function mergeDB(local, remote) {
   const exIds = new Set((local.exercises||[]).map(e=>e.id));
   (remote.exercises||[]).forEach(e=>{ if(!exIds.has(e.id)) m.exercises.push(e); });
   // Routines: merge inteligente — no agregar duplicados por nombre
-  const IDS_BASE_SET = new Set(['r_lunes','r_martes','r_mierco','r_jueves','r_cardio']);
+  const IDS_BASE_SET = new Set(['r_lunes','r_martes','r_mierco','r_jueves','r_jueves_noche','r_cardio']);
   const rIds = new Set((local.routines||[]).map(r=>r.id));
   const rNombres = new Set((local.routines||[]).map(r=>r.name.toLowerCase().trim()));
   (remote.routines||[]).forEach(r=>{
@@ -1055,9 +1055,9 @@ function mergeDB(local, remote) {
     if(rNombres.has(n)) return; // ya existe por nombre exacto
     // Si es una copia de rutina base (nombre similar) y ya tenemos la base → ignorar
     const esCopiaBase = !IDS_BASE_SET.has(r.id) &&
-      ['tren inferior a','tren superior a','tren inferior b','tren superior b','cardio'].some(k=>n.includes(k));
+      ['tren inferior a','tren superior a','tren inferior b','tren superior b','trote','cardio'].some(k=>n.includes(k));
     const tenemosSuBase = [...m.routines].some(x => IDS_BASE_SET.has(x.id) && x.name.toLowerCase().includes(
-      ['tren inferior a','tren superior a','tren inferior b','tren superior b','cardio'].find(k=>n.includes(k))||'__'
+      ['tren inferior a','tren superior a','tren inferior b','tren superior b','trote','cardio'].find(k=>n.includes(k))||'__'
     ));
     if(esCopiaBase && tenemosSuBase) return; // es duplicado → ignorar
     m.routines.push(r);
@@ -1367,12 +1367,17 @@ const EJERCICIOS_BASE = [
   {id:'ex_saltos_cajon',  name:'Saltos al Cajón',           type:'bodyweight', muscle:'piernas', restSec:90},
   {id:'ex_correr',       name:'Carrera / Trote',           type:'run',        muscle:'cardio',  restSec:0},
   {id:'ex_hiit',         name:'HIIT Carrera',               type:'hiit',       muscle:'cardio',  restSec:60},
+  {id:'ex_curl_femoral', name:'Curl Femoral (Máquina)',     type:'machine',    muscle:'piernas', restSec:60},
+  {id:'ex_elev_lateral', name:'Elevaciones Laterales',      type:'dumbbell',   muscle:'hombros', restSec:60},
+  {id:'ex_crunch',       name:'Crunch Abdominal',           type:'bodyweight', muscle:'core',    restSec:45},
+  {id:'ex_trote_suave',  name:'Trote Suave 4-5km',          type:'run',        muscle:'cardio',  restSec:0},
 ];
 const RUTINAS_BASE = [
-  {id:'r_lunes',   name:'Lunes — Tren Inferior A',  emoji:'🦵', exercises:['ex_sentadilla','ex_peso_muerto','ex_saltos_cajon'],        restSec:180},
-  {id:'r_martes',  name:'Martes — Tren Superior A', emoji:'🏋', exercises:['ex_press_banca','ex_remo_barra','ex_press_hombros'],      restSec:180},
-  {id:'r_mierco',  name:'Miércoles — Tren Inferior B', emoji:'⚡', exercises:['ex_sent_bulgara','ex_peso_muerto_rum','ex_hip_thrust'], restSec:90},
-  {id:'r_jueves',  name:'Jueves — Tren Superior B', emoji:'💪', exercises:['ex_press_inclinado','ex_jalon_pecho','ex_press_homb_manc'],restSec:90},
+  {id:'r_lunes',   name:'Lunes — Tren Inferior A',  emoji:'🦵', exercises:['ex_sentadilla','ex_peso_muerto','ex_saltos_cajon','ex_curl_femoral'],        restSec:180},
+  {id:'r_martes',  name:'Martes — Tren Superior A', emoji:'🏋', exercises:['ex_press_banca','ex_remo_barra','ex_press_hombros','ex_elev_lateral'],      restSec:180},
+  {id:'r_mierco',  name:'Miércoles — Tren Inferior B', emoji:'⚡', exercises:['ex_sent_bulgara','ex_peso_muerto_rum','ex_hip_thrust','ex_crunch'], restSec:90},
+  {id:'r_jueves',  name:'Jueves — Tren Superior B', emoji:'💪', exercises:['ex_press_inclinado','ex_jalon_pecho','ex_press_homb_manc','ex_crunch'],restSec:90},
+  {id:'r_jueves_noche', name:'Jueves Noche — Trote', emoji:'🌙', exercises:['ex_trote_suave'], restSec:0},
   {id:'r_cardio',  name:'Domingo — Cardio',          emoji:'🏃', exercises:['ex_correr'],                                             restSec:0},
 ];
 function initRutinas(){
@@ -1496,7 +1501,7 @@ function initRutinas(){
   EJERCICIOS_BASE.forEach(e=>{ if(!exIds.has(e.id)) forge.exercises.push(e); });
 
   // ── Deduplicar rutinas: si hay IDs base Y copias con otro ID del mismo nombre, quitar las copias ──
-  const IDS_BASE=new Set(['r_lunes','r_martes','r_mierco','r_jueves','r_cardio']);
+  const IDS_BASE=new Set(['r_lunes','r_martes','r_mierco','r_jueves','r_jueves_noche','r_cardio']);
   const nombresBase=new Set(RUTINAS_BASE.map(r=>r.name.toLowerCase().trim()));
 
   // Eliminar duplicados que son copias de las base (mismo nombre pero ID distinto)
@@ -3121,7 +3126,7 @@ function crearPlan(){
 
   // ── Reemplazar TODAS las rutinas con exactamente las 5 del plan ──
   // Conservar solo rutinas creadas manualmente (sin ID base)
-  const IDS_BASE=new Set(['r_lunes','r_martes','r_mierco','r_jueves','r_cardio']);
+  const IDS_BASE=new Set(['r_lunes','r_martes','r_mierco','r_jueves','r_jueves_noche','r_cardio']);
   const rutinasManuales=(forge.routines||[]).filter(r=>!IDS_BASE.has(r.id));
   // Las 5 base siempre se reemplazan con la versión fresca
   forge.routines=[...RUTINAS_BASE.map(r=>({...r})), ...rutinasManuales];
@@ -4749,7 +4754,7 @@ async function syncHaciaFirebase(){
 }
 
 function limpiarRutinasLocal(){
-  const IDS_BASE=['r_lunes','r_martes','r_mierco','r_jueves','r_cardio'];
+  const IDS_BASE=['r_lunes','r_martes','r_mierco','r_jueves','r_jueves_noche','r_cardio'];
   const NOMBRES_BASE=['tren inferior a','tren superior a','tren inferior b','tren superior b','cardio'];
   const antes=(forge.routines||[]).length;
   // Eliminar copias de rutinas base con ID distinto
