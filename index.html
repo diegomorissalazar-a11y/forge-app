@@ -2260,14 +2260,14 @@ function doStartFreeSession(){
 
 // ── Plan de progresión dominical ─────────────────────────────────
 const PLAN_DOMINGO = [
-  {semana:1, dist:6.5, ritmo:'6'33"', fc:155},
-  {semana:2, dist:7.0, ritmo:'6'45"-7'00"', fc:155},
-  {semana:3, dist:7.5, ritmo:'6'45"', fc:155},
-  {semana:4, dist:8.0, ritmo:'6'30"', fc:155},
-  {semana:5, dist:8.5, ritmo:'6'20"', fc:155},
-  {semana:6, dist:9.0, ritmo:'6'10"', fc:155},
-  {semana:7, dist:10.0, ritmo:'6'00"', fc:155},
-  {semana:8, dist:10.0, ritmo:'5'30"', fc:160},
+  {semana:1, dist:6.5, ritmo:"6'33\"/km", fc:155},
+  {semana:2, dist:7.0, ritmo:"6'45\"-7'00\"/km", fc:155},
+  {semana:3, dist:7.5, ritmo:"6'45\"/km", fc:155},
+  {semana:4, dist:8.0, ritmo:"6'30\"/km", fc:155},
+  {semana:5, dist:8.5, ritmo:"6'20\"/km", fc:155},
+  {semana:6, dist:9.0, ritmo:"6'10\"/km", fc:155},
+  {semana:7, dist:10.0, ritmo:"6'00\"/km", fc:155},
+  {semana:8, dist:10.0, ritmo:"5'30\"/km", fc:160},
 ];
 const SEMANA_INICIO_PLAN = '2026-03-23'; // semana 1
 
@@ -2316,25 +2316,25 @@ function renderSexBlock(ex,ei){
   if(isWarmupStretch){
     const label = e.type==='warmup'?'🔥 Calentamiento':'🧘 Estiramiento';
     const tagColor = e.type==='warmup'?'rgba(217,119,6,.15);color:var(--gold)':'rgba(37,99,235,.12);color:var(--blue)';
-    const ytHtml = e.youtubeId ? `
-      <div style="margin:0 16px 14px;border-radius:var(--r);overflow:hidden;aspect-ratio:16/9;background:#000">
-        <iframe src="https://www.youtube.com/embed/${e.youtubeId}?rel=0&modestbranding=1"
-          width="100%" height="100%" frameborder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen style="display:block"></iframe>
-      </div>` : '<div style="padding:12px 16px;color:var(--ink3);font-size:13px">Sin video asignado</div>';
-    return `<div class="sex-block" id="sex-${ei}">
-      <div class="sex-head">
-        <div style="flex:1">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div class="sex-name">${e.name}</div>
-            <span style="background:${tagColor};font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px">${label}</span>
-          </div>
-          <div style="font-size:11px;color:var(--ink3);margin-top:2px">Sigue el video — sin registro de series</div>
-        </div>
-      </div>
-      ${ytHtml}
-    </div>`;
+    const ytSrc = e.youtubeId ? 'https://www.youtube.com/embed/'+e.youtubeId+'?rel=0&modestbranding=1' : '';
+    const ytHtml = ytSrc
+      ? '<div style="margin:0 16px 14px;border-radius:var(--r);overflow:hidden;aspect-ratio:16/9;background:#000">'
+        +'<iframe src="'+ytSrc+'" width="100%" height="100%" frameborder="0"'
+        +' allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"'
+        +' allowfullscreen style="display:block"></iframe></div>'
+      : '<div style="padding:12px 16px;color:var(--ink3);font-size:13px">Sin video asignado</div>';
+    return '<div class="sex-block" id="sex-'+ei+'">'
+      +'<div class="sex-head">'
+        +'<div style="flex:1">'
+          +'<div style="display:flex;align-items:center;gap:8px">'
+            +'<div class="sex-name">'+e.name+'</div>'
+            +'<span style="background:'+tagColor+';font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px">'+label+'</span>'
+          +'</div>'
+          +'<div style="font-size:11px;color:var(--ink3);margin-top:2px">Sigue el video — sin registro de series</div>'
+        +'</div>'
+      +'</div>'
+      +ytHtml
+      +'</div>';
   }
   const isRun=e.type==='run'||e.type==='hiit';
   const pr=getPR(ex.exId);
