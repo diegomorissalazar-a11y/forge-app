@@ -846,6 +846,12 @@ select.inp{cursor:pointer}
     <div class="modal-body">
       <div id="post-ses-resumen"></div>
       <div style="font-size:13px;color:var(--ink2);margin-bottom:14px">Agrega datos opcionales de tu monitor cardíaco:</div>
+      <div id="post-ses-duracion-wrap" style="display:none;margin-bottom:12px">
+        <div class="field">
+          <label>⏱ Duración real del trote (mm:ss)</label>
+          <input class="inp" id="post-ses-duracion" placeholder="ej: 42:55" inputmode="numeric">
+        </div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
         <div class="field">
           <label>❤️ FC media (bpm)</label>
@@ -854,6 +860,14 @@ select.inp{cursor:pointer}
         <div class="field">
           <label>🔥 Calorías (kcal)</label>
           <input class="inp" type="number" id="post-ses-kcal" placeholder="ej: 380" inputmode="numeric">
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:16px">
+        <label>📸 Foto del entrenamiento (opcional)</label>
+        <input type="file" id="post-ses-foto" accept="image/*" capture="environment" style="display:none" onchange="postSesPreviewFoto(this)">
+        <button class="btn btn-s" onclick="document.getElementById('post-ses-foto').click()" style="margin-bottom:8px">📷 Subir foto</button>
+        <div id="post-ses-foto-preview" style="display:none;border-radius:var(--r);overflow:hidden;max-height:180px">
+          <img id="post-ses-foto-img" style="width:100%;object-fit:cover;max-height:180px">
         </div>
       </div>
       <button class="btn btn-p" onclick="guardarPostSesion()">✓ Guardar sesión</button>
@@ -1371,14 +1385,19 @@ const EJERCICIOS_BASE = [
   {id:'ex_elev_lateral', name:'Elevaciones Laterales',      type:'dumbbell',   muscle:'hombros', restSec:60},
   {id:'ex_crunch',       name:'Crunch Abdominal',           type:'bodyweight', muscle:'core',    restSec:45},
   {id:'ex_trote_suave',  name:'Trote Suave 4-5km',          type:'run',        muscle:'cardio',  restSec:0},
+  {id:'ex_cal_inf',      name:'Calentamiento Tren Inferior', type:'warmup',     muscle:'piernas', restSec:0, youtubeId:'jSACK-0lKi4'},
+  {id:'ex_cal_sup',      name:'Calentamiento Tren Superior', type:'warmup',     muscle:'hombros', restSec:0, youtubeId:'sytmEGA0HKU'},
+  {id:'ex_est_inf',      name:'Estiramiento Tren Inferior',  type:'stretch',    muscle:'piernas', restSec:0, youtubeId:'byeZQ8cNIFs'},
+  {id:'ex_est_sup',      name:'Estiramiento Tren Superior',  type:'stretch',    muscle:'hombros', restSec:0, youtubeId:'FozCaXSnB6A'},
+  {id:'ex_est_trote',    name:'Estiramiento Trote',          type:'stretch',    muscle:'cardio',  restSec:0, youtubeId:'e8Y6Y-PST2g'},
 ];
 const RUTINAS_BASE = [
-  {id:'r_lunes',   name:'Lunes — Tren Inferior A',  emoji:'🦵', exercises:['ex_sentadilla','ex_peso_muerto','ex_saltos_cajon','ex_curl_femoral'],        restSec:180},
-  {id:'r_martes',  name:'Martes — Tren Superior A', emoji:'🏋', exercises:['ex_press_banca','ex_remo_barra','ex_press_hombros','ex_elev_lateral'],      restSec:180},
-  {id:'r_mierco',  name:'Miércoles — Tren Inferior B', emoji:'⚡', exercises:['ex_sent_bulgara','ex_peso_muerto_rum','ex_hip_thrust','ex_crunch'], restSec:90},
-  {id:'r_jueves',  name:'Jueves — Tren Superior B', emoji:'💪', exercises:['ex_press_inclinado','ex_jalon_pecho','ex_press_homb_manc','ex_crunch'],restSec:90},
-  {id:'r_jueves_noche', name:'Jueves Noche — Trote', emoji:'🌙', exercises:['ex_trote_suave'], restSec:0},
-  {id:'r_cardio',  name:'Domingo — Cardio',          emoji:'🏃', exercises:['ex_correr'],                                             restSec:0},
+  {id:'r_lunes',   name:'Lunes — Tren Inferior A',  emoji:'🦵', exercises:['ex_cal_inf','ex_sentadilla','ex_peso_muerto','ex_saltos_cajon','ex_curl_femoral','ex_est_inf'],        restSec:180},
+  {id:'r_martes',  name:'Martes — Tren Superior A', emoji:'🏋', exercises:['ex_cal_sup','ex_press_banca','ex_remo_barra','ex_press_hombros','ex_elev_lateral','ex_est_sup'],      restSec:180},
+  {id:'r_mierco',  name:'Miércoles — Tren Inferior B', emoji:'⚡', exercises:['ex_cal_inf','ex_sent_bulgara','ex_peso_muerto_rum','ex_hip_thrust','ex_crunch','ex_est_inf'], restSec:90},
+  {id:'r_jueves',  name:'Jueves — Tren Superior B', emoji:'💪', exercises:['ex_cal_sup','ex_press_inclinado','ex_jalon_pecho','ex_press_homb_manc','ex_crunch','ex_est_sup'],restSec:90},
+  {id:'r_jueves_noche', name:'Jueves Noche — Trote', emoji:'🌙', exercises:['ex_trote_suave','ex_est_trote'], restSec:0},
+  {id:'r_cardio',  name:'Domingo — Cardio',          emoji:'🏃', exercises:['ex_correr','ex_est_trote'],                                             restSec:0},
 ];
 function initRutinas(){
   if(!forge.exercises) forge.exercises=[];
@@ -1669,6 +1688,7 @@ function renderSesCard(s, hoy){
       ${exs.map(ex=>{ const e=getEx(ex.exId); const n=(ex.sets||[]).filter(s=>s.done).length; return e?`<div style="font-size:12px;color:var(--ink2);padding:2px 0">${n} serie${n!==1?'s':''} ${e.name}</div>`:''; }).join('')}
       ${(s.exercises||[]).length>3?`<div style="font-size:11px;color:var(--orange);margin-top:3px">Ver ${(s.exercises||[]).length-3} más</div>`:''}
     </div>
+    ${s.foto?`<div style="margin-top:8px;border-radius:var(--r);overflow:hidden;max-height:160px"><img src="${s.foto}" style="width:100%;object-fit:cover;max-height:160px;display:block"></div>`:''}
   </div>`;
 }
 
@@ -2166,6 +2186,8 @@ function _doIniciarRutina(rutinaId, factor){
 
   const exercises=(r.exercises||[]).map(exId=>{
     const e=getEx(exId); if(!e) return null;
+    // Calentamiento y estiramiento: sin sets
+    if(e.type==='warmup'||e.type==='stretch') return {exId, sets:[]};
     const isRun=e.type==='run'||e.type==='hiit';
 
     // Peso sugerido: plan > editor de rutina > PR histórico
@@ -2236,14 +2258,84 @@ function doStartFreeSession(){
   renderTrain();
 }
 
+// ── Plan de progresión dominical ─────────────────────────────────
+const PLAN_DOMINGO = [
+  {semana:1, dist:6.5, ritmo:'6'33"', fc:155},
+  {semana:2, dist:7.0, ritmo:'6'45"-7'00"', fc:155},
+  {semana:3, dist:7.5, ritmo:'6'45"', fc:155},
+  {semana:4, dist:8.0, ritmo:'6'30"', fc:155},
+  {semana:5, dist:8.5, ritmo:'6'20"', fc:155},
+  {semana:6, dist:9.0, ritmo:'6'10"', fc:155},
+  {semana:7, dist:10.0, ritmo:'6'00"', fc:155},
+  {semana:8, dist:10.0, ritmo:'5'30"', fc:160},
+];
+const SEMANA_INICIO_PLAN = '2026-03-23'; // semana 1
+
+function getSemanaActualPlan(){
+  const inicio = new Date(SEMANA_INICIO_PLAN);
+  const hoy = new Date();
+  const dias = Math.floor((hoy - inicio) / 86400000);
+  return Math.min(Math.max(1, Math.floor(dias/7)+1), PLAN_DOMINGO.length);
+}
+
+function mostrarBannerDomingo(){
+  const sem = getSemanaActualPlan();
+  const obj = PLAN_DOMINGO[sem-1];
+  const banner = document.createElement('div');
+  banner.id = 'banner-domingo';
+  banner.style.cssText = 'background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border-radius:12px;padding:14px 16px;margin:12px 16px 0;';
+  banner.innerHTML = `
+    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:6px">🏃 Objetivo Semana ${sem}</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div><div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif">${obj.dist} km</div><div style="font-size:10px;opacity:.75">Distancia</div></div>
+      <div><div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif">${obj.ritmo}/km</div><div style="font-size:10px;opacity:.75">Ritmo objetivo</div></div>
+      <div><div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif">&lt;${obj.fc}</div><div style="font-size:10px;opacity:.75">FC máx (bpm)</div></div>
+    </div>
+    <div style="font-size:11px;opacity:.7;margin-top:8px">Si la FC sube de ${obj.fc}bpm, baja el ritmo.</div>
+  `;
+  const container = document.getElementById('session-exs');
+  if(container && !document.getElementById('banner-domingo')){
+    container.parentNode.insertBefore(banner, container);
+  }
+}
+
 function renderSessionView(){
   document.getElementById('ses-name').textContent=activeSession.routineName;
   const container=document.getElementById('session-exs');
   container.innerHTML=activeSession.exercises.map((ex,ei)=>renderSexBlock(ex,ei)).join('');
+  // Mostrar banner solo si es sesión del domingo
+  const existente = document.getElementById('banner-domingo');
+  if(existente) existente.remove();
+  if(activeSession.routineId==='r_cardio') mostrarBannerDomingo();
 }
 
 function renderSexBlock(ex,ei){
   const e=getEx(ex.exId); if(!e) return '';
+  const isWarmupStretch = e.type==='warmup'||e.type==='stretch';
+  // Render especial para calentamiento y estiramiento — solo video
+  if(isWarmupStretch){
+    const label = e.type==='warmup'?'🔥 Calentamiento':'🧘 Estiramiento';
+    const tagColor = e.type==='warmup'?'rgba(217,119,6,.15);color:var(--gold)':'rgba(37,99,235,.12);color:var(--blue)';
+    const ytHtml = e.youtubeId ? `
+      <div style="margin:0 16px 14px;border-radius:var(--r);overflow:hidden;aspect-ratio:16/9;background:#000">
+        <iframe src="https://www.youtube.com/embed/${e.youtubeId}?rel=0&modestbranding=1"
+          width="100%" height="100%" frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen style="display:block"></iframe>
+      </div>` : '<div style="padding:12px 16px;color:var(--ink3);font-size:13px">Sin video asignado</div>';
+    return `<div class="sex-block" id="sex-${ei}">
+      <div class="sex-head">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="sex-name">${e.name}</div>
+            <span style="background:${tagColor};font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px">${label}</span>
+          </div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:2px">Sigue el video — sin registro de series</div>
+        </div>
+      </div>
+      ${ytHtml}
+    </div>`;
+  }
   const isRun=e.type==='run'||e.type==='hiit';
   const pr=getPR(ex.exId);
 
@@ -2463,6 +2555,7 @@ function finishSession(){
 function abrirPostSesion(){
   const vol=Math.round(activeSession.totalVolume||0);
   const dur=fmtTime(activeSession.elapsed||0);
+  const esCardio=esSesSoloCardio(activeSession);
   document.getElementById('post-ses-resumen').innerHTML=`
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:4px">
       <div class="hm-item"><div class="hm-label">Duración</div><div class="hm-val">${dur}</div></div>
@@ -2470,14 +2563,40 @@ function abrirPostSesion(){
     </div>`;
   document.getElementById('post-ses-fc').value='';
   document.getElementById('post-ses-kcal').value='';
+  document.getElementById('post-ses-duracion').value='';
+  document.getElementById('post-ses-duracion-wrap').style.display=esCardio?'block':'none';
+  document.getElementById('post-ses-foto').value='';
+  document.getElementById('post-ses-foto-preview').style.display='none';
   openModal('modal-post-sesion');
 }
+function postSesPreviewFoto(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    document.getElementById('post-ses-foto-img').src=e.target.result;
+    document.getElementById('post-ses-foto-preview').style.display='block';
+  };
+  reader.readAsDataURL(file);
+}
 
+function parseDuracion(str){
+  if(!str) return 0;
+  const parts=str.trim().split(':');
+  if(parts.length===2) return parseInt(parts[0]||0)*60+parseInt(parts[1]||0);
+  if(parts.length===1) return parseInt(parts[0]||0)*60;
+  return 0;
+}
 function guardarPostSesion(){
   const fc=parseInt(document.getElementById('post-ses-fc').value)||0;
   const kcal=parseInt(document.getElementById('post-ses-kcal').value)||0;
+  const durStr=document.getElementById('post-ses-duracion').value.trim();
+  const durSecs=parseDuracion(durStr);
+  const fotoImg=document.getElementById('post-ses-foto-img');
+  const fotoSrc=fotoImg?.src&&fotoImg.src.startsWith('data:')?fotoImg.src:'';
   if(fc>0) activeSession.fcMedia=fc;
   if(kcal>0) activeSession.kcal=kcal;
+  if(durSecs>0) activeSession.elapsed=durSecs;
+  if(fotoSrc) activeSession.foto=fotoSrc;
   if(!forge.sessions) forge.sessions=[];
   forge.sessions.push({...activeSession});
   saveDB();
