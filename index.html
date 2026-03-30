@@ -14,9 +14,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
-/* ═══════════════════════════════════════
+/* ---------------------------------------
    VARIABLES
-═══════════════════════════════════════ */
+--------------------------------------- */
 :root {
   --bg:#f2f4f7; --bg2:#ffffff; --bg3:#f8f9fb; --bg4:#eef0f4;
   --border:#e2e5ea; --border2:#d0d5dd;
@@ -28,15 +28,15 @@
   --r:8px; --rl:14px;
 }
 
-/* ═══════════════════════════════════════
+/* ---------------------------------------
    RESET & BASE
-═══════════════════════════════════════ */
+--------------------------------------- */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--fb);font-size:15px;overscroll-behavior:none}
 
-/* ═══════════════════════════════════════
+/* ---------------------------------------
    LAYOUT
-═══════════════════════════════════════ */
+--------------------------------------- */
 #app{display:flex;flex-direction:column;height:100dvh;overflow:hidden;width:100%}
 #wrap{flex:1;overflow:hidden;position:relative;min-height:0;display:flex;flex-direction:column}
 .screen{display:none;flex-direction:column;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;width:100%}
@@ -56,16 +56,16 @@ nav{flex-shrink:0;display:flex;height:58px;background:var(--bg2);border-top:1px 
   .nb svg{width:22px;height:22px}
 }
 
-/* ═══════════════════════════════════════
+/* ---------------------------------------
    TOPBAR
-═══════════════════════════════════════ */
+--------------------------------------- */
 .topbar{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .tlogo{font-family:var(--fd);font-size:24px;font-weight:900;font-style:italic;color:var(--ink);letter-spacing:2px}
 .tlogo span{color:var(--orange)}
 
-/* ═══════════════════════════════════════
+/* ---------------------------------------
    BOTONES
-═══════════════════════════════════════ */
+--------------------------------------- */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 18px;border-radius:var(--r);border:none;cursor:pointer;font-family:var(--fb);font-size:13px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;transition:all .15s;width:100%}
 .btn-p{background:var(--orange);color:#fff}.btn-p:active{background:var(--orange2)}
 .btn-s{background:var(--bg3);color:var(--ink2);border:1px solid var(--border2)}.btn-s:active{background:var(--bg4)}
@@ -74,9 +74,9 @@ nav{flex-shrink:0;display:flex;height:58px;background:var(--bg2);border-top:1px 
 .btn-sm{padding:7px 13px;font-size:11px;width:auto}
 .bicon{background:none;border:none;cursor:pointer;color:var(--ink3);padding:6px;display:inline-flex;align-items:center}
 
-/* ═══════════════════════════════════════
+/* ---------------------------------------
    CARDS & COMPONENTES
-═══════════════════════════════════════ */
+--------------------------------------- */
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px}
 .section-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:700;margin-bottom:8px}
 .stat-box{background:var(--bg3);border-radius:10px;padding:12px;text-align:center}
@@ -137,9 +137,9 @@ select.inp{cursor:pointer}
 .modal-title{font-family:var(--fd);font-size:20px;font-weight:800;color:var(--ink)}
 .modal-body{padding:16px}
 
-/* ═══════════════════════════════════════
+/* ---------------------------------------
    AUTH
-═══════════════════════════════════════ */
+--------------------------------------- */
 #auth{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px}
 .auth-logo{font-family:var(--fd);font-size:56px;font-weight:900;font-style:italic;letter-spacing:4px;margin-bottom:4px}
 .auth-logo span{color:var(--orange)}
@@ -150,9 +150,9 @@ select.inp{cursor:pointer}
 #auth-form{width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px}
 #auth-err{font-size:12px;color:var(--red);text-align:center;min-height:16px}
 
-/* ═══════════════════════════════════════
+/* ---------------------------------------
    SCREEN: INICIO
-═══════════════════════════════════════ */
+--------------------------------------- */
 .hevy-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:12px;padding:14px 16px;cursor:pointer;transition:border-color .1s}
 .hevy-card:active{border-color:var(--border2)}
 .hevy-avatar{width:36px;height:36px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
@@ -161,9 +161,9 @@ select.inp{cursor:pointer}
 .hm-label{font-size:10px;color:var(--ink3)}
 .hm-val{font-size:14px;font-weight:700;color:var(--ink)}
 
-/* ═══════════════════════════════════════
+/* ---------------------------------------
    SCREEN: ENTRENAR
-═══════════════════════════════════════ */
+--------------------------------------- */
 .rutina-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden}
 .rutina-head{padding:14px 16px;display:flex;align-items:center;gap:12px}
 .rutina-emoji{font-size:26px;flex-shrink:0}
@@ -208,9 +208,9 @@ select.inp{cursor:pointer}
 .rest-next{font-size:12px;color:var(--ink2)}
 .rest-title{font-family:var(--fd);font-size:16px;font-weight:800;letter-spacing:2px;color:var(--orange)}
 
-/* ═══════════════════════════════════════
+/* ---------------------------------------
    SCREEN: PROGRESO (gráficos)
-═══════════════════════════════════════ */
+--------------------------------------- */
 .prog-ex-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
 .prog-ex-row:active{background:var(--bg3)}
 .prog-ex-name{font-size:14px;font-weight:600;color:var(--ink)}
@@ -247,9 +247,9 @@ select.inp{cursor:pointer}
 .photo-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--ink3);font-size:11px}
 .photo-add-plus{font-size:28px;color:var(--border2)}
 
-/* ═══════════════════════════════════════
+/* ---------------------------------------
    SCREEN: NUTRICIÓN
-═══════════════════════════════════════ */
+--------------------------------------- */
 .comida-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:8px;overflow:hidden}
 .comida-head{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer}
 .comida-emoji{font-size:22px;flex-shrink:0}
@@ -277,9 +277,9 @@ select.inp{cursor:pointer}
 .agua-dot{width:12px;height:12px;border-radius:50%;background:var(--bg3);border:1.5px solid var(--border2);transition:all .2s}
 .agua-dot.on{background:#22d3ee;border-color:#22d3ee}
 
-/* ═══════════════════════════════════════
+/* ---------------------------------------
    SCREEN: PERFIL — HÁBITOS LUMEN
-═══════════════════════════════════════ */
+--------------------------------------- */
 .lumen-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px}
 .lumen-stat{border:1px solid var(--border);border-radius:10px;padding:14px 12px;text-align:center}
 .lumen-num{font-family:var(--fd);font-size:38px;font-weight:900;font-style:italic;color:var(--orange);line-height:1}
@@ -354,7 +354,7 @@ select.inp{cursor:pointer}
 <!-- WRAPPER DE SCREENS -->
 <div id="wrap">
 
-<!-- ══ SCREEN: INICIO ══ -->
+<!-- -- SCREEN: INICIO -- -->
 <div id="s-home" class="screen on">
   <div class="topbar">
     <div class="tlogo">M<span>E</span>LCAT</div>
@@ -367,12 +367,15 @@ select.inp{cursor:pointer}
     <div id="home-greet" style="margin-bottom:14px"></div>
     <div id="home-plan-banner" style="margin-bottom:12px"></div>
     <div id="home-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px"></div>
-    <div class="section-label">Últimos entrenamientos</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div class="section-label" style="margin-bottom:0">Últimos entrenamientos</div>
+      <button onclick="exportarSemana()" class="btn btn-s btn-sm" style="font-size:10px">📋 Exportar semana</button>
+    </div>
     <div id="home-sessions"></div>
   </div>
 </div>
 
-<!-- ══ SCREEN: ENTRENAR ══ -->
+<!-- -- SCREEN: ENTRENAR -- -->
 <div id="s-train" class="screen">
   <div class="topbar">
     <div class="tlogo">M<span>E</span>LCAT</div>
@@ -406,7 +409,7 @@ select.inp{cursor:pointer}
   </div>
 </div>
 
-<!-- ══ SCREEN: PROGRESO ══ -->
+<!-- -- SCREEN: PROGRESO -- -->
 <div id="s-progress" class="screen">
   <div class="topbar">
     <div class="tlogo">M<span>E</span>LCAT</div>
@@ -453,7 +456,7 @@ select.inp{cursor:pointer}
   </div>
 </div>
 
-<!-- ══ SCREEN: NUTRICIÓN ══ -->
+<!-- -- SCREEN: NUTRICIÓN -- -->
 <div id="s-food" class="screen">
   <div class="topbar">
     <div class="tlogo">M<span>E</span>LCAT</div>
@@ -514,7 +517,7 @@ select.inp{cursor:pointer}
   </div>
 </div>
 
-<!-- ══ SCREEN: PERFIL ══ -->
+<!-- -- SCREEN: PERFIL -- -->
 <div id="s-perfil" class="screen">
   <div class="topbar">
     <div class="tlogo">M<span>E</span>LCAT</div>
@@ -1021,9 +1024,9 @@ select.inp{cursor:pointer}
 <div class="toast" id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  FIREBASE
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 const fbConfig = {
   apiKey:"AIzaSyBKMfDz3XLJCmjjaYdeT_o1Z05T2yub_Qc",
   authDomain:"lumen-6ed85.firebaseapp.com",
@@ -1036,9 +1039,9 @@ firebase.initializeApp(fbConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  BASE DE DATOS LOCAL
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 const DB_KEY = 'forge_db_v1';
 let forge = {
   exercises:[], routines:[], sessions:[],
@@ -1102,9 +1105,9 @@ function mergeDB(local, remote) {
   return m;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  AUTH
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 let authIsSignup = false;
 function authMode(m) {
   authIsSignup = m==='up';
@@ -1273,9 +1276,9 @@ function setSyncDot(st) {
 }
 function setLastSync() { forge._lastSync = Date.now(); }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  NAVEGACIÓN
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 function goTo(s) {
   document.querySelectorAll('.screen').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('.nb').forEach(x=>x.classList.remove('on'));
@@ -1296,9 +1299,9 @@ function renderAll() {
   if(currentScreen==='perfil')   renderPerfil();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  UTILIDADES
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 function fmtTime(s){ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60; return h>0?`${h}:${pad(m)}:${pad(ss)}`:`${pad(m)}:${pad(ss)}`; }
 function pad(n){ return String(n).padStart(2,'0'); }
 function fmtDate(ts){ return new Date(ts).toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'}); }
@@ -1369,9 +1372,9 @@ function switchTab(scope,tab,btn){
   return tab;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  RUTINAS INICIALES
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 const EJERCICIOS_BASE = [
   {id:'ex_sentadilla',    name:'Sentadilla (Barra)',       type:'barbell',    muscle:'piernas', restSec:180},
   {id:'ex_peso_muerto',   name:'Peso Muerto (Barra)',       type:'barbell',    muscle:'espalda', restSec:180},
@@ -1545,9 +1548,67 @@ function initRutinas(){
   saveDB();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  SCREEN: INICIO
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
+function exportarSemana(){
+  const hoy=new Date();
+  const lunes=new Date(hoy); lunes.setDate(hoy.getDate()-(hoy.getDay()||7)+1); lunes.setHours(0,0,0,0);
+  const domingo=new Date(lunes); domingo.setDate(lunes.getDate()+6); domingo.setHours(23,59,59,999);
+  const ses=(forge.sessions||[]).filter(s=>new Date(s.date)>=lunes&&new Date(s.date)<=domingo).sort((a,b)=>a.date-b.date);
+  const fmtDate=d=>new Date(d).toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'});
+  const fmtDur=s=>{ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; return h>0?(h+'h '+m+'m'):(m+'m '+sec+'s'); };
+  const sep='-------------------------------';
+  const lines=[];
+  lines.push(sep);
+  lines.push('RESUMEN SEMANA '+lunes.toLocaleDateString('es-CL',{day:'numeric',month:'long'})+' - '+domingo.toLocaleDateString('es-CL',{day:'numeric',month:'long'}));
+  lines.push(sep);
+  lines.push('');
+  const pesosSemana=(forge.bodyMetrics||[]).filter(m=>{ const d=new Date(m.date+'T12:00:00'); return d>=lunes&&d<=domingo; });
+  if(pesosSemana.length){
+    lines.push('PESO CORPORAL');
+    pesosSemana.forEach(m=>lines.push('  '+m.date+': '+m.peso+'kg'+(m.imc?' - IMC '+m.imc:'')));
+    lines.push('');
+  }
+  if(!ses.length){
+    lines.push('Sin sesiones registradas esta semana.');
+  } else {
+    lines.push('SESIONES ('+ses.length+')');
+    lines.push('');
+    ses.forEach(s=>{
+      lines.push('> '+fmtDate(s.date)+' - '+(s.routineName||'Sesion libre'));
+      if(s.elapsed) lines.push('  Duracion: '+fmtDur(s.elapsed));
+      if(s.fcMedia) lines.push('  FC media: '+s.fcMedia+'bpm');
+      if(s.kcal)    lines.push('  Calorias: '+s.kcal+'kcal');
+      (s.exercises||[]).forEach(ex=>{
+        const e=getEx(ex.exId); if(!e) return;
+        if(e.type==='warmup'||e.type==='stretch') return;
+        const sets=(ex.sets||[]).filter(st=>st.done);
+        if(!sets.length) return;
+        if(e.type==='run'||e.type==='hiit'){
+          const dist=sets.reduce((a,st)=>a+(parseFloat(st.distance)||0),0);
+          const fc=sets.find(st=>st.fc);
+          lines.push('  '+e.name+': '+dist.toFixed(2)+'km'+(sets[0]&&sets[0].time?' - '+sets[0].time:'')+(fc?' - FC '+fc.fc+'bpm':''));
+        } else {
+          lines.push('  '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
+        }
+      });
+      lines.push('');
+    });
+  }
+  lines.push(sep);
+  lines.push('Generado por MELCAT - '+new Date().toLocaleDateString('es-CL'));
+  const txt=lines.join('\n');
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(txt).then(()=>showToast('Resumen copiado al portapapeles',3000,'ok'));
+  } else {
+    const modal=document.getElementById('modal-ejercicio');
+    modal.querySelector('.modal-title').textContent='Resumen semanal';
+    modal.querySelector('.modal-body').innerHTML='<textarea style="width:100%;height:300px;font-family:monospace;font-size:11px;border:1px solid var(--border);border-radius:var(--r);padding:10px;resize:none" readonly>'+txt+'</textarea>';
+    openModal('modal-ejercicio');
+  }
+}
+
 function renderHome(){
   const dias  =['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const meses =['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -1945,9 +2006,9 @@ function calcDivMuscular(s){
   return Object.entries(grupos).filter(([,v])=>v>0).map(([g,v])=>({g,p:Math.round(v/total*100)})).sort((a,b)=>b.p-a.p);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  SCREEN: ENTRENAR
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 let activeSession=null, sesTimer=null, sesSeconds=0;
 let restTimer=null, restTotal=0, restLeft=0, pendingNextEx=null;
 
@@ -2476,10 +2537,11 @@ function renderSetRow(ei,si,set,isRun,ultSet){
 
   if(isRun){
     return `<div id="sr-${ei}-${si}" style="padding:10px 16px;border-bottom:1px solid var(--border);background:${done?'rgba(22,163,74,.06)':'transparent'}">
-      <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:6px;align-items:center;margin-bottom:6px">
+      <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px">
         <div class="set-num">${si+1}</div>
         <input class="set-inp" type="text" placeholder="km (ej: 4.01)" value="${set.distance||''}" oninput="updateSet(${ei},${si},'distance',this.value)" style="font-size:14px">
         <input class="set-inp" type="text" placeholder="mm:ss (ej: 22:44)" value="${set.time||''}" oninput="updateSet(${ei},${si},'time',this.value)" style="font-size:14px">
+        <button onclick="removeSetFromEx(${ei},${si})" style="background:none;border:none;color:var(--ink3);cursor:pointer;padding:4px 6px;font-size:16px" title="Eliminar">✕</button>
       </div>
       <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center">
         <div></div>
@@ -2524,12 +2586,13 @@ function renderSetRow(ei,si,set,isRun,ultSet){
     ? (ambos ? 'rgba(22,163,74,.06)' : ladoL||ladoR ? 'rgba(37,99,235,.04)' : 'transparent')
     : (done ? 'rgba(22,163,74,.06)' : 'transparent');
 
-  return `<div class="set-row" id="sr-${ei}-${si}" style="flex-wrap:wrap;background:${bgColor};grid-template-columns:28px 1fr 1fr 1fr auto">
+  return `<div class="set-row" id="sr-${ei}-${si}" style="flex-wrap:wrap;background:${bgColor};grid-template-columns:28px 1fr 1fr 1fr auto auto">
     <div class="set-num" style="color:${(done||ambos)?'var(--green)':'var(--ink3)'}">${si+1}</div>
     <div style="font-size:12px;color:var(--ink3);display:flex;align-items:center;padding:0 4px">${anteriorTxt}</div>
     <input class="set-inp" type="text" placeholder="kg" value="${set.weight||''}" oninput="updateSet(${ei},${si},'weight',this.value)" inputmode="decimal">
     <input class="set-inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateSet(${ei},${si},'reps',this.value)" inputmode="numeric">
     ${checkHtml}
+    <button onclick="removeSetFromEx(${ei},${si})" style="background:none;border:none;color:var(--ink3);cursor:pointer;padding:4px 6px;font-size:16px;line-height:1" title="Eliminar serie">✕</button>
     ${refHtml}
   </div>`;
 }
@@ -2576,6 +2639,14 @@ function toggleSet(ei,si){
     const restSec=activeSession.exercises[ei]._restSec || getEx(ex.exId)?.restSec || activeSession.restSec||90;
     startRest(restSec, ei, si);
   }
+}
+function removeSetFromEx(ei,si){
+  if(!activeSession) return;
+  const ex=activeSession.exercises[ei];
+  if(ex.sets.length<=1){ showToast('Mínimo 1 serie',1500); return; }
+  ex.sets.splice(si,1);
+  const container=document.getElementById('session-exs');
+  container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
 }
 function addSetToEx(ei){
   if(!activeSession) return;
@@ -3160,16 +3231,29 @@ document.addEventListener('touchstart', ()=>{
 
 function beep(freq=880, dur=0.08, vol=0.3){
   const ctx=getAudioCtx(); if(!ctx) return;
+  // Siempre intentar resume — iOS puede suspender el ctx entre toques
+  const doBeep=()=>{
+    try{
+      const osc=ctx.createOscillator(), gain=ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value=freq; osc.type='sine';
+      gain.gain.setValueAtTime(vol,ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime+dur);
+    }catch(e){}
+  };
+  if(ctx.state==='suspended'){
+    ctx.resume().then(doBeep).catch(()=>{});
+  } else {
+    doBeep();
+  }
+}
+function vibrar(pattern=[50]){
   try{
-    const osc=ctx.createOscillator(), gain=ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value=freq; osc.type='sine';
-    gain.gain.setValueAtTime(vol,ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime+dur);
+    // iOS: vibrate no existe en Safari — silenciar el error
+    if(navigator.vibrate) navigator.vibrate(pattern);
   }catch(e){}
 }
-function vibrar(pattern=[50]){ try{ navigator.vibrate&&navigator.vibrate(pattern); }catch(e){} }
 
 function _iniciarTimerSesion(){
   clearInterval(sesTimer);
@@ -3253,9 +3337,9 @@ function addRestTime(s){
   updateRestUI();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  PLAN DE PROGRESIÓN (+2.5% semanal)
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 const EJERCICIOS_CLAVE=[
   {id:'ex_sentadilla',  label:'Sentadilla', rutinaId:'r_lunes'},
   {id:'ex_press_banca', label:'Press Banca', rutinaId:'r_martes'},
@@ -3324,9 +3408,9 @@ function crearPlan(){
   if(currentScreen==='train') renderTrain();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  SCREEN: PROGRESO
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 let progTab='ejercicios', photoTab='frente', showRM=false;
 
 function renderProgress(){
@@ -4136,9 +4220,9 @@ function deleteEditMedRow(fecha){
   renderProgCuerpo();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  DATOS PERSONALES + IMC AUTOMÁTICO
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 function getDatosPersonales(){
   try{ return JSON.parse(localStorage.getItem('forge_perfil')||'{}'); }catch{ return {}; }
 }
@@ -4531,9 +4615,9 @@ function viewFoto(id){
   if(confirm(`Foto del ${p.date}\n¿Eliminar?`)){ forge.photos=forge.photos.filter(x=>x.id!==id); saveDB(); renderProgFotos(); }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  SCREEN: NUTRICIÓN
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 const COMIDAS=[
   {id:'desayuno',      emoji:'☀️',  nombre:'Desayuno',    hora:'08:00', grupos:'1 lácteo · 0.5 cereal · 3 carnes',         ejemplo:'Yogur protein + pan molde + 3 huevos + jamón pavo'},
   {id:'colacion_am',   emoji:'🍎',  nombre:'Colación AM', hora:'10:30', grupos:'1 fruta',                                   ejemplo:'120g arándanos o 1 manzana'},
@@ -4720,9 +4804,9 @@ function renderPauta(){
     </div>`).join('');
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  SCREEN: PERFIL
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 let perfilTab='habitos';
 function renderPerfil(){
   const btn=document.getElementById('perfil-action-btn');
@@ -4992,9 +5076,9 @@ function checkLogros(){
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  IMPORTAR HEVY CSV
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 // ── IMPORTADOR HEVY — 2 pasos ─────────────────────────────────
 const impBuf={f1:null,f2:null};
 let impSesRevisadas=[];  // sesiones parseadas pendientes de confirmar
@@ -5389,9 +5473,9 @@ function importMedCSV(text){
 }
 function parseCSV(line){ const r=[]; let cur='',inQ=false; for(const ch of line){ if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){r.push(cur.trim());cur='';}else{cur+=ch;} } r.push(cur.trim()); return r; }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  DATE PICKER — 3 selectores (día / mes / año)
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 function renderDatePicker(id, valorISO){
@@ -5476,7 +5560,7 @@ document.addEventListener('keydown', e=>{
   }
 }, {passive:false});
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 loadDB();
 </script>
 </body>
