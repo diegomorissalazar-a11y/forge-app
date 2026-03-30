@@ -1804,11 +1804,15 @@ function renderEditSesExs(s){
       <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:8px">${e.name}</div>
       ${ex.sets.map((set,si)=>isRun?`
         <div style="margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:10px">
-          <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:5px">
+          <div style="display:grid;grid-template-columns:28px 1fr auto;gap:6px;align-items:center;margin-bottom:5px">
             <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
             <input class="inp" type="text" placeholder="km (ej: 7.74)" value="${set.distance||''}" oninput="updateEditSet('${s.id}',${ei},${si},'distance',this.value)" style="padding:7px;font-size:13px">
-            <input class="inp" type="text" placeholder="mm:ss (ej: 53:19)" value="${set.time||''}" oninput="updateEditSet('${s.id}',${ei},${si},'time',this.value)" style="padding:7px;font-size:13px">
             <button onclick="deleteEditSet('${s.id}',${ei},${si})" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:16px">✕</button>
+          </div>
+          <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:6px;align-items:center;margin-bottom:5px">
+            <div></div>
+            <select class="dp-sel" id="edit-time-mm-${ei}-${si}" style="font-size:13px;padding:7px" onchange="updateEditTimeFromSel('${s.id}',${ei},${si})">${[...Array(180)].map((_,i)=>'<option value="'+i+'"'+(getEditTimeMM(set.time)===i?' selected':'')+'>'+String(i).padStart(2,'0')+' min</option>').join('')}</select>
+            <select class="dp-sel" id="edit-time-ss-${ei}-${si}" style="font-size:13px;padding:7px" onchange="updateEditTimeFromSel('${s.id}',${ei},${si})">${[...Array(60)].map((_,i)=>'<option value="'+i+'"'+(getEditTimeSS(set.time)===i?' selected':'')+'>'+String(i).padStart(2,'0')+' s</option>').join('')}</select>
           </div>
           <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:6px">
             <div></div>
@@ -1829,6 +1833,28 @@ function renderEditSesExs(s){
   }).join('');
 }
 
+function getEditTimeMM(timeVal){
+  if(!timeVal) return 0;
+  const s = String(timeVal);
+  if(s.includes(':')){ return parseInt(s.split(':')[0])||0; }
+  // segundos crudos
+  const secs = parseInt(s)||0;
+  return Math.floor(secs/60);
+}
+function getEditTimeSS(timeVal){
+  if(!timeVal) return 0;
+  const s = String(timeVal);
+  if(s.includes(':')){ return parseInt(s.split(':')[1])||0; }
+  const secs = parseInt(s)||0;
+  return secs%60;
+}
+function updateEditTimeFromSel(sesId,ei,si){
+  const mm=parseInt(document.getElementById('edit-time-mm-'+ei+'-'+si)?.value)||0;
+  const ss=parseInt(document.getElementById('edit-time-ss-'+ei+'-'+si)?.value)||0;
+  const timeStr=String(mm).padStart(2,'0')+':'+String(ss).padStart(2,'0');
+  const s=(forge.sessions||[]).find(x=>x.id===sesId); if(!s) return;
+  s.exercises[ei].sets[si].time=timeStr;
+}
 function updateEditSet(sesId,ei,si,field,val){
   const s=(forge.sessions||[]).find(x=>x.id===sesId); if(!s) return;
   const v=normDec(val);
@@ -1857,16 +1883,22 @@ function saveEditSesion(){
 
   // Duración: para cardio sumar tiempos de sets; para fuerza usar campo manual
   if(esSesSoloCardio(s)){
-    let totalMins=0;
+    let totalSecs=0;
     s.exercises.forEach(ex=>{
       (ex.sets||[]).forEach(set=>{
         if(set.time){
-          const p=(set.time+'').split(':');
-          totalMins+=(parseInt(p[0])||0)+(parseInt(p[1])||0)/60;
+          const t=String(set.time);
+          if(t.includes(':')){
+            const p=t.split(':');
+            totalSecs+=(parseInt(p[0])||0)*60+(parseInt(p[1])||0);
+          } else {
+            // segundos crudos legacy
+            totalSecs+=parseInt(t)||0;
+          }
         }
       });
     });
-    s.elapsed = Math.round(totalMins*60);
+    s.elapsed = totalSecs;
   } else {
     const durSecs=getDurSecs();
     if(durSecs>0) s.elapsed=durSecs;
