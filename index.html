@@ -1002,7 +1002,13 @@ select.inp{cursor:pointer}
       <input type="hidden" id="edit-ses-id">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="field"><label>Fecha</label><div id="edit-ses-fecha-wrap"></div></div>
-        <div class="field" id="edit-dur-field"><label>Duración (hh:mm)</label><input class="inp" type="text" id="edit-ses-dur" placeholder="00:37" pattern="\d{1,2}:\d{2}" inputmode="numeric"></div>
+        <div class="field" id="edit-dur-field"><label>Duración</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+            <select class="dp-sel" id="edit-ses-hh"><option value="0">0 h</option></select>
+            <select class="dp-sel" id="edit-ses-mm"><option value="0">0 min</option></select>
+            <select class="dp-sel" id="edit-ses-ss"><option value="0">0 s</option></select>
+          </div>
+        </div>
       </div>
       <div class="field"><label>Nombre</label><input class="inp" type="text" id="edit-ses-nombre"></div>
       <div class="section-label" style="margin-top:4px">Ejercicios y series</div>
@@ -1781,18 +1787,9 @@ function openEditSesion(id){
   document.getElementById('edit-ses-fecha-wrap').innerHTML=renderDatePicker('edit-ses-fecha',fechaStr);
   document.getElementById('edit-ses-nombre').value=s.routineName||'';
 
-  // Duración: solo mostrar para sesiones de fuerza
-  const esCardio = esSesSoloCardio(s);
-  const durField = document.getElementById('edit-dur-field');
-  if(esCardio){
-    durField.style.display='none';
-    document.getElementById('edit-ses-dur').value='';
-  } else {
-    durField.style.display='block';
-    const totalSecs=s.elapsed||0;
-    const hh=Math.floor(totalSecs/3600), mm=Math.floor((totalSecs%3600)/60);
-    document.getElementById('edit-ses-dur').value=`${pad(hh)}:${pad(mm)}`;
-  }
+  // Duración: mostrar siempre (fuerza y cardio)
+  document.getElementById('edit-dur-field').style.display='block';
+  setDurSelects(s.elapsed||0);
   renderEditSesExs(s);
   closeSesDetail();
   openModal('modal-edit-ses');
@@ -1871,15 +1868,8 @@ function saveEditSesion(){
     });
     s.elapsed = Math.round(totalMins*60);
   } else {
-    const durRaw=document.getElementById('edit-ses-dur').value.trim();
-    if(durRaw){
-      if(durRaw.includes(':')){
-        const parts=(durRaw+':0').split(':').map(Number);
-        s.elapsed=(parts[0]||0)*3600+(parts[1]||0)*60;
-      } else {
-        s.elapsed=(parseInt(durRaw)||0)*60;
-      }
-    }
+    const durSecs=getDurSecs();
+    if(durSecs>0) s.elapsed=durSecs;
   }
 
   // Recalcular volumen (solo fuerza)
@@ -2176,6 +2166,30 @@ function toggleRutinaDetalle(rutinaId){
   if(chev) chev.style.transform=abierto?'':'rotate(180deg)';
 }
 
+function buildDurSelects(){
+  const hhSel=document.getElementById('edit-ses-hh');
+  const mmSel=document.getElementById('edit-ses-mm');
+  const ssSel=document.getElementById('edit-ses-ss');
+  if(hhSel.options.length>1) return; // ya poblados
+  hhSel.innerHTML=[...Array(24)].map((_,i)=>`<option value="${i}">${i} h</option>`).join('');
+  mmSel.innerHTML=[...Array(60)].map((_,i)=>`<option value="${i}">${String(i).padStart(2,'0')} min</option>`).join('');
+  ssSel.innerHTML=[...Array(60)].map((_,i)=>`<option value="${i}">${String(i).padStart(2,'0')} s</option>`).join('');
+}
+function setDurSelects(totalSecs){
+  buildDurSelects();
+  const hh=Math.floor(totalSecs/3600);
+  const mm=Math.floor((totalSecs%3600)/60);
+  const ss=totalSecs%60;
+  document.getElementById('edit-ses-hh').value=hh;
+  document.getElementById('edit-ses-mm').value=mm;
+  document.getElementById('edit-ses-ss').value=ss;
+}
+function getDurSecs(){
+  const hh=parseInt(document.getElementById('edit-ses-hh').value)||0;
+  const mm=parseInt(document.getElementById('edit-ses-mm').value)||0;
+  const ss=parseInt(document.getElementById('edit-ses-ss').value)||0;
+  return hh*3600+mm*60+ss;
+}
 function iniciarRutina(rutinaId){
   _doIniciarRutina(rutinaId, 1.0);
 }
