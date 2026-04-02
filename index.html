@@ -1527,6 +1527,16 @@ function initRutinas(){
 
   const exIds = new Set(forge.exercises.map(e=>e.id));
   EJERCICIOS_BASE.forEach(e=>{ if(!exIds.has(e.id)) forge.exercises.push(e); });
+  // Forzar campos críticos desde EJERCICIOS_BASE sobre ejercicios existentes (bilateral, youtubeId, type)
+  EJERCICIOS_BASE.forEach(base=>{
+    const ex=forge.exercises.find(e=>e.id===base.id);
+    if(ex){
+      if(base.bilateral) ex.bilateral=true;
+      else delete ex.bilateral;
+      if(base.youtubeId) ex.youtubeId=base.youtubeId;
+      ex.type=base.type;
+    }
+  });
 
   // ── Deduplicar rutinas: si hay IDs base Y copias con otro ID del mismo nombre, quitar las copias ──
   const IDS_BASE=new Set(['r_lunes','r_martes','r_mierco','r_jueves','r_jueves_noche','r_cardio']);
