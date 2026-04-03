@@ -369,7 +369,16 @@ select.inp{cursor:pointer}
     <div id="home-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div class="section-label" style="margin-bottom:0">Últimos entrenamientos</div>
-      <button onclick="exportarSemana()" class="btn btn-s btn-sm" style="font-size:10px">📋 Exportar semana</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="export-semanas" class="dp-sel" style="font-size:11px;padding:5px 8px;width:auto">
+          <option value="1">1 semana</option>
+          <option value="2">2 semanas</option>
+          <option value="4" selected>4 semanas</option>
+          <option value="8">8 semanas</option>
+          <option value="0">Todo</option>
+        </select>
+        <button onclick="exportarSemana()" class="btn btn-s btn-sm" style="font-size:10px">📋 Exportar</button>
+      </div>
     </div>
     <div id="home-sessions"></div>
   </div>
@@ -1562,34 +1571,56 @@ function initRutinas(){
 //  SCREEN: INICIO
 // ---------------------------------------------------------------
 function exportarSemana(){
+  const semanas=parseInt(document.getElementById('export-semanas')?.value||'4');
   const hoy=new Date();
   const lunes=new Date(hoy); lunes.setDate(hoy.getDate()-(hoy.getDay()||7)+1); lunes.setHours(0,0,0,0);
-  const domingo=new Date(lunes); domingo.setDate(lunes.getDate()+6); domingo.setHours(23,59,59,999);
-  const ses=(forge.sessions||[]).filter(s=>new Date(s.date)>=lunes&&new Date(s.date)<=domingo).sort((a,b)=>a.date-b.date);
-  const fmtDate=d=>new Date(d).toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'});
+  let fechaInicio;
+  if(semanas===0){
+    // Todo el historial
+    fechaInicio=new Date(0);
+  } else {
+    fechaInicio=new Date(lunes);
+    fechaInicio.setDate(lunes.getDate()-((semanas-1)*7));
+  }
+  const domingo=new Date(hoy); domingo.setHours(23,59,59,999);
+  const ses=(forge.sessions||[]).filter(s=>new Date(s.date)>=fechaInicio&&new Date(s.date)<=domingo).sort((a,b)=>a.date-b.date);
+  const fmtDate=d=>new Date(d).toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const fmtDur=s=>{ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; return h>0?(h+'h '+m+'m'):(m+'m '+sec+'s'); };
   const sep='-------------------------------';
   const lines=[];
   lines.push(sep);
-  lines.push('RESUMEN SEMANA '+lunes.toLocaleDateString('es-CL',{day:'numeric',month:'long'})+' - '+domingo.toLocaleDateString('es-CL',{day:'numeric',month:'long'}));
+  const tituloRango=semanas===0?'HISTORIAL COMPLETO':('ULTIMAS '+semanas+' SEMANA'+(semanas>1?'S':''));
+  lines.push(tituloRango);
+  lines.push(fechaInicio.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'})+' - '+domingo.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'}));
   lines.push(sep);
   lines.push('');
-  const pesosSemana=(forge.bodyMetrics||[]).filter(m=>{ const d=new Date(m.date+'T12:00:00'); return d>=lunes&&d<=domingo; });
-  if(pesosSemana.length){
+
+  // Peso corporal
+  const pesos=(forge.bodyMetrics||[]).filter(m=>{ const d=new Date(m.date+'T12:00:00'); return d>=fechaInicio&&d<=domingo; }).sort((a,b)=>a.date>b.date?1:-1);
+  if(pesos.length){
     lines.push('PESO CORPORAL');
-    pesosSemana.forEach(m=>lines.push('  '+m.date+': '+m.peso+'kg'+(m.imc?' - IMC '+m.imc:'')));
+    pesos.forEach(m=>lines.push('  '+m.date+': '+m.peso+'kg'+(m.imc?' - IMC '+m.imc:'')));
     lines.push('');
   }
+
   if(!ses.length){
-    lines.push('Sin sesiones registradas esta semana.');
+    lines.push('Sin sesiones en este periodo.');
   } else {
-    lines.push('SESIONES ('+ses.length+')');
+    // Agrupar por semana
+    const semanaStr=d=>{ const x=new Date(d); const l=new Date(x); l.setDate(x.getDate()-(x.getDay()||7)+1); return l.toLocaleDateString('es-CL',{day:'numeric',month:'long'}); };
+    let semActual='';
+    lines.push('SESIONES ('+ses.length+' total)');
     lines.push('');
     ses.forEach(s=>{
-      lines.push('> '+fmtDate(s.date)+' - '+(s.routineName||'Sesion libre'));
-      if(s.elapsed) lines.push('  Duracion: '+fmtDur(s.elapsed));
-      if(s.fcMedia) lines.push('  FC media: '+s.fcMedia+'bpm');
-      if(s.kcal)    lines.push('  Calorias: '+s.kcal+'kcal');
+      const sw=semanaStr(s.date);
+      if(sw!==semActual){
+        semActual=sw;
+        lines.push('>> Semana del '+sw);
+      }
+      lines.push('  > '+fmtDate(s.date)+' - '+(s.routineName||'Sesion libre'));
+      if(s.elapsed) lines.push('    Duracion: '+fmtDur(s.elapsed));
+      if(s.fcMedia) lines.push('    FC media: '+s.fcMedia+'bpm');
+      if(s.kcal)    lines.push('    Calorias: '+s.kcal+'kcal');
       (s.exercises||[]).forEach(ex=>{
         const e=getEx(ex.exId); if(!e) return;
         if(e.type==='warmup'||e.type==='stretch') return;
@@ -1598,9 +1629,9 @@ function exportarSemana(){
         if(e.type==='run'||e.type==='hiit'){
           const dist=sets.reduce((a,st)=>a+(parseFloat(st.distance)||0),0);
           const fc=sets.find(st=>st.fc);
-          lines.push('  '+e.name+': '+dist.toFixed(2)+'km'+(sets[0]&&sets[0].time?' - '+sets[0].time:'')+(fc?' - FC '+fc.fc+'bpm':''));
+          lines.push('    '+e.name+': '+dist.toFixed(2)+'km'+(sets[0]&&sets[0].time?' - '+sets[0].time:'')+(fc?' - FC '+fc.fc+'bpm':''));
         } else {
-          lines.push('  '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
+          lines.push('    '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
         }
       });
       lines.push('');
@@ -1610,10 +1641,10 @@ function exportarSemana(){
   lines.push('Generado por MELCAT - '+new Date().toLocaleDateString('es-CL'));
   const txt=lines.join('\n');
   if(navigator.clipboard){
-    navigator.clipboard.writeText(txt).then(()=>showToast('Resumen copiado al portapapeles',3000,'ok'));
+    navigator.clipboard.writeText(txt).then(()=>showToast('Historial copiado al portapapeles',3000,'ok'));
   } else {
     const modal=document.getElementById('modal-ejercicio');
-    modal.querySelector('.modal-title').textContent='Resumen semanal';
+    modal.querySelector('.modal-title').textContent='Historial exportado';
     modal.querySelector('.modal-body').innerHTML='<textarea style="width:100%;height:300px;font-family:monospace;font-size:11px;border:1px solid var(--border);border-radius:var(--r);padding:10px;resize:none" readonly>'+txt+'</textarea>';
     openModal('modal-ejercicio');
   }
