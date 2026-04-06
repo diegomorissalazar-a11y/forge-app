@@ -1353,13 +1353,31 @@ function getPR(exId){
   });
   return best;
 }
+function getLunesDe(dateStr){
+  // Devuelve el lunes de la semana de una fecha YYYY-MM-DD (semana parte lunes)
+  const d=new Date(dateStr+'T12:00:00');
+  const dow=d.getDay(); // 0=dom,1=lun,...6=sab
+  const diff=dow===0?6:dow-1; // días desde el lunes
+  d.setDate(d.getDate()-diff);
+  return localDateStr(d);
+}
 function calcStreak(){
-  const dates=[...new Set((forge.sessions||[]).map(s=>localDateStr(s.date)))].sort().reverse();
-  const todayStr=today(); let streak=0,cur=todayStr;
-  for(const d of dates){
-    const diff=Math.round((new Date(cur)-new Date(d))/86400000);
-    if(diff>1) break;
-    streak++; cur=d;
+  // Racha de SEMANAS consecutivas con al menos 1 sesión (semana=lunes a domingo)
+  const sesiones=forge.sessions||[];
+  if(!sesiones.length) return 0;
+  const semanas=new Set(sesiones.map(s=>getLunesDe(localDateStr(s.date))));
+  const sorted=[...semanas].sort().reverse();
+  // Semana actual
+  const hoyLunes=getLunesDe(today());
+  // Si la semana actual no tiene sesiones, empezar desde la anterior
+  let cur=sorted[0]===hoyLunes?hoyLunes:sorted[0];
+  let streak=0;
+  for(const s of sorted){
+    if(s!==cur) break;
+    streak++;
+    // Retroceder una semana
+    const d=new Date(cur+'T12:00:00'); d.setDate(d.getDate()-7);
+    cur=localDateStr(d);
   }
   return streak;
 }
@@ -1398,12 +1416,13 @@ const EJERCICIOS_BASE = [
   {id:'ex_hip_thrust',    name:'Hip Thrust (Barra)',        type:'barbell',    muscle:'gluteos', restSec:90},
   {id:'ex_saltos_cajon',  name:'Saltos al Cajón',           type:'bodyweight', muscle:'piernas', restSec:90},
   {id:'ex_correr',       name:'Carrera / Trote',           type:'run',        muscle:'cardio',  restSec:0},
+  {id:'ex_cinta',        name:'Correr en Cinta',            type:'run',        muscle:'cardio',  restSec:0},
   {id:'ex_hiit',         name:'HIIT Carrera',               type:'hiit',       muscle:'cardio',  restSec:60, youtubeId:'qO0hUgxd-d4'},
   {id:'ex_curl_femoral', name:'Curl Femoral (Máquina)',     type:'machine',    muscle:'piernas', restSec:60},
   {id:'ex_elev_lateral', name:'Elevaciones Laterales',      type:'dumbbell',   muscle:'hombros', restSec:60},
   {id:'ex_crunch',       name:'Crunch Abdominal',           type:'bodyweight', muscle:'core',    restSec:45},
-  {id:'ex_trote_suave',  name:'Trote Suave 4-5km',          type:'run',        muscle:'cardio',  restSec:0},
   {id:'ex_cal_inf',      name:'Calentamiento Tren Inferior', type:'warmup',     muscle:'piernas', restSec:0, youtubeId:'jSACK-0lKi4'},
+  {id:'ex_cal_trote',    name:'Calentamiento Trote',         type:'warmup',     muscle:'cardio',  restSec:0, youtubeId:'bZWd5jKhbVo'},
   {id:'ex_cal_sup',      name:'Calentamiento Tren Superior', type:'warmup',     muscle:'hombros', restSec:0, youtubeId:'sytmEGA0HKU'},
   {id:'ex_est_inf',      name:'Estiramiento Tren Inferior',  type:'stretch',    muscle:'piernas', restSec:0, youtubeId:'byeZQ8cNIFs'},
   {id:'ex_est_sup',      name:'Estiramiento Tren Superior',  type:'stretch',    muscle:'hombros', restSec:0, youtubeId:'FozCaXSnB6A'},
@@ -1414,15 +1433,15 @@ const RUTINAS_BASE = [
   {id:'r_martes',  name:'Martes — Tren Superior A', emoji:'🏋', exercises:['ex_cal_sup','ex_press_banca','ex_remo_barra','ex_press_hombros','ex_elev_lateral','ex_est_sup'],      restSec:180},
   {id:'r_mierco',  name:'Miércoles — Tren Inferior B', emoji:'⚡', exercises:['ex_cal_inf','ex_sent_bulgara','ex_peso_muerto_rum','ex_hip_thrust','ex_crunch','ex_est_inf'], restSec:90},
   {id:'r_jueves',  name:'Jueves — Tren Superior B', emoji:'💪', exercises:['ex_cal_sup','ex_press_inclinado','ex_jalon_pecho','ex_press_homb_manc','ex_crunch','ex_est_sup'],restSec:90},
-  {id:'r_jueves_noche', name:'Jueves Noche — Trote', emoji:'🌙', exercises:['ex_trote_suave','ex_est_trote'], restSec:0},
-  {id:'r_cardio',  name:'Domingo — Cardio',          emoji:'🏃', exercises:['ex_correr','ex_est_trote'],                                             restSec:0},
+  {id:'r_jueves_noche', name:'Jueves Noche — Trote', emoji:'🌙', exercises:['ex_cal_trote','ex_correr','ex_est_trote'], restSec:0},
+  {id:'r_cardio',  name:'Domingo — Cardio',          emoji:'🏃', exercises:['ex_correr','ex_est_trote'], restSec:0},
 ];
 function initRutinas(){
   if(!forge.exercises) forge.exercises=[];
   if(!forge.routines)  forge.routines=[];
 
   // ── Migrar ejercicios viejos de carrera → ex_correr ─────────
-  const viejosRun=['ex_correr_10k','ex_trote','ex_running'];
+  const viejosRun=['ex_correr_10k','ex_trote','ex_running','ex_trote_suave'];
   forge.exercises=forge.exercises.filter(e=>!viejosRun.includes(e.id));
   if(forge.sessions){
     forge.sessions.forEach(s=>{
@@ -1464,6 +1483,7 @@ function initRutinas(){
     // ── Carrera / Trote — todos los nombres posibles de Hevy ──
     'trote':                           'ex_correr',
     'trote semanal':                   'ex_correr',
+    'trote suave 4-5km':               'ex_correr',
     'correr':                          'ex_correr',
     'correr / trote':                  'ex_correr',
     'carrera':                         'ex_correr',
@@ -1667,7 +1687,7 @@ function renderHome(){
   const semana = ses.filter(s=>new Date(s.date)>=wStart).length;
   document.getElementById('home-stats').innerHTML=`
     <div class="stat-box"><div class="stat-num">${semana}</div><div class="stat-label">Esta semana</div></div>
-    <div class="stat-box"><div class="stat-num" style="color:var(--orange)">${calcStreak()}</div><div class="stat-label">Racha días</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--orange)">${calcStreak()}</div><div class="stat-label">Racha semanas</div></div>
     <div class="stat-box"><div class="stat-num">${ses.length}</div><div class="stat-label">Total</div></div>`;
 
   const ultimas = [...ses].sort((a,b)=>b.date-a.date);
@@ -2455,6 +2475,27 @@ function renderSessionView(){
   const existente = document.getElementById('banner-domingo');
   if(existente) existente.remove();
   if(activeSession.routineId==='r_cardio') mostrarBannerDomingo();
+  if(activeSession.routineId==='r_jueves_noche'){
+    const ultTrote=(forge.sessions||[]).filter(s=>s.routineId==='r_jueves_noche'&&s.id!==activeSession.id).sort((a,b)=>b.date-a.date)[0];
+    if(ultTrote){
+      const rd=calcSesRitmo(ultTrote);
+      if(rd.ritmo>0){
+        const ritmoStr=Math.floor(rd.ritmo)+"'"+pad(Math.round((rd.ritmo%1)*60))+'"';
+        const banner=document.createElement('div');
+        banner.id='banner-trote-jueves';
+        banner.style.cssText='background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border-radius:12px;padding:14px 16px;margin:12px 16px 0;';
+        let bHtml='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:6px">&#127761; Ultimo trote jueves</div>';
+        bHtml+='<div style="display:flex;gap:16px;flex-wrap:wrap">';
+        bHtml+='<div><div style="font-size:22px;font-weight:800">'+rd.dist.toFixed(2)+' km</div><div style="font-size:10px;opacity:.75">Distancia</div></div>';
+        bHtml+='<div><div style="font-size:22px;font-weight:800">'+ritmoStr+'/km</div><div style="font-size:10px;opacity:.75">Ritmo promedio</div></div>';
+        if(rd.fcMedia>0) bHtml+='<div><div style="font-size:22px;font-weight:800">'+rd.fcMedia+'</div><div style="font-size:10px;opacity:.75">FC media (bpm)</div></div>';
+        bHtml+='</div>';
+        banner.innerHTML=bHtml;
+        const container=document.getElementById('session-exs');
+        if(container&&!document.getElementById('banner-trote-jueves')) container.parentNode.insertBefore(banner,container);
+      }
+    }
+  }
 }
 
 function renderSexBlock(ex,ei){
@@ -4874,7 +4915,7 @@ function renderHabitsLumen(){
 
   el.innerHTML=`
     <div class="lumen-stat-row">
-      <div class="lumen-stat"><div class="lumen-num">${streak}</div><div class="lumen-lbl">Racha actual</div><div class="lumen-sub">días seguidos</div></div>
+      <div class="lumen-stat"><div class="lumen-num">${streak}</div><div class="lumen-lbl">Racha actual</div><div class="lumen-sub">semanas seguidas</div></div>
       <div class="lumen-stat"><div class="lumen-num">${maxStr}</div><div class="lumen-lbl">Mejor racha</div><div class="lumen-sub">histórico</div></div>
       <div class="lumen-stat"><div class="lumen-num">${total}</div><div class="lumen-lbl">Días totales</div><div class="lumen-sub">registrados</div></div>
     </div>
