@@ -1054,7 +1054,7 @@ const db   = firebase.firestore();
 const DB_KEY = 'forge_db_v1';
 let forge = {
   exercises:[], routines:[], sessions:[],
-  bodyMetrics:[], photos:[], logros:[],
+  bodyMetrics:[], photos:[], logros:[], perfil:{},
   planes:[], habitos:[]
 };
 let currentUser = null;
@@ -1406,7 +1406,7 @@ const EJERCICIOS_BASE = [
   {id:'ex_sentadilla',    name:'Sentadilla (Barra)',       type:'barbell',    muscle:'piernas', restSec:180},
   {id:'ex_peso_muerto',   name:'Peso Muerto (Barra)',       type:'barbell',    muscle:'espalda', restSec:180},
   {id:'ex_press_banca',   name:'Press Banca (Barra)',       type:'barbell',    muscle:'pecho',   restSec:120},
-  {id:'ex_remo_barra',    name:'Remo con Barra',           type:'barbell',    muscle:'espalda', restSec:120},
+  {id:'ex_remo_barra',    name:'Remo Pecho Apoyado (Máquina)', type:'machine', muscle:'espalda', restSec:120},
   {id:'ex_press_hombros', name:'Press Hombros (Barra)',     type:'barbell',    muscle:'hombros', restSec:120},
   {id:'ex_press_inclinado',name:'Press Inclinado (Barra)', type:'barbell',    muscle:'pecho',   restSec:120},
   {id:'ex_jalon_pecho',   name:'Jalón al Pecho (Cable)',   type:'cable',      muscle:'espalda', restSec:90},
@@ -2771,9 +2771,20 @@ function abrirPostSesion(){
 function postSesPreviewFoto(input){
   const file=input.files[0]; if(!file) return;
   const reader=new FileReader();
-  reader.onload=e=>{
-    document.getElementById('post-ses-foto-img').src=e.target.result;
-    document.getElementById('post-ses-foto-preview').style.display='block';
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=800;
+      let w=img.width, h=img.height;
+      if(w>MAX||h>MAX){ const r=Math.min(MAX/w,MAX/h); w=Math.round(w*r); h=Math.round(h*r); }
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      const compressed=canvas.toDataURL('image/jpeg',0.72);
+      document.getElementById('post-ses-foto-img').src=compressed;
+      document.getElementById('post-ses-foto-preview').style.display='block';
+    };
+    img.src=ev.target.result;
   };
   reader.readAsDataURL(file);
 }
@@ -4306,9 +4317,16 @@ function deleteEditMedRow(fecha){
 //  DATOS PERSONALES + IMC AUTOMÁTICO
 // ---------------------------------------------------------------
 function getDatosPersonales(){
+  // Priorizar forge.perfil (sincronizado) sobre localStorage
+  if(forge.perfil&&forge.perfil.estatura) return forge.perfil;
   try{ return JSON.parse(localStorage.getItem('forge_perfil')||'{}'); }catch{ return {}; }
 }
-function saveDatosPersonalesData(d){ localStorage.setItem('forge_perfil',JSON.stringify(d)); }
+function saveDatosPersonalesData(d){
+  localStorage.setItem('forge_perfil',JSON.stringify(d));
+  // También guardar en forge para sincronizar con Firebase
+  forge.perfil=d;
+  saveDB();
+}
 
 function calcEdad(nac){
   if(!nac) return null;
@@ -4680,9 +4698,19 @@ function handleFotoFile(e){
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
   reader.onload=ev=>{
-    pendingFoto=ev.target.result;
-    document.getElementById('foto-preview').innerHTML=`<img src="${pendingFoto}" style="width:100%;border-radius:var(--r);max-height:200px;object-fit:cover">`;
-    document.getElementById('foto-save-btn').disabled=false;
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=800;
+      let w=img.width, h=img.height;
+      if(w>MAX||h>MAX){ const r=Math.min(MAX/w,MAX/h); w=Math.round(w*r); h=Math.round(h*r); }
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      pendingFoto=canvas.toDataURL('image/jpeg',0.72);
+      document.getElementById('foto-preview').innerHTML='<img src="'+pendingFoto+'" style="width:100%;border-radius:var(--r);max-height:200px;object-fit:cover">';
+      document.getElementById('foto-save-btn').disabled=false;
+    };
+    img.src=ev.target.result;
   };
   reader.readAsDataURL(file);
 }
