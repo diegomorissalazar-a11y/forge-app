@@ -485,19 +485,15 @@ select.inp{cursor:pointer}
     <div id="food-stats-row" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px"></div>
     <!-- Agua -->
     <div class="card" style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-family:var(--fd);font-size:17px;font-weight:700">💧 Agua</div>
-        <div style="font-size:11px;color:var(--ink3)">Meta: 10 vasos</div>
+        <div id="agua-total-label" style="font-size:12px;color:var(--blue);font-weight:700"></div>
       </div>
-      <div class="agua-counter">
-        <button class="agua-step" onclick="cambiarAgua(-1)">−</button>
-        <div>
-          <div class="agua-num-big" id="agua-num">0</div>
-          <div style="font-size:11px;color:var(--ink3);text-align:center">/ 10 vasos</div>
-        </div>
-        <button class="agua-step" onclick="cambiarAgua(1)">+</button>
+      <div id="agua-checkpoints"></div>
+      <div style="margin-top:8px;background:var(--bg3);border-radius:8px;height:8px;overflow:hidden">
+        <div id="agua-progress-bar" style="height:100%;background:var(--blue);border-radius:8px;transition:width .3s"></div>
       </div>
-      <div class="agua-dots" id="agua-dots"></div>
+      <div id="agua-dots" style="display:none"></div>
     </div>
     <!-- Comidas -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -4726,6 +4722,58 @@ function viewFoto(id){
 }
 
 // ---------------------------------------------------------------
+//  AGUA CHECKPOINTS
+// ---------------------------------------------------------------
+const AGUA_CPS = [
+  {hora:'07:00', label:'Al levantarte',   ml:500},
+  {hora:'09:30', label:'Media mañana',    ml:300},
+  {hora:'12:00', label:'Antes almuerzo',  ml:300},
+  {hora:'14:00', label:'Post almuerzo',   ml:300},
+  {hora:'16:00', label:'Colación PM',     ml:300},
+  {hora:'18:00', label:'Pre-entreno',     ml:400},
+  {hora:'20:00', label:'Con cena',        ml:400},
+];
+const AGUA_META_ML = 2500;
+
+function getAguaCps(fd){ return fd.aguaCps || Array(AGUA_CPS.length).fill(false); }
+
+function toggleAguaCp(idx){
+  const fd=getFD(foodDate);
+  const cps=getAguaCps(fd);
+  cps[idx]=!cps[idx];
+  fd.aguaCps=cps;
+  // Sincronizar vasos legacy (cada cp = 1 vaso aprox)
+  fd.agua=cps.filter(Boolean).length;
+  saveFD(fd);
+  renderAguaCheckpoints(fd);
+  const totalMl=AGUA_CPS.filter((_,i)=>cps[i]).reduce((a,c)=>a+c.ml,0);
+  if(totalMl>=AGUA_META_ML) showToast('💧 ¡Meta de agua alcanzada!',2500,'ok');
+}
+
+function renderAguaCheckpoints(fd){
+  const el=document.getElementById('agua-checkpoints'); if(!el) return;
+  const cps=getAguaCps(fd);
+  const totalMl=AGUA_CPS.filter((_,i)=>cps[i]).reduce((a,c)=>a+c.ml,0);
+  const pct=Math.min(100,Math.round(totalMl/AGUA_META_ML*100));
+  const lbl=document.getElementById('agua-total-label');
+  if(lbl) lbl.textContent=totalMl+'ml / '+AGUA_META_ML+'ml ('+pct+'%)';
+  const bar=document.getElementById('agua-progress-bar');
+  if(bar) bar.style.width=pct+'%';
+  el.innerHTML=AGUA_CPS.map((cp,i)=>{
+    const done=cps[i];
+    return '<div onclick="toggleAguaCp('+i+')" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer">'
+      +'<div style="width:36px;height:36px;border-radius:50%;border:2px solid '+(done?'var(--blue)':'var(--border2)')+';background:'+(done?'var(--blue)':'var(--bg3)')+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'
+      +(done?'<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5"><polyline points="20 6 9 17 4 12"/></svg>':'<span style="font-size:14px">💧</span>')
+      +'</div>'
+      +'<div style="flex:1">'
+      +'<div style="font-size:14px;font-weight:600;color:'+(done?'var(--ink3)':'var(--ink)')+';'+(done?'text-decoration:line-through':'')+'">'+cp.hora+' — '+cp.label+'</div>'
+      +'<div style="font-size:11px;color:var(--ink3)">'+cp.ml+'ml</div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+// ---------------------------------------------------------------
 //  SCREEN: NUTRICIÓN
 // ---------------------------------------------------------------
 const COMIDAS=[
@@ -4821,8 +4869,7 @@ function renderFood(){
     <div class="stat-box"><div class="stat-num">${completadas}/${COMIDAS.length}</div><div class="stat-label">Comidas</div></div>
     <div class="stat-box"><div class="stat-num" style="color:${pct===100?'var(--green)':'var(--orange)'}">${pct}%</div><div class="stat-label">Adherencia</div></div>`;
   // Agua
-  document.getElementById('agua-num').textContent=fd.agua;
-  document.getElementById('agua-dots').innerHTML=Array.from({length:10},(_,i)=>`<div class="agua-dot ${fd.agua>i?'on':''}"></div>`).join('');
+  renderAguaCheckpoints(fd);
   document.getElementById('food-comidas-count').textContent=`${completadas} / ${COMIDAS.length}`;
   // Menú sugerido
   const menu=MENU_SEMANA[d.getDay()];
@@ -4876,6 +4923,7 @@ function cambiarAgua(delta){
   const fd=getFD(foodFecha);
   fd.agua=Math.min(10,Math.max(0,(fd.agua||0)+delta)); saveFD(fd);
   if(fd.agua>=10) showToast('💧 ¡Meta de agua alcanzada!',2500,'ok');
+  renderAguaCheckpoints(fd);
   renderFood();
 }
 function renderIdeas(){
