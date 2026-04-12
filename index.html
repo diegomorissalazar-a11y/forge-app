@@ -367,6 +367,7 @@ select.inp{cursor:pointer}
     <div id="home-greet" style="margin-bottom:14px"></div>
     <div id="home-plan-banner" style="margin-bottom:12px"></div>
     <div id="home-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px"></div>
+    <div id="home-streak-banner" style="margin-bottom:16px"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div class="section-label" style="margin-bottom:0">Últimos entrenamientos</div>
       <div style="display:flex;gap:6px;align-items:center">
@@ -1378,13 +1379,43 @@ function calcStreak(){
   return streak;
 }
 function calcMaxStreak(){
-  const dates=[...new Set((forge.sessions||[]).map(s=>localDateStr(s.date)))].sort();
+  const sesiones=forge.sessions||[];
+  if(!sesiones.length) return 0;
+  const semanas=[...new Set(sesiones.map(s=>getLunesDe(localDateStr(s.date))))].sort();
   let max=0,cur=0,prev=null;
-  dates.forEach(d=>{
-    const diff=prev?Math.round((new Date(d)-new Date(prev))/86400000):1;
-    cur=diff===1?cur+1:1; max=Math.max(max,cur); prev=d;
+  semanas.forEach(s=>{
+    if(!prev){ cur=1; }
+    else {
+      const d=new Date(prev+'T12:00:00'); d.setDate(d.getDate()+7);
+      cur=getLunesDe(localDateStr(d))===s?cur+1:1;
+    }
+    max=Math.max(max,cur); prev=s;
   });
   return max;
+}
+function getSesionesXSemana(){
+  // Devuelve {lunesStr: count} para todas las semanas
+  const map={};
+  (forge.sessions||[]).forEach(s=>{
+    const l=getLunesDe(localDateStr(s.date));
+    map[l]=(map[l]||0)+1;
+  });
+  return map;
+}
+function getMejorSemanaAnio(anio){
+  const map=getSesionesXSemana();
+  let best=0, bestLunes=null;
+  Object.entries(map).forEach(([l,cnt])=>{
+    if(l.startsWith(anio) && cnt>best){ best=cnt; bestLunes=l; }
+  });
+  return {count:best, lunes:bestLunes};
+}
+function fmtRangoSemana(lunesStr){
+  if(!lunesStr) return '';
+  const l=new Date(lunesStr+'T12:00:00');
+  const d=new Date(l); d.setDate(l.getDate()+6);
+  const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return l.getDate()+' '+meses[l.getMonth()]+' – '+d.getDate()+' '+meses[d.getMonth()];
 }
 function est1RM(w,r){ return Math.round(w*(1+r/30)*10)/10; } // Fórmula Epley
 
@@ -1666,6 +1697,39 @@ function exportarSemana(){
   }
 }
 
+function renderStreakBanner(){
+  const el=document.getElementById('home-streak-banner'); if(!el) return;
+  const anio=new Date().getFullYear()+'';
+  const rachaActual=calcStreak();
+  const rachaMejor=calcMaxStreak();
+  const mejor=getMejorSemanaAnio(anio);
+  const hoyLunes=getLunesDe(today());
+  const mapSem=getSesionesXSemana();
+  const estaSemana=mapSem[hoyLunes]||0;
+  if(!rachaActual&&!mejor.count){ el.innerHTML=''; return; }
+  const esNuevaMejor=mejor.lunes===hoyLunes&&estaSemana>0;
+  let html='<div style="background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;border-radius:14px;padding:14px 16px">';
+  html+='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:8px">Seguimiento semanal · '+anio+'</div>';
+  if(mejor.count>0){
+    html+='<div style="font-size:13px;margin-bottom:4px">🏅 Mejor semana del año: <strong>'+mejor.count+' sesiones</strong>';
+    if(mejor.lunes) html+=' <span style="opacity:.75">('+fmtRangoSemana(mejor.lunes)+')</span>';
+    html+='</div>';
+  }
+  if(rachaActual>0){
+    html+='<div style="font-size:13px;margin-bottom:4px">⚡ Racha actual: <strong>'+rachaActual+' semana'+(rachaActual>1?'s':'')+' seguida'+(rachaActual>1?'s':'')+'</strong></div>';
+  }
+  if(rachaMejor>rachaActual){
+    html+='<div style="font-size:13px;margin-bottom:4px">🏆 Mejor racha: <strong>'+rachaMejor+' semanas</strong></div>';
+  }
+  if(esNuevaMejor){
+    html+='<div style="font-size:13px;margin-top:6px;background:rgba(255,255,255,.18);border-radius:8px;padding:6px 10px">⭐ Esta semana: <strong>'+estaSemana+' sesiones</strong> — nueva mejor semana del año</div>';
+  } else if(estaSemana>0){
+    html+='<div style="font-size:13px;margin-top:4px;opacity:.85">Esta semana: <strong>'+estaSemana+' sesiones</strong></div>';
+  }
+  html+='</div>';
+  el.innerHTML=html;
+}
+
 function renderHome(){
   const dias  =['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const meses =['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -1677,9 +1741,10 @@ function renderHome(){
     <div style="font-family:var(--fd);font-size:26px;font-weight:800;line-height:1.1">Hola, ${nombre} 👋</div>`;
 
   renderHomePlanBanner();
+  renderStreakBanner();
 
   const ses    = forge.sessions||[];
-  const wStart = new Date(hoy); wStart.setDate(hoy.getDate()-hoy.getDay()); wStart.setHours(0,0,0,0);
+  const wStart = new Date(hoy); wStart.setDate(hoy.getDate()-(hoy.getDay()||7)+1); wStart.setHours(0,0,0,0);
   const semana = ses.filter(s=>new Date(s.date)>=wStart).length;
   document.getElementById('home-stats').innerHTML=`
     <div class="stat-box"><div class="stat-num">${semana}</div><div class="stat-label">Esta semana</div></div>
