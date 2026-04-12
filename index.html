@@ -1020,6 +1020,10 @@ select.inp{cursor:pointer}
         </div>
       </div>
       <div class="field"><label>Nombre</label><input class="inp" type="text" id="edit-ses-nombre"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>❤️ FC media (bpm)</label><input class="inp" type="number" id="edit-ses-fc" placeholder="ej: 145" inputmode="numeric"></div>
+        <div class="field"><label>🔥 Calorías (kcal)</label><input class="inp" type="number" id="edit-ses-kcal" placeholder="ej: 380" inputmode="numeric"></div>
+      </div>
       <div class="section-label" style="margin-top:4px">Ejercicios y series</div>
       <div id="edit-ses-exs" style="max-height:320px;overflow-y:auto;margin-bottom:12px"></div>
       <button class="btn btn-p" onclick="saveEditSesion()">✓ Guardar cambios</button>
@@ -1812,7 +1816,9 @@ function calcSesRitmo(s){
 
 function esSesSoloCardio(s){
   const exs=s.exercises||[];
-  return exs.length>0 && exs.every(ex=>{ const e=getEx(ex.exId); return e?.type==='run'||e?.type==='hiit'; });
+  // Ignorar warmup y stretch al evaluar si es sesión de cardio
+  const relevantes=exs.filter(ex=>{ const e=getEx(ex.exId); return e?.type!=='warmup'&&e?.type!=='stretch'; });
+  return relevantes.length>0 && relevantes.every(ex=>{ const e=getEx(ex.exId); return e?.type==='run'||e?.type==='hiit'; });
 }
 
 function renderSesCard(s, hoy){
@@ -1973,6 +1979,8 @@ function openEditSesion(id){
   // Duración: mostrar siempre (fuerza y cardio)
   document.getElementById('edit-dur-field').style.display='block';
   setDurSelects(s.elapsed||0);
+  document.getElementById('edit-ses-fc').value=s.fcMedia||s.fc||'';
+  document.getElementById('edit-ses-kcal').value=s.kcal||'';
   renderEditSesExs(s);
   closeSesDetail();
   openModal('modal-edit-ses');
@@ -2053,6 +2061,10 @@ function saveEditSesion(){
 
   if(fecha) s.date=new Date(fecha+'T12:00:00').getTime();
   if(nombre) s.routineName=nombre;
+  const fcEdit=parseInt(document.getElementById('edit-ses-fc')?.value)||0;
+  const kcalEdit=parseInt(document.getElementById('edit-ses-kcal')?.value)||0;
+  if(fcEdit>0) s.fcMedia=fcEdit; else if(fcEdit===0&&document.getElementById('edit-ses-fc')?.value==='') delete s.fcMedia;
+  if(kcalEdit>0) s.kcal=kcalEdit; else if(kcalEdit===0&&document.getElementById('edit-ses-kcal')?.value==='') delete s.kcal;
 
   // Marcar sets como done según si tienen datos
   s.exercises.forEach(ex=>{
@@ -2868,6 +2880,12 @@ function guardarPostSesion(){
   if(kcal>0) activeSession.kcal=kcal;
   if(durSecs>0) activeSession.elapsed=durSecs;
   if(fotoSrc) activeSession.foto=fotoSrc;
+  // Calcular y guardar ritmo promedio para sesiones de cardio
+  if(esSesSoloCardio(activeSession)){
+    const rd=calcSesRitmo(activeSession);
+    if(rd.ritmo>0) activeSession.ritmoPromedio=rd.ritmo;
+    if(rd.dist>0) activeSession.distanciaTotal=rd.dist;
+  }
   if(!forge.sessions) forge.sessions=[];
   forge.sessions.push({...activeSession});
   saveDB();
