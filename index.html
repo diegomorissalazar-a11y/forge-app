@@ -1213,14 +1213,26 @@ async function doGuardarNube() {
   if(!currentUser){ showToast('Inicia sesión primero'); return; }
   setSyncDot('syncing');
   try {
-    await db.collection('users').doc(currentUser.uid).collection('forge').doc('data').set(forge);
+    // Excluir fotos del sync — son base64 y superan el límite de 1MB de Firestore
+    // Las fotos se guardan solo en localStorage de cada dispositivo
+    const forgeSync = {...forge};
+    // Excluir fotos de progreso
+    if(forgeSync.photos) delete forgeSync.photos;
+    // Excluir fotos post-sesión de cada sesión
+    if(forgeSync.sessions) forgeSync.sessions = forgeSync.sessions.map(s=>{
+      if(!s.foto) return s;
+      const {foto, ...rest} = s;
+      return rest;
+    });
+    await db.collection('users').doc(currentUser.uid).collection('forge').doc('data').set(forgeSync);
     setLastSync(); saveDB();
     setSyncDot('ok');
     showToast('✓ Datos guardados en la nube', 2500, 'ok');
     refreshUmSyncInfo();
   } catch(e){
     setSyncDot('off');
-    showToast('Error al guardar: '+e.message);
+    showToast('Error al guardar en nube: '+e.message, 4000);
+    console.error('Firestore error:', e);
   }
 }
 // Alias para compatibilidad con llamadas existentes
@@ -1240,7 +1252,14 @@ async function doCargarNube() {
     }
     const remoto = snap.data();
     const antes  = contarRegistros(forge);
+    // Preservar fotos locales antes del merge (no están en Firebase)
+    const fotosLocales = forge.photos||[];
+    const fotosSesLocal = {};
+    (forge.sessions||[]).forEach(s=>{ if(s.foto) fotosSesLocal[s.id]=s.foto; });
     forge = mergeDB(forge, remoto);
+    // Restaurar fotos locales
+    if(fotosLocales.length) forge.photos=fotosLocales;
+    forge.sessions=(forge.sessions||[]).map(s=>fotosSesLocal[s.id]?{...s,foto:fotosSesLocal[s.id]}:s);
     saveDB();
     setLastSync();
     setSyncDot('ok');
