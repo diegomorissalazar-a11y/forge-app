@@ -357,7 +357,7 @@ select.inp{cursor:pointer}
 <!-- -- SCREEN: INICIO -- -->
 <div id="s-home" class="screen on">
   <div class="topbar">
-    <div class="tlogo">M<span>E</span>LCAT</div>
+    <div class="tlogo">M<span>E</span>LCAT <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v81</span></div>
     <div style="display:flex;align-items:center;gap:8px">
       <div id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--green)"></div>
       <div id="user-btn" onclick="toggleUserMenu()" style="width:32px;height:32px;border-radius:50%;background:var(--orange);color:#fff;display:none;align-items:center;justify-content:center;font-size:12px;font-weight:800;cursor:pointer"></div>
@@ -388,7 +388,7 @@ select.inp{cursor:pointer}
 <!-- -- SCREEN: ENTRENAR -- -->
 <div id="s-train" class="screen">
   <div class="topbar">
-    <div class="tlogo">M<span>E</span>LCAT</div>
+    <div class="tlogo">M<span>E</span>LCAT <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v81</span></div>
     <div id="train-topbar-right" style="display:flex;align-items:center;gap:8px">
       <span style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Rutinas</span>
     </div>
@@ -422,7 +422,7 @@ select.inp{cursor:pointer}
 <!-- -- SCREEN: PROGRESO -- -->
 <div id="s-progress" class="screen">
   <div class="topbar">
-    <div class="tlogo">M<span>E</span>LCAT</div>
+    <div class="tlogo">M<span>E</span>LCAT <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v81</span></div>
     <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Estadísticas</div>
   </div>
   <div class="tab-row">
@@ -469,7 +469,7 @@ select.inp{cursor:pointer}
 <!-- -- SCREEN: NUTRICIÓN -- -->
 <div id="s-food" class="screen">
   <div class="topbar">
-    <div class="tlogo">M<span>E</span>LCAT</div>
+    <div class="tlogo">M<span>E</span>LCAT <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v81</span></div>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="food-fecha-lbl" style="font-size:11px;color:var(--ink3)"></span>
       <button onclick="cambiarDia(-1)" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:18px;line-height:1">‹</button>
@@ -526,7 +526,7 @@ select.inp{cursor:pointer}
 <!-- -- SCREEN: PERFIL -- -->
 <div id="s-perfil" class="screen">
   <div class="topbar">
-    <div class="tlogo">M<span>E</span>LCAT</div>
+    <div class="tlogo">M<span>E</span>LCAT <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v81</span></div>
     <button class="btn btn-p btn-sm" id="perfil-action-btn">+ Nuevo</button>
   </div>
   <div class="tab-row">
@@ -1198,9 +1198,29 @@ auth.onAuthStateChanged(async user => {
     renderAll();
     try {
       const snap = await db.collection('users').doc(user.uid).collection('forge').doc('data').get();
-      if(snap.exists){ forge=mergeDB(forge,snap.data()); saveDB(); renderAll(); setLastSync(); }
+      if(snap.exists){
+        const remoto = snap.data();
+        const tsLocal = forge._lastSync||0;
+        const tsRemoto = remoto._lastSync||0;
+        // Preservar fotos locales antes de cualquier operación
+        const fotosLocales = forge.photos||[];
+        const fotosSesLocal = {};
+        (forge.sessions||[]).forEach(s=>{ if(s.foto) fotosSesLocal[s.id]=s.foto; });
+        if(tsRemoto > tsLocal){
+          // Firebase es más reciente → usarlo directamente, no hacer merge
+          forge = {...remoto};
+          showToast('📥 Datos actualizados desde la nube', 2000, 'ok');
+        } else {
+          // Local es más reciente o igual → merge normal
+          forge = mergeDB(forge, remoto);
+        }
+        // Restaurar fotos locales siempre
+        if(fotosLocales.length) forge.photos = fotosLocales;
+        forge.sessions = (forge.sessions||[]).map(s => fotosSesLocal[s.id]?{...s,foto:fotosSesLocal[s.id]}:s);
+        saveDB(); renderAll(); setLastSync();
+      }
       setSyncDot('ok');
-    } catch(e){ setSyncDot('off'); }
+    } catch(e){ setSyncDot('off'); console.error('Firebase load error:', e); }
   } else {
     currentUser = null;
     document.getElementById('auth').style.display = 'flex';
