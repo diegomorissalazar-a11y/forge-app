@@ -1490,7 +1490,7 @@ const EJERCICIOS_BASE = [
   {id:'ex_hiit',         name:'HIIT Carrera',               type:'hiit',       muscle:'cardio',  restSec:60, youtubeId:'qO0hUgxd-d4'},
   {id:'ex_curl_femoral', name:'Curl Femoral (Máquina)',     type:'machine',    muscle:'piernas', restSec:120},
   {id:'ex_elev_lateral', name:'Elevaciones Laterales',      type:'dumbbell',   muscle:'hombros', restSec:150},
-  {id:'ex_crunch',       name:'Crunch Abdominal',           type:'bodyweight', muscle:'core',    restSec:60},
+  {id:'ex_crunch',       name:'Abdominal Banco Inclinado',  type:'bodyweight', muscle:'core',    restSec:60},
   {id:'ex_cal_inf',      name:'Calentamiento Tren Inferior', type:'warmup',     muscle:'piernas', restSec:0, youtubeId:'jSACK-0lKi4'},
   {id:'ex_cal_trote',    name:'Calentamiento Trote',         type:'warmup',     muscle:'cardio',  restSec:0, youtubeId:'bZWd5jKhbVo'},
   {id:'ex_cal_sup',      name:'Calentamiento Tren Superior', type:'warmup',     muscle:'hombros', restSec:0, youtubeId:'sytmEGA0HKU'},
@@ -3045,23 +3045,69 @@ function abrirReemplazarEx(ei){
 
 function reexRenderLista(q){
   const exActualId = activeSession?.exercises[_reexIdx]?.exId;
-  const exs = (forge.exercises||[])
-    .filter(e => e.id !== exActualId) // excluir el actual
-    .filter(e => !q || e.name.toLowerCase().includes(q.toLowerCase()));
+  const exActual = getEx(exActualId);
+  const musculo = exActual?.muscle||'';
+  const ql = q.toLowerCase();
 
-  document.getElementById('reex-lista').innerHTML = exs.length
-    ? exs.map(e=>`
-        <div onclick="reexConfirmar('${e.id}')" class="prog-ex-row" style="cursor:pointer">
-          <div style="flex:1">
-            <div class="prog-ex-name">${e.name}</div>
-            <div class="prog-ex-sub">${e.type} · ${e.muscle||'—'}</div>
-          </div>
-          <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--orange);fill:none;stroke-width:2.5;flex-shrink:0">
-            <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
-            <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
-          </svg>
-        </div>`).join('')
-    : '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Sin resultados</div></div>';
+  const todos = (forge.exercises||[])
+    .filter(e => e.id !== exActualId)
+    .filter(e => !q || e.name.toLowerCase().includes(ql));
+
+  // Separar mismo grupo muscular del resto
+  const mismoGrupo = todos.filter(e => e.muscle === musculo);
+  const otros = todos.filter(e => e.muscle !== musculo);
+
+  const renderFila = e => `
+    <div onclick="reexConfirmar('${e.id}')" class="prog-ex-row" style="cursor:pointer">
+      <div style="flex:1">
+        <div class="prog-ex-name">${e.name}</div>
+        <div class="prog-ex-sub">${e.type} · ${e.muscle||'—'}</div>
+      </div>
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--orange);fill:none;stroke-width:2.5;flex-shrink:0">
+        <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+        <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+      </svg>
+    </div>`;
+
+  const otroHtml = `
+    <div style="border-top:2px solid var(--border);padding:10px 16px;background:var(--bg3)">
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="inp" id="reex-otro-nombre" placeholder="Nombre del ejercicio nuevo…" style="flex:1;font-size:13px"
+          onkeydown="if(event.key==='Enter') reexAgregarOtro()">
+        <button class="btn btn-p btn-sm" onclick="reexAgregarOtro()">Agregar</button>
+      </div>
+    </div>`;
+
+  let html = '';
+  if(!q && mismoGrupo.length){
+    html += '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--orange);font-weight:700;padding:8px 16px 4px">Mismo grupo — '+musculo+'</div>';
+    html += mismoGrupo.map(renderFila).join('');
+    if(otros.length){
+      html += '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:700;padding:8px 16px 4px">Otros ejercicios</div>';
+      html += otros.map(renderFila).join('');
+    }
+  } else if(todos.length){
+    html += todos.map(renderFila).join('');
+  } else {
+    html = '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Sin resultados</div></div>';
+  }
+  html += '<div class="prog-ex-row" style="border-top:2px solid var(--border);cursor:default"><div style="flex:1"><div class="prog-ex-name" style="color:var(--ink3)">➕ Otro — agregar nuevo</div></div></div>';
+  html += otroHtml;
+
+  document.getElementById('reex-lista').innerHTML = html;
+}
+
+function reexAgregarOtro(){
+  const nombre=(document.getElementById('reex-otro-nombre')?.value||'').trim();
+  if(!nombre){ showToast('Escribe el nombre del ejercicio'); return; }
+  if(!forge.exercises) forge.exercises=[];
+  const existe=forge.exercises.find(e=>e.name.toLowerCase()===nombre.toLowerCase());
+  if(existe){ reexConfirmar(existe.id); return; }
+  const nuevoEx={id:'ex_'+Date.now(),name:nombre,type:'bodyweight',muscle:'piernas',restSec:90};
+  forge.exercises.push(nuevoEx);
+  saveDB();
+  reexConfirmar(nuevoEx.id);
+  showToast('✓ "'+nombre+'" guardado y reemplazado',2000,'ok');
 }
 
 function reexConfirmar(nuevoExId){
