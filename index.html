@@ -1475,22 +1475,22 @@ function switchTab(scope,tab,btn){
 const EJERCICIOS_BASE = [
   {id:'ex_sentadilla',    name:'Sentadilla (Barra)',       type:'barbell',    muscle:'piernas', restSec:180},
   {id:'ex_peso_muerto',   name:'Peso Muerto (Barra)',       type:'barbell',    muscle:'espalda', restSec:180},
-  {id:'ex_press_banca',   name:'Press Banca (Barra)',       type:'barbell',    muscle:'pecho',   restSec:120},
-  {id:'ex_remo_barra',    name:'Remo Pecho Apoyado (Máquina)', type:'machine', muscle:'espalda', restSec:120},
-  {id:'ex_press_hombros', name:'Press Hombros (Barra)',     type:'barbell',    muscle:'hombros', restSec:120},
-  {id:'ex_press_inclinado',name:'Press Inclinado (Barra)', type:'barbell',    muscle:'pecho',   restSec:120},
-  {id:'ex_jalon_pecho',   name:'Jalón al Pecho (Cable)',   type:'cable',      muscle:'espalda', restSec:90},
-  {id:'ex_press_homb_manc',name:'Press Hombros (Mancuerna)',type:'dumbbell',  muscle:'hombros', restSec:90},
+  {id:'ex_press_banca',   name:'Press Banca (Barra)',       type:'barbell',    muscle:'pecho',   restSec:180},
+  {id:'ex_remo_barra',    name:'Remo Pecho Apoyado (Máquina)', type:'machine', muscle:'espalda', restSec:150},
+  {id:'ex_press_hombros', name:'Press Hombros (Barra)',     type:'barbell',    muscle:'hombros', restSec:150},
+  {id:'ex_press_inclinado',name:'Press Inclinado (Barra)', type:'barbell',    muscle:'pecho',   restSec:180},
+  {id:'ex_jalon_pecho',   name:'Jalón al Pecho (Cable)',   type:'cable',      muscle:'espalda', restSec:150},
+  {id:'ex_press_homb_manc',name:'Press Hombros (Mancuerna)',type:'dumbbell',  muscle:'hombros', restSec:150},
   {id:'ex_sent_bulgara',  name:'Sentadilla Búlgara',       type:'dumbbell',   muscle:'piernas', restSec:120, bilateral:true},
-  {id:'ex_peso_muerto_rum',name:'Peso Muerto Rumano',      type:'barbell',    muscle:'piernas', restSec:90},
-  {id:'ex_hip_thrust',    name:'Hip Thrust (Barra)',        type:'barbell',    muscle:'gluteos', restSec:90},
-  {id:'ex_saltos_cajon',  name:'Saltos al Cajón',           type:'bodyweight', muscle:'piernas', restSec:90},
+  {id:'ex_peso_muerto_rum',name:'Peso Muerto Rumano',      type:'barbell',    muscle:'piernas', restSec:180},
+  {id:'ex_hip_thrust',    name:'Hip Thrust (Barra)',        type:'barbell',    muscle:'gluteos', restSec:180},
+  {id:'ex_saltos_cajon',  name:'Saltos al Cajón',           type:'plyo',       muscle:'piernas', restSec:60},
   {id:'ex_correr',       name:'Carrera / Trote',           type:'run',        muscle:'cardio',  restSec:0},
   {id:'ex_cinta',        name:'Correr en Cinta',            type:'run',        muscle:'cardio',  restSec:0},
   {id:'ex_hiit',         name:'HIIT Carrera',               type:'hiit',       muscle:'cardio',  restSec:60, youtubeId:'qO0hUgxd-d4'},
-  {id:'ex_curl_femoral', name:'Curl Femoral (Máquina)',     type:'machine',    muscle:'piernas', restSec:60},
-  {id:'ex_elev_lateral', name:'Elevaciones Laterales',      type:'dumbbell',   muscle:'hombros', restSec:60},
-  {id:'ex_crunch',       name:'Crunch Abdominal',           type:'bodyweight', muscle:'core',    restSec:45},
+  {id:'ex_curl_femoral', name:'Curl Femoral (Máquina)',     type:'machine',    muscle:'piernas', restSec:120},
+  {id:'ex_elev_lateral', name:'Elevaciones Laterales',      type:'dumbbell',   muscle:'hombros', restSec:150},
+  {id:'ex_crunch',       name:'Crunch Abdominal',           type:'bodyweight', muscle:'core',    restSec:60},
   {id:'ex_cal_inf',      name:'Calentamiento Tren Inferior', type:'warmup',     muscle:'piernas', restSec:0, youtubeId:'jSACK-0lKi4'},
   {id:'ex_cal_trote',    name:'Calentamiento Trote',         type:'warmup',     muscle:'cardio',  restSec:0, youtubeId:'bZWd5jKhbVo'},
   {id:'ex_cal_sup',      name:'Calentamiento Tren Superior', type:'warmup',     muscle:'hombros', restSec:0, youtubeId:'sytmEGA0HKU'},
@@ -1634,6 +1634,7 @@ function initRutinas(){
       else delete ex.bilateral;
       if(base.youtubeId) ex.youtubeId=base.youtubeId;
       ex.type=base.type;
+      ex.restSec=base.restSec; // Forzar descanso correcto desde base
     }
   });
 
@@ -2638,6 +2639,7 @@ function renderSexBlock(ex,ei){
       +'</div>';
   }
   const isRun=e.type==='run'||e.type==='hiit';
+  const isPlyo=e.type==='plyo';
   const pr=getPR(ex.exId);
 
   // ── Último registro de esta misma rutina ──────────────────────
@@ -2682,7 +2684,14 @@ function renderSexBlock(ex,ei){
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowfullscreen style="display:block"></iframe>
     </div>` : '';
-  const colHeader = isRun ? '' : `
+  const colHeader = isRun ? '' : isPlyo ? `
+    <div style="display:grid;grid-template-columns:28px 1fr 1fr 1fr auto;gap:6px;padding:5px 16px;background:var(--bg3);border-bottom:1px solid var(--border)">
+      <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase">Serie</span>
+      <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase">Anterior</span>
+      <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase;text-align:center">Altura</span>
+      <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase;text-align:center">Reps</span>
+      <span style="width:34px"></span>
+    </div>` : `
     <div style="display:grid;grid-template-columns:28px 1fr 1fr 1fr auto;gap:6px;padding:5px 16px;background:var(--bg3);border-bottom:1px solid var(--border)">
       <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase">Serie</span>
       <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase">Anterior</span>
@@ -2728,7 +2737,31 @@ function renderSetRow(ei,si,set,isRun,ultSet){
   const ex=activeSession?.exercises[ei];
   const eDef=getEx(ex?.exId);
   const isBilateral=eDef?.bilateral===true;
+  const isPlyo=eDef?.type==='plyo';
 
+  // Render especial para ejercicios pliométricos (saltos cajón) — altura + reps
+  if(isPlyo){
+    const altura=set.altura||'media';
+    const ultAlt=ultSet?.altura?(' · '+ultSet.altura):'';
+    const ultReps=ultSet?.reps?(ultSet.reps+' reps'+ultAlt):'—';
+    const bgColor=done?'rgba(22,163,74,.06)':'transparent';
+    const selAltura='<select onchange="updateSet('+ei+','+si+String.fromCharCode(44)+String.fromCharCode(39)+'altura'+String.fromCharCode(39)+',this.value)" style="border:1px solid var(--border2);border-radius:var(--r);padding:6px 4px;font-size:13px;background:var(--bg3);color:var(--ink)">'
+      +'<option value="baja"'+(altura==='baja'?' selected':'')+'>Baja</option>'
+      +'<option value="media"'+(altura==='media'?' selected':'')+'>Media</option>'
+      +'<option value="alta"'+(altura==='alta'?' selected':'')+'>Alta</option>'
+      +'</select>';
+    return '<div class="set-row" id="sr-'+ei+'-'+si+'" style="flex-wrap:wrap;background:'+bgColor+';grid-template-columns:28px 1fr 1fr 1fr auto auto">'
+      +'<div class="set-num" style="color:'+(done?'var(--green)':'var(--ink3)')+'">'+( si+1)+'</div>'
+      +'<div style="font-size:12px;color:var(--ink3);display:flex;align-items:center;padding:0 4px">'+ultReps+'</div>'
+      +selAltura
+      +'<input class="set-inp" type="number" placeholder="reps" value="'+(set.reps||'')+'" oninput="updateSet('+ei+','+si+','+String.fromCharCode(39)+'reps'+String.fromCharCode(39)+',this.value)" inputmode="numeric">'
+      +'<div class="set-check '+(done?'done':'')+'" onclick="toggleSet('+ei+','+si+')">'
+      +'<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>'
+      +'<button onclick="removeSetFromEx('+ei+','+si+')" style="background:none;border:none;color:var(--ink3);cursor:pointer;padding:4px 6px;font-size:16px">✕</button>'
+      +'</div>';
+  }
+
+  
   if(isRun){
     return `<div id="sr-${ei}-${si}" style="padding:10px 16px;border-bottom:1px solid var(--border);background:${done?'rgba(22,163,74,.06)':'transparent'}">
       <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px">
