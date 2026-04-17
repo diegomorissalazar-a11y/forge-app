@@ -2540,75 +2540,125 @@ function doStartFreeSession(){
 }
 
 // ── Plan de progresión dominical ─────────────────────────────────
-const PLAN_DOMINGO = [
-  {semana:1, dist:6.5, ritmo:"6'33\"/km", fc:155},
-  {semana:2, dist:7.0, ritmo:"6'45\"-7'00\"/km", fc:155},
-  {semana:3, dist:7.5, ritmo:"6'45\"/km", fc:155},
-  {semana:4, dist:8.0, ritmo:"6'30\"/km", fc:155},
-  {semana:5, dist:8.5, ritmo:"6'20\"/km", fc:155},
-  {semana:6, dist:9.0, ritmo:"6'10\"/km", fc:155},
-  {semana:7, dist:10.0, ritmo:"6'00\"/km", fc:155},
-  {semana:8, dist:10.0, ritmo:"5'30\"/km", fc:160},
-];
-const SEMANA_INICIO_PLAN = '2026-03-23'; // semana 1
+// ── PLAN CARRERA 24 SEMANAS — sub-50min 10K ──────────────────
+// Base: Daniels Running Formula + Seiler 80/20
+// Inicio: semana del 13 de abril 2026
+const SEMANA_INICIO_CARRERA = '2026-04-13';
 
-function getSemanaActualPlan(){
-  const inicio = new Date(SEMANA_INICIO_PLAN);
+// tipo: 'z2'=zona2, 'tempo'=tempo, 'intervalos'=intervalos, 'test'=test, 'descarga'=descarga
+const PLAN_CARRERA = [
+  {sem:1,  jTipo:'z2',        jDist:4,   jRitmo:'7:15-7:45', jFC:150, jNota:'Zona 2 real — si FC>150 baja el paso',
+           dTipo:'desarrollo',dDist:8,   dRitmo:'6:29',       dFC:155, dNota:'Mantén ritmo actual controlando FC'},
+  {sem:2,  jTipo:'z2',        jDist:4,   jRitmo:'7:15-7:45', jFC:150, jNota:'Zona 2 real — conversacional',
+           dTipo:'desarrollo',dDist:8.5, dRitmo:'6:45',       dFC:152, dNota:'Mas lento que sem 1, FC mas baja'},
+  {sem:3,  jTipo:'z2',        jDist:4,   jRitmo:'7:15-7:45', jFC:150, jNota:'Zona 2 real — conversacional',
+           dTipo:'desarrollo',dDist:9,   dRitmo:'6:45',       dFC:152, dNota:'Aumenta distancia, mismo ritmo'},
+  {sem:4,  jTipo:'z2',        jDist:5,   jRitmo:'7:15-7:30', jFC:150, jNota:'Zona 2 — sube distancia',
+           dTipo:'desarrollo',dDist:9.5, dRitmo:'6:30',       dFC:155, dNota:'Ligeramente mas rapido'},
+  {sem:5,  jTipo:'z2',        jDist:5,   jRitmo:'7:00-7:30', jFC:150, jNota:'Zona 2 — FC debe bajar vs sem 1',
+           dTipo:'desarrollo',dDist:10,  dRitmo:'6:30',       dFC:155, dNota:'Primera vez a 10km'},
+  {sem:6,  jTipo:'z2',        jDist:5,   jRitmo:'7:00-7:15', jFC:150, jNota:'Zona 2 — ya debes hablar sin ahogarte',
+           dTipo:'desarrollo',dDist:10,  dRitmo:'6:15',       dFC:155, dNota:'Mismo distancia, mas rapido'},
+  {sem:7,  jTipo:'z2',        jDist:5,   jRitmo:'6:50-7:15', jFC:150, jNota:'Zona 2 — ritmo bajando naturalmente',
+           dTipo:'desarrollo',dDist:11,  dRitmo:'6:15',       dFC:155, dNota:'Sube a 11km'},
+  {sem:8,  jTipo:'descarga',  jDist:3,   jRitmo:'muy suave', jFC:145, jNota:'Semana descarga — piernas frescas para el test',
+           dTipo:'test',      dDist:5,   dRitmo:'maximo',     dFC:186, dNota:'TEST 5km a esfuerzo maximo — registra tiempo exacto'},
+  {sem:9,  jTipo:'z2',        jDist:5,   jRitmo:'7:00-7:15', jFC:150, jNota:'Vuelta al volumen post-test',
+           dTipo:'desarrollo',dDist:10,  dRitmo:'6:15',       dFC:155, dNota:'Retoma con distancia comoda'},
+  {sem:10, jTipo:'tempo',     jDist:5,   jRitmo:'6:00',      jFC:165, jNota:'1km suave + 3km a 6:00 min/km + 1km suave',
+           dTipo:'desarrollo',dDist:10,  dRitmo:'6:10',       dFC:155, dNota:'Continua progresion domingo'},
+  {sem:11, jTipo:'z2',        jDist:5,   jRitmo:'6:50-7:10', jFC:150, jNota:'Zona 2 — recuperacion post-tempo',
+           dTipo:'desarrollo',dDist:11,  dRitmo:'6:10',       dFC:155, dNota:'Sube distancia'},
+  {sem:12, jTipo:'tempo',     jDist:6,   jRitmo:'6:00',      jFC:165, jNota:'1km suave + 4km a 6:00 min/km + 1km suave',
+           dTipo:'desarrollo',dDist:10,  dRitmo:'6:00',       dFC:155, dNota:'Primera vez a 6:00 min/km'},
+  {sem:13, jTipo:'z2',        jDist:5,   jRitmo:'6:45-7:00', jFC:150, jNota:'Zona 2 — descansa del tempo',
+           dTipo:'desarrollo',dDist:12,  dRitmo:'6:00',       dFC:155, dNota:'Sube a 12km'},
+  {sem:14, jTipo:'tempo',     jDist:6,   jRitmo:'5:50',      jFC:168, jNota:'1km suave + 4km a 5:50 min/km + 1km suave',
+           dTipo:'desarrollo',dDist:11,  dRitmo:'5:55',       dFC:158, dNota:'Ritmo bajo 6 min sostenido'},
+  {sem:15, jTipo:'z2',        jDist:5,   jRitmo:'6:40-7:00', jFC:150, jNota:'Zona 2 — recuperacion',
+           dTipo:'desarrollo',dDist:12,  dRitmo:'5:50',       dFC:158, dNota:'12km bajo 6 min/km'},
+  {sem:16, jTipo:'descarga',  jDist:3,   jRitmo:'muy suave', jFC:145, jNota:'Semana descarga — piernas frescas para test',
+           dTipo:'test',      dDist:5,   dRitmo:'maximo',     dFC:186, dNota:'TEST 5km — mide progreso VDOT'},
+  {sem:17, jTipo:'intervalos',jDist:4,   jRitmo:'5:20',      jFC:175, jNota:'6x400m a 5:20 min/km · rec 90s caminando',
+           dTipo:'desarrollo',dDist:10,  dRitmo:'5:45',       dFC:160, dNota:'Ritmo objetivo baja'},
+  {sem:18, jTipo:'z2',        jDist:5,   jRitmo:'6:30-6:50', jFC:150, jNota:'Zona 2 — recuperacion post-intervalos',
+           dTipo:'desarrollo',dDist:11,  dRitmo:'5:40',       dFC:160, dNota:'Progresion continua'},
+  {sem:19, jTipo:'intervalos',jDist:5,   jRitmo:'5:20',      jFC:175, jNota:'5x800m a 5:20 min/km · rec 2min',
+           dTipo:'desarrollo',dDist:10,  dRitmo:'5:35',       dFC:162, dNota:'Acercandose al ritmo objetivo'},
+  {sem:20, jTipo:'z2',        jDist:5,   jRitmo:'6:20-6:45', jFC:150, jNota:'Zona 2 — recuperacion',
+           dTipo:'desarrollo',dDist:12,  dRitmo:'5:30',       dFC:162, dNota:'12km a ritmo de carrera'},
+  {sem:21, jTipo:'intervalos',jDist:5,   jRitmo:'5:15',      jFC:178, jNota:'4x1000m a 5:15 min/km · rec 2min',
+           dTipo:'desarrollo',dDist:10,  dRitmo:'5:20',       dFC:165, dNota:'Muy cerca del ritmo objetivo'},
+  {sem:22, jTipo:'z2',        jDist:5,   jRitmo:'6:20-6:40', jFC:150, jNota:'Zona 2 — recuperacion',
+           dTipo:'desarrollo',dDist:10,  dRitmo:'5:10',       dFC:165, dNota:'10km a ritmo sub-52min'},
+  {sem:23, jTipo:'tempo',     jDist:7,   jRitmo:'5:00',      jFC:170, jNota:'2km suave + 4km a 5:00 min/km + 1km suave',
+           dTipo:'desarrollo',dDist:8,   dRitmo:'5:05',       dFC:165, dNota:'Descarga parcial — piernas frescas'},
+  {sem:24, jTipo:'descarga',  jDist:3,   jRitmo:'muy suave', jFC:145, jNota:'Semana descarga — CARRERA EL DOMINGO',
+           dTipo:'test',      dDist:10,  dRitmo:'5:00',       dFC:175, dNota:'OBJETIVO: sub-50min 10K'},
+];
+
+function getSemanaCarrera(){
+  const inicio = new Date(SEMANA_INICIO_CARRERA);
   const hoy = new Date();
   const dias = Math.floor((hoy - inicio) / 86400000);
-  return Math.min(Math.max(1, Math.floor(dias/7)+1), PLAN_DOMINGO.length);
+  const sem = Math.floor(dias/7)+1;
+  return Math.min(Math.max(1, sem), PLAN_CARRERA.length);
 }
 
-function mostrarBannerDomingo(){
-  const sem = getSemanaActualPlan();
-  const obj = PLAN_DOMINGO[sem-1];
-  const banner = document.createElement('div');
-  banner.id = 'banner-domingo';
-  banner.style.cssText = 'background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border-radius:12px;padding:14px 16px;margin:12px 16px 0;';
-  banner.innerHTML = `
-    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:6px">🏃 Objetivo Semana ${sem}</div>
-    <div style="display:flex;gap:16px;flex-wrap:wrap">
-      <div><div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif">${obj.dist} km</div><div style="font-size:10px;opacity:.75">Distancia</div></div>
-      <div><div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif">${obj.ritmo}/km</div><div style="font-size:10px;opacity:.75">Ritmo objetivo</div></div>
-      <div><div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif">&lt;${obj.fc}</div><div style="font-size:10px;opacity:.75">FC máx (bpm)</div></div>
-    </div>
-    <div style="font-size:11px;opacity:.7;margin-top:8px">Si la FC sube de ${obj.fc}bpm, baja el ritmo.</div>
-  `;
-  const container = document.getElementById('session-exs');
-  if(container && !document.getElementById('banner-domingo')){
-    container.parentNode.insertBefore(banner, container);
+function getSemanaActualPlan(){ return getSemanaCarrera(); }
+
+function tipoLabel(tipo){
+  return {z2:'🧘 Zona 2 — Base aeróbica', tempo:'⚡ Tempo', intervalos:'🔥 Intervalos', test:'🏁 TEST 5km', descarga:'😌 Descarga', desarrollo:'📈 Desarrollo'}[tipo]||tipo;
+}
+function tipoColor(tipo){
+  return {z2:'#16a34a,#15803d', tempo:'#d97706,#b45309', intervalos:'#dc2626,#b91c1c', test:'#7c3aed,#6d28d9', descarga:'#475467,#344054', desarrollo:'#1d4ed8,#1e40af'}[tipo]||'#1d4ed8,#1e40af';
+}
+
+function mostrarBannerCarrera(routineId){
+  const esJueves = routineId==='r_jueves_noche';
+  const esDomingo = routineId==='r_cardio';
+  if(!esJueves&&!esDomingo) return;
+
+  const sem = getSemanaCarrera();
+  const plan = PLAN_CARRERA[sem-1];
+  const bannerId = esJueves?'banner-trote-jueves':'banner-domingo';
+  if(document.getElementById(bannerId)) return;
+
+  const tipo  = esJueves?plan.jTipo:plan.dTipo;
+  const dist  = esJueves?plan.jDist:plan.dDist;
+  const ritmo = esJueves?plan.jRitmo:plan.dRitmo;
+  const fc    = esJueves?plan.jFC:plan.dFC;
+  const nota  = esJueves?plan.jNota:plan.dNota;
+  const color = tipoColor(tipo);
+  const label = tipoLabel(tipo);
+  const bloque = sem<=8?'Bloque 1 — Base':sem<=16?'Bloque 2 — Desarrollo':'Bloque 3 — Específico 10K';
+
+  const banner=document.createElement('div');
+  banner.id=bannerId;
+  banner.style.cssText='background:linear-gradient(135deg,'+color+');color:#fff;border-radius:12px;padding:14px 16px;margin:12px 16px 0;';
+  let h='<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;opacity:.7;margin-bottom:2px">'+bloque+' · Sem '+sem+'/24</div>';
+  h+='<div style="font-size:13px;font-weight:700;margin-bottom:10px">'+label+'</div>';
+  h+='<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px">';
+  h+='<div><div style="font-size:22px;font-weight:800">'+dist+'km</div><div style="font-size:10px;opacity:.75">Distancia</div></div>';
+  if(ritmo!=='maximo'&&ritmo!=='muy suave'){
+    h+='<div><div style="font-size:22px;font-weight:800">'+ritmo+'/km</div><div style="font-size:10px;opacity:.75">Ritmo objetivo</div></div>';
   }
+  h+='<div><div style="font-size:22px;font-weight:800">'+(tipo==='test'||tipo==='intervalos'?fc+'max':'<'+fc)+'</div><div style="font-size:10px;opacity:.75">FC (bpm)</div></div>';
+  h+='</div>';
+  h+='<div style="font-size:11px;opacity:.8;background:rgba(0,0,0,.15);border-radius:6px;padding:6px 8px">'+nota+'</div>';
+  banner.innerHTML=h;
+  const container=document.getElementById('session-exs');
+  if(container) container.parentNode.insertBefore(banner,container);
 }
 
 function renderSessionView(){
   document.getElementById('ses-name').textContent=activeSession.routineName;
   const container=document.getElementById('session-exs');
   container.innerHTML=activeSession.exercises.map((ex,ei)=>renderSexBlock(ex,ei)).join('');
-  // Mostrar banner solo si es sesión del domingo
-  const existente = document.getElementById('banner-domingo');
-  if(existente) existente.remove();
-  if(activeSession.routineId==='r_cardio') mostrarBannerDomingo();
-  if(activeSession.routineId==='r_jueves_noche'){
-    const ultTrote=(forge.sessions||[]).filter(s=>s.routineId==='r_jueves_noche'&&s.id!==activeSession.id).sort((a,b)=>b.date-a.date)[0];
-    if(ultTrote){
-      const rd=calcSesRitmo(ultTrote);
-      if(rd.ritmo>0){
-        const ritmoStr=Math.floor(rd.ritmo)+"'"+pad(Math.round((rd.ritmo%1)*60))+'"';
-        const banner=document.createElement('div');
-        banner.id='banner-trote-jueves';
-        banner.style.cssText='background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border-radius:12px;padding:14px 16px;margin:12px 16px 0;';
-        let bHtml='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:6px">&#127761; Ultimo trote jueves</div>';
-        bHtml+='<div style="display:flex;gap:16px;flex-wrap:wrap">';
-        bHtml+='<div><div style="font-size:22px;font-weight:800">'+rd.dist.toFixed(2)+' km</div><div style="font-size:10px;opacity:.75">Distancia</div></div>';
-        bHtml+='<div><div style="font-size:22px;font-weight:800">'+ritmoStr+'/km</div><div style="font-size:10px;opacity:.75">Ritmo promedio</div></div>';
-        if(rd.fcMedia>0) bHtml+='<div><div style="font-size:22px;font-weight:800">'+rd.fcMedia+'</div><div style="font-size:10px;opacity:.75">FC media (bpm)</div></div>';
-        bHtml+='</div>';
-        banner.innerHTML=bHtml;
-        const container=document.getElementById('session-exs');
-        if(container&&!document.getElementById('banner-trote-jueves')) container.parentNode.insertBefore(banner,container);
-      }
-    }
-  }
+  // Limpiar banners anteriores
+  ['banner-domingo','banner-trote-jueves'].forEach(id=>{ const el=document.getElementById(id); if(el) el.remove(); });
+  // Mostrar banner de plan de carrera
+  mostrarBannerCarrera(activeSession.routineId);
 }
 
 function renderSexBlock(ex,ei){
