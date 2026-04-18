@@ -368,6 +368,7 @@ select.inp{cursor:pointer}
     <div id="home-plan-banner" style="margin-bottom:12px"></div>
     <div id="home-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px"></div>
     <div id="home-streak-banner" style="margin-bottom:16px"></div>
+    <div id="home-peso-banner" style="margin-bottom:16px"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div class="section-label" style="margin-bottom:0">Últimos entrenamientos</div>
       <div style="display:flex;gap:6px;align-items:center">
@@ -1031,6 +1032,29 @@ select.inp{cursor:pointer}
   </div>
 </div>
 
+<div id="modal-peso-objetivo" class="modal-bg">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="modal-title">⚖️ Objetivo de peso</div>
+      <button class="bicon" onclick="closeModal('modal-peso-objetivo')">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Peso de inicio (kg)</label>
+        <input class="inp" type="number" id="po-inicio" placeholder="ej: 103" inputmode="decimal" step="0.1">
+        <div style="font-size:11px;color:var(--ink3);margin-top:4px">El peso desde donde partes a medir el progreso</div>
+      </div>
+      <div class="field">
+        <label>Peso objetivo (kg)</label>
+        <input class="inp" type="number" id="po-objetivo" placeholder="ej: 95" inputmode="decimal" step="0.1">
+      </div>
+      <button class="btn btn-p" onclick="guardarPesoObjetivo()">✓ Guardar objetivo</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1741,6 +1765,69 @@ function exportarSemana(){
   }
 }
 
+function getPesoObjetivo(){
+  const def={inicio:103, objetivo:95};
+  if(forge.pesoObjetivo) return forge.pesoObjetivo;
+  return def;
+}
+function abrirPesoObjetivo(){
+  const po=getPesoObjetivo();
+  document.getElementById('po-inicio').value=po.inicio||103;
+  document.getElementById('po-objetivo').value=po.objetivo||95;
+  openModal('modal-peso-objetivo');
+}
+function guardarPesoObjetivo(){
+  const inicio=parseFloat(document.getElementById('po-inicio').value)||103;
+  const objetivo=parseFloat(document.getElementById('po-objetivo').value)||95;
+  forge.pesoObjetivo={inicio,objetivo};
+  saveDB();
+  setTimeout(()=>syncCloud(),500);
+  closeModal('modal-peso-objetivo');
+  renderPesoBanner();
+  showToast('✓ Objetivo actualizado',2000,'ok');
+}
+function renderPesoBanner(){
+  const el=document.getElementById('home-peso-banner'); if(!el) return;
+  const po=getPesoObjetivo();
+  const PESO_INICIO=po.inicio;
+  const PESO_OBJETIVO=po.objetivo;
+  const BRECHA=PESO_INICIO-PESO_OBJETIVO;
+  if(BRECHA<=0){ el.innerHTML=''; return; }
+  const mets=(forge.bodyMetrics||[]).filter(m=>m.peso).sort((a,b)=>a.date>b.date?1:-1);
+  if(!mets.length){ el.innerHTML=''; return; }
+  const actual=mets[mets.length-1].peso;
+  const perdidos=Math.max(0,parseFloat((PESO_INICIO-actual).toFixed(1)));
+  const faltan=Math.max(0,parseFloat((actual-PESO_OBJETIVO).toFixed(1)));
+  const pct=Math.min(100,Math.round((perdidos/BRECHA)*100));
+  const completado=actual<=PESO_OBJETIVO;
+
+  el.innerHTML='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+      +'<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:700">Objetivo de peso</div>'
+      +'<button onclick="abrirPesoObjetivo()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--ink3);padding:2px 6px">✏️ Editar</button>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start">'
+    +'<div>'
+      +'<div style="display:flex;justify-content:space-between;margin-bottom:6px">'
+        +'<span style="font-size:13px;color:var(--ink2)">'+actual+'kg <span style="color:var(--ink3);font-size:11px">actual</span></span>'
+        +'<span style="font-size:13px;font-weight:700;color:'+(completado?'var(--green)':'var(--orange)')+'">'+pct+'%</span>'
+      +'</div>'
+      +'<div style="background:var(--bg4);border-radius:6px;height:10px;overflow:hidden">'
+        +'<div style="width:'+pct+'%;height:100%;background:'+(completado?'var(--green)':'var(--orange)')+';border-radius:6px;transition:width .4s"></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:16px;margin-top:8px">'
+        +'<div><div style="font-size:18px;font-weight:800;color:var(--green)">-'+perdidos+'kg</div><div style="font-size:10px;color:var(--ink3)">Perdidos</div></div>'
+        +'<div><div style="font-size:18px;font-weight:800;color:'+(faltan>0?'var(--orange)':'var(--green)')+'">'+( faltan>0?faltan+'kg':'✓')+'</div><div style="font-size:10px;color:var(--ink3)">'+(faltan>0?'Faltan':'Logrado')+'</div></div>'
+      +'</div>'
+    +'</div>'
+    +'<div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center;min-width:70px">'
+      +'<div style="font-size:10px;color:var(--ink3);margin-bottom:4px">Objetivo</div>'
+      +'<div style="font-size:26px;font-weight:800;font-family:var(--fd);color:var(--orange)">'+PESO_OBJETIVO+'</div>'
+      +'<div style="font-size:10px;color:var(--ink3)">kg</div>'
+    +'</div>'
+    +'</div>'
+    +'</div>';
+}
 function renderStreakBanner(){
   const el=document.getElementById('home-streak-banner'); if(!el) return;
   const anio=new Date().getFullYear()+'';
@@ -1786,6 +1873,7 @@ function renderHome(){
 
   renderHomePlanBanner();
   renderStreakBanner();
+  renderPesoBanner();
 
   const ses    = forge.sessions||[];
   const wStart = new Date(hoy); wStart.setDate(hoy.getDate()-(hoy.getDay()||7)+1); wStart.setHours(0,0,0,0);
