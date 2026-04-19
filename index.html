@@ -1744,7 +1744,7 @@ function exportarSemana(){
         if(e.type==='run'||e.type==='hiit'){
           const dist=sets.reduce((a,st)=>a+(parseFloat(st.distance)||0),0);
           const fc=sets.find(st=>st.fc);
-          lines.push('    '+e.name+': '+dist.toFixed(2)+'km'+(sets[0]&&sets[0].time?' - '+sets[0].time:'')+(fc?' - FC '+fc.fc+'bpm':''));
+          lines.push('    '+e.name+': '+dist.toFixed(2)+'km'+(sets[0]&&sets[0].time?' - '+fmtTimeStr(sets[0].time):'')+(fc?' - FC '+fc.fc+'bpm':''));
         } else {
           lines.push('    '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
         }
@@ -1937,9 +1937,21 @@ function calcSesRitmo(s){
       const dist=parseFloat(set.distance)||0;
       if(dist>0) totalDist+=dist;
       if(set.time){
-        const parts=(set.time+'').split(':');
-        const mm=parseInt(parts[0])||0, ss=parseInt(parts[1])||0;
-        totalMins+=mm+ss/60;
+        const t=String(set.time);
+        if(t.includes(':')){
+          const parts=t.split(':');
+          if(parts.length===3){
+            // hh:mm:ss
+            totalMins+=(parseInt(parts[0])||0)*60+(parseInt(parts[1])||0)+(parseInt(parts[2])||0)/60;
+          } else {
+            // mm:ss
+            totalMins+=(parseInt(parts[0])||0)+(parseInt(parts[1])||0)/60;
+          }
+        } else {
+          // segundos crudos (legacy)
+          const secs=parseInt(t)||0;
+          totalMins+=secs/60;
+        }
       }
       if(set.fc){ fcSum+=parseFloat(set.fc)||0; fcCount++; }
       if(set.pasos) totalPasos+=parseInt(set.pasos)||0;
@@ -2995,11 +3007,29 @@ function renderTimeSelects(ei,si,timeVal){
   return '<div style="display:flex;gap:3px;align-items:center">'+selH+selM+selS+'</div>';
 }
 function updateTimeFromSel(ei,si){
-  const h=parseInt(document.getElementById('tsel-h-'+ei+'-'+si)?.value)||0;
-  const m=parseInt(document.getElementById('tsel-m-'+ei+'-'+si)?.value)||0;
-  const s=parseInt(document.getElementById('tsel-s-'+ei+'-'+si)?.value)||0;
+  const hEl=document.getElementById('tsel-h-'+ei+'-'+si);
+  const mEl=document.getElementById('tsel-m-'+ei+'-'+si);
+  const sEl=document.getElementById('tsel-s-'+ei+'-'+si);
+  // Si no existen los selectores (sesión ya terminada), no hacer nada
+  if(!mEl&&!sEl) return;
+  const h=parseInt(hEl?.value)||0;
+  const m=parseInt(mEl?.value)||0;
+  const s=parseInt(sEl?.value)||0;
+  // Solo guardar si hay al menos minutos o segundos
+  if(m===0&&s===0&&h===0) return;
   const timeStr=(h>0?String(h).padStart(2,'0')+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
   if(activeSession) activeSession.exercises[ei].sets[si].time=timeStr;
+}
+function fmtTimeStr(t){
+  // Normaliza tiempo: si es número (segundos) lo convierte a mm:ss
+  if(!t) return '';
+  const s=String(t);
+  if(s.includes(':')) return s; // ya es mm:ss o hh:mm:ss
+  const secs=parseInt(s)||0;
+  if(secs===0) return '';
+  const hh=Math.floor(secs/3600), mm=Math.floor((secs%3600)/60), ss=secs%60;
+  return hh>0?(String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')+':'+String(ss).padStart(2,'0'))
+    :(String(mm).padStart(2,'0')+':'+String(ss).padStart(2,'0'));
 }
 function updateSet(ei,si,field,val){
   if(!activeSession) return;
@@ -3032,6 +3062,8 @@ function toggleSet(ei,si){
   const set=ex.sets[si];
   const e=getEx(ex.exId);
   const isRun=e?.type==='run'||e?.type==='hiit';
+  // Para cardio: leer selectores de tiempo antes de marcar done
+  if(isRun) updateTimeFromSel(ei,si);
   set.done=!set.done;
   const row=document.getElementById(`sr-${ei}-${si}`);
   if(row){
