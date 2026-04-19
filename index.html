@@ -4831,6 +4831,22 @@ function renderMedModal(){
       ? existing?.pliegues?.[m.key]||''
       : existing?.[m.key]||'';
 
+    // Para peso: selectores de kg (70-150) y gramos (0-9)
+    const esPeso = medKeyActual==='peso';
+    const kgActual = esPeso ? Math.floor(parseFloat(valActual)||100) : 0;
+    const gramosActual = esPeso ? Math.round(((parseFloat(valActual)||0)%1)*10) : 0;
+
+    const selKg = esPeso ? (() => {
+      let opts='';
+      for(let i=70;i<=150;i++) opts+='<option value="'+i+'"'+(kgActual===i?' selected':'')+'>'+i+' kg</option>';
+      return '<select id="med-kg-sel" onchange="medActualizarPesoInput()" style="flex:1;border:1px solid var(--border2);border-radius:var(--r);padding:14px 8px;font-size:22px;font-weight:700;background:var(--bg3);color:var(--ink);text-align:center">'+opts+'</select>';
+    })() : '';
+    const selGr = esPeso ? (() => {
+      let opts='';
+      for(let i=0;i<=9;i++) opts+='<option value="'+i+'"'+(gramosActual===i?' selected':'')+'>'+i+' 00g</option>';
+      return '<select id="med-gr-sel" onchange="medActualizarPesoInput()" style="flex:1;border:1px solid var(--border2);border-radius:var(--r);padding:14px 8px;font-size:22px;font-weight:700;background:var(--bg3);color:var(--ink);text-align:center">'+opts+'</select>';
+    })() : '';
+
     body.innerHTML = `
       <button onclick="medPaso='selector';renderMedModal()"
         style="background:none;border:none;color:var(--orange);cursor:pointer;
@@ -4843,6 +4859,13 @@ function renderMedModal(){
         <div style="font-size:18px;font-weight:700;color:var(--ink)">${m.label}</div>
         <div style="font-size:12px;color:var(--ink3);margin-top:2px">${medFechaActual}</div>
       </div>
+      ${esPeso ? `
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        ${selKg}
+        ${selGr}
+      </div>
+      <input type="hidden" id="med-val-input" value="${valActual||''}">
+      ` : `
       <div class="field">
         <label>${m.label}${m.unit?' ('+m.unit+')':''}</label>
         <input class="inp" id="med-val-input" type="text"
@@ -4851,6 +4874,7 @@ function renderMedModal(){
           style="font-size:20px;text-align:center;padding:16px"
           autofocus>
       </div>
+      `}
       <button class="btn btn-p" onclick="saveMedValor()" style="margin-top:4px">
         ✓ Guardar ${m.label}
       </button>
@@ -4859,11 +4883,21 @@ function renderMedModal(){
         Borrar este dato
       </button>`:''}`;
 
-    // Enfocar el input automáticamente
-    setTimeout(()=>document.getElementById('med-val-input')?.focus(), 100);
+    if(esPeso) medActualizarPesoInput();
+    else setTimeout(()=>document.getElementById('med-val-input')?.focus(), 100);
   }
 }
 
+function medActualizarPesoInput(){
+  const kgSel=document.getElementById('med-kg-sel');
+  const grSel=document.getElementById('med-gr-sel');
+  if(!kgSel||!grSel) return;
+  const kg=parseInt(kgSel.value)||100;
+  const gr=parseInt(grSel.value)||0;
+  const val=(kg+gr/10).toFixed(1);
+  const inp=document.getElementById('med-val-input');
+  if(inp) inp.value=val;
+}
 function abrirMedValor(key){
   medKeyActual = key;
   medPaso = 'valor';
@@ -4873,6 +4907,8 @@ function abrirMedValor(key){
 }
 
 function saveMedValor(){
+  // Para peso: actualizar el input oculto desde los selectores antes de leer
+  if(medKeyActual==='peso') medActualizarPesoInput();
   const input = document.getElementById('med-val-input');
   const val = normDec(input?.value?.trim());
   if(!val){ showToast('Ingresa un valor'); return; }
@@ -4892,7 +4928,10 @@ function saveMedValor(){
   else m[medKeyActual] = numVal;
 
   // Si se guarda peso, recalcular IMC automáticamente
-  if(medKeyActual==='peso') autoCalcIMC(m);
+  if(medKeyActual==='peso'){
+    autoCalcIMC(m);
+    setTimeout(()=>renderPesoBanner(), 100); // actualizar widget de inicio
+  }
 
   saveDB();
   showToast(`✓ ${MED_METRICAS.find(x=>x.key===medKeyActual).label} guardado`,2000,'ok');
