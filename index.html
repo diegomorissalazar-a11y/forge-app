@@ -1770,6 +1770,18 @@ function getPesoObjetivo(){
   if(forge.pesoObjetivo) return forge.pesoObjetivo;
   return def;
 }
+function registrarPesoRapido(){
+  openMedModal();
+  // Preseleccionar métrica "peso" automáticamente
+  setTimeout(()=>{
+    const btn=document.querySelector('#modal-med [data-key="peso"]');
+    if(btn) btn.click();
+    else {
+      medKeyActual='peso';
+      renderMedModal();
+    }
+  }, 100);
+}
 function abrirPesoObjetivo(){
   const po=getPesoObjetivo();
   document.getElementById('po-inicio').value=po.inicio||103;
@@ -1804,7 +1816,10 @@ function renderPesoBanner(){
   el.innerHTML='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
       +'<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:700">Objetivo de peso</div>'
-      +'<button onclick="abrirPesoObjetivo()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--ink3);padding:2px 6px">✏️ Editar</button>'
+      +'<div style="display:flex;gap:6px">'
+        +'<button onclick="registrarPesoRapido()" style="background:var(--orange);color:#fff;border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px">+ Peso</button>'
+        +'<button onclick="abrirPesoObjetivo()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--ink3);padding:2px 6px">✏️</button>'
+      +'</div>'
     +'</div>'
     +'<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start">'
     +'<div>'
@@ -2573,8 +2588,8 @@ function _doIniciarRutina(rutinaId, factor){
       if(sets?.length){ ultimoPesoReal=sets[0].weight; break; }
     }
 
-    // Número de series: del editor si existe, sino 3
-    const nSeries=seriesRutina.length||3;
+    // Número de series: del editor si existe, sino 1 para cardio y 3 para fuerza
+    const nSeries=isRun?1:(seriesRutina.length||3);
 
     const sets=Array.from({length:nSeries},(_,i)=>{
       // Peso sugerido para esta serie: plan > serie definida en editor > último real > PR
@@ -2905,7 +2920,7 @@ function renderSetRow(ei,si,set,isRun,ultSet){
       <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px">
         <div class="set-num">${si+1}</div>
         <input class="set-inp" type="text" placeholder="km (ej: 4.01)" value="${set.distance||''}" oninput="updateSet(${ei},${si},'distance',this.value)" style="font-size:14px">
-        <input class="set-inp" type="text" placeholder="mm:ss (ej: 22:44)" value="${set.time||''}" oninput="updateSet(${ei},${si},'time',this.value)" style="font-size:14px">
+        ${renderTimeSelects(ei,si,set.time)}
         <button onclick="removeSetFromEx(${ei},${si})" style="background:none;border:none;color:var(--ink3);cursor:pointer;padding:4px 6px;font-size:16px" title="Eliminar">✕</button>
       </div>
       <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center">
@@ -2962,6 +2977,30 @@ function renderSetRow(ei,si,set,isRun,ultSet){
   </div>`;
 }
 
+function parseTimeStr(t){
+  if(!t) return {h:0,m:0,s:0};
+  const p=(t+'').split(':').map(Number);
+  if(p.length===3) return {h:p[0]||0,m:p[1]||0,s:p[2]||0};
+  if(p.length===2) return {h:0,m:p[0]||0,s:p[1]||0};
+  return {h:0,m:parseInt(t)||0,s:0};
+}
+function renderTimeSelects(ei,si,timeVal){
+  const t=parseTimeStr(timeVal);
+  const selH='<select onchange="updateTimeFromSel('+ei+','+si+')" id="tsel-h-'+ei+'-'+si+'" style="border:1px solid var(--border2);border-radius:var(--r);padding:6px 2px;font-size:12px;background:var(--bg3);color:var(--ink);text-align:center">'
+    +[...Array(11)].map((_,i)=>'<option value="'+i+'"'+(t.h===i?' selected':'')+'>'+String(i).padStart(2,'0')+'h</option>').join('')+'</select>';
+  const selM='<select onchange="updateTimeFromSel('+ei+','+si+')" id="tsel-m-'+ei+'-'+si+'" style="border:1px solid var(--border2);border-radius:var(--r);padding:6px 2px;font-size:12px;background:var(--bg3);color:var(--ink);text-align:center">'
+    +[...Array(60)].map((_,i)=>'<option value="'+i+'"'+(t.m===i?' selected':'')+'>'+String(i).padStart(2,'0')+'m</option>').join('')+'</select>';
+  const selS='<select onchange="updateTimeFromSel('+ei+','+si+')" id="tsel-s-'+ei+'-'+si+'" style="border:1px solid var(--border2);border-radius:var(--r);padding:6px 2px;font-size:12px;background:var(--bg3);color:var(--ink);text-align:center">'
+    +[...Array(60)].map((_,i)=>'<option value="'+i+'"'+(t.s===i?' selected':'')+'>'+String(i).padStart(2,'0')+'s</option>').join('')+'</select>';
+  return '<div style="display:flex;gap:3px;align-items:center">'+selH+selM+selS+'</div>';
+}
+function updateTimeFromSel(ei,si){
+  const h=parseInt(document.getElementById('tsel-h-'+ei+'-'+si)?.value)||0;
+  const m=parseInt(document.getElementById('tsel-m-'+ei+'-'+si)?.value)||0;
+  const s=parseInt(document.getElementById('tsel-s-'+ei+'-'+si)?.value)||0;
+  const timeStr=(h>0?String(h).padStart(2,'0')+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  if(activeSession) activeSession.exercises[ei].sets[si].time=timeStr;
+}
 function updateSet(ei,si,field,val){
   if(!activeSession) return;
   const v=normDec(val);
