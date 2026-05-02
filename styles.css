@@ -451,3 +451,131 @@ nav{background:var(--bg2);border-top:1px solid var(--border)}
 .home-soft-highlight{margin-top:8px;background:rgba(164,113,58,.06);border:1px solid rgba(164,113,58,.16);border-radius:12px;padding:8px 10px;color:var(--bronze2);font-size:13px}
 .home-greet-date{font-size:11px;color:var(--ink3);margin-bottom:3px}
 .home-greet-title{font-family:var(--fd);font-size:22px;font-weight:800;line-height:1.08;letter-spacing:.2px}
+
+
+/* v102 hotfix: estructura visible */
+.tab-row{display:flex !important;flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border)}
+.tab-btn{display:block !important;visibility:visible !important}
+.topbar{display:flex !important;align-items:center;justify-content:space-between}
+#user-btn{display:flex}
+.mq-brand{display:flex;align-items:center}
+.mq-brand-wordmark{display:block;height:18px;width:auto}
+
+
+/* v103 hotfix · scroll + favicon + crisp wordmark */
+html,body{height:100%;overflow:auto !important;background:var(--bg)}
+#app{min-height:100dvh;height:100dvh;overflow:hidden;width:100%}
+#wrap{flex:1;min-height:0;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.screen{display:none;flex-direction:column;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;box-sizing:border-box;scroll-padding-bottom:88px}
+.screen.on{display:flex}
+#s-home>div:last-child,#train-home,#prog-ejercicios,#prog-cuerpo,#prog-fotos,#prog-plan,#food-registro,#food-ideas,#food-pauta,#perfil-habitos,#perfil-plan,#perfil-logros{padding-bottom:88px !important;box-sizing:border-box}
+.tab-panel.on{display:block;padding-bottom:24px;box-sizing:border-box}
+.mq-brand-wordmark,.mq-auth-wordmark{display:block;height:auto;image-rendering:auto;shape-rendering:geometricPrecision}
+.mq-brand-wordmark{height:18px;width:auto;max-width:150px}
+.mq-auth-wordmark{width:210px;max-width:80vw}
+
+
+/* v104 · clean header + board-like cards */
+:root{
+  --bg:#F2EFE6;
+  --bg2:#FCFAF6;
+  --bg3:#F8F5EF;
+  --bg4:#EEE7DA;
+  --border:#D8C9B2;
+  --border2:#C8B79D;
+  --ink:#181B1D;
+  --ink2:#5B5146;
+  --ink3:#8C8478;
+  --orange:#A4713A;
+  --orange2:#8E5E2C;
+  --bronze:#A4713A;
+  --bronze2:#8E5E2C;
+  --sand:#D8C9B2;
+  --stone:#F2EFE6;
+  --ivory:#FCFAF6;
+  --green:#7E8D61;
+  --red:#9A6552;
+  --gold:#A4713A;
+  --blue:#A4713A;
+}
+body{background:var(--bg);}
+.topbar{
+  min-height:54px !important;
+  height:54px;
+  padding:10px 18px !important;
+  background:rgba(252,250,246,.98) !important;
+  border-bottom:1px solid rgba(216,201,178,.85) !important;
+  box-shadow:none !important;
+}
+.mq-brand{display:flex;align-items:center;min-width:0;gap:8px;}
+.mq-brand-wordmark{
+  height:16px !important;
+  max-width:132px !important;
+  width:auto !important;
+  display:block;
+  image-rendering:auto;
+  shape-rendering:geometricPrecision;
+}
+#sync-dot{
+  width:6px!important;height:6px!important;
+  background:var(--green)!important;
+  box-shadow:none!important;
+}
+#user-btn{
+  width:30px!important;height:30px!important;
+  background:var(--bronze)!important;
+  color:#fff!important;
+  border-radius:50%!important;
+  font-family:var(--fb)!important;
+  letter-spacing:.4px;
+}
+#auth{background:var(--bg)!important;}
+.mq-auth-brand{margin:34px auto 30px!important;}
+.mq-auth-wordmark{width:220px!important;max-width:78vw!important;}
+.auth-tabs{border-color:var(--border2)!important;background:var(--bg2)!important;border-radius:15px!important;}
+.auth-tab.on{background:var(--bronze)!important;color:#fff!important;}
+.auth-tab{color:var(--ink3)!important;font-weight:600!important;}
+.card,.hevy-card,.rutina-card,.comida-card,.stat-box,.plan-card,.lumen-stat,.modal,.home-soft-card{
+  background:var(--bg2)!important;
+  border:1px solid rgba(216,201,178,.86)!important;
+  border-radius:18px!important;
+  box-shadow:0 1px 0 rgba(24,27,29,.025)!important;
+}
+.hevy-card,.rutina-card,.comida-card,.plan-card{margin-bottom:10px!important;}
+.section-label{
+  color:var(--ink3)!important;
+  letter-spacing:3.2px!important;
+  font-size:10.5px!important;
+  font-weight:700!important;
+}
+.stat-box{padding:14px 10px!important;}
+.stat-num{font-size:30px!important;line-height:1!important;}
+.stat-label{letter-spacing:2.2px!important;font-size:9px!important;color:var(--ink3)!important;}
+.home-greet-date{font-size:11px!important;color:var(--ink3)!important;margin-bottom:3px!important;}
+.home-greet-title{font-size:21px!important;line-height:1.1!important;letter-spacing:.2px!important;}
+.btn{border-radius:14px!important;text-transform:none!important;font-weight:700!important;}
+.btn-p{background:var(--bronze)!important;color:#fff!important;}
+.btn-s{background:var(--bg2)!important;border:1px solid var(--border2)!important;color:var(--ink2)!important;}
+.tab-row{background:var(--bg2)!important;border-bottom:1px solid rgba(216,201,178,.85)!important;}
+.tab-btn{font-size:12px!important;color:var(--ink3)!important;padding:11px 4px!important;}
+.tab-btn.on{color:var(--ink)!important;border-bottom-color:var(--bronze)!important;}
+.nb{font-size:9px!important;color:var(--ink3)!important;}
+.nb.on{color:var(--bronze)!important;border-top-color:var(--bronze)!important;}
+.carga-tag,.badge,.pr-badge,.chip-status,.pill{
+  border-radius:999px!important;
+  background:rgba(164,113,58,.075)!important;
+  border:1px solid rgba(164,113,58,.34)!important;
+  color:var(--bronze2)!important;
+}
+.prog-bar-fill,.division-fill,.chart-line{stroke:var(--bronze)!important;background:var(--bronze)!important;}
+.chart-dot{fill:var(--bronze)!important;}
+/* scroll safety */
+#s-home>div:last-child,#train-home,#prog-ejercicios,#prog-cuerpo,#prog-fotos,#prog-plan,#food-registro,#food-ideas,#food-pauta,#perfil-habitos,#perfil-plan,#perfil-logros{
+  padding-bottom:96px !important;
+}
+.screen{scroll-padding-bottom:96px!important;}
+@media(max-width:480px){
+  .topbar{height:52px;min-height:52px!important;padding-left:16px!important;padding-right:16px!important;}
+  .mq-brand-wordmark{height:15px!important;max-width:126px!important;}
+  .home-greet-title{font-size:20px!important;}
+}

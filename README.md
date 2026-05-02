@@ -52,3 +52,22 @@ Sube todo el contenido de esta carpeta a la raíz del repo. `index.html`, `style
 - Estados/pills más sobrios y consistentes.
 - Banner semanal más limpio, sin bloque saturado.
 - Saludo inicial más pequeño.
+
+
+## v102 hotfix
+- Corrige HTML mal cerrado que ocultaba tabs y topbar.
+- Favicon M inline para evitar 404 si falta asset.
+- Mantiene visual v101 sin cambios pesados.
+
+
+## v103 hotfix
+- Favicon simplificado a una M limpia.
+- Wordmark SVG para mayor nitidez.
+- Corrección de scroll con padding inferior y overflow más robusto.
+
+
+## v104 clean header
+- Header más bajo y limpio, alineado al board.
+- Wordmark SVG nítido.
+- Cards/estados refinados por CSS sin tocar lógica pesada.
+- Conserva hotfix de scroll y favicon M.
