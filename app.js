@@ -1,6 +1,8 @@
 // ---------------------------------------------------------------
 //  FIREBASE
 // ---------------------------------------------------------------
+var authIsSignup = false;
+if (typeof firebase === 'undefined') { console.error('Firebase SDK no cargó'); }
 const fbConfig = {
   apiKey:"AIzaSyBKMfDz3XLJCmjjaYdeT_o1Z05T2yub_Qc",
   authDomain:"lumen-6ed85.firebaseapp.com",
@@ -82,7 +84,6 @@ function mergeDB(local, remote) {
 // ---------------------------------------------------------------
 //  AUTH
 // ---------------------------------------------------------------
-let authIsSignup = false;
 function authMode(m) {
   authIsSignup = m==='up';
   document.getElementById('atab-in').classList.toggle('on', !authIsSignup);

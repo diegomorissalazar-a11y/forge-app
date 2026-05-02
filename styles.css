@@ -327,3 +327,11 @@ html,body{background:var(--bg);color:var(--ink);font-family:var(--fb)}
 .hevy-avatar,.rutina-emoji,.empty-icon{background:rgba(164,113,58,.10);border:1px solid rgba(164,113,58,.18);color:var(--orange);font-weight:800}.hevy-avatar{color:#fff;background:var(--orange);border:0}
 .chart-line{stroke:var(--orange)}.chart-dot{fill:var(--orange)}.prog-bar-fill,.division-fill{background:var(--orange)}.agua-num-big,.agua-dot.on{color:var(--orange);background:var(--orange);border-color:var(--orange)}
 .toast{box-shadow:0 12px 28px rgba(24,27,29,.10)}
+
+
+/* HOME BRAND INTRO */
+.home-brand-intro{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:18px 16px 16px;margin-bottom:14px;background:linear-gradient(180deg,var(--bg2),var(--bg3));}
+.home-brand-mark{width:88px;height:88px;object-fit:contain;display:block}
+.home-brand-word{font-family:var(--fd);font-size:30px;font-weight:800;letter-spacing:3px;color:var(--ink);line-height:1}.home-brand-word span{color:var(--bronze)}
+.home-brand-sub{font-size:10px;letter-spacing:2.2px;text-transform:uppercase;color:var(--ink2);text-align:center}
+@media (max-width:480px){.home-brand-mark{width:74px;height:74px}.home-brand-word{font-size:26px;letter-spacing:2.5px}}

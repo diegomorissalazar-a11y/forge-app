@@ -25,3 +25,10 @@ Esta versión elimina la causa probable del congelamiento de v96:
 ## Subida a GitHub
 
 Sube todo el contenido de esta carpeta a la raíz del repo. `index.html`, `styles.css`, `app.js` y `assets/` deben quedar al mismo nivel.
+
+
+## v98 fix
+- Firebase SDK imports restored in `index.html`.
+- `app.js` restored as external script.
+- Home intro brand block added.
+- Fixed broken `apple-touch-icon` tag.
