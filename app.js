@@ -2,6 +2,7 @@
 //  FIREBASE
 // ---------------------------------------------------------------
 var authIsSignup = false;
+var authBusy = false;
 if (typeof firebase === 'undefined') { console.error('Firebase SDK no cargó'); }
 const fbConfig = {
   apiKey:"AIzaSyBKMfDz3XLJCmjjaYdeT_o1Z05T2yub_Qc",
@@ -14,6 +15,7 @@ const fbConfig = {
 firebase.initializeApp(fbConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 
 // ---------------------------------------------------------------
 //  BASE DE DATOS LOCAL
@@ -92,20 +94,36 @@ function authMode(m) {
   document.getElementById('a-btn').textContent = authIsSignup ? 'Crear cuenta' : 'Entrar';
   document.getElementById('auth-err').textContent = '';
 }
+function friendlyAuthError(err){
+  const msg = (err && err.message ? err.message : String(err||'')).toLowerCase();
+  if(msg.includes('user-not-found')) return 'No existe una cuenta con ese correo.';
+  if(msg.includes('wrong-password') || msg.includes('invalid-credential')) return 'Contraseña incorrecta o credenciales inválidas.';
+  if(msg.includes('invalid-email')) return 'El correo no tiene un formato válido.';
+  if(msg.includes('too-many-requests')) return 'Demasiados intentos. Espera un momento.';
+  if(msg.includes('email-already-in-use')) return 'Ese correo ya está registrado.';
+  if(msg.includes('weak-password')) return 'La contraseña es demasiado débil.';
+  if(msg.includes('network-request-failed')) return 'Problema de red. Revisa tu conexión.';
+  return err && err.message ? err.message : 'No se pudo iniciar sesión.';
+}
+function setAuthBusy(b){
+  authBusy = !!b;
+  const btn = document.getElementById('a-btn');
+  if(!btn) return;
+  btn.disabled = authBusy;
+  btn.textContent = authBusy ? 'Entrando…' : (authIsSignup ? 'Crear cuenta' : 'Entrar');
+}
 function doAuth() {
+  if(authBusy) return;
+  if(typeof firebase === 'undefined'){ showAuthErr('Firebase no cargó. Recarga la página.'); return; }
   const email = document.getElementById('a-email').value.trim();
   const pass  = document.getElementById('a-pass').value;
   const name  = document.getElementById('a-name').value.trim();
   if(!email||!pass){showAuthErr('Completa email y contraseña');return;}
-  document.getElementById('a-btn').textContent = '…';
-  if(authIsSignup) {
-    auth.createUserWithEmailAndPassword(email,pass)
-      .then(c=>c.user.updateProfile({displayName:name}))
-      .catch(e=>showAuthErr(e.message));
-  } else {
-    auth.signInWithEmailAndPassword(email,pass)
-      .catch(e=>showAuthErr(e.message));
-  }
+  setAuthBusy(true);
+  const p = authIsSignup
+    ? auth.createUserWithEmailAndPassword(email,pass).then(c=> name ? c.user.updateProfile({displayName:name}) : null)
+    : auth.signInWithEmailAndPassword(email,pass);
+  p.catch(e=>showAuthErr(friendlyAuthError(e))).finally(()=>{ setTimeout(()=>setAuthBusy(false), 150); });
 }
 function resetPass() {
   const email = document.getElementById('a-email').value.trim();
@@ -117,9 +135,10 @@ function resetPass() {
 function showAuthErr(msg, ok=false) {
   const el = document.getElementById('auth-err');
   el.textContent = msg;
-  el.style.color = ok ? 'var(--green)' : 'var(--red)';
-  document.getElementById('a-btn').textContent = authIsSignup ? 'Crear cuenta' : 'Entrar';
+  el.style.color = ok ? 'var(--green)' : 'var(--alerta)';
+  if(!authBusy) document.getElementById('a-btn').textContent = authIsSignup ? 'Crear cuenta' : 'Entrar';
 }
+
 document.getElementById('a-email').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('a-pass').focus(); });
 document.getElementById('a-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doAuth(); });
 function updateUserUI(user){
@@ -174,7 +193,7 @@ auth.onAuthStateChanged(async user => {
         if(tsRemoto > tsLocal){
           // Firebase es más reciente → usarlo directamente, no hacer merge
           forge = {...remoto};
-          showToast('📥 Datos actualizados desde la nube', 2000, 'ok');
+          showToast('Datos actualizados desde la nube', 2000, 'ok');
         } else {
           // Local es más reciente o igual → merge normal
           forge = mergeDB(forge, remoto);

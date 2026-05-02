@@ -32,3 +32,9 @@ Sube todo el contenido de esta carpeta a la raíz del repo. `index.html`, `style
 - `app.js` restored as external script.
 - Home intro brand block added.
 - Fixed broken `apple-touch-icon` tag.
+
+
+## v99
+- Wordmark limpio aplicado en login y header.
+- Mejoras de login y mensajes de error.
+- Persistencia local activada.

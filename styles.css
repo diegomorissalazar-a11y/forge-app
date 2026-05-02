@@ -335,3 +335,20 @@ html,body{background:var(--bg);color:var(--ink);font-family:var(--fb)}
 .home-brand-word{font-family:var(--fd);font-size:30px;font-weight:800;letter-spacing:3px;color:var(--ink);line-height:1}.home-brand-word span{color:var(--bronze)}
 .home-brand-sub{font-size:10px;letter-spacing:2.2px;text-transform:uppercase;color:var(--ink2);text-align:center}
 @media (max-width:480px){.home-brand-mark{width:74px;height:74px}.home-brand-word{font-size:26px;letter-spacing:2.5px}}
+
+
+/* v99 clean wordmark */
+.mq-auth-brand{margin:42px auto 20px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.mq-auth-mark{width:74px;height:74px;display:block}
+.mq-auth-wordmark{width:208px;max-width:78vw;height:auto;display:block;image-rendering:auto}
+.mq-auth-sub{font-family:var(--fb);font-size:11px;letter-spacing:3.2px;text-transform:uppercase;color:var(--bronze2)}
+.mq-brand{display:flex;align-items:center;gap:10px}
+.mq-brand-wordmark{height:22px;width:auto;display:block}
+.mq-brand .mq-ver{margin-left:2px}
+.home-brand-intro{padding-top:20px;padding-bottom:18px}
+.home-brand-intro .home-brand-mark{width:72px;height:72px}
+.home-brand-intro .home-brand-wordmark{width:180px;height:auto;display:block}
+.home-brand-word{display:none}
+#auth-form{max-width:360px;margin:0 auto 20px}
+#auth-err{min-height:18px;text-align:center;margin-top:8px;margin-bottom:6px;font-size:12px;color:var(--alerta)}
+#a-btn[disabled]{opacity:.75;cursor:wait}
