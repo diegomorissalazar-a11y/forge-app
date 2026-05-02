@@ -1,0 +1,22 @@
+{
+  "brand": "MELQART",
+  "version": "v96",
+  "colors": {
+    "obsidian": "#181B1D",
+    "bronze": "#A4713A",
+    "bronzeDeep": "#7A4E24",
+    "sandstone": "#D8C9B2",
+    "stone": "#F3EFE7",
+    "ivory": "#FCFAF6",
+    "oliveSuccess": "#6F7D53",
+    "terracottaAlert": "#9A6552"
+  },
+  "typography": {
+    "display": "Cinzel",
+    "ui": "Montserrat"
+  },
+  "radius": {
+    "sm": "12px",
+    "lg": "22px"
+  }
+}
