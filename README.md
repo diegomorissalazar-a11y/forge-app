@@ -38,3 +38,17 @@ Sube todo el contenido de esta carpeta a la raíz del repo. `index.html`, `style
 - Wordmark limpio aplicado en login y header.
 - Mejoras de login y mensajes de error.
 - Persistencia local activada.
+
+
+## v100 board clean
+- Wordmark MELQART limpio en app, sin isotipo en UI.
+- Favicon nuevo: monograma M.
+- Tagline removido de toda la interfaz.
+- Paleta ajustada al board de componentes.
+
+
+## v101 polish
+- Cards refinadas con bordes y sombras más cercanas al board.
+- Estados/pills más sobrios y consistentes.
+- Banner semanal más limpio, sin bloque saturado.
+- Saludo inicial más pequeño.

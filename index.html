@@ -6,9 +6,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#F2EFE6">
-<link rel="icon" type="image/png" href="assets/melqart_app_icon.png">
-<link rel="apple-touch-icon" href="assets/melqart_app_icon.png">
-<title>MELQART v99</title>
+<link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg">
+<link rel="shortcut icon" href="assets/brand/melqart_favicon_m.svg">
+<title>MELQART</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
 
 <!-- AUTH -->
 <div id="auth">
-  <div class="mq-auth-brand"><img class="mq-auth-mark" src="assets/brand/melqart_mark.svg" alt="Melqart"><img class="mq-auth-wordmark" src="assets/brand/melqart_wordmark.png" alt="MELQART"><div class="mq-auth-sub">Legado ancestral. Rendimiento moderno.</div></div>
+  <div class="mq-auth-brand"><img class="mq-auth-wordmark" src="assets/brand/melqart_wordmark.png" alt="MELQART"></div>
   <div class="auth-tabs">
     <button class="auth-tab on" id="atab-in"  onclick="authMode('in')">Entrar</button>
     <button class="auth-tab"   id="atab-up"   onclick="authMode('up')">Crear cuenta</button>
@@ -42,18 +42,13 @@
 <!-- -- SCREEN: INICIO -- -->
 <div id="s-home" class="screen on">
   <div class="topbar">
-    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark.png" alt="MELQART"><div class="mq-ver">v99</div></div>
+    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark.png" alt="MELQART"></div></div>
     <div style="display:flex;align-items:center;gap:8px">
       <div id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--green)"></div>
       <div id="user-btn" onclick="toggleUserMenu()" style="width:32px;height:32px;border-radius:50%;background:var(--orange);color:#fff;display:none;align-items:center;justify-content:center;font-size:12px;font-weight:800;cursor:pointer"></div>
     </div>
   </div>
   <div style="padding:16px">
-    <div class="home-brand-intro card">
-      <img class="home-brand-mark" src="assets/brand/melqart_mark.svg" alt="Melqart">
-      <img class="home-brand-wordmark" src="assets/brand/melqart_wordmark.png" alt="MELQART">
-      <div class="home-brand-sub">Legado ancestral. Rendimiento moderno.</div>
-    </div>
     <div id="home-greet" style="margin-bottom:14px"></div>
     <div id="home-plan-banner" style="margin-bottom:12px"></div>
     <div id="home-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px"></div>
@@ -79,7 +74,7 @@
 <!-- -- SCREEN: ENTRENAR -- -->
 <div id="s-train" class="screen">
   <div class="topbar">
-    <div class="mq-brand"><img class="mq-brand-mark" src="assets/brand/melqart_mark.svg" alt=""><div class="mq-brand-copy"><div class="mq-word">MEL<span>Q</span>ART</div><div class="mq-ver">v98</div></div></div>
+    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark.png" alt="MELQART"></div><div class="mq-ver">v98</div></div></div>
     <div id="train-topbar-right" style="display:flex;align-items:center;gap:8px">
       <span style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Rutinas</span>
     </div>
@@ -113,7 +108,7 @@
 <!-- -- SCREEN: PROGRESO -- -->
 <div id="s-progress" class="screen">
   <div class="topbar">
-    <div class="mq-brand"><img class="mq-brand-mark" src="assets/brand/melqart_mark.svg" alt=""><div class="mq-brand-copy"><div class="mq-word">MEL<span>Q</span>ART</div><div class="mq-ver">v98</div></div></div>
+    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark.png" alt="MELQART"></div><div class="mq-ver">v98</div></div></div>
     <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Estadísticas</div>
   </div>
   <div class="tab-row">
@@ -160,7 +155,7 @@
 <!-- -- SCREEN: NUTRICIÓN -- -->
 <div id="s-food" class="screen">
   <div class="topbar">
-    <div class="mq-brand"><img class="mq-brand-mark" src="assets/brand/melqart_mark.svg" alt=""><div class="mq-brand-copy"><div class="mq-word">MEL<span>Q</span>ART</div><div class="mq-ver">v98</div></div></div>
+    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark.png" alt="MELQART"></div><div class="mq-ver">v98</div></div></div>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="food-fecha-lbl" style="font-size:11px;color:var(--ink3)"></span>
       <button onclick="cambiarDia(-1)" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:18px;line-height:1">‹</button>
@@ -217,7 +212,7 @@
 <!-- -- SCREEN: PERFIL -- -->
 <div id="s-perfil" class="screen">
   <div class="topbar">
-    <div class="mq-brand"><img class="mq-brand-mark" src="assets/brand/melqart_mark.svg" alt=""><div class="mq-brand-copy"><div class="mq-word">MEL<span>Q</span>ART</div><div class="mq-ver">v98</div></div></div>
+    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark.png" alt="MELQART"></div><div class="mq-ver">v98</div></div></div>
     <button class="btn btn-p btn-sm" id="perfil-action-btn">+ Nuevo</button>
   </div>
   <div class="tab-row">

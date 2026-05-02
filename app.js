@@ -814,23 +814,23 @@ function renderStreakBanner(){
   const estaSemana=mapSem[hoyLunes]||0;
   if(!rachaActual&&!mejor.count){ el.innerHTML=''; return; }
   const esNuevaMejor=mejor.lunes===hoyLunes&&estaSemana>0;
-  let html='<div style="background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;border-radius:14px;padding:14px 16px">';
-  html+='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:8px">Seguimiento semanal · '+anio+'</div>';
+  let html='<div class="home-soft-card">';
+  html+='<div class="home-soft-kicker">Seguimiento semanal · '+anio+'</div>';
   if(mejor.count>0){
-    html+='<div style="font-size:13px;margin-bottom:4px">🏅 Mejor semana del año: <strong>'+mejor.count+' sesiones</strong>';
-    if(mejor.lunes) html+=' <span style="opacity:.75">('+fmtRangoSemana(mejor.lunes)+')</span>';
+    html+='<div class="home-soft-note">Mejor semana del año: <strong>'+mejor.count+' sesiones</strong>';
+    if(mejor.lunes) html+=' <span style="color:var(--ink3)">('+fmtRangoSemana(mejor.lunes)+')</span>';
     html+='</div>';
   }
   if(rachaActual>0){
-    html+='<div style="font-size:13px;margin-bottom:4px">✶ Racha actual: <strong>'+rachaActual+' semana'+(rachaActual>1?'s':'')+' seguida'+(rachaActual>1?'s':'')+'</strong></div>';
+    html+='<div class="home-soft-note">Racha actual: <strong>'+rachaActual+' semana'+(rachaActual>1?'s':'')+' seguida'+(rachaActual>1?'s':'')+'</strong></div>';
   }
   if(rachaMejor>rachaActual){
-    html+='<div style="font-size:13px;margin-bottom:4px">⬢ Mejor racha: <strong>'+rachaMejor+' semanas</strong></div>';
+    html+='<div class="home-soft-note">Mejor racha: <strong>'+rachaMejor+' semanas</strong></div>';
   }
   if(esNuevaMejor){
-    html+='<div style="font-size:13px;margin-top:6px;background:rgba(255,255,255,.18);border-radius:8px;padding:6px 10px">⭐ Esta semana: <strong>'+estaSemana+' sesiones</strong> — nueva mejor semana del año</div>';
+    html+='<div class="home-soft-highlight">Esta semana: <strong>'+estaSemana+' sesiones</strong> — nueva mejor semana del año</div>';
   } else if(estaSemana>0){
-    html+='<div style="font-size:13px;margin-top:4px;opacity:.85">Esta semana: <strong>'+estaSemana+' sesiones</strong></div>';
+    html+='<div class="home-soft-sub">Esta semana: <strong>'+estaSemana+' sesiones</strong></div>';
   }
   html+='</div>';
   el.innerHTML=html;
@@ -843,8 +843,8 @@ function renderHome(){
   const nombre= currentUser?.displayName?.split(' ')[0]||'Diego';
 
   document.getElementById('home-greet').innerHTML=`
-    <div style="font-size:12px;color:var(--ink3);margin-bottom:2px">${dias[hoy.getDay()]} ${hoy.getDate()} de ${meses[hoy.getMonth()]}</div>
-    <div style="font-family:var(--fd);font-size:26px;font-weight:800;line-height:1.1">Hola, ${nombre} </div>`;
+    <div class="home-greet-date">${dias[hoy.getDay()]} ${hoy.getDate()} de ${meses[hoy.getMonth()]}</div>
+    <div class="home-greet-title">Hola, ${nombre}</div>`;
 
   renderHomePlanBanner();
   renderStreakBanner();
@@ -4545,7 +4545,7 @@ function renderPerfilPlan(){
             <div style="font-size:13px;font-weight:700;color:${activo?'var(--orange)':'var(--ink)'}">${done?'✓ ':''}Bloque ${i+1}: ${b.nombre}</div>
             <div style="font-size:11px;color:var(--ink3)">Semanas ${b.semInicio}–${b.semFin}</div>
           </div>
-          ${activo?`<span style="background:var(--orange);color:#fff;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700">ACTIVO</span>`:''}
+          ${activo?`<span class="pill state-active">Activo</span>`:''}
         </div>
       </div>`;
     }).join('')}
