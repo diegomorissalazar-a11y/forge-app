@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#f2f4f7">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232563eb'/><text x='4' y='25' font-family='Arial' font-weight='900' font-style='italic' font-size='22' fill='white'>M</text></svg>">
-<title>Melcat</title>
+<meta name="theme-color" content="#F2EFE6">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23A4713A'/><text x='4' y='25' font-family='Arial' font-weight='900' font-style='italic' font-size='22' fill='white'>M</text></svg>">
+<title>Melqart</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700;1,800;1,900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -18,14 +18,30 @@
    VARIABLES
 --------------------------------------- */
 :root {
-  --bg:#f2f4f7; --bg2:#ffffff; --bg3:#f8f9fb; --bg4:#eef0f4;
-  --border:#e2e5ea; --border2:#d0d5dd;
-  --ink:#101828; --ink2:#475467; --ink3:#98a2b3;
-  --orange:#2563eb; --orange2:#1d4ed8;
-  --green:#16a34a; --red:#dc2626; --gold:#d97706; --blue:#2563eb;
-  --fd: 'Barlow Condensed', sans-serif;
-  --fb: 'Barlow', sans-serif;
-  --r:8px; --rl:14px;
+  /* MELQART v95 · paleta fenicia sin azul */
+  --bg:#F2EFE6;       /* piedra */
+  --bg2:#FCFAF6;      /* marfil */
+  --bg3:#F7F3EA;      /* arena clara */
+  --bg4:#E8DED0;      /* arena/piedra */
+  --border:#DED4C5;
+  --border2:#CDBEAA;
+  --ink:#181B1D;      /* obsidiana */
+  --ink2:#514840;
+  --ink3:#9B9388;
+  --orange:#A4713A;   /* bronce activo */
+  --orange2:#7A4E24;  /* bronce profundo */
+  --bronze:#A4713A;
+  --bronze2:#7A4E24;
+  --sand:#D8C9B2;
+  --stone:#F2EFE6;
+  --ivory:#FCFAF6;
+  --green:#6F7D53;    /* oliva funcional */
+  --red:#A95B47;      /* terracota funcional */
+  --gold:#A4713A;
+  --blue:#A4713A;     /* alias legacy: no usar azul visual */
+  --fd:'Cinzel', serif;
+  --fb:'Montserrat', sans-serif;
+  --r:10px; --rl:16px;
 }
 
 /* ---------------------------------------
@@ -33,6 +49,9 @@
 --------------------------------------- */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--fb);font-size:15px;overscroll-behavior:none}
+body{background:radial-gradient(circle at 50% -10%,rgba(164,113,58,.08),transparent 42%),linear-gradient(180deg,#F7F3EA 0%,#F2EFE6 100%)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.28;background-image:linear-gradient(135deg,rgba(164,113,58,.045) 25%,transparent 25%),linear-gradient(225deg,rgba(164,113,58,.035) 25%,transparent 25%);background-size:38px 38px;z-index:-1}
+
 
 /* ---------------------------------------
    LAYOUT
@@ -269,13 +288,13 @@ select.inp{cursor:pointer}
 
 /* Agua contador */
 .agua-counter{display:flex;align-items:center;justify-content:center;gap:16px;padding:12px 0}
-.agua-num-big{font-family:var(--fd);font-size:48px;font-weight:900;color:#22d3ee;line-height:1}
+.agua-num-big{font-family:var(--fd);font-size:48px;font-weight:900;color:#A4713A;line-height:1}
 .agua-btns{display:flex;flex-direction:column;gap:6px}
 .agua-step{width:40px;height:40px;border-radius:50%;border:2px solid var(--border2);background:var(--bg3);color:var(--ink2);font-size:20px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s}
 .agua-step:active{border-color:var(--orange);color:var(--orange)}
 .agua-dots{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;padding:8px 16px}
 .agua-dot{width:12px;height:12px;border-radius:50%;background:var(--bg3);border:1.5px solid var(--border2);transition:all .2s}
-.agua-dot.on{background:#22d3ee;border-color:#22d3ee}
+.agua-dot.on{background:#A4713A;border-color:#A4713A}
 
 /* ---------------------------------------
    SCREEN: PERFIL — HÁBITOS LUMEN
@@ -326,13 +345,39 @@ select.inp{cursor:pointer}
 #ses-detail-body{flex:1;overflow-y:auto}
 .division-bar{height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin:4px 0}
 .division-fill{height:100%;background:var(--orange);border-radius:4px}
+
+/* ---------------------------------------
+   MELQART v95 · refinamiento visual fenicio
+--------------------------------------- */
+.topbar{background:rgba(242,239,230,.94);backdrop-filter:blur(12px);border-bottom-color:var(--border)}
+.tlogo,.auth-logo{font-family:var(--fd);font-style:normal;font-weight:800;letter-spacing:3px;color:var(--ink)}
+.tlogo span,.auth-logo span{color:var(--bronze)}
+.auth-sub{font-family:var(--fb);color:var(--bronze);font-weight:600;letter-spacing:4px}
+.card,.hevy-card,.rutina-card,.comida-card,.stat-box,.plan-card,.lumen-stat{background:var(--ivory);border-color:var(--border);box-shadow:0 8px 24px rgba(24,27,29,.035)}
+.btn-p,.auth-tab.on{background:linear-gradient(135deg,var(--bronze),var(--bronze2));color:#fff}
+.btn-p:active{background:var(--bronze2)}
+.btn-s{background:var(--ivory);color:var(--ink2);border-color:var(--border2)}
+.tab-btn.on,.nb.on{color:var(--bronze);border-color:var(--bronze)}
+.inp,.set-inp,.dp-sel{background:var(--ivory);border-color:var(--border2)}
+.inp:focus,.set-inp:focus,.dp-sel:focus{border-color:var(--bronze);box-shadow:0 0 0 2px rgba(164,113,58,.10)}
+.prog-bar-fill,.chart-line,.division-fill{background:var(--bronze);stroke:var(--bronze)}
+.chart-dot{fill:var(--bronze)}
+.section-label,.stat-label,.lumen-lbl{font-family:var(--fb);font-weight:700;color:var(--ink3);letter-spacing:2.8px}
+.stat-num,.lumen-num,.rutina-name,.modal-title,.session-timer,.plan-title{font-family:var(--fd);font-style:normal;letter-spacing:.2px}
+.hevy-avatar{background:linear-gradient(135deg,var(--bronze),var(--bronze2))}
+#auth{background:radial-gradient(circle at 50% 28%,rgba(164,113,58,.10),transparent 34%),var(--bg)}
+#app{background:var(--bg)}
+nav{background:rgba(252,250,246,.96);backdrop-filter:blur(12px);border-top-color:var(--border)}
+.agua-num-big{color:var(--bronze)!important}
+.agua-dot.on{background:var(--bronze)!important;border-color:var(--bronze)!important}
+
 </style>
 </head>
 <body>
 
 <!-- AUTH -->
 <div id="auth">
-  <div class="auth-logo">M<span>E</span>LCAT</div>
+  <div class="auth-logo">MEL<span>Q</span>ART</div>
   <div class="auth-sub">Entrenamiento Personal</div>
   <div class="auth-tabs">
     <button class="auth-tab on" id="atab-in"  onclick="authMode('in')">Entrar</button>
@@ -357,7 +402,7 @@ select.inp{cursor:pointer}
 <!-- -- SCREEN: INICIO -- -->
 <div id="s-home" class="screen on">
   <div class="topbar">
-    <div class="tlogo">M<span>E</span>LCAT <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v81</span></div>
+    <div class="tlogo">MEL<span>Q</span>ART <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v95</span></div>
     <div style="display:flex;align-items:center;gap:8px">
       <div id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--green)"></div>
       <div id="user-btn" onclick="toggleUserMenu()" style="width:32px;height:32px;border-radius:50%;background:var(--orange);color:#fff;display:none;align-items:center;justify-content:center;font-size:12px;font-weight:800;cursor:pointer"></div>
@@ -389,7 +434,7 @@ select.inp{cursor:pointer}
 <!-- -- SCREEN: ENTRENAR -- -->
 <div id="s-train" class="screen">
   <div class="topbar">
-    <div class="tlogo">M<span>E</span>LCAT <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v81</span></div>
+    <div class="tlogo">MEL<span>Q</span>ART <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v95</span></div>
     <div id="train-topbar-right" style="display:flex;align-items:center;gap:8px">
       <span style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Rutinas</span>
     </div>
@@ -423,7 +468,7 @@ select.inp{cursor:pointer}
 <!-- -- SCREEN: PROGRESO -- -->
 <div id="s-progress" class="screen">
   <div class="topbar">
-    <div class="tlogo">M<span>E</span>LCAT <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v81</span></div>
+    <div class="tlogo">MEL<span>Q</span>ART <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v95</span></div>
     <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Estadísticas</div>
   </div>
   <div class="tab-row">
@@ -470,7 +515,7 @@ select.inp{cursor:pointer}
 <!-- -- SCREEN: NUTRICIÓN -- -->
 <div id="s-food" class="screen">
   <div class="topbar">
-    <div class="tlogo">M<span>E</span>LCAT <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v81</span></div>
+    <div class="tlogo">MEL<span>Q</span>ART <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v95</span></div>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="food-fecha-lbl" style="font-size:11px;color:var(--ink3)"></span>
       <button onclick="cambiarDia(-1)" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:18px;line-height:1">‹</button>
@@ -527,7 +572,7 @@ select.inp{cursor:pointer}
 <!-- -- SCREEN: PERFIL -- -->
 <div id="s-perfil" class="screen">
   <div class="topbar">
-    <div class="tlogo">M<span>E</span>LCAT <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v81</span></div>
+    <div class="tlogo">MEL<span>Q</span>ART <span style="font-size:11px;font-weight:400;opacity:.5;letter-spacing:1px">v95</span></div>
     <button class="btn btn-p btn-sm" id="perfil-action-btn">+ Nuevo</button>
   </div>
   <div class="tab-row">
@@ -1753,7 +1798,7 @@ function exportarSemana(){
     });
   }
   lines.push(sep);
-  lines.push('Generado por MELCAT - '+new Date().toLocaleDateString('es-CL'));
+  lines.push('Generado por MELQART - '+new Date().toLocaleDateString('es-CL'));
   const txt=lines.join('\n');
   if(navigator.clipboard){
     navigator.clipboard.writeText(txt).then(()=>showToast('Historial copiado al portapapeles',3000,'ok'));
@@ -2163,7 +2208,7 @@ function renderEditSesExs(s){
           <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:6px">
             <div></div>
             <input class="inp" type="number" placeholder="❤️ FC media (bpm)" value="${set.fc||''}" oninput="updateEditSet('${s.id}',${ei},${si},'fc',this.value)" style="padding:7px;font-size:12px;color:#f87171;border-color:#7f1d1d" inputmode="numeric">
-            <input class="inp" type="number" placeholder="👟 Pasos" value="${set.pasos||''}" oninput="updateEditSet('${s.id}',${ei},${si},'pasos',this.value)" style="padding:7px;font-size:12px;color:var(--blue);border-color:#1e3a8a" inputmode="numeric">
+            <input class="inp" type="number" placeholder="👟 Pasos" value="${set.pasos||''}" oninput="updateEditSet('${s.id}',${ei},${si},'pasos',this.value)" style="padding:7px;font-size:12px;color:var(--blue);border-color:#7A4E24" inputmode="numeric">
           </div>
         </div>
       `:`
@@ -2438,7 +2483,7 @@ function renderRutinas(){
     </div>`:'';
 
     // Banner sugerida
-    const bannerSugerida=esSugerida?`<div style="background:linear-gradient(90deg,rgba(37,99,235,.06),var(--bg2));padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+    const bannerSugerida=esSugerida?`<div style="background:linear-gradient(90deg,rgba(164,113,58,.08),var(--bg2));padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
       <span style="font-size:10px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase">⚡ Sugerida — ${diasFalta===0?'HOY':diasFalta===1?'Mañana':diaRut>=0?(diasOrden[diaRut].charAt(0).toUpperCase()+diasOrden[diaRut].slice(1)):'Próxima'}</span>
     </div>`:'';
 
@@ -2726,7 +2771,7 @@ function tipoLabel(tipo){
   return {z2:'🧘 Zona 2 — Base aeróbica', tempo:'⚡ Tempo', intervalos:'🔥 Intervalos', test:'🏁 TEST 5km', descarga:'😌 Descarga', desarrollo:'📈 Desarrollo'}[tipo]||tipo;
 }
 function tipoColor(tipo){
-  return {z2:'#16a34a,#15803d', tempo:'#d97706,#b45309', intervalos:'#dc2626,#b91c1c', test:'#7c3aed,#6d28d9', descarga:'#475467,#344054', desarrollo:'#1d4ed8,#1e40af'}[tipo]||'#1d4ed8,#1e40af';
+  return {z2:'#6F7D53,#566341', tempo:'#A4713A,#7A4E24', intervalos:'#A95B47,#7C3F31', test:'#181B1D,#7A4E24', descarga:'#514840,#181B1D', desarrollo:'#A4713A,#7A4E24'}[tipo]||'#A4713A,#7A4E24';
 }
 
 function mostrarBannerCarrera(routineId){
@@ -2782,7 +2827,7 @@ function renderSexBlock(ex,ei){
   // Render especial para calentamiento y estiramiento — solo video
   if(isWarmupStretch){
     const label = e.type==='warmup'?'🔥 Calentamiento':'🧘 Estiramiento';
-    const tagColor = e.type==='warmup'?'rgba(217,119,6,.15);color:var(--gold)':'rgba(37,99,235,.12);color:var(--blue)';
+    const tagColor = e.type==='warmup'?'rgba(217,119,6,.15);color:var(--gold)':'rgba(164,113,58,.12);color:var(--blue)';
     const ytSrc = e.youtubeId ? 'https://www.youtube.com/embed/'+e.youtubeId+'?rel=0&modestbranding=1' : '';
     const ytHtml = ytSrc
       ? '<div style="margin:0 16px 14px;border-radius:var(--r);overflow:hidden;aspect-ratio:16/9;background:#000">'
@@ -2975,7 +3020,7 @@ function renderSetRow(ei,si,set,isRun,ultSet){
       </div>`;
 
   const bgColor = isBilateral
-    ? (ambos ? 'rgba(22,163,74,.06)' : ladoL||ladoR ? 'rgba(37,99,235,.04)' : 'transparent')
+    ? (ambos ? 'rgba(22,163,74,.06)' : ladoL||ladoR ? 'rgba(164,113,58,.06)' : 'transparent')
     : (done ? 'rgba(22,163,74,.06)' : 'transparent');
 
   return `<div class="set-row" id="sr-${ei}-${si}" style="flex-wrap:wrap;background:${bgColor};grid-template-columns:28px 1fr 1fr 1fr auto auto">
@@ -3038,40 +3083,53 @@ function updateSet(ei,si,field,val){
 }
 function toggleLado(ei,si,lado){
   if(!activeSession) return;
-  const ex=activeSession.exercises[ei];
-  const set=ex.sets[si];
-  const eDef=getEx(ex.exId);
+  const exObj=activeSession.exercises[ei];
+  if(!exObj) return;
+  const set=exObj.sets[si];
+  if(!set) return;
+  const eDef=getEx(exObj.exId);
   const field = lado==='L' ? '_ladoL' : '_ladoR';
+  // Toggle el lado
   set[field] = !set[field];
   const ambos = set._ladoL && set._ladoR;
-  // Solo marcar done y arrancar descanso cuando ambos lados completados
+  // Si L marcado pero R no — arrancar timer parcial opcional (no arranca descanso)
+  // Si ambos completos — marcar done y arrancar descanso
   if(ambos && !set.done){
     set.done=true;
-    startRest(eDef?.restSec || activeSession.restSec || 120, ei, si);
-  } else if(!ambos){
-    set.done=false;
+    // Re-renderizar primero para mostrar el estado verde
+    const container=document.getElementById('session-exs');
+    container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
+    // Luego arrancar descanso
+    const restSec=eDef?.restSec||activeSession.restSec||120;
+    startRest(restSec, ei, si);
+  } else {
+    if(!ambos) set.done=false;
+    // Re-renderizar para mostrar estado L/R actualizado
+    const container=document.getElementById('session-exs');
+    container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
   }
-  // Re-renderizar solo esta fila
-  const container=document.getElementById('session-exs');
-  container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
 }
 
 function toggleSet(ei,si){
   if(!activeSession) return;
   const ex=activeSession.exercises[ei];
+  if(!ex) return;
   const set=ex.sets[si];
+  if(!set) return;
   const e=getEx(ex.exId);
   const isRun=e?.type==='run'||e?.type==='hiit';
+  const isBilateral=e?.bilateral===true;
+  const isPlyo=e?.type==='plyo';
+  // Bilateral: no tocar desde toggleSet, lo maneja toggleLado
+  if(isBilateral) return;
   // Para cardio: leer selectores de tiempo antes de marcar done
   if(isRun) updateTimeFromSel(ei,si);
   set.done=!set.done;
-  const row=document.getElementById(`sr-${ei}-${si}`);
-  if(row){
-    row.querySelector('.set-check').classList.toggle('done',set.done);
-    if(isRun) row.style.background=set.done?'var(--bg3)':'transparent';
-  }
+  // Re-renderizar el bloque completo para reflejar el cambio
+  const container=document.getElementById('session-exs');
+  container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
   // Timer de descanso solo para ejercicios de fuerza
-  if(set.done&&!isRun){
+  if(set.done&&!isRun&&!isPlyo){
     const restSec=activeSession.exercises[ei]._restSec || getEx(ex.exId)?.restSec || activeSession.restSec||90;
     startRest(restSec, ei, si);
   }
@@ -5314,7 +5372,7 @@ function renderFood(){
   const completadas=Object.values(fd.comidas).filter(c=>c.completada).length;
   const pct=Math.round((completadas/COMIDAS.length)*100);
   document.getElementById('food-stats-row').innerHTML=`
-    <div class="stat-box"><div class="stat-num" style="color:#22d3ee">${fd.agua}</div><div class="stat-label">Vasos</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:#A4713A">${fd.agua}</div><div class="stat-label">Vasos</div></div>
     <div class="stat-box"><div class="stat-num">${completadas}/${COMIDAS.length}</div><div class="stat-label">Comidas</div></div>
     <div class="stat-box"><div class="stat-num" style="color:${pct===100?'var(--green)':'var(--orange)'}">${pct}%</div><div class="stat-label">Adherencia</div></div>`;
   // Agua
@@ -5670,7 +5728,7 @@ function checkLogros(){
   const logros=forge.logros||[];
   const ids=new Set(logros.map(l=>l.id));
   const nuevos=[];
-  if(ses.length===1&&!ids.has('first')) nuevos.push({id:'first',icon:'🔥',title:'Primera sesión',sub:'¡Comenzaste tu viaje en Melcat!'});
+  if(ses.length===1&&!ids.has('first')) nuevos.push({id:'first',icon:'🔥',title:'Primera sesión',sub:'¡Comenzaste tu viaje en Melqart!'});
   if(ses.length>=10&&!ids.has('ten')) nuevos.push({id:'ten',icon:'💪',title:'10 sesiones',sub:'Constancia que construye resultados.'});
   if(ses.length>=50&&!ids.has('fifty')) nuevos.push({id:'fifty',icon:'🏆',title:'50 sesiones',sub:'Eres un atleta serio.'});
   if(calcStreak()>=7&&!ids.has('week')) nuevos.push({id:'week',icon:'⚡',title:'Racha de 7 días',sub:'¡Una semana sin parar!'});
