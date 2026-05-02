@@ -1,36 +1,27 @@
-# MELQART v96 — versión ordenada
+# MELQART v97 Fast
 
-Esta versión separa la app en archivos más flexibles:
+Versión ordenada y optimizada para GitHub Pages.
 
-```text
-index.html
-styles.css
-app.js
-assets/
-  melqart_app_icon.png
-  brand/
-    melqart_mark.svg
-    melqart_wordmark.svg
-    melqart_tokens.json
-  screens/
-    referencias visuales y banco de imágenes
-```
+## Estructura
 
-## Cómo subir a GitHub Pages
+- `index.html`: estructura HTML y pantallas originales.
+- `styles.css`: sistema visual MELQART v97, paleta fenicia y componentes.
+- `app.js`: lógica original de la app, sin capa visual dinámica pesada.
+- `assets/melqart_app_icon.png`: icono de app.
+- `assets/brand/melqart_mark.svg`: isotipo liviano para header/login.
+- `assets/brand/melqart_wordmark.svg`: wordmark de referencia.
+- `assets/brand/melqart_tokens.json`: tokens de diseño.
 
-1. Haz respaldo de tu versión actual.
-2. Sube todo el contenido de esta carpeta a la raíz del repositorio.
-3. Asegúrate de que `index.html`, `styles.css`, `app.js` y la carpeta `assets/` queden al mismo nivel.
-4. Commit y push.
-5. Abre tu URL de GitHub Pages.
+## Rendimiento
 
-## Dónde editar el sistema visual
+Esta versión elimina la causa probable del congelamiento de v96:
 
-- Colores: `styles.css` → variables `:root`.
-- Logo/header/login: `app.js` → bloque `MQ_MARK`, `headerBrand()` y `authBrand()`.
-- Icono app/favicon: `assets/melqart_app_icon.png`.
-- Tokens para Figma/manual: `assets/brand/melqart_tokens.json`.
+- sin `MutationObserver` global;
+- sin normalización de emojis en runtime;
+- sin imágenes grandes cargadas por la app;
+- marca y paleta aplicadas de forma estática;
+- Firebase, localStorage y lógica base conservados.
 
-## Nota
+## Subida a GitHub
 
-La lógica original de Firebase, localStorage, navegación y datos fue conservada. Esta separación busca facilitar mantenimiento sin reescribir la app desde cero.
+Sube todo el contenido de esta carpeta a la raíz del repo. `index.html`, `styles.css`, `app.js` y `assets/` deben quedar al mismo nivel.

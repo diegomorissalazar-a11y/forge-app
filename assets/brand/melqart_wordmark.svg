@@ -1,7 +1,1 @@
-<svg viewBox="0 0 560 110" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MELQART wordmark">
-  <style>.w{font-family:Georgia, 'Times New Roman', serif;font-weight:700;letter-spacing:14px}</style>
-  <text x="10" y="74" class="w" font-size="60" fill="#181B1D">MEL</text>
-  <text x="177" y="74" class="w" font-size="60" fill="#A4713A">Q</text>
-  <text x="238" y="74" class="w" font-size="60" fill="#181B1D">ART</text>
-  <text x="13" y="102" font-family="Montserrat, Arial, sans-serif" font-size="13" letter-spacing="4" fill="#7A4E24">LEGADO ANCESTRAL. RENDIMIENTO MODERNO.</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 90" role="img" aria-label="MELQART"><text x="0" y="62" font-family="Cinzel, Georgia, serif" font-size="58" font-weight="800" letter-spacing="8" fill="#181B1D">MEL</text><text x="158" y="62" font-family="Cinzel, Georgia, serif" font-size="58" font-weight="800" letter-spacing="8" fill="#A4713A">Q</text><text x="212" y="62" font-family="Cinzel, Georgia, serif" font-size="58" font-weight="800" letter-spacing="8" fill="#181B1D">ART</text></svg>

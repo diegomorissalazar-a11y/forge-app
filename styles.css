@@ -1,37 +1,16 @@
-/*
-  MELQART v96 — Sistema visual
-  Paleta fenicia sin azul dominante.
-  Edita variables :root para cambiar la identidad global.
-*/
 
 /* ---------------------------------------
    VARIABLES
 --------------------------------------- */
 :root {
-  /* MELQART v96 · paleta fenicia sin azul */
-  --bg:#F2EFE6;       /* piedra */
-  --bg2:#FCFAF6;      /* marfil */
-  --bg3:#F7F3EA;      /* arena clara */
-  --bg4:#E8DED0;      /* arena/piedra */
-  --border:#DED4C5;
-  --border2:#CDBEAA;
-  --ink:#181B1D;      /* obsidiana */
-  --ink2:#514840;
-  --ink3:#9B9388;
-  --orange:#A4713A;   /* bronce activo */
-  --orange2:#7A4E24;  /* bronce profundo */
-  --bronze:#A4713A;
-  --bronze2:#7A4E24;
-  --sand:#D8C9B2;
-  --stone:#F2EFE6;
-  --ivory:#FCFAF6;
-  --green:#6F7D53;    /* oliva funcional */
-  --red:#A95B47;      /* terracota funcional */
-  --gold:#A4713A;
-  --blue:#A4713A;     /* alias legacy: no usar azul visual */
-  --fd:'Cinzel', serif;
-  --fb:'Montserrat', sans-serif;
-  --r:10px; --rl:16px;
+  --bg:#F3EFE7; --bg2:#FCFAF6; --bg3:#F7F2EA; --bg4:#ECE3D6;
+  --border:#DED4C5; --border2:#CDBEAA;
+  --ink:#181B1D; --ink2:#5C5247; --ink3:#9F968A;
+  --orange:#A4713A; --orange2:#7A4E24;
+  --bronze:#A4713A; --bronze2:#7A4E24; --sand:#D8C9B2;
+  --green:#6F7D53; --red:#9A6552; --gold:#A4713A; --blue:#A4713A;
+  --fd:'Cinzel', serif; --fb:'Montserrat', sans-serif;
+  --r:12px; --rl:20px;
 }
 
 /* ---------------------------------------
@@ -39,9 +18,6 @@
 --------------------------------------- */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--fb);font-size:15px;overscroll-behavior:none}
-body{background:radial-gradient(circle at 50% -10%,rgba(164,113,58,.08),transparent 42%),linear-gradient(180deg,#F7F3EA 0%,#F2EFE6 100%)}
-body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.28;background-image:linear-gradient(135deg,rgba(164,113,58,.045) 25%,transparent 25%),linear-gradient(225deg,rgba(164,113,58,.035) 25%,transparent 25%);background-size:38px 38px;z-index:-1}
-
 
 /* ---------------------------------------
    LAYOUT
@@ -278,13 +254,13 @@ select.inp{cursor:pointer}
 
 /* Agua contador */
 .agua-counter{display:flex;align-items:center;justify-content:center;gap:16px;padding:12px 0}
-.agua-num-big{font-family:var(--fd);font-size:48px;font-weight:900;color:#A4713A;line-height:1}
+.agua-num-big{font-family:var(--fd);font-size:48px;font-weight:900;color:#22d3ee;line-height:1}
 .agua-btns{display:flex;flex-direction:column;gap:6px}
 .agua-step{width:40px;height:40px;border-radius:50%;border:2px solid var(--border2);background:var(--bg3);color:var(--ink2);font-size:20px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s}
 .agua-step:active{border-color:var(--orange);color:var(--orange)}
 .agua-dots{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;padding:8px 16px}
 .agua-dot{width:12px;height:12px;border-radius:50%;background:var(--bg3);border:1.5px solid var(--border2);transition:all .2s}
-.agua-dot.on{background:#A4713A;border-color:#A4713A}
+.agua-dot.on{background:#22d3ee;border-color:#22d3ee}
 
 /* ---------------------------------------
    SCREEN: PERFIL — HÁBITOS LUMEN
@@ -336,127 +312,18 @@ select.inp{cursor:pointer}
 .division-bar{height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin:4px 0}
 .division-fill{height:100%;background:var(--orange);border-radius:4px}
 
-/* ---------------------------------------
-   MELQART v96 · refinamiento visual fenicio
---------------------------------------- */
-.topbar{background:rgba(242,239,230,.94);backdrop-filter:blur(12px);border-bottom-color:var(--border)}
-.tlogo,.auth-logo{font-family:var(--fd);font-style:normal;font-weight:800;letter-spacing:3px;color:var(--ink)}
-.tlogo span,.auth-logo span{color:var(--bronze)}
-.auth-sub{font-family:var(--fb);color:var(--bronze);font-weight:600;letter-spacing:4px}
-.card,.hevy-card,.rutina-card,.comida-card,.stat-box,.plan-card,.lumen-stat{background:var(--ivory);border-color:var(--border);box-shadow:0 8px 24px rgba(24,27,29,.035)}
-.btn-p,.auth-tab.on{background:linear-gradient(135deg,var(--bronze),var(--bronze2));color:#fff}
-.btn-p:active{background:var(--bronze2)}
-.btn-s{background:var(--ivory);color:var(--ink2);border-color:var(--border2)}
-.tab-btn.on,.nb.on{color:var(--bronze);border-color:var(--bronze)}
-.inp,.set-inp,.dp-sel{background:var(--ivory);border-color:var(--border2)}
-.inp:focus,.set-inp:focus,.dp-sel:focus{border-color:var(--bronze);box-shadow:0 0 0 2px rgba(164,113,58,.10)}
-.prog-bar-fill,.chart-line,.division-fill{background:var(--bronze);stroke:var(--bronze)}
-.chart-dot{fill:var(--bronze)}
-.section-label,.stat-label,.lumen-lbl{font-family:var(--fb);font-weight:700;color:var(--ink3);letter-spacing:2.8px}
-.stat-num,.lumen-num,.rutina-name,.modal-title,.session-timer,.plan-title{font-family:var(--fd);font-style:normal;letter-spacing:.2px}
-.hevy-avatar{background:linear-gradient(135deg,var(--bronze),var(--bronze2))}
-#auth{background:radial-gradient(circle at 50% 28%,rgba(164,113,58,.10),transparent 34%),var(--bg)}
+
+/* MELQART v97 fast: paleta fenicia y marca estática, sin observers ni transforms runtime */
+html,body{background:var(--bg);color:var(--ink);font-family:var(--fb)}
 #app{background:var(--bg)}
-nav{background:rgba(252,250,246,.96);backdrop-filter:blur(12px);border-top-color:var(--border)}
-.agua-num-big{color:var(--bronze)!important}
-.agua-dot.on{background:var(--bronze)!important;border-color:var(--bronze)!important}
-
-
-/* =======================================
-   MELQART v96 · sistema visual integral
-   ======================================= */
-:root{
-  --bg:#F3EFE7;
-  --bg2:#FCFAF6;
-  --bg3:#F7F2EA;
-  --bg4:#ECE3D6;
-  --border:#DED4C5;
-  --border2:#CDBEAA;
-  --ink:#181B1D;
-  --ink2:#5C5247;
-  --ink3:#9F968A;
-  --orange:#A4713A;
-  --orange2:#7A4E24;
-  --bronze:#A4713A;
-  --bronze2:#7A4E24;
-  --sand:#D8C9B2;
-  --ivory:#FCFAF6;
-  --green:#6F7D53;
-  --red:#9A6552;
-  --gold:#A4713A;
-  --blue:#A4713A;
-  --r:12px;
-  --rl:22px;
-}
-html,body{background:var(--bg);color:var(--ink);font-family:var(--fb);}
-body::before{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(1200px 500px at 50% -180px, rgba(164,113,58,.08), transparent 60%);z-index:0}
-#auth,#app{position:relative;z-index:1}
-.topbar{padding:14px 18px;min-height:72px;background:rgba(243,239,231,.92)!important;backdrop-filter:blur(14px);border-bottom:1px solid var(--border)!important;box-shadow:0 1px 0 rgba(24,27,29,.02)}
-.screen{padding-bottom:10px}
-.card,.hevy-card,.rutina-card,.comida-card,.stat-box,.plan-card,.lumen-stat,.hist-row,.list-item,.water-card,.modal,.food-card{background:var(--bg2)!important;border:1px solid var(--border)!important;border-radius:20px!important;box-shadow:0 10px 30px rgba(24,27,29,.04)!important}
-.banner,.hero-card,.plan-banner,.week-box,.weight-card,.streak-banner{background:var(--bg2)!important;border:1px solid var(--border)!important;border-radius:24px!important;box-shadow:0 10px 30px rgba(24,27,29,.04)!important}
-.section-label,.mini-label,.caps,.label-overline{font-family:var(--fb)!important;text-transform:uppercase;letter-spacing:5px;font-size:11px;color:var(--bronze)!important;font-weight:700}
-h1,h2,h3,.title-xl,.card-title,.modal-title{font-family:var(--fd)!important;font-weight:700;letter-spacing:.3px;color:var(--ink)}
-.btn,.tab-btn,.auth-tab,.chip,.seg-btn{font-family:var(--fb)!important;font-weight:700;letter-spacing:.6px}
-.btn-p,.btn-primary,.chip.on,.auth-tab.on,.seg-btn.on{background:linear-gradient(180deg,var(--bronze),var(--bronze2))!important;color:#fff!important;border:none!important;box-shadow:0 8px 18px rgba(164,113,58,.18)}
-.btn-s,.btn-secondary{background:var(--bg2)!important;color:var(--bronze2)!important;border:1px solid var(--border2)!important}
-.btn-ghost,.btn-text{background:transparent!important;color:var(--bronze)!important;border-color:transparent!important;box-shadow:none!important}
-.auth-tab:not(.on),.chip,.seg-btn,.tab-btn{background:transparent;color:var(--ink3);border-color:var(--border2)}
-.tab-row,.subtab-row,.auth-tabs{background:transparent!important;border-bottom:1px solid var(--border)}
-.tab-btn,.auth-tab{border-bottom:3px solid transparent!important;border-radius:0!important;padding:14px 16px!important}
-.tab-btn.on,.auth-tab.on{color:var(--bronze)!important;border-bottom-color:var(--bronze)!important;box-shadow:none!important}
-nav{height:68px;background:rgba(252,250,246,.96)!important;backdrop-filter:blur(14px);border-top:1px solid var(--border)!important}
-.nb{font-size:10px!important;letter-spacing:1px!important;gap:4px!important;padding-top:6px!important}
-.nb.on{color:var(--bronze)!important;border-top-color:var(--bronze)!important}
-.nb svg{width:21px;height:21px}
-.progress,.progbar,.bar-bg,.division-bar{height:8px!important;background:var(--bg4)!important;border-radius:999px!important;overflow:hidden}
-.progress > div,.progfill,.bar-fill,.division-fill{background:linear-gradient(90deg,var(--bronze2),var(--bronze))!important;border-radius:999px!important}
-.badge,.pill,.tag,.chip-status,.pr-badge{border-radius:999px!important;border:1px solid rgba(164,113,58,.22)!important;background:rgba(164,113,58,.10)!important;color:var(--bronze2)!important}
-.inp, input, select, textarea{background:var(--bg2)!important;border:1px solid var(--border2)!important;border-radius:16px!important;color:var(--ink)!important;font-family:var(--fb)!important}
-input::placeholder, textarea::placeholder{color:var(--ink3)!important}
-input:focus, select:focus, textarea:focus{outline:none;border-color:var(--bronze)!important;box-shadow:0 0 0 4px rgba(164,113,58,.10)!important}
-.modal-bg{background:rgba(24,27,29,.32)!important;backdrop-filter:blur(6px)}
-.modal-head{border-bottom:1px solid var(--border)!important}
-.bicon{background:var(--bg3)!important;border:1px solid var(--border)!important;color:var(--ink2)!important}
-.table-wrap table,.med-table{background:var(--bg2)!important}
-.table-wrap th,.med-table th{background:var(--bg3)!important;color:var(--bronze2)!important;border-color:var(--border)!important}
-.table-wrap td,.med-table td{border-color:var(--border)!important}
-.empty{padding:28px 20px!important}
-.empty-icon,.rutina-emoji,.hevy-emoji,.ses-emoji,.meal-emoji,.icon-badge,.logro-icon{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:44px;padding:0 12px;border-radius:14px;background:linear-gradient(180deg,rgba(164,113,58,.16),rgba(164,113,58,.08));color:var(--bronze2)!important;border:1px solid rgba(164,113,58,.22);font-weight:800;letter-spacing:.5px}
-.rutina-emoji{min-width:52px;height:52px;border-radius:16px}
-.auth-sub{color:var(--ink2)!important;letter-spacing:3.2px!important;font-size:11px!important}
-#auth{background:linear-gradient(180deg,#F6F2EA 0%, #F2EFE6 100%)!important}
-#auth::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at top, rgba(164,113,58,.10), transparent 55%);pointer-events:none}
-.auth-logo{margin-bottom:10px!important}
-.auth-logo + .auth-sub{margin-bottom:32px!important}
-#home-sessions .hevy-card,#perfil-logros .card,#food-ideas .comida-card,#perfil-habitos .card,#perfil-plan .plan-card{overflow:hidden}
-canvas{filter:saturate(.82) contrast(1.02)}
-#sync-dot{box-shadow:0 0 0 4px rgba(111,125,83,.12)}
-#user-btn{background:linear-gradient(180deg,var(--bronze),var(--bronze2))!important;border:none!important;box-shadow:0 8px 18px rgba(164,113,58,.20)}
-#user-btn span,#user-btn{color:#fff!important}
-.mq-brand{display:flex;align-items:center;gap:12px;line-height:1}
-.mq-brand .mq-brand-mark{width:36px;height:36px;flex:0 0 36px}
-.mq-brand .mq-brand-copy{display:flex;align-items:flex-end;gap:10px;min-width:0}
-.mq-brand .mq-word{font-family:var(--fd);font-size:28px;font-weight:700;letter-spacing:2.8px;color:var(--ink);white-space:nowrap}
-.mq-brand .mq-word .accent{color:var(--bronze)}
-.mq-brand .mq-ver{font-family:var(--fb);font-size:10px;font-weight:700;letter-spacing:2px;color:var(--bronze);padding:6px 8px;border-radius:999px;border:1px solid rgba(164,113,58,.18);background:rgba(164,113,58,.08);margin-bottom:2px}
-.mq-auth-brand{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
-.mq-auth-brand .mq-brand-mark{width:108px;height:108px}
-.mq-auth-brand .mq-word{font-family:var(--fd);font-size:48px;font-weight:700;letter-spacing:4px;color:var(--ink)}
-.mq-auth-brand .mq-word .accent{color:var(--bronze)}
-.mq-auth-brand .mq-tag{font-family:var(--fb);font-size:11px;text-transform:uppercase;letter-spacing:3.5px;color:var(--ink2);max-width:280px;line-height:1.45}
-.mq-panel-note{font-family:var(--fb);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3)}
-.mq-soft{color:var(--ink3)!important}
-.mq-bronze{color:var(--bronze)!important}
-.mq-hide-emoji .emoji{display:none}
-.mq-sep{height:1px;background:linear-gradient(90deg, transparent, rgba(164,113,58,.25), transparent)}
-/* better spacing on sections */
-#s-home > :not(.topbar),#s-train > :not(.topbar),#s-progress > :not(.topbar),#s-food > :not(.topbar),#s-perfil > :not(.topbar){padding-left:16px;padding-right:16px}
-#s-home .hero-card,#s-home .card,#s-progress .card,#s-food .card,#s-perfil .card{margin-bottom:14px}
-@media (max-width:480px){
-  .mq-brand .mq-word{font-size:24px;letter-spacing:2.2px}
-  .mq-brand .mq-brand-mark{width:32px;height:32px;flex-basis:32px}
-  .mq-brand .mq-ver{font-size:9px;padding:5px 7px}
-  .mq-auth-brand .mq-brand-mark{width:92px;height:92px}
-  .mq-auth-brand .mq-word{font-size:40px;letter-spacing:3px}
-}
+.topbar{min-height:68px;background:rgba(243,239,231,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:12px 16px}
+.mq-brand{display:flex;align-items:center;gap:10px;line-height:1}.mq-brand-mark{width:34px;height:34px;flex:0 0 34px}.mq-brand-copy{display:flex;align-items:flex-end;gap:8px}.mq-word{font-family:var(--fd);font-weight:800;font-size:24px;letter-spacing:2.3px;color:var(--ink)}.mq-word span{color:var(--bronze)}.mq-ver{font-size:9px;font-weight:700;color:var(--bronze);letter-spacing:1.8px;border:1px solid rgba(164,113,58,.18);background:rgba(164,113,58,.08);border-radius:99px;padding:4px 6px;margin-bottom:1px}
+#auth{background:linear-gradient(180deg,#F7F2EA,#F3EFE7);padding:28px 24px}.mq-auth-brand{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:30px}.mq-auth-mark{width:96px;height:96px;margin-bottom:12px}.mq-auth-word{font-family:var(--fd);font-weight:800;letter-spacing:3px;font-size:42px;color:var(--ink)}.mq-auth-word span{color:var(--bronze)}.mq-auth-sub{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--ink2);font-weight:600;line-height:1.5;margin-top:6px}
+.card,.hevy-card,.rutina-card,.comida-card,.stat-box,.plan-card,.lumen-stat,.modal{background:var(--bg2);border-color:var(--border);border-radius:var(--rl);box-shadow:0 8px 22px rgba(24,27,29,.035)}
+.btn-p,.auth-tab.on{background:linear-gradient(180deg,var(--orange),var(--orange2));color:#fff}.btn-p:active{background:var(--orange2)}.btn-s{background:var(--bg2);border-color:var(--border2);color:var(--ink2)}
+.tab-btn.on{color:var(--orange);border-bottom-color:var(--orange)}.nb.on{color:var(--orange);border-top-color:var(--orange)}
+.inp{background:var(--bg2);border-color:var(--border2);border-radius:14px}.inp:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(164,113,58,.10)}
+.section-label{letter-spacing:3px;color:var(--ink3)}.stat-num{font-family:var(--fd);color:var(--ink)}.lumen-num{color:var(--orange)}
+.hevy-avatar,.rutina-emoji,.empty-icon{background:rgba(164,113,58,.10);border:1px solid rgba(164,113,58,.18);color:var(--orange);font-weight:800}.hevy-avatar{color:#fff;background:var(--orange);border:0}
+.chart-line{stroke:var(--orange)}.chart-dot{fill:var(--orange)}.prog-bar-fill,.division-fill{background:var(--orange)}.agua-num-big,.agua-dot.on{color:var(--orange);background:var(--orange);border-color:var(--orange)}
+.toast{box-shadow:0 12px 28px rgba(24,27,29,.10)}

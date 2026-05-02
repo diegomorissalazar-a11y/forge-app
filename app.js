@@ -1,8 +1,3 @@
-/*
-  MELQART v96 — Lógica de app
-  Mantiene Firebase, localStorage y navegación original.
-*/
-
 // ---------------------------------------------------------------
 //  FIREBASE
 // ---------------------------------------------------------------
@@ -468,12 +463,12 @@ const EJERCICIOS_BASE = [
   {id:'ex_est_trote',    name:'Estiramiento Trote',          type:'stretch',    muscle:'cardio',  restSec:0, youtubeId:'e8Y6Y-PST2g'},
 ];
 const RUTINAS_BASE = [
-  {id:'r_lunes',   name:'Lunes — Tren Inferior A',  emoji:'🦵', exercises:['ex_cal_inf','ex_sentadilla','ex_peso_muerto','ex_saltos_cajon','ex_curl_femoral','ex_est_inf'],        restSec:180},
-  {id:'r_martes',  name:'Martes — Tren Superior A', emoji:'🏋', exercises:['ex_cal_sup','ex_press_banca','ex_remo_barra','ex_press_hombros','ex_elev_lateral','ex_est_sup'],      restSec:180},
-  {id:'r_mierco',  name:'Miércoles — Tren Inferior B', emoji:'⚡', exercises:['ex_cal_inf','ex_sent_bulgara','ex_peso_muerto_rum','ex_hip_thrust','ex_crunch','ex_est_inf'], restSec:90},
-  {id:'r_jueves',  name:'Jueves — Tren Superior B', emoji:'💪', exercises:['ex_cal_sup','ex_press_inclinado','ex_jalon_pecho','ex_press_homb_manc','ex_crunch','ex_est_sup'],restSec:90},
-  {id:'r_jueves_noche', name:'Jueves Noche — Trote', emoji:'🌙', exercises:['ex_cal_trote','ex_correr','ex_est_trote'], restSec:0},
-  {id:'r_cardio',  name:'Domingo — Cardio',          emoji:'🏃', exercises:['ex_correr','ex_est_trote'], restSec:0},
+  {id:'r_lunes',   name:'Lunes — Tren Inferior A',  emoji:'◉', exercises:['ex_cal_inf','ex_sentadilla','ex_peso_muerto','ex_saltos_cajon','ex_curl_femoral','ex_est_inf'],        restSec:180},
+  {id:'r_martes',  name:'Martes — Tren Superior A', emoji:'◈', exercises:['ex_cal_sup','ex_press_banca','ex_remo_barra','ex_press_hombros','ex_elev_lateral','ex_est_sup'],      restSec:180},
+  {id:'r_mierco',  name:'Miércoles — Tren Inferior B', emoji:'✶', exercises:['ex_cal_inf','ex_sent_bulgara','ex_peso_muerto_rum','ex_hip_thrust','ex_crunch','ex_est_inf'], restSec:90},
+  {id:'r_jueves',  name:'Jueves — Tren Superior B', emoji:'✦', exercises:['ex_cal_sup','ex_press_inclinado','ex_jalon_pecho','ex_press_homb_manc','ex_crunch','ex_est_sup'],restSec:90},
+  {id:'r_jueves_noche', name:'Jueves Noche — Trote', emoji:'☾', exercises:['ex_cal_trote','ex_correr','ex_est_trote'], restSec:0},
+  {id:'r_cardio',  name:'Domingo — Cardio',          emoji:'↝', exercises:['ex_correr','ex_est_trote'], restSec:0},
 ];
 function initRutinas(){
   if(!forge.exercises) forge.exercises=[];
@@ -807,10 +802,10 @@ function renderStreakBanner(){
     html+='</div>';
   }
   if(rachaActual>0){
-    html+='<div style="font-size:13px;margin-bottom:4px">⚡ Racha actual: <strong>'+rachaActual+' semana'+(rachaActual>1?'s':'')+' seguida'+(rachaActual>1?'s':'')+'</strong></div>';
+    html+='<div style="font-size:13px;margin-bottom:4px">✶ Racha actual: <strong>'+rachaActual+' semana'+(rachaActual>1?'s':'')+' seguida'+(rachaActual>1?'s':'')+'</strong></div>';
   }
   if(rachaMejor>rachaActual){
-    html+='<div style="font-size:13px;margin-bottom:4px">🏆 Mejor racha: <strong>'+rachaMejor+' semanas</strong></div>';
+    html+='<div style="font-size:13px;margin-bottom:4px">⬢ Mejor racha: <strong>'+rachaMejor+' semanas</strong></div>';
   }
   if(esNuevaMejor){
     html+='<div style="font-size:13px;margin-top:6px;background:rgba(255,255,255,.18);border-radius:8px;padding:6px 10px">⭐ Esta semana: <strong>'+estaSemana+' sesiones</strong> — nueva mejor semana del año</div>';
@@ -829,7 +824,7 @@ function renderHome(){
 
   document.getElementById('home-greet').innerHTML=`
     <div style="font-size:12px;color:var(--ink3);margin-bottom:2px">${dias[hoy.getDay()]} ${hoy.getDate()} de ${meses[hoy.getMonth()]}</div>
-    <div style="font-family:var(--fd);font-size:26px;font-weight:800;line-height:1.1">Hola, ${nombre} 👋</div>`;
+    <div style="font-family:var(--fd);font-size:26px;font-weight:800;line-height:1.1">Hola, ${nombre} </div>`;
 
   renderHomePlanBanner();
   renderStreakBanner();
@@ -846,7 +841,7 @@ function renderHome(){
   const ultimas = [...ses].sort((a,b)=>b.date-a.date);
   const el = document.getElementById('home-sessions');
   if(!ultimas.length){
-    el.innerHTML=`<div class="empty"><div class="empty-icon">🏋</div><div class="empty-text">Sin sesiones aún</div><div class="empty-sub">Inicia tu primera rutina para ver el historial.</div></div>`;
+    el.innerHTML=`<div class="empty"><div class="empty-icon">◈</div><div class="empty-text">Sin sesiones aún</div><div class="empty-sub">Inicia tu primera rutina para ver el historial.</div></div>`;
     return;
   }
   el.innerHTML=ultimas.map(s=>renderSesCard(s,hoy)).join('');
@@ -956,14 +951,14 @@ function renderSesCard(s, hoy){
       ${nSeries?`<div class="hm-item"><div class="hm-label">Series</div><div class="hm-val">${nSeries}</div></div>`:''}
       ${records?`<div class="hm-item"><div class="hm-label">Récords</div><div class="hm-val">🏅 ${records}</div></div>`:''}
       ${fcVal>0?`<div class="hm-item"><div class="hm-label">FC media</div><div class="hm-val" style="color:#f87171">❤️ ${fcVal} bpm</div></div>`:''}
-      ${kcalVal>0?`<div class="hm-item"><div class="hm-label">Calorías</div><div class="hm-val" style="color:var(--gold)">🔥 ${kcalVal} kcal</div></div>`:''}`;
+      ${kcalVal>0?`<div class="hm-item"><div class="hm-label">Calorías</div><div class="hm-val" style="color:var(--gold)">✦ ${kcalVal} kcal</div></div>`:''}`;
   }
 
   // Emoji e ícono según tipo de sesión
   const esCardioFlag = esCardio;
-  const rutEmoji = esCardioFlag ? '🏃' : s.routineId ? (
-    (forge.routines||[]).find(r=>r.id===s.routineId)?.emoji || '🏋'
-  ) : '🏋';
+  const rutEmoji = esCardioFlag ? '↝' : s.routineId ? (
+    (forge.routines||[]).find(r=>r.id===s.routineId)?.emoji || '◈'
+  ) : '◈';
 
   const exs = (s.exercises||[]).slice(0,3);
   return `
@@ -1108,7 +1103,7 @@ function renderEditSesExs(s){
           <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:6px">
             <div></div>
             <input class="inp" type="number" placeholder="❤️ FC media (bpm)" value="${set.fc||''}" oninput="updateEditSet('${s.id}',${ei},${si},'fc',this.value)" style="padding:7px;font-size:12px;color:#f87171;border-color:#7f1d1d" inputmode="numeric">
-            <input class="inp" type="number" placeholder="👟 Pasos" value="${set.pasos||''}" oninput="updateEditSet('${s.id}',${ei},${si},'pasos',this.value)" style="padding:7px;font-size:12px;color:var(--blue);border-color:#7A4E24" inputmode="numeric">
+            <input class="inp" type="number" placeholder="👟 Pasos" value="${set.pasos||''}" oninput="updateEditSet('${s.id}',${ei},${si},'pasos',this.value)" style="padding:7px;font-size:12px;color:var(--blue);border-color:#1e3a8a" inputmode="numeric">
           </div>
         </div>
       `:`
@@ -1312,7 +1307,7 @@ function roundCarga(kg, tipo){
 function renderRutinas(){
   const list=document.getElementById('rutinas-list');
   const rutinas=forge.routines||[];
-  if(!rutinas.length){ list.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin rutinas</div><div class="empty-sub">Crea tu primera rutina.</div></div>`; return; }
+  if(!rutinas.length){ list.innerHTML=`<div class="empty"><div class="empty-icon">▤</div><div class="empty-text">Sin rutinas</div><div class="empty-sub">Crea tu primera rutina.</div></div>`; return; }
 
   const plan=(forge.planes||[]).find(p=>p.activo);
   const semG=plan?semanaActualPlan(plan):0;
@@ -1383,15 +1378,15 @@ function renderRutinas(){
     </div>`:'';
 
     // Banner sugerida
-    const bannerSugerida=esSugerida?`<div style="background:linear-gradient(90deg,rgba(164,113,58,.08),var(--bg2));padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
-      <span style="font-size:10px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase">⚡ Sugerida — ${diasFalta===0?'HOY':diasFalta===1?'Mañana':diaRut>=0?(diasOrden[diaRut].charAt(0).toUpperCase()+diasOrden[diaRut].slice(1)):'Próxima'}</span>
+    const bannerSugerida=esSugerida?`<div style="background:linear-gradient(90deg,rgba(37,99,235,.06),var(--bg2));padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase">✶ Sugerida — ${diasFalta===0?'HOY':diasFalta===1?'Mañana':diaRut>=0?(diasOrden[diaRut].charAt(0).toUpperCase()+diasOrden[diaRut].slice(1)):'Próxima'}</span>
     </div>`:'';
 
     return `<div class="rutina-card" style="border-color:${borderColor}">
       ${bannerSugerida}
       <div class="rutina-head" onclick="toggleRutinaDetalle('${r.id}')" style="cursor:pointer">
         <div style="position:relative">
-          <div class="rutina-emoji">${r.emoji||'🏋'}</div>
+          <div class="rutina-emoji">${r.emoji||'◈'}</div>
           <div style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:${esSugerida?'var(--orange)':btnColor};color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">${num}</div>
         </div>
         <div class="rutina-info">
@@ -1668,10 +1663,10 @@ function getSemanaCarrera(){
 function getSemanaActualPlan(){ return getSemanaCarrera(); }
 
 function tipoLabel(tipo){
-  return {z2:'🧘 Zona 2 — Base aeróbica', tempo:'⚡ Tempo', intervalos:'🔥 Intervalos', test:'🏁 TEST 5km', descarga:'😌 Descarga', desarrollo:'📈 Desarrollo'}[tipo]||tipo;
+  return {z2:'🧘 Zona 2 — Base aeróbica', tempo:'✶ Tempo', intervalos:'✦ Intervalos', test:'🏁 TEST 5km', descarga:'😌 Descarga', desarrollo:'📈 Desarrollo'}[tipo]||tipo;
 }
 function tipoColor(tipo){
-  return {z2:'#6F7D53,#566341', tempo:'#A4713A,#7A4E24', intervalos:'#A95B47,#7C3F31', test:'#181B1D,#7A4E24', descarga:'#514840,#181B1D', desarrollo:'#A4713A,#7A4E24'}[tipo]||'#A4713A,#7A4E24';
+  return {z2:'#16a34a,#15803d', tempo:'#d97706,#b45309', intervalos:'#dc2626,#b91c1c', test:'#7c3aed,#6d28d9', descarga:'#475467,#344054', desarrollo:'#1d4ed8,#1e40af'}[tipo]||'#1d4ed8,#1e40af';
 }
 
 function mostrarBannerCarrera(routineId){
@@ -1726,8 +1721,8 @@ function renderSexBlock(ex,ei){
   const isWarmupStretch = e.type==='warmup'||e.type==='stretch';
   // Render especial para calentamiento y estiramiento — solo video
   if(isWarmupStretch){
-    const label = e.type==='warmup'?'🔥 Calentamiento':'🧘 Estiramiento';
-    const tagColor = e.type==='warmup'?'rgba(217,119,6,.15);color:var(--gold)':'rgba(164,113,58,.12);color:var(--blue)';
+    const label = e.type==='warmup'?'✦ Calentamiento':'🧘 Estiramiento';
+    const tagColor = e.type==='warmup'?'rgba(217,119,6,.15);color:var(--gold)':'rgba(37,99,235,.12);color:var(--blue)';
     const ytSrc = e.youtubeId ? 'https://www.youtube.com/embed/'+e.youtubeId+'?rel=0&modestbranding=1' : '';
     const ytHtml = ytSrc
       ? '<div style="margin:0 16px 14px;border-radius:var(--r);overflow:hidden;aspect-ratio:16/9;background:#000">'
@@ -1784,7 +1779,7 @@ function renderSexBlock(ex,ei){
   const cs=getCargasSemana(activeSession.routineId||'')[ex.exId];
   const csStr=cs&&!isRun?`📈 Carga sugerida esta semana: ${cs} kg`:'';
   const headerBg=isRun?'background:linear-gradient(90deg,rgba(22,163,74,.06),var(--bg2))':'';
-  const tipoTag=isRun?`<span style="background:rgba(22,163,74,.12);color:var(--green);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-left:8px">🏃 Cardio</span>`:'';
+  const tipoTag=isRun?`<span style="background:rgba(22,163,74,.12);color:var(--green);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-left:8px">↝ Cardio</span>`:'';
 
   // ── Video YouTube si el ejercicio lo tiene ────────────────────
   const ytHtml = e.youtubeId ? `
@@ -1893,7 +1888,7 @@ function renderSetRow(ei,si,set,isRun,ultSet){
 
   let refHtml='';
   if(set._pesoSugerido&&set._fuente){
-    const icono=set._fuente==='plan'?'📋':'⚙️';
+    const icono=set._fuente==='plan'?'▤':'⚙️';
     const color=set._fuente==='plan'?'var(--green)':'var(--orange)';
     const label=set._fuente==='plan'?'Plan':'Rutina';
     refHtml=`<div style="grid-column:2/-1;font-size:10px;padding:1px 0 4px"><span style="color:${color};font-weight:700">${icono} ${label}: ${set._pesoSugerido}kg</span></div>`;
@@ -1920,7 +1915,7 @@ function renderSetRow(ei,si,set,isRun,ultSet){
       </div>`;
 
   const bgColor = isBilateral
-    ? (ambos ? 'rgba(22,163,74,.06)' : ladoL||ladoR ? 'rgba(164,113,58,.06)' : 'transparent')
+    ? (ambos ? 'rgba(22,163,74,.06)' : ladoL||ladoR ? 'rgba(37,99,235,.04)' : 'transparent')
     : (done ? 'rgba(22,163,74,.06)' : 'transparent');
 
   return `<div class="set-row" id="sr-${ei}-${si}" style="flex-wrap:wrap;background:${bgColor};grid-template-columns:28px 1fr 1fr 1fr auto auto">
@@ -2331,11 +2326,11 @@ function reexConfirmar(nuevoExId){
 }
 // ── EDITOR DE RUTINAS ─────────────────────────────────────────
 // Estado temporal del editor
-let re = { id:'', nombre:'', emoji:'🏋', restSec:90, ejercicios:[], seccion:'principal' };
+let re = { id:'', nombre:'', emoji:'◈', restSec:90, ejercicios:[], seccion:'principal' };
 // ejercicios: [{exId, seccion:'calentamiento'|'principal'|'enfriamiento', series:[{peso,reps,tipo}], restSec}]
 
 function openNewRutina(){
-  re = {id:'', nombre:'', emoji:'🏋', restSec:90, ejercicios:[]};
+  re = {id:'', nombre:'', emoji:'◈', restSec:90, ejercicios:[]};
   abrirEditorRutina();
 }
 
@@ -2344,7 +2339,7 @@ function openEditRutina(id){
   re = {
     id: r.id,
     nombre: r.name,
-    emoji: r.emoji||'🏋',
+    emoji: r.emoji||'◈',
     restSec: r.restSec||90,
     ejercicios: (r.exercises||[]).map(exId=>({
       exId,
@@ -2385,9 +2380,9 @@ function reToggleSeccion(sec){
 function reRenderLista(){
   const container=document.getElementById('re-lista');
   const secciones=[
-    {key:'calentamiento', label:'🔥 Calentamiento', color:'var(--gold)'},
-    {key:'principal',     label:'🏋 Principal',      color:'var(--orange)'},
-    {key:'enfriamiento',  label:'🧊 Enfriamiento',   color:'var(--blue)'},
+    {key:'calentamiento', label:'✦ Calentamiento', color:'var(--gold)'},
+    {key:'principal',     label:'◈ Principal',      color:'var(--orange)'},
+    {key:'enfriamiento',  label:'◌ Enfriamiento',   color:'var(--blue)'},
   ];
 
   let html='';
@@ -2420,9 +2415,9 @@ function reRenderLista(){
             <div style="display:flex;gap:4px">
               <select onchange="reMoveSec(${globalIdx},this.value)"
                 style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--ink3);font-size:10px;padding:3px 6px;cursor:pointer">
-                <option value="calentamiento" ${ex.seccion==='calentamiento'?'selected':''}>🔥 Cal.</option>
-                <option value="principal"     ${ex.seccion==='principal'?'selected':''}>🏋 Princ.</option>
-                <option value="enfriamiento"  ${ex.seccion==='enfriamiento'?'selected':''}>🧊 Enf.</option>
+                <option value="calentamiento" ${ex.seccion==='calentamiento'?'selected':''}>✦ Cal.</option>
+                <option value="principal"     ${ex.seccion==='principal'?'selected':''}>◈ Princ.</option>
+                <option value="enfriamiento"  ${ex.seccion==='enfriamiento'?'selected':''}>◌ Enf.</option>
               </select>
               <button onclick="reQuitarEx(${globalIdx})"
                 style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 6px">✕</button>
@@ -2473,7 +2468,7 @@ function reRenderLista(){
     html+='</div>';
   });
 
-  container.innerHTML=html||'<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin ejercicios</div><div class="empty-sub">Toca "+ Agregar ejercicio" para empezar.</div></div>';
+  container.innerHTML=html||'<div class="empty"><div class="empty-icon">▤</div><div class="empty-text">Sin ejercicios</div><div class="empty-sub">Toca "+ Agregar ejercicio" para empezar.</div></div>';
 }
 
 function reMoveSec(idx,sec){
@@ -2601,7 +2596,7 @@ function guardarEditorRutina(){
   const r={
     id: re.id||'r_'+Date.now(),
     name: nombre,
-    emoji: document.getElementById('re-emoji').value||'🏋',
+    emoji: document.getElementById('re-emoji').value||'◈',
     restSec: parseInt(document.getElementById('re-rest').value)||90,
     exercises: re.ejercicios.map(e=>e.exId),
     _secciones: Object.fromEntries(re.ejercicios.map(e=>[e.exId,e.seccion])),
@@ -3487,7 +3482,7 @@ function renderProgCuerpo(){
 
   if(!metsAll.length){
     document.getElementById('cuerpo-kpis').innerHTML='';
-    document.getElementById('cuerpo-charts').innerHTML=`<div class="empty" style="padding:60px 0"><div class="empty-icon">⚖️</div><div class="empty-text">Sin mediciones</div><div class="empty-sub">Toca "+ Añadir" para registrar tu primera medición.</div></div>`;
+    document.getElementById('cuerpo-charts').innerHTML=`<div class="empty" style="padding:60px 0"><div class="empty-icon">◬</div><div class="empty-text">Sin mediciones</div><div class="empty-sub">Toca "+ Añadir" para registrar tu primera medición.</div></div>`;
     document.getElementById('cuerpo-historial').innerHTML='';
     return;
   }
@@ -3751,9 +3746,9 @@ function autoCalcIMC(m){
 
 // ── Mediciones: una métrica a la vez ──────────────────────────
 const MED_METRICAS = [
-  { key:'peso',     label:'Peso',              emoji:'⚖️',  unit:'kg',  step:'0.1', tipo:'number', placeholder:'99.0' },
-  { key:'grasa',    label:'Grasa corporal',    emoji:'🔥',  unit:'%',   step:'0.1', tipo:'number', placeholder:'28.3' },
-  { key:'muscular', label:'Masa muscular',     emoji:'💪',  unit:'kg',  step:'0.1', tipo:'number', placeholder:'36.7' },
+  { key:'peso',     label:'Peso',              emoji:'◬',  unit:'kg',  step:'0.1', tipo:'number', placeholder:'99.0' },
+  { key:'grasa',    label:'Grasa corporal',    emoji:'✦',  unit:'%',   step:'0.1', tipo:'number', placeholder:'28.3' },
+  { key:'muscular', label:'Masa muscular',     emoji:'✦',  unit:'kg',  step:'0.1', tipo:'number', placeholder:'36.7' },
   { key:'imc',      label:'IMC',               emoji:'📊',  unit:'',    step:'0.1', tipo:'number', placeholder:'28.0' },
   { key:'p6',       label:'6 Pliegues',        emoji:'📐',  unit:'mm',  step:'0.5', tipo:'number', placeholder:'140'  },
   { key:'p8',       label:'8 Pliegues',        emoji:'📐',  unit:'mm',  step:'0.5', tipo:'number', placeholder:'186'  },
@@ -3959,7 +3954,7 @@ function renderProgPlan(){
   const el=document.getElementById('prog-plan-content'); if(!el) return;
   const plan=(forge.planes||[]).find(p=>p.activo);
   if(!plan){
-    el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin plan activo</div><div class="empty-sub">Crea un plan desde Perfil → Plan</div></div>`;
+    el.innerHTML=`<div class="empty"><div class="empty-icon">▤</div><div class="empty-text">Sin plan activo</div><div class="empty-sub">Crea un plan desde Perfil → Plan</div></div>`;
     return;
   }
 
@@ -4170,7 +4165,7 @@ function renderAguaCheckpoints(fd){
     const done=cps[i];
     return '<div onclick="toggleAguaCp('+i+')" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer">'
       +'<div style="width:36px;height:36px;border-radius:50%;border:2px solid '+(done?'var(--blue)':'var(--border2)')+';background:'+(done?'var(--blue)':'var(--bg3)')+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'
-      +(done?'<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5"><polyline points="20 6 9 17 4 12"/></svg>':'<span style="font-size:14px">💧</span>')
+      +(done?'<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5"><polyline points="20 6 9 17 4 12"/></svg>':'<span style="font-size:14px">◈</span>')
       +'</div>'
       +'<div style="flex:1">'
       +'<div style="font-size:14px;font-weight:600;color:'+(done?'var(--ink3)':'var(--ink)')+';'+(done?'text-decoration:line-through':'')+'">'+cp.hora+' — '+cp.label+'</div>'
@@ -4184,29 +4179,29 @@ function renderAguaCheckpoints(fd){
 //  SCREEN: NUTRICIÓN
 // ---------------------------------------------------------------
 const COMIDAS=[
-  {id:'desayuno',      emoji:'☀️',  nombre:'Desayuno',    hora:'08:00', grupos:'1 lácteo · 0.5 cereal · 3 carnes',         ejemplo:'Yogur protein + pan molde + 3 huevos + jamón pavo'},
-  {id:'colacion_am',   emoji:'🍎',  nombre:'Colación AM', hora:'10:30', grupos:'1 fruta',                                   ejemplo:'120g arándanos o 1 manzana'},
-  {id:'almuerzo',      emoji:'🍽',  nombre:'Almuerzo',    hora:'13:00', grupos:'4 carnes · verduras',                       ejemplo:'320g merluza + ensalada + limón'},
-  {id:'colacion_pm',   emoji:'🥛',  nombre:'Colación PM', hora:'16:00', grupos:'1 lácteo protein',                         ejemplo:'1 yogur Soprole protein'},
-  {id:'pre_entreno',   emoji:'⚡',  nombre:'Pre-Entreno', hora:'18:00', grupos:'1 fruta · 1 lácteo desc · 1 scoop',        ejemplo:'1 fruta + 200ml leche desc + proteína'},
-  {id:'cena',          emoji:'🌙',  nombre:'Cena',         hora:'20:30', grupos:'2 cereales · 3 carnes · verduras · 0.5 líp',ejemplo:'1 tortilla + 200g pollo + lechuga + 50g palta'},
+  {id:'desayuno',      emoji:'☼',  nombre:'Desayuno',    hora:'08:00', grupos:'1 lácteo · 0.5 cereal · 3 carnes',         ejemplo:'Yogur protein + pan molde + 3 huevos + jamón pavo'},
+  {id:'colacion_am',   emoji:'◍',  nombre:'Colación AM', hora:'10:30', grupos:'1 fruta',                                   ejemplo:'120g arándanos o 1 manzana'},
+  {id:'almuerzo',      emoji:'◐',  nombre:'Almuerzo',    hora:'13:00', grupos:'4 carnes · verduras',                       ejemplo:'320g merluza + ensalada + limón'},
+  {id:'colacion_pm',   emoji:'◓',  nombre:'Colación PM', hora:'16:00', grupos:'1 lácteo protein',                         ejemplo:'1 yogur Soprole protein'},
+  {id:'pre_entreno',   emoji:'✶',  nombre:'Pre-Entreno', hora:'18:00', grupos:'1 fruta · 1 lácteo desc · 1 scoop',        ejemplo:'1 fruta + 200ml leche desc + proteína'},
+  {id:'cena',          emoji:'☾',  nombre:'Cena',         hora:'20:30', grupos:'2 cereales · 3 carnes · verduras · 0.5 líp',ejemplo:'1 tortilla + 200g pollo + lechuga + 50g palta'},
 ];
 const PORCIONES=[
-  {emoji:'🌾',nombre:'Cereales',              meta:'3'},
-  {emoji:'🍎',nombre:'Frutas',                meta:'2'},
-  {emoji:'🍗',nombre:'Carnes bajas en grasa', meta:'12'},
-  {emoji:'🥛',nombre:'Lácteos semidescrem.',  meta:'2'},
-  {emoji:'🥛',nombre:'Lácteos descremados',   meta:'1'},
+  {emoji:'◌',nombre:'Cereales',              meta:'3'},
+  {emoji:'◍',nombre:'Frutas',                meta:'2'},
+  {emoji:'◉',nombre:'Carnes bajas en grasa', meta:'12'},
+  {emoji:'◓',nombre:'Lácteos semidescrem.',  meta:'2'},
+  {emoji:'◓',nombre:'Lácteos descremados',   meta:'1'},
   {emoji:'🥑',nombre:'Lípidos',               meta:'0.5'},
   {emoji:'🫒',nombre:'Aceites',               meta:'1'},
-  {emoji:'🥦',nombre:'Verduras',              meta:'2'},
+  {emoji:'◉',nombre:'Verduras',              meta:'2'},
 ];
 const MENU_SEMANA=[
-  {dia:'Domingo',   r:'Cardio 🏃', d:'Yogur + pan + 3 huevos + fruta', a:'320g merluza + papa + lechuga', c:'Tortilla + 200g pollo + zanahoria + palta'},
-  {dia:'Lunes',     r:'Inf A 🦵',  d:'Yogur + avena + jamón pavo', a:'240g atún + rúcula + tomate', c:'Choclo + 200g pechuga + espinaca + palta'},
-  {dia:'Martes',    r:'Sup A 🏋',  d:'Yogur + pan + 3 huevos + jamón', a:'320g merluza + brócoli + zanahoria', c:'2 tortillas + 200g pollo + lechuga + palta'},
-  {dia:'Miércoles', r:'Inf B 🦵',  d:'Leche + 2 huevos + pan + jamón', a:'320g tilapia + apio + lechuga', c:'Arroz + pollo + zapallo + palta'},
-  {dia:'Jueves',    r:'Sup B 💪',  d:'Yogur + avena + jamón', a:'4 huevos + apio + acelga', c:'Choclo + atún + tomate + palta'},
+  {dia:'Domingo',   r:'Cardio ↝', d:'Yogur + pan + 3 huevos + fruta', a:'320g merluza + papa + lechuga', c:'Tortilla + 200g pollo + zanahoria + palta'},
+  {dia:'Lunes',     r:'Inf A ◉',  d:'Yogur + avena + jamón pavo', a:'240g atún + rúcula + tomate', c:'Choclo + 200g pechuga + espinaca + palta'},
+  {dia:'Martes',    r:'Sup A ◈',  d:'Yogur + pan + 3 huevos + jamón', a:'320g merluza + brócoli + zanahoria', c:'2 tortillas + 200g pollo + lechuga + palta'},
+  {dia:'Miércoles', r:'Inf B ◉',  d:'Leche + 2 huevos + pan + jamón', a:'320g tilapia + apio + lechuga', c:'Arroz + pollo + zapallo + palta'},
+  {dia:'Jueves',    r:'Sup B ✦',  d:'Yogur + avena + jamón', a:'4 huevos + apio + acelga', c:'Choclo + atún + tomate + palta'},
   {dia:'Viernes',   r:'Descanso',  d:'Yogur + pan + 3 huevos', a:'320g corvina + brócoli + champiñones', c:'2 tortillas + pollo + rúcula + palta'},
   {dia:'Sábado',    r:'Descanso',  d:'Leche + avena + 2 huevos + jamón', a:'Camarones + ensalada + zanahoria', c:'Arroz + pechuga + espinaca + nueces'},
 ];
@@ -4272,7 +4267,7 @@ function renderFood(){
   const completadas=Object.values(fd.comidas).filter(c=>c.completada).length;
   const pct=Math.round((completadas/COMIDAS.length)*100);
   document.getElementById('food-stats-row').innerHTML=`
-    <div class="stat-box"><div class="stat-num" style="color:#A4713A">${fd.agua}</div><div class="stat-label">Vasos</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:#22d3ee">${fd.agua}</div><div class="stat-label">Vasos</div></div>
     <div class="stat-box"><div class="stat-num">${completadas}/${COMIDAS.length}</div><div class="stat-label">Comidas</div></div>
     <div class="stat-box"><div class="stat-num" style="color:${pct===100?'var(--green)':'var(--orange)'}">${pct}%</div><div class="stat-label">Adherencia</div></div>`;
   // Agua
@@ -4281,7 +4276,7 @@ function renderFood(){
   // Menú sugerido
   const menu=MENU_SEMANA[d.getDay()];
   const sug=menu&&esHoy?`<div style="background:var(--bg3);border-radius:var(--rl);padding:10px 14px;margin-bottom:10px;border-left:3px solid var(--orange)">
-    <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">📅 Menú sugerido · ${menu.r}</div>
+    <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">▦ Menú sugerido · ${menu.r}</div>
     <div style="font-size:12px;color:var(--ink2);line-height:1.7"><strong style="color:var(--orange)">D:</strong> ${menu.d}<br><strong style="color:var(--orange)">A:</strong> ${menu.a}<br><strong style="color:var(--orange)">C:</strong> ${menu.c}</div>
   </div>`:'';
   document.getElementById('food-comidas-list').innerHTML=sug+COMIDAS.map(c=>{
@@ -4335,9 +4330,9 @@ function cambiarAgua(delta){
 }
 function renderIdeas(){
   const filtros=[
-    {id:'desayuno',label:'☀️ Desayuno'},{id:'almuerzo',label:'🍽 Almuerzo'},
-    {id:'cena',label:'🌙 Cena'},{id:'pre_entreno',label:'⚡ Pre-Entreno'},
-    {id:'colacion_am',label:'🍎 Colación'},{id:'colacion_pm',label:'🥛 PM'},
+    {id:'desayuno',label:'☼ Desayuno'},{id:'almuerzo',label:'◐ Almuerzo'},
+    {id:'cena',label:'☾ Cena'},{id:'pre_entreno',label:'✶ Pre-Entreno'},
+    {id:'colacion_am',label:'◍ Colación'},{id:'colacion_pm',label:'◓ PM'},
   ];
   document.getElementById('ideas-filtro').innerHTML=filtros.map(f=>`
     <button onclick="ideasFiltro='${f.id}';renderIdeas()" style="padding:5px 12px;border-radius:20px;border:1px solid ${ideasFiltro===f.id?'var(--orange)':'var(--border2)'};background:${ideasFiltro===f.id?'var(--bg4)':'var(--bg3)'};color:${ideasFiltro===f.id?'var(--orange)':'var(--ink2)'};font-size:11px;font-weight:600;cursor:pointer">${f.label}</button>`).join('');
@@ -4402,14 +4397,14 @@ function renderHabitsLumen(){
       <div class="lumen-stat"><div class="lumen-num">${maxStr}</div><div class="lumen-lbl">Mejor racha</div><div class="lumen-sub">histórico</div></div>
       <div class="lumen-stat"><div class="lumen-num">${total}</div><div class="lumen-lbl">Días totales</div><div class="lumen-sub">registrados</div></div>
     </div>
-    ${renderLumenHabitoGrid('🏋 Días entrenados','Cada día que completaste un entrenamiento',year,todayStr,d=>entreDias.has(d)?1:-1)}
-    ${renderLumenHabitoGrid('🚫 Días sin alcohol','Bronce = sin alcohol · Terracota = bebiste · Toca un día para marcar',year,todayStr,d=>{
+    ${renderLumenHabitoGrid('◈ Días entrenados','Cada día que completaste un entrenamiento',year,todayStr,d=>entreDias.has(d)?1:-1)}
+    ${renderLumenHabitoGrid('⊘ Días sin alcohol','Bronce = sin alcohol · Terracota = bebiste · Toca un día para marcar',year,todayStr,d=>{
       const h=(forge.habitos||[]).find(x=>x.tipo==='alcohol');
       if(!h) return 1; // sin registro = sin alcohol (verde)
       const r=(h.registros||{})[d];
       return r==='bebio'?0:1; // bebio=rojo, sin registro=verde
     }, 'alcohol')}
-    ${renderLumenHabitoGrid('💧 Meta de agua (10 vasos)','Días que alcanzaste los 10 vasos',year,todayStr,d=>{
+    ${renderLumenHabitoGrid('◈ Meta de agua (10 vasos)','Días que alcanzaste los 10 vasos',year,todayStr,d=>{
       try{ const r=localStorage.getItem('ff_'+d); if(!r) return -1; const fd=JSON.parse(r); return fd.agua>=10?1:fd.agua>=6?0.5:fd.agua>0?0.25:-1; }catch{ return -1; }
     })}`;
 }
@@ -4488,7 +4483,7 @@ function renderPerfilPlan(){
   const el=document.getElementById('perfil-plan'); if(!el) return;
   const plan=(forge.planes||[]).find(p=>p.activo);
   if(!plan){
-    el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin plan activo</div><div class="empty-sub">Crea tu plan de 16 semanas con progresión +2.5% semanal en los 3 ejercicios clave.</div><button class="btn btn-p" onclick="document.getElementById('plan-inicio-wrap').innerHTML=renderDatePicker('plan-inicio',today());openModal('modal-plan')" style="margin-top:16px">🚀 Crear plan</button></div>`;
+    el.innerHTML=`<div class="empty"><div class="empty-icon">▤</div><div class="empty-text">Sin plan activo</div><div class="empty-sub">Crea tu plan de 16 semanas con progresión +2.5% semanal en los 3 ejercicios clave.</div><button class="btn btn-p" onclick="document.getElementById('plan-inicio-wrap').innerHTML=renderDatePicker('plan-inicio',today());openModal('modal-plan')" style="margin-top:16px">🚀 Crear plan</button></div>`;
     return;
   }
   const semG=semanaActualPlan(plan);
@@ -4527,7 +4522,7 @@ function renderPerfilPlan(){
       return `<div class="card" style="margin-bottom:8px;${activo?'border-color:var(--orange)':''}">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div>
-            <div style="font-size:13px;font-weight:700;color:${activo?'var(--orange)':'var(--ink)'}">${done?'✅ ':''}Bloque ${i+1}: ${b.nombre}</div>
+            <div style="font-size:13px;font-weight:700;color:${activo?'var(--orange)':'var(--ink)'}">${done?'✓ ':''}Bloque ${i+1}: ${b.nombre}</div>
             <div style="font-size:11px;color:var(--ink3)">Semanas ${b.semInicio}–${b.semFin}</div>
           </div>
           ${activo?`<span style="background:var(--orange);color:#fff;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700">ACTIVO</span>`:''}
@@ -4541,7 +4536,7 @@ function renderPerfilPlan(){
       <div style="font-size:12px;color:var(--ink3);margin-bottom:12px">${(forge.routines||[]).length} rutinas guardadas localmente</div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <button class="btn btn-p" onclick="syncDesdeFirebase()" style="font-size:12px">
-          ☁️ Descargar desde Firebase (sobreescribir local)
+          ◌ Descargar desde Firebase (sobreescribir local)
         </button>
         <button class="btn btn-s" onclick="syncHaciaFirebase()" style="font-size:12px">
           ⬆️ Subir local a Firebase (sobreescribir nube)
@@ -4572,7 +4567,7 @@ async function syncDesdeFirebase(){
     renderTrain();
     renderHome();
     renderPerfil();
-    showToast(`✅ Sincronizado: ${(forge.routines||[]).length} rutinas`,2500,'ok');
+    showToast(`✓ Sincronizado: ${(forge.routines||[]).length} rutinas`,2500,'ok');
   }catch(e){ showToast('Error: '+e.message,3000); }
 }
 
@@ -4584,7 +4579,7 @@ async function syncHaciaFirebase(){
   try{
     const ref=firebase.firestore().collection('users').doc(user.uid).collection('data').doc('forge');
     await ref.set(forge);
-    showToast('✅ Firebase actualizado',2500,'ok');
+    showToast('✓ Firebase actualizado',2500,'ok');
   }catch(e){ showToast('Error: '+e.message,3000); }
 }
 
@@ -4605,7 +4600,7 @@ function limpiarRutinasLocal(){
   saveDB();
   renderTrain();
   renderPerfil();
-  showToast(`✅ ${antes-(forge.routines||[]).length} duplicadas eliminadas · ${(forge.routines||[]).length} rutinas`,3000,'ok');
+  showToast(`✓ ${antes-(forge.routines||[]).length} duplicadas eliminadas · ${(forge.routines||[]).length} rutinas`,3000,'ok');
 }
 
 // ── Logros ─────────────────────────────────────────────────────
@@ -4613,7 +4608,7 @@ function renderLogros(){
   const el=document.getElementById('perfil-logros'); if(!el) return;
   const logros=forge.logros||[];
   if(!logros.length){
-    el.innerHTML=`<div class="empty"><div class="empty-icon">🏆</div><div class="empty-text">Sin logros aún</div><div class="empty-sub">Completa sesiones para desbloquear logros.</div></div>`;
+    el.innerHTML=`<div class="empty"><div class="empty-icon">⬢</div><div class="empty-text">Sin logros aún</div><div class="empty-sub">Completa sesiones para desbloquear logros.</div></div>`;
     return;
   }
   el.innerHTML=`<div class="section-label">Logros desbloqueados</div>`+
@@ -4628,10 +4623,10 @@ function checkLogros(){
   const logros=forge.logros||[];
   const ids=new Set(logros.map(l=>l.id));
   const nuevos=[];
-  if(ses.length===1&&!ids.has('first')) nuevos.push({id:'first',icon:'🔥',title:'Primera sesión',sub:'Comenzaste tu camino en Melqart.'});
-  if(ses.length>=10&&!ids.has('ten')) nuevos.push({id:'ten',icon:'💪',title:'10 sesiones',sub:'Constancia que forja resultados.'});
-  if(ses.length>=50&&!ids.has('fifty')) nuevos.push({id:'fifty',icon:'🏆',title:'50 sesiones',sub:'Has consolidado tu disciplina.'});
-  if(calcStreak()>=7&&!ids.has('week')) nuevos.push({id:'week',icon:'⚡',title:'Racha de 7 días',sub:'Siete días de constancia.'});
+  if(ses.length===1&&!ids.has('first')) nuevos.push({id:'first',icon:'✦',title:'Primera sesión',sub:'Comenzaste tu camino en Melqart.'});
+  if(ses.length>=10&&!ids.has('ten')) nuevos.push({id:'ten',icon:'✦',title:'10 sesiones',sub:'Constancia que forja resultados.'});
+  if(ses.length>=50&&!ids.has('fifty')) nuevos.push({id:'fifty',icon:'⬢',title:'50 sesiones',sub:'Has consolidado tu disciplina.'});
+  if(calcStreak()>=7&&!ids.has('week')) nuevos.push({id:'week',icon:'✶',title:'Racha de 7 días',sub:'Siete días de constancia.'});
   if(calcStreak()>=30&&!ids.has('month')) nuevos.push({id:'month',icon:'🌟',title:'Racha de 30 días',sub:'Un mes de consistencia total.'});
   if(nuevos.length){
     if(!forge.logros) forge.logros=[];
@@ -4670,13 +4665,13 @@ function renderImpStep1(){
       <div onclick="document.getElementById('imp-f1').click()"
         style="border:2px dashed var(--border2);border-radius:var(--rl);padding:20px;text-align:center;cursor:pointer;transition:border-color .1s"
         onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='var(--border2)'">
-        <div style="font-size:28px;margin-bottom:6px">🏋</div>
+        <div style="font-size:28px;margin-bottom:6px">◈</div>
         <div id="imp-lbl-1" style="font-size:12px;color:var(--ink3)">Toca para seleccionar workout_history.csv</div>
       </div>
       <input type="file" id="imp-f1" accept=".csv" style="display:none" onchange="onImpFile(event,1)">
     </div>
     <div style="margin-bottom:16px">
-      <div class="section-label">⚖️ Mediciones (measurements.csv — opcional)</div>
+      <div class="section-label">◬ Mediciones (measurements.csv — opcional)</div>
       <div onclick="document.getElementById('imp-f2').click()"
         style="border:2px dashed var(--border2);border-radius:var(--rl);padding:16px;text-align:center;cursor:pointer;transition:border-color .1s"
         onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='var(--border2)'">
@@ -5127,81 +5122,3 @@ document.addEventListener('keydown', e=>{
 
 // ---------------------------------------------------------------
 loadDB();
-
-(function(){
-  const MQ_VERSION = 'v96';
-  const MQ_MARK = `
-  <svg class="mq-brand-mark" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <rect x="3" y="3" width="90" height="90" rx="23" fill="#FCFAF6" stroke="#D8C9B2" stroke-width="2"/>
-    <path d="M26 68V28h10l12 16 12-16h10v40H60V45L48 60 36 45v23z" fill="none" stroke="#181B1D" stroke-width="6.6" stroke-linejoin="round"/>
-    <path d="M49 13c4 5 6 8 6 13 0 6-3 10-7 15-2-4-4-7-4-11 0-5 2-8 5-12zm-6 7c-2 3-3 5-3 8 0 3 1 5 3 8 2-3 4-5 4-8 0-3-2-5-4-8z" fill="#A4713A"/>
-    <path d="M40 74c4-6 6-10 8-16 2 6 4 10 8 16" fill="none" stroke="#A4713A" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M18 63c6 4 12 4 18 0M18 71c6 4 12 4 18 0" fill="none" stroke="#A4713A" stroke-width="3.2" stroke-linecap="round" opacity=".9"/>
-    <path d="M60 63c6 4 12 4 18 0M60 71c6 4 12 4 18 0" fill="none" stroke="#A4713A" stroke-width="3.2" stroke-linecap="round" opacity=".9"/>
-  </svg>`;
-  function headerBrand(){
-    return `<div class="mq-brand">${MQ_MARK}<div class="mq-brand-copy"><div class="mq-word">MEL<span class="accent">Q</span>ART</div><div class="mq-ver">${MQ_VERSION}</div></div></div>`;
-  }
-  function authBrand(){
-    return `<div class="mq-auth-brand">${MQ_MARK}<div class="mq-word">MEL<span class="accent">Q</span>ART</div><div class="mq-tag">Legado ancestral. Rendimiento moderno.</div></div>`;
-  }
-  function applyBrandSystem(){
-    document.querySelectorAll('.tlogo').forEach(el=>{ el.innerHTML = headerBrand(); el.classList.add('mq-brand-slot'); });
-    const authLogo = document.querySelector('.auth-logo');
-    if(authLogo){ authLogo.innerHTML = authBrand(); }
-    const authSub = document.querySelector('.auth-sub');
-    if(authSub){ authSub.style.display = 'none'; }
-  }
-  const symbolMap = new Map([
-    ['👋',''],['🏋','◈'],['💪','✦'],['🦵','◉'],['🏃','↝'],['⚡','✶'],['🌙','☾'],['🔥','✦'],
-    ['🍎','◍'],['💧','◈'],['📅','▦'],['📋','▤'],['☁️','◌'],['☁','◌'],['🏆','⬢'],['🚫','⊘'],
-    ['☀️','☼'],['⚖️','◬'],['🍽','◐'],['🥛','◓'],['🧊','◌'],['✅','✓'],['❌','×'],['🌾','◌'],
-    ['🥚','◉'],['🍗','◉'],['🥦','◉'],['🫒','◉'],['🏺','◉']
-  ]);
-  const emojiRe = /[👋🏋💪🦵🏃⚡🌙🔥🍎💧📅📋☁🏆🚫☀⚖🍽🥛🧊✅❌🌾🥚🍗🥦🫒🏺]/;
-  function normalizeTextNode(node){
-    if(!node || !node.nodeValue || !emojiRe.test(node.nodeValue)) return;
-    let t = node.nodeValue;
-    symbolMap.forEach((v,k)=>{ t = t.split(k).join(v); });
-    t = t.replace(/\s{2,}/g,' ');
-    if(t !== node.nodeValue) node.nodeValue = t;
-  }
-  function normalizeSubtree(root){
-    if(!root) return;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-      acceptNode(node){
-        const p = node.parentElement;
-        if(!p) return NodeFilter.FILTER_REJECT;
-        if(['SCRIPT','STYLE','TEXTAREA','INPUT','OPTION'].includes(p.tagName)) return NodeFilter.FILTER_REJECT;
-        return emojiRe.test(node.nodeValue||'') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-      }
-    });
-    const nodes = [];
-    while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(normalizeTextNode);
-  }
-  function toneAccents(){
-    document.querySelectorAll('.empty-icon,.rutina-emoji,.hevy-emoji,.ses-emoji').forEach(el=>{ el.style.color='var(--bronze2)'; });
-    const titles = document.querySelectorAll('[style*="Hola,"]');
-    titles.forEach(el=> el.style.fontFamily = 'var(--fd)');
-  }
-  function patchStaticTexts(){
-    document.querySelectorAll('.modal-title').forEach(el=>{ el.textContent = el.textContent.replace('Objetivo de peso','Objetivo de peso'); });
-  }
-  function enhance(){ applyBrandSystem(); normalizeSubtree(document.body); toneAccents(); patchStaticTexts(); }
-  document.addEventListener('DOMContentLoaded', ()=>{
-    enhance();
-    const obs = new MutationObserver((muts)=>{
-      let needs=false;
-      muts.forEach(m=>{
-        if(m.type==='characterData'){ normalizeTextNode(m.target); needs=true; }
-        m.addedNodes && m.addedNodes.forEach(n=>{
-          if(n.nodeType===3){ normalizeTextNode(n); needs=true; }
-          else if(n.nodeType===1){ normalizeSubtree(n); needs=true; }
-        });
-      });
-      if(needs){ applyBrandSystem(); toneAccents(); }
-    });
-    obs.observe(document.body, {subtree:true, childList:true, characterData:true});
-  });
-})();

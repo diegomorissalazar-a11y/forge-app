@@ -1,22 +1,23 @@
 {
   "brand": "MELQART",
-  "version": "v96",
+  "version": "v97-fast",
   "colors": {
     "obsidian": "#181B1D",
     "bronze": "#A4713A",
     "bronzeDeep": "#7A4E24",
     "sandstone": "#D8C9B2",
-    "stone": "#F3EFE7",
+    "stone": "#F2EFE6",
     "ivory": "#FCFAF6",
     "oliveSuccess": "#6F7D53",
     "terracottaAlert": "#9A6552"
   },
-  "typography": {
+  "fonts": {
     "display": "Cinzel",
     "ui": "Montserrat"
   },
-  "radius": {
-    "sm": "12px",
-    "lg": "22px"
-  }
+  "performance": [
+    "No MutationObserver",
+    "No runtime emoji transform",
+    "Reference images not loaded by app"
+  ]
 }
