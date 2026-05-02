@@ -579,3 +579,13 @@ body{background:var(--bg);}
   .mq-brand-wordmark{height:15px!important;max-width:126px!important;}
   .home-greet-title{font-size:20px!important;}
 }
+
+
+/* v105 logo applied */
+.mq-brand-wordmark,.mq-auth-wordmark{object-fit:contain;image-rendering:auto;display:block;background:transparent}
+.mq-brand-wordmark{height:26px !important;max-width:170px !important;width:auto !important}
+.mq-auth-wordmark{width:260px !important;max-width:82vw !important;height:auto !important}
+@media (max-width:480px){
+  .mq-brand-wordmark{height:22px !important;max-width:145px !important;}
+  .mq-auth-wordmark{width:230px !important;max-width:84vw !important;}
+}
