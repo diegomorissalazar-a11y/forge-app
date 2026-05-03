@@ -73,6 +73,8 @@ Sube todo el contenido de esta carpeta a la raíz del repo. `index.html`, `style
 - Conserva hotfix de scroll y favicon M.
 
 
-## v105
-- Nuevo wordmark MELQART incorporado como imagen PNG en login y todos los headers.
-- Reemplazo global de refs previas del logo.
+## v107 export fix
+- Botón Exportar visible con icono y texto.
+- Favicon M limpio con cache busting.
+- Safe area inferior reforzado para iPhone.
+- Wordmark limpio aplicado si está disponible.

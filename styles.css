@@ -581,11 +581,24 @@ body{background:var(--bg);}
 }
 
 
-/* v105 logo applied */
-.mq-brand-wordmark,.mq-auth-wordmark{object-fit:contain;image-rendering:auto;display:block;background:transparent}
-.mq-brand-wordmark{height:26px !important;max-width:170px !important;width:auto !important}
-.mq-auth-wordmark{width:260px !important;max-width:82vw !important;height:auto !important}
-@media (max-width:480px){
-  .mq-brand-wordmark{height:22px !important;max-width:145px !important;}
-  .mq-auth-wordmark{width:230px !important;max-width:84vw !important;}
-}
+/* v107 export fix + safe area */
+html,body{height:100%;overflow:auto !important;background:var(--bg)}
+#app{min-height:100dvh;height:100dvh;overflow:hidden;width:100%;}
+#wrap{flex:1;min-height:0;overflow:hidden;position:relative;display:flex;flex-direction:column;}
+.screen{display:none;flex-direction:column;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scroll-padding-bottom:120px;}
+.screen.on{display:flex;}
+#s-home>div:last-child,#train-home,#prog-ejercicios,#prog-cuerpo,#prog-fotos,#prog-plan,#food-registro,#food-ideas,#food-pauta,#perfil-habitos,#perfil-plan,#perfil-logros{padding-bottom:calc(112px + env(safe-area-inset-bottom)) !important;box-sizing:border-box;}
+nav{height:calc(74px + env(safe-area-inset-bottom)) !important;min-height:calc(74px + env(safe-area-inset-bottom)) !important;padding-bottom:env(safe-area-inset-bottom) !important;align-items:flex-start !important;background:var(--bg2);}
+.nb{height:74px !important;min-height:74px !important;padding:8px 2px 6px !important;gap:5px !important;overflow:visible !important;font-size:9px !important;line-height:1.1 !important;}
+.nb svg{width:22px!important;height:22px!important;flex:0 0 22px!important;}
+.toast{bottom:calc(92px + env(safe-area-inset-bottom)) !important;}
+.rest-ov{bottom:calc(92px + env(safe-area-inset-bottom)) !important;}
+.export-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;min-height:42px!important;padding:0 16px!important;border:1px solid var(--border2)!important;border-radius:18px!important;background:var(--bg2)!important;color:var(--ink)!important;font-family:var(--fb)!important;font-size:14px!important;font-weight:700!important;line-height:1!important;white-space:nowrap!important;width:auto!important;box-shadow:none!important;text-transform:none!important;letter-spacing:.2px!important;}
+.export-btn .export-icon{display:inline-flex!important;align-items:center!important;justify-content:center!important;color:var(--ink3)!important;font-size:13px!important;line-height:1!important;}
+.export-btn .export-label{display:inline-block!important;color:var(--ink)!important;font-size:14px!important;font-weight:700!important;line-height:1!important;}
+.export-btn *{visibility:visible!important;opacity:1!important;}
+.export-btn:active{border-color:var(--bronze)!important;color:var(--bronze2)!important;background:rgba(164,113,58,.06)!important;}
+.mq-brand-wordmark,.mq-auth-wordmark{object-fit:contain;image-rendering:auto;display:block;background:transparent;}
+.mq-brand-wordmark{height:26px !important;max-width:170px !important;width:auto !important;}
+.mq-auth-wordmark{width:260px !important;max-width:82vw !important;height:auto !important;}
+@media(max-width:480px){.mq-brand-wordmark{height:22px!important;max-width:145px!important}.mq-auth-wordmark{width:230px!important;max-width:84vw!important}.export-btn{min-height:38px!important;padding:0 14px!important;font-size:13px!important}.export-btn .export-label{font-size:13px!important}}
