@@ -1,0 +1,52 @@
+{
+  "brand": "MELQART",
+  "version": "v200",
+  "modes": {
+    "light": {
+      "bg": "#FAFAF7",
+      "surface": "#FFFFFF",
+      "surfaceAlt": "#ECE6DA",
+      "text": "#15151A",
+      "primary": "#5B2A86",
+      "primaryDeep": "#2D1452",
+      "lavender": "#B79CFF",
+      "gold": "#D4AF37",
+      "bronze": "#B8860B",
+      "turquoise": "#2EACB7"
+    },
+    "dark": {
+      "bg": "#0F1115",
+      "surface": "#121826",
+      "surfaceAlt": "#192132",
+      "text": "#FAFAF7",
+      "primary": "#9F62D0",
+      "primaryDeep": "#5B2A86",
+      "lavender": "#B79CFF",
+      "gold": "#D4AF37",
+      "bronze": "#B8860B",
+      "turquoise": "#2EACB7"
+    }
+  },
+  "icons": [
+    "bowl",
+    "flame",
+    "goal",
+    "home",
+    "laurel",
+    "medal",
+    "nutrition",
+    "plan",
+    "profile",
+    "run",
+    "ship",
+    "stats",
+    "streak",
+    "train",
+    "water",
+    "weight"
+  ],
+  "typography": {
+    "ui": "Montserrat",
+    "brand": "MELQART wordmark asset"
+  }
+}
