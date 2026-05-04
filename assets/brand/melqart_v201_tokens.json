@@ -1,0 +1,30 @@
+{
+  "version": "v201",
+  "colors": {
+    "purple": "#5B2A86",
+    "deepPurple": "#2D1452",
+    "lavender": "#B79CFF",
+    "gold": "#D4AF37",
+    "bronze": "#B8860B",
+    "turquoise": "#2EC4C7",
+    "charcoal": "#0F1115",
+    "night": "#121826",
+    "ivory": "#FAFAF7",
+    "sand": "#ECE6DA"
+  },
+  "typography": {
+    "kpi": "Inter Tight Semibold 34-40",
+    "section": "Inter Semibold 20-24",
+    "body": "Inter Regular 14-16",
+    "labels": "Inter Medium 12-14",
+    "captions": "Inter Regular 11-12"
+  },
+  "homeOrder": [
+    "logo",
+    "greeting",
+    "plan",
+    "weight-chart",
+    "water-nutrition-streak",
+    "recent-trainings-export"
+  ]
+}
