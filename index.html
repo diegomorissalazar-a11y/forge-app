@@ -6,23 +6,20 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#F2EFE6">
-<link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=202">
-<link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=202">
-<link rel="apple-touch-icon" href="assets/brand/melqart_favicon_m.png?v=202">
-<title>MELQART v202</title>
+<link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=107">
+<link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=107">
+<link rel="apple-touch-icon" href="assets/brand/melqart_favicon_m.png?v=107">
+<title>MELQART v107</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@600;700;800&display=swap" rel="stylesheet">
-<script>
-(function(){try{var t=localStorage.getItem('mq_theme')||'auto';var d=t==='auto'?(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.setAttribute('data-theme',d);}catch(e){}})();
-</script>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
 <!-- AUTH -->
 <div id="auth">
-  <div class="mq-auth-brand"><img class="mq-auth-wordmark" src="assets/brand/melqart_wordmark_custom.svg?v=202" alt="MELQART"></div>
+  <div class="mq-auth-brand"><img class="mq-auth-wordmark" src="assets/brand/melqart_wordmark_clean.png?v=107" alt="MELQART"></div>
   <div class="auth-tabs">
     <button class="auth-tab on" id="atab-in"  onclick="authMode('in')">Entrar</button>
     <button class="auth-tab"   id="atab-up"   onclick="authMode('up')">Crear cuenta</button>
@@ -46,7 +43,7 @@
 <!-- -- SCREEN: INICIO -- -->
 <div id="s-home" class="screen on">
   <div class="topbar">
-    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_custom.svg?v=202" alt="MELQART"></div>
+    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_clean.png?v=107" alt="MELQART"></div>
     <div style="display:flex;align-items:center;gap:8px">
       <div id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--green)"></div>
       <div id="user-btn" onclick="toggleUserMenu()" style="width:32px;height:32px;border-radius:50%;background:var(--orange);color:#fff;display:none;align-items:center;justify-content:center;font-size:12px;font-weight:800;cursor:pointer"></div>
@@ -58,14 +55,14 @@
     <div id="home-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px"></div>
     <div id="home-streak-banner" style="margin-bottom:16px"></div>
     <div id="home-peso-banner" style="margin-bottom:16px"></div>
-    <div id="home-habits-banner" style="margin-bottom:16px"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div class="section-label" style="margin-bottom:0">Últimos entrenamientos</div>
       <div style="display:flex;gap:6px;align-items:center">
-        <select id="export-semanas" class="dp-sel export-select" style="font-size:11px;padding:5px 8px;width:auto">
+        <select id="export-semanas" class="dp-sel" style="font-size:11px;padding:5px 8px;width:auto">
+          <option value="1">1 semana</option>
+          <option value="2">2 semanas</option>
           <option value="4" selected>4 semanas</option>
           <option value="8">8 semanas</option>
-          <option value="16">16 semanas</option>
           <option value="0">Todo</option>
         </select>
         <button onclick="exportarSemana()" class="btn btn-s btn-sm export-btn" type="button"><span class="export-icon">▤</span><span class="export-label">Exportar</span></button>
@@ -78,7 +75,7 @@
 <!-- -- SCREEN: ENTRENAR -- -->
 <div id="s-train" class="screen">
   <div class="topbar">
-    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_custom.svg?v=202" alt="MELQART"></div>
+    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_clean.png?v=107" alt="MELQART"></div>
     <div id="train-topbar-right" style="display:flex;align-items:center;gap:8px">
       <span style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Rutinas</span>
     </div>
@@ -112,7 +109,7 @@
 <!-- -- SCREEN: PROGRESO -- -->
 <div id="s-progress" class="screen">
   <div class="topbar">
-    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_custom.svg?v=202" alt="MELQART"></div>
+    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_clean.png?v=107" alt="MELQART"></div>
     <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Estadísticas</div>
   </div>
   <div class="tab-row">
@@ -159,7 +156,7 @@
 <!-- -- SCREEN: NUTRICIÓN -- -->
 <div id="s-food" class="screen">
   <div class="topbar">
-    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_custom.svg?v=202" alt="MELQART"></div>
+    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_clean.png?v=107" alt="MELQART"></div>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="food-fecha-lbl" style="font-size:11px;color:var(--ink3)"></span>
       <button onclick="cambiarDia(-1)" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:18px;line-height:1">‹</button>
@@ -216,7 +213,7 @@
 <!-- -- SCREEN: PERFIL -- -->
 <div id="s-perfil" class="screen">
   <div class="topbar">
-    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_custom.svg?v=202" alt="MELQART"></div>
+    <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_clean.png?v=107" alt="MELQART"></div>
     <button class="btn btn-p btn-sm" id="perfil-action-btn">+ Nuevo</button>
   </div>
   <div class="tab-row">

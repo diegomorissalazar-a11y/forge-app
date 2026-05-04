@@ -957,8 +957,8 @@ function renderSesCard(s, hoy){
     metaRow=`
       <div class="hm-item"><div class="hm-label">Distancia</div><div class="hm-val">${distStr}</div></div>
       <div class="hm-item"><div class="hm-label">Ritmo</div><div class="hm-val">${ritmoStr}</div></div>
-      ${ritmoData.fcMedia>0?`<div class="hm-item"><div class="hm-label">FC media</div><div class="hm-val" style="color:#f87171"> ${ritmoData.fcMedia}</div></div>`:''}
-      ${ritmoData.pasos>0?`<div class="hm-item"><div class="hm-label">Pasos</div><div class="hm-val" style="color:var(--blue)">↝ ${ritmoData.pasos.toLocaleString('es')}</div></div>`:''}`;
+      ${ritmoData.fcMedia>0?`<div class="hm-item"><div class="hm-label">FC media</div><div class="hm-val" style="color:#f87171">❤️ ${ritmoData.fcMedia}</div></div>`:''}
+      ${ritmoData.pasos>0?`<div class="hm-item"><div class="hm-label">Pasos</div><div class="hm-val" style="color:var(--blue)">👟 ${ritmoData.pasos.toLocaleString('es')}</div></div>`:''}`;
   } else {
     const volStr = s.totalVolume ? `${Math.round(s.totalVolume).toLocaleString('es')} kg` : '—';
     const nSeries = (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(s=>s.done).length,0);
@@ -969,8 +969,8 @@ function renderSesCard(s, hoy){
     metaRow=`
       <div class="hm-item"><div class="hm-label">Volumen</div><div class="hm-val">${volStr}</div></div>
       ${nSeries?`<div class="hm-item"><div class="hm-label">Series</div><div class="hm-val">${nSeries}</div></div>`:''}
-      ${records?`<div class="hm-item"><div class="hm-label">Récords</div><div class="hm-val">◈ ${records}</div></div>`:''}
-      ${fcVal>0?`<div class="hm-item"><div class="hm-label">FC media</div><div class="hm-val" style="color:#f87171"> ${fcVal} bpm</div></div>`:''}
+      ${records?`<div class="hm-item"><div class="hm-label">Récords</div><div class="hm-val">🏅 ${records}</div></div>`:''}
+      ${fcVal>0?`<div class="hm-item"><div class="hm-label">FC media</div><div class="hm-val" style="color:#f87171">❤️ ${fcVal} bpm</div></div>`:''}
       ${kcalVal>0?`<div class="hm-item"><div class="hm-label">Calorías</div><div class="hm-val" style="color:var(--gold)">✦ ${kcalVal} kcal</div></div>`:''}`;
   }
 
@@ -1035,7 +1035,7 @@ function openSesDetail(id){
         <div class="hm-item"><div class="hm-label">Tiempo</div><div class="hm-val">${dur}</div></div>
         <div class="hm-item"><div class="hm-label">Volumen</div><div class="hm-val">${vol}</div></div>
         <div class="hm-item"><div class="hm-label">Series</div><div class="hm-val">${nS}</div></div>
-        ${rec?`<div class="hm-item"><div class="hm-label">Récords</div><div class="hm-val">◈ ${rec}</div></div>`:''}
+        ${rec?`<div class="hm-item"><div class="hm-label">Récords</div><div class="hm-val">🏅 ${rec}</div></div>`:''}
       </div>
     </div>
     ${div.length?`<div style="padding:16px;border-bottom:1px solid var(--border)">
@@ -1065,7 +1065,7 @@ function openSesDetail(id){
             <span style="font-size:16px;font-weight:700;color:var(--ink)">${i+1}</span>
             <span style="font-size:14px;color:var(--ink2)">${isRun?
               [set.distance?set.distance+'km':'',set.time||''].filter(Boolean).join(' · ')+
-              (set.fc?` ${set.fc}bpm`:'')+(set.pasos?` ↝${parseInt(set.pasos).toLocaleString('es')}p`:'')
+              (set.fc?` ❤️${set.fc}bpm`:'')+(set.pasos?` 👟${parseInt(set.pasos).toLocaleString('es')}p`:'')
               :(set.weight||0)+' kg × '+(set.reps||0)}</span>
           </div>`).join('')}
         </div>`;
@@ -1122,8 +1122,8 @@ function renderEditSesExs(s){
           </div>
           <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:6px">
             <div></div>
-            <input class="inp" type="number" placeholder=" FC media (bpm)" value="${set.fc||''}" oninput="updateEditSet('${s.id}',${ei},${si},'fc',this.value)" style="padding:7px;font-size:12px;color:#f87171;border-color:#7f1d1d" inputmode="numeric">
-            <input class="inp" type="number" placeholder="↝ Pasos" value="${set.pasos||''}" oninput="updateEditSet('${s.id}',${ei},${si},'pasos',this.value)" style="padding:7px;font-size:12px;color:var(--blue);border-color:#1e3a8a" inputmode="numeric">
+            <input class="inp" type="number" placeholder="❤️ FC media (bpm)" value="${set.fc||''}" oninput="updateEditSet('${s.id}',${ei},${si},'fc',this.value)" style="padding:7px;font-size:12px;color:#f87171;border-color:#7f1d1d" inputmode="numeric">
+            <input class="inp" type="number" placeholder="👟 Pasos" value="${set.pasos||''}" oninput="updateEditSet('${s.id}',${ei},${si},'pasos',this.value)" style="padding:7px;font-size:12px;color:var(--blue);border-color:#1e3a8a" inputmode="numeric">
           </div>
         </div>
       `:`
@@ -1683,7 +1683,7 @@ function getSemanaCarrera(){
 function getSemanaActualPlan(){ return getSemanaCarrera(); }
 
 function tipoLabel(tipo){
-  return {z2:'🧘 Zona 2 — Base aeróbica', tempo:'✶ Tempo', intervalos:'✦ Intervalos', test:'◇ TEST 5km', descarga:'😌 Descarga', desarrollo:'▥ Desarrollo'}[tipo]||tipo;
+  return {z2:'🧘 Zona 2 — Base aeróbica', tempo:'✶ Tempo', intervalos:'✦ Intervalos', test:'🏁 TEST 5km', descarga:'😌 Descarga', desarrollo:'📈 Desarrollo'}[tipo]||tipo;
 }
 function tipoColor(tipo){
   return {z2:'#16a34a,#15803d', tempo:'#d97706,#b45309', intervalos:'#dc2626,#b91c1c', test:'#7c3aed,#6d28d9', descarga:'#475467,#344054', desarrollo:'#1d4ed8,#1e40af'}[tipo]||'#1d4ed8,#1e40af';
@@ -1782,8 +1782,8 @@ function renderSexBlock(ex,ei){
     const fc=sets.find(s=>s.fc);
     const pasos=sets.find(s=>s.pasos);
     ultCardioStr=dist>0?`${dist.toFixed(2)}km`:'';
-    if(fc) ultCardioStr+=` · ${fc.fc}bpm`;
-    if(pasos) ultCardioStr+=` · ↝${parseInt(pasos.pasos).toLocaleString('es')}p`;
+    if(fc) ultCardioStr+=` · ❤️${fc.fc}bpm`;
+    if(pasos) ultCardioStr+=` · 👟${parseInt(pasos.pasos).toLocaleString('es')}p`;
   }
 
   // ── PR ────────────────────────────────────────────────────────
@@ -1797,7 +1797,7 @@ function renderSexBlock(ex,ei){
   }
 
   const cs=getCargasSemana(activeSession.routineId||'')[ex.exId];
-  const csStr=cs&&!isRun?`▥ Carga sugerida esta semana: ${cs} kg`:'';
+  const csStr=cs&&!isRun?`📈 Carga sugerida esta semana: ${cs} kg`:'';
   const headerBg=isRun?'background:linear-gradient(90deg,rgba(22,163,74,.06),var(--bg2))':'';
   const tipoTag=isRun?`<span style="background:rgba(22,163,74,.12);color:var(--green);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-left:8px">↝ Cardio</span>`:'';
 
@@ -1831,7 +1831,7 @@ function renderSexBlock(ex,ei){
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
           <div class="sex-name">${e.name}</div>${tipoTag}
         </div>
-        ${prStr?`<div class="sex-pr" style="margin-top:2px;color:${isRun?'var(--green)':'var(--gold)'}">◈ ${prStr}</div>`:''}
+        ${prStr?`<div class="sex-pr" style="margin-top:2px;color:${isRun?'var(--green)':'var(--gold)'}">🏅 ${prStr}</div>`:''}
         ${isRun&&ultCardioStr?`<div style="font-size:11px;color:var(--green);margin-top:2px">Última: ${ultCardioStr}</div>`:''}
       </div>
       <button class="bicon" onclick="abrirReemplazarEx(${ei})" title="Reemplazar ejercicio" style="color:var(--ink3)">
@@ -2874,7 +2874,7 @@ function crearPlan(){
 
   saveDB();
   closeModal('modal-plan');
-  showToast('↗ Plan creado · 5 rutinas listas',3000,'ok');
+  showToast('🚀 Plan creado · 5 rutinas listas',3000,'ok');
   renderPerfil();
   renderHome();
   if(currentScreen==='train') renderTrain();
@@ -2922,7 +2922,7 @@ function renderProgEjercicios(){
   const resto=exsConData.filter(e=>!clave.includes(e.id));
   const all=[...clavesData,...resto];
   if(!all.length){
-    document.getElementById('prog-ex-list').innerHTML=`<div class="empty"><div class="empty-icon">▥</div><div class="empty-text">Sin datos aún</div><div class="empty-sub">Completa sesiones para ver estadísticas.</div></div>`;
+    document.getElementById('prog-ex-list').innerHTML=`<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Sin datos aún</div><div class="empty-sub">Completa sesiones para ver estadísticas.</div></div>`;
     return;
   }
   document.getElementById('prog-ex-list').innerHTML=all.map(e=>{
@@ -2933,7 +2933,7 @@ function renderProgEjercicios(){
     const sub=isRun?'ritmo/distancia máximos':'PR: '+prStr;
     return `<div class="prog-ex-row" onclick="openExDetail('${e.id}')">
       <div style="flex:1">
-        <div class="prog-ex-name">${isClave?'✦ ':''} ${e.name}</div>
+        <div class="prog-ex-name">${isClave?'⭐ ':''} ${e.name}</div>
         <div class="prog-ex-sub">${sub}</div>
       </div>
       <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
@@ -3160,7 +3160,7 @@ function renderExDetail(exId){
   } else if(!isRun&&puntosGraf.length>=2){
     chartsHtml=`<div style="margin-bottom:16px">${renderLineChartTall(puntosGraf,showRM?'1RM estimado (kg)':'Peso máx. levantado (kg)')}</div>`;
   } else {
-    chartsHtml=`<div class="empty" style="padding:32px 0"><div class="empty-icon">▥</div><div class="empty-text">Pocos datos en este período</div></div>`;
+    chartsHtml=`<div class="empty" style="padding:32px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos en este período</div></div>`;
   }
 
   const botonesHtml = buildFiltroHtml(
@@ -3185,7 +3185,7 @@ function renderExDetail(exId){
           </div>
           <div style="text-align:right">
             <div style="font-size:14px;font-weight:700;color:var(--green)">${s.totalDist.toFixed(2)}km</div>
-            <div style="font-size:11px;color:var(--blue)">${ritmoStr}${s.fcMedia>0?' · '+s.fcMedia:''}${s.pasosTot>0?' · ↝'+s.pasosTot.toLocaleString('es'):''}</div>
+            <div style="font-size:11px;color:var(--blue)">${ritmoStr}${s.fcMedia>0?' · ❤️'+s.fcMedia:''}${s.pasosTot>0?' · 👟'+s.pasosTot.toLocaleString('es'):''}</div>
           </div>
         </div>`;
       } else {
@@ -3469,7 +3469,7 @@ function openCuerpoChart(key, mets){
       ? `<div style="margin-bottom:4px;font-size:11px;color:var(--ink3);font-weight:600">${cfg.label}${cfg.unit?' ('+cfg.unit+')':''} · ${ptsFilt.length} registros</div>`
         + renderLineChartFull(ptsFilt, cfg.label, cfg.color)
         + statsHtml
-      : `<div class="empty" style="padding:40px 0"><div class="empty-icon">▥</div><div class="empty-text">Pocos datos en este período</div><div class="empty-sub">Prueba con "Todo" para ver el historial completo.</div></div>`}
+      : `<div class="empty" style="padding:40px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos en este período</div><div class="empty-sub">Prueba con "Todo" para ver el historial completo.</div></div>`}
     <div style="margin-top:20px">
       <div class="section-label" style="margin-bottom:8px">Todos los registros · ${pts.length} total</div>
       ${pts.slice().reverse().map(p=>`
@@ -3532,19 +3532,19 @@ function renderProgCuerpo(){
       <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Peso actual</div>
       <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:var(--ink);line-height:1">${ult.peso||'—'}<span style="font-size:14px;font-weight:400;color:var(--ink3)">kg</span></div>
       <div style="font-size:11px;font-weight:700;color:${dpeso.v<0?'var(--green)':dpeso.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dpeso.v!==0?dpeso.str+'kg '+periodoLabel:''}</div>
-      <div style="font-size:10px;color:var(--ink3);margin-top:2px">↓${pesoMin} · ↑${pesoMax}kg · ▥</div>
+      <div style="font-size:10px;color:var(--ink3);margin-top:2px">↓${pesoMin} · ↑${pesoMax}kg · 📈</div>
     </div>
     <div onclick="openCuerpoChart('imc')" style="padding:16px 12px;border-right:1px solid var(--border);text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
       <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">IMC actual</div>
       <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:var(--gold);line-height:1">${ult.imc||'—'}</div>
       <div style="font-size:11px;font-weight:700;color:${dimc.v<0?'var(--green)':dimc.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dimc.v!==0?dimc.str+' '+periodoLabel:''}</div>
-      <div style="font-size:10px;color:var(--ink3);margin-top:2px">${ult.imc?parseFloat(ult.imc)<25?'Normal':parseFloat(ult.imc)<30?'Sobrepeso':'Obesidad':''} · ▥</div>
+      <div style="font-size:10px;color:var(--ink3);margin-top:2px">${ult.imc?parseFloat(ult.imc)<25?'Normal':parseFloat(ult.imc)<30?'Sobrepeso':'Obesidad':''} · 📈</div>
     </div>
     <div onclick="openCuerpoChart('grasa')" style="padding:16px 12px;text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
       <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Grasa corporal</div>
       <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:${parseFloat(ult.grasa||99)<30?'var(--green)':'var(--orange)'};line-height:1">${ult.grasa||'—'}<span style="font-size:14px;font-weight:400;color:var(--ink3)">${ult.grasa?'%':''}</span></div>
       <div style="font-size:11px;font-weight:700;color:${dgrasa.v<0?'var(--green)':dgrasa.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dgrasa.v!==0?dgrasa.str+'% '+periodoLabel:''}</div>
-      <div style="font-size:10px;color:var(--ink3);margin-top:2px">${mets.filter(m=>m.grasa).length} registros · ▥</div>
+      <div style="font-size:10px;color:var(--ink3);margin-top:2px">${mets.filter(m=>m.grasa).length} registros · 📈</div>
     </div>`;
 
   document.getElementById('cuerpo-charts').innerHTML='';
@@ -3740,7 +3740,7 @@ function actualizarResumenPerfil(dp){
   const lines=[];
   if(edad!=null) lines.push(`🎂 Edad: <strong>${edad} años</strong>`);
   if(dp.estatura) lines.push(`📏 Estatura: <strong>${dp.estatura} cm</strong>`);
-  if(imc) lines.push(`▥ IMC actual con último peso (${ult.peso}kg): <strong style="color:var(--gold)">${imc}</strong>`);
+  if(imc) lines.push(`📊 IMC actual con último peso (${ult.peso}kg): <strong style="color:var(--gold)">${imc}</strong>`);
   res.style.display=lines.length?'block':'none';
   res.innerHTML=lines.join('<br>');
 }
@@ -3769,7 +3769,7 @@ const MED_METRICAS = [
   { key:'peso',     label:'Peso',              emoji:'◬',  unit:'kg',  step:'0.1', tipo:'number', placeholder:'99.0' },
   { key:'grasa',    label:'Grasa corporal',    emoji:'✦',  unit:'%',   step:'0.1', tipo:'number', placeholder:'28.3' },
   { key:'muscular', label:'Masa muscular',     emoji:'✦',  unit:'kg',  step:'0.1', tipo:'number', placeholder:'36.7' },
-  { key:'imc',      label:'IMC',               emoji:'▥',  unit:'',    step:'0.1', tipo:'number', placeholder:'28.0' },
+  { key:'imc',      label:'IMC',               emoji:'📊',  unit:'',    step:'0.1', tipo:'number', placeholder:'28.0' },
   { key:'p6',       label:'6 Pliegues',        emoji:'📐',  unit:'mm',  step:'0.5', tipo:'number', placeholder:'140'  },
   { key:'p8',       label:'8 Pliegues',        emoji:'📐',  unit:'mm',  step:'0.5', tipo:'number', placeholder:'186'  },
 ];
@@ -4213,7 +4213,7 @@ const PORCIONES=[
   {emoji:'◓',nombre:'Lácteos semidescrem.',  meta:'2'},
   {emoji:'◓',nombre:'Lácteos descremados',   meta:'1'},
   {emoji:'🥑',nombre:'Lípidos',               meta:'0.5'},
-  {emoji:'◍',nombre:'Aceites',               meta:'1'},
+  {emoji:'🫒',nombre:'Aceites',               meta:'1'},
   {emoji:'◉',nombre:'Verduras',              meta:'2'},
 ];
 const MENU_SEMANA=[
@@ -4330,7 +4330,7 @@ function toggleComida(id){ foodOpenId=foodOpenId===id?null:id; renderFood(); }
 function toggleComidaCheck(id){
   const fd=getFD(foodFecha); if(!fd.comidas[id]) fd.comidas[id]={completada:false,texto:''};
   fd.comidas[id].completada=!fd.comidas[id].completada; saveFD(fd);
-  if(Object.values(fd.comidas).filter(c=>c.completada).length===COMIDAS.length) showToast('◎ ¡Todas las comidas del día!',3000,'ok');
+  if(Object.values(fd.comidas).filter(c=>c.completada).length===COMIDAS.length) showToast('🎯 ¡Todas las comidas del día!',3000,'ok');
   renderFood();
 }
 function saveComidaTxt(id,txt){
@@ -4492,7 +4492,7 @@ function toggleAlcohol(fecha){
     showToast('✓ Día marcado sin alcohol',1500,'ok');
   } else {
     h.registros[fecha]='bebio';
-    showToast('◌ Día marcado con alcohol',1500);
+    showToast('🍷 Día marcado con alcohol',1500);
   }
   saveDB();
   renderHabitsLumen();
@@ -4503,7 +4503,7 @@ function renderPerfilPlan(){
   const el=document.getElementById('perfil-plan'); if(!el) return;
   const plan=(forge.planes||[]).find(p=>p.activo);
   if(!plan){
-    el.innerHTML=`<div class="empty"><div class="empty-icon">▤</div><div class="empty-text">Sin plan activo</div><div class="empty-sub">Crea tu plan de 16 semanas con progresión +2.5% semanal en los 3 ejercicios clave.</div><button class="btn btn-p" onclick="document.getElementById('plan-inicio-wrap').innerHTML=renderDatePicker('plan-inicio',today());openModal('modal-plan')" style="margin-top:16px">↗ Crear plan</button></div>`;
+    el.innerHTML=`<div class="empty"><div class="empty-icon">▤</div><div class="empty-text">Sin plan activo</div><div class="empty-sub">Crea tu plan de 16 semanas con progresión +2.5% semanal en los 3 ejercicios clave.</div><button class="btn btn-p" onclick="document.getElementById('plan-inicio-wrap').innerHTML=renderDatePicker('plan-inicio',today());openModal('modal-plan')" style="margin-top:16px">🚀 Crear plan</button></div>`;
     return;
   }
   const semG=semanaActualPlan(plan);
@@ -4681,7 +4681,7 @@ function renderImpStep1(){
       Genera dos archivos CSV. Después de cargarlos podrás revisar cada sesión antes de guardar.
     </div>
     <div style="margin-bottom:12px">
-      <div class="section-label">▥ Entrenamientos (workout_history.csv)</div>
+      <div class="section-label">📊 Entrenamientos (workout_history.csv)</div>
       <div onclick="document.getElementById('imp-f1').click()"
         style="border:2px dashed var(--border2);border-radius:var(--rl);padding:20px;text-align:center;cursor:pointer;transition:border-color .1s"
         onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='var(--border2)'">
@@ -5139,161 +5139,6 @@ document.addEventListener('keydown', e=>{
     el.dispatchEvent(new Event('input',{bubbles:true}));
   }
 }, {passive:false});
-
-
-
-// ---------------------------------------------------------------
-//  MELQART v201 · THEME + ICON SYSTEM
-// ---------------------------------------------------------------
-function mqApplyTheme(mode){
-  const pref = mode || localStorage.getItem('mq_theme') || 'auto';
-  const resolved = pref === 'auto'
-    ? ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light')
-    : pref;
-  document.documentElement.setAttribute('data-theme', resolved);
-  localStorage.setItem('mq_theme', pref);
-  document.querySelectorAll('.mq-theme-toggle').forEach(b=>{
-    b.setAttribute('aria-label', resolved === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
-    b.innerHTML = resolved === 'dark' ? '<span>☼</span>' : '<span>☾</span>';
-  });
-}
-function mqToggleTheme(){
-  const current = document.documentElement.getAttribute('data-theme') || 'light';
-  mqApplyTheme(current === 'dark' ? 'light' : 'dark');
-}
-function mqInstallThemeToggle(){
-  document.querySelectorAll('.topbar').forEach(tb=>{
-    if(tb.querySelector('.mq-theme-toggle')) return;
-    const btn=document.createElement('button');
-    btn.type='button';
-    btn.className='mq-theme-toggle';
-    btn.onclick=mqToggleTheme;
-    const right=tb.lastElementChild;
-    if(right && right !== tb.firstElementChild){ right.appendChild(btn); }
-    else { tb.appendChild(btn); }
-  });
-  mqApplyTheme(localStorage.getItem('mq_theme')||'auto');
-}
-document.addEventListener('DOMContentLoaded', mqInstallThemeToggle);
-
-// ---------------------------------------------------------------
-
-
-// ---------------------------------------------------------------
-//  MELQART v201 · HOME REDESIGN + LIGHT/DARK + HABITS
-// ---------------------------------------------------------------
-function mqIcon(name, cls='mq-inline-icon'){
-  return `<img class="${cls}" src="assets/icons/${name}.svg" alt="" loading="lazy">`;
-}
-function mqFmtPct(n){ return Math.max(0, Math.min(100, Math.round(n||0))); }
-function mqSetFoodToday(){ if(typeof foodFecha !== 'undefined') foodFecha = today(); }
-function toggleAguaCp(idx){
-  mqSetFoodToday();
-  const fd=getFD(today());
-  const cps=getAguaCps(fd);
-  cps[idx]=!cps[idx];
-  fd.aguaCps=cps;
-  fd.agua=cps.filter(Boolean).length;
-  saveFD(fd);
-  if(AGUA_CPS.filter((_,i)=>cps[i]).reduce((a,c)=>a+c.ml,0)>=AGUA_META_ML) showToast('Meta de agua alcanzada',2500,'ok');
-  renderHome();
-  if(currentScreen==='food') renderFood();
-}
-function toggleHomeMeal(id){
-  const fd=getFD(today());
-  if(!fd.comidas[id]) fd.comidas[id]={completada:false,texto:''};
-  fd.comidas[id].completada=!fd.comidas[id].completada;
-  saveFD(fd);
-  renderHome();
-  if(currentScreen==='food') renderFood();
-}
-function mqHomeHabitStreak(){
-  let streak=0;
-  for(let i=0;i<730;i++){
-    const d=new Date(); d.setDate(d.getDate()-i);
-    const ds=localDateStr(d);
-    const fd=getFD(ds);
-    const cps=getAguaCps(fd);
-    const waterMl=AGUA_CPS.filter((_,j)=>cps[j]).reduce((a,c)=>a+c.ml,0);
-    const meals=Object.values(fd.comidas||{}).filter(c=>c.completada).length;
-    if(waterMl>=AGUA_META_ML && meals>=COMIDAS.length) streak++;
-    else break;
-  }
-  return streak;
-}
-function mqWeightPoints(){
-  const mets=(forge.bodyMetrics||[]).filter(m=>m.peso).sort((a,b)=>a.date>b.date?1:-1);
-  return mets.slice(-7).map(m=>({date:m.date, peso:+m.peso}));
-}
-function mqWeightChart(points, goal){
-  if(!points.length) return `<div class="mq-empty-chart">Registra peso para ver tendencia.</div>`;
-  const W=330,H=150,PL=34,PR=16,PT=14,PB=28;
-  const vals=points.map(p=>p.peso).concat([goal]).filter(v=>v>0);
-  let min=Math.min(...vals), max=Math.max(...vals);
-  if(max-min<2){max+=1;min-=1;}
-  min=Math.floor(min-0.4); max=Math.ceil(max+0.4);
-  const x=i=>points.length===1?PL+(W-PL-PR)/2:PL+i*(W-PL-PR)/(points.length-1);
-  const y=v=>PT+(max-v)*(H-PT-PB)/(max-min);
-  const line=points.map((p,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(p.peso).toFixed(1)).join(' ');
-  const goalY=y(goal);
-  const area=line+' L '+x(points.length-1).toFixed(1)+' '+(H-PB)+' L '+x(0).toFixed(1)+' '+(H-PB)+' Z';
-  const grid=[0.25,0.5,0.75].map(t=>{const yy=PT+t*(H-PT-PB);return `<line x1="${PL}" y1="${yy.toFixed(1)}" x2="${W-PR}" y2="${yy.toFixed(1)}" class="mq-chart-gridline"/>`;}).join('');
-  return `<svg class="mq-weight-chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Evolución de peso">${grid}<line x1="${PL}" y1="${goalY.toFixed(1)}" x2="${W-PR}" y2="${goalY.toFixed(1)}" class="mq-chart-goal"/><text x="${W-PR}" y="${(goalY-4).toFixed(1)}" text-anchor="end" class="mq-chart-goal-label">Meta ${goal}kg</text><path d="${area}" class="mq-chart-area"/><path d="${line}" class="mq-chart-weight-line"/>${points.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p.peso).toFixed(1)}" r="3.4" class="mq-chart-dot"/>`).join('')}</svg>`;
-}
-function renderHomePlanBanner(){
-  const plan=(forge.planes||[]).find(p=>p.activo);
-  const el=document.getElementById('home-plan-banner'); if(!el) return;
-  if(!plan){el.style.display='none';return;}
-  el.style.display='block';
-  const semG=semanaActualPlan(plan);
-  const totalSemanas=plan.totalSemanas||16;
-  const semDisplay=Math.min(totalSemanas,semG+1);
-  const pct=mqFmtPct((semDisplay/totalSemanas)*100);
-  const bloque=plan.bloques?.[Math.floor((semDisplay-1)/4)]||{nombre:'—'};
-  const ses=forge.sessions||[];
-  const hoy=new Date(); const wStart=new Date(hoy); wStart.setDate(hoy.getDate()-(hoy.getDay()||7)+1); wStart.setHours(0,0,0,0);
-  const semana=ses.filter(s=>new Date(s.date)>=wStart).length;
-  el.innerHTML=`<section class="mq-plan-card card"><div class="mq-card-head"><div><div class="mq-kicker">¿Cómo vamos con el plan?</div><h2>${plan.nombre}</h2><p>Bloque actual: <strong>${bloque.nombre}</strong></p></div><div class="mq-plan-week"><span>Plan activo</span><strong>${semDisplay}<small>/${totalSemanas}</small></strong></div></div><div class="mq-plan-progress"><span style="width:${pct}%"></span></div><div class="mq-mini-grid"><div>${mqIcon('plan')}<strong>${semana}</strong><span>Esta semana</span></div><div>${mqIcon('streak')}<strong>${calcStreak()}</strong><span>Racha</span></div><div>${mqIcon('medal')}<strong>${ses.length}</strong><span>Total sesiones</span></div></div></section>`;
-}
-function renderPesoBanner(){
-  const el=document.getElementById('home-peso-banner'); if(!el) return;
-  const po=getPesoObjetivo(); const inicio=+po.inicio||103, objetivo=+po.objetivo||95;
-  const points=mqWeightPoints();
-  if(!points.length){ el.innerHTML=''; return; }
-  const actual=points[points.length-1].peso;
-  const brecha=Math.max(.1,inicio-objetivo);
-  const perdidos=Math.max(0,+(inicio-actual).toFixed(1));
-  const faltan=Math.max(0,+(actual-objetivo).toFixed(1));
-  const pct=mqFmtPct((perdidos/brecha)*100);
-  el.innerHTML=`<section class="mq-weight-card card"><div class="mq-card-head compact"><div><div class="mq-kicker">Peso de la semana</div><h2>${actual.toFixed(1)}<small>kg</small></h2></div><div class="mq-weight-actions"><button class="mq-ghost-btn" onclick="registrarPesoRapido()">+ Peso</button><button class="mq-overflow-btn" onclick="abrirPesoObjetivo()">···</button></div></div><div class="mq-weight-layout"><div class="mq-chart-panel"><div class="mq-weight-meta"><span>Progreso</span><strong>${pct}%</strong></div><div class="mq-plan-progress weight"><span style="width:${pct}%"></span></div>${mqWeightChart(points, objetivo)}</div><aside class="mq-weight-side"><div class="mq-goal-box"><span>Objetivo</span><strong>${objetivo.toFixed(1).replace('.0','')}</strong><em>kg</em></div><div class="mq-progress-ring" style="--p:${pct}"><svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="fg" cx="50" cy="50" r="42" style="stroke-dasharray:263.9;stroke-dashoffset:${(263.9*(1-pct/100)).toFixed(1)}"/></svg><strong>${pct}%</strong><span>Progreso</span></div></aside></div><div class="mq-weight-summary"><div><strong>-${perdidos}kg</strong><span>Perdidos</span></div><div><strong>${faltan}kg</strong><span>Faltan</span></div></div></section>`;
-}
-function renderStreakBanner(){
-  const el=document.getElementById('home-streak-banner'); if(!el) return;
-  const fd=getFD(today()); const cps=getAguaCps(fd);
-  const waterMl=AGUA_CPS.filter((_,i)=>cps[i]).reduce((a,c)=>a+c.ml,0);
-  const waterPct=mqFmtPct(waterMl/AGUA_META_ML*100);
-  const comidas=Object.values(fd.comidas||{}).filter(c=>c.completada).length;
-  const foodPct=mqFmtPct(comidas/COMIDAS.length*100);
-  const streak=mqHomeHabitStreak();
-  el.innerHTML=`<section class="mq-habits-card"><article class="mq-habit card"><div class="mq-habit-title">${mqIcon('water')}<strong>Agua hoy</strong><span>${waterMl}/${AGUA_META_ML}ml</span></div><div class="mq-water-cups">${AGUA_CPS.map((cp,i)=>`<button type="button" class="${cps[i]?'on':''}" onclick="toggleAguaCp(${i})" title="${cp.hora} ${cp.label}"></button>`).join('')}</div><div class="mq-plan-progress small"><span style="width:${waterPct}%"></span></div></article><article class="mq-habit card"><div class="mq-habit-title">${mqIcon('bowl')}<strong>Nutrición</strong><span>${comidas}/${COMIDAS.length} comidas</span></div><div class="mq-meal-dots">${COMIDAS.map(c=>`<button type="button" class="${(fd.comidas[c.id]||{}).completada?'on':''}" onclick="toggleHomeMeal('${c.id}')" title="${c.nombre}"></button>`).join('')}</div><div class="mq-plan-progress small gold"><span style="width:${foodPct}%"></span></div></article><article class="mq-habit card"><div class="mq-habit-title">${mqIcon('laurel')}<strong>Racha de hábitos</strong><span>${streak} días</span></div><p>Agua + nutrición al 100%</p><div class="mq-streak-ring">${streak}</div></article></section>`;
-}
-function renderHome(){
-  const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  const hoy=new Date(); const nombre=currentUser?.displayName?.split(' ')[0]||'Diego';
-  const greet=document.getElementById('home-greet'); if(greet) greet.innerHTML=`<div class="home-greet-date">${dias[hoy.getDay()]} ${hoy.getDate()} de ${meses[hoy.getMonth()]}</div><div class="home-greet-title">Hola, ${nombre} <span>✦</span></div>`;
-  renderHomePlanBanner();
-  const hs=document.getElementById('home-stats'); if(hs) hs.innerHTML='';
-  renderPesoBanner(); renderStreakBanner();
-  const hb=document.getElementById('home-habits-banner'); if(hb) hb.innerHTML='';
-  const ses=[...(forge.sessions||[])].sort((a,b)=>b.date-a.date); const cutoff=new Date(); cutoff.setMonth(cutoff.getMonth()-4);
-  const recientes=ses.filter(s=>new Date(s.date)>=cutoff); const el=document.getElementById('home-sessions'); if(!el) return;
-  if(!recientes.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">◈</div><div class="empty-text">Sin sesiones recientes</div><div class="empty-sub">Entrena para construir historial.</div></div>`; return; }
-  el.innerHTML=`<div class="mq-session-scroll">${recientes.map(s=>renderSesCard(s,hoy)).join('')}</div>`;
-}
-function mqEnsureExportOptions(){ const s=document.getElementById('export-semanas'); if(!s) return; const val=s.value||'4'; s.innerHTML='<option value="4">4 semanas</option><option value="8">8 semanas</option><option value="16">16 semanas</option><option value="0">Todo</option>'; s.value=['4','8','16','0'].includes(val)?val:'4'; }
-function mqInstallV201(){ mqEnsureExportOptions(); mqInstallThemeToggle(); }
-document.addEventListener('DOMContentLoaded', mqInstallV201);
 
 // ---------------------------------------------------------------
 loadDB();
