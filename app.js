@@ -5223,7 +5223,7 @@ function mqHomeHabitStreak(){
 }
 function mqWeightPoints(){
   const mets=(forge.bodyMetrics||[]).filter(m=>m.peso).sort((a,b)=>a.date>b.date?1:-1);
-  return mets.slice(-12).map(m=>({date:m.date, peso:+m.peso}));
+  return mets.slice(-7).map(m=>({date:m.date, peso:+m.peso}));
 }
 function mqWeightChart(points, goal){
   if(!points.length) return `<div class="mq-empty-chart">Registra peso para ver tendencia.</div>`;
@@ -5236,8 +5236,9 @@ function mqWeightChart(points, goal){
   const y=v=>PT+(max-v)*(H-PT-PB)/(max-min);
   const line=points.map((p,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(p.peso).toFixed(1)).join(' ');
   const goalY=y(goal);
-  const labels=points.map((p,i)=>`<text x="${x(i).toFixed(1)}" y="${H-7}" text-anchor="middle" class="mq-chart-label">${p.date.slice(5)}</text>`).join('');
-  return `<svg class="mq-weight-chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Evolución de peso"><line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" class="mq-chart-axis"/><line x1="${PL}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" class="mq-chart-axis"/><line x1="${PL}" y1="${goalY.toFixed(1)}" x2="${W-PR}" y2="${goalY.toFixed(1)}" class="mq-chart-goal"/><text x="${W-PR}" y="${(goalY-4).toFixed(1)}" text-anchor="end" class="mq-chart-goal-label">Meta ${goal}kg</text><path d="${line}" class="mq-chart-weight-line"/>${points.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p.peso).toFixed(1)}" r="3.2" class="mq-chart-dot"/>`).join('')}${labels}</svg>`;
+  const area=line+' L '+x(points.length-1).toFixed(1)+' '+(H-PB)+' L '+x(0).toFixed(1)+' '+(H-PB)+' Z';
+  const grid=[0.25,0.5,0.75].map(t=>{const yy=PT+t*(H-PT-PB);return `<line x1="${PL}" y1="${yy.toFixed(1)}" x2="${W-PR}" y2="${yy.toFixed(1)}" class="mq-chart-gridline"/>`;}).join('');
+  return `<svg class="mq-weight-chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Evolución de peso">${grid}<line x1="${PL}" y1="${goalY.toFixed(1)}" x2="${W-PR}" y2="${goalY.toFixed(1)}" class="mq-chart-goal"/><text x="${W-PR}" y="${(goalY-4).toFixed(1)}" text-anchor="end" class="mq-chart-goal-label">Meta ${goal}kg</text><path d="${area}" class="mq-chart-area"/><path d="${line}" class="mq-chart-weight-line"/>${points.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p.peso).toFixed(1)}" r="3.4" class="mq-chart-dot"/>`).join('')}</svg>`;
 }
 function renderHomePlanBanner(){
   const plan=(forge.planes||[]).find(p=>p.activo);
@@ -5245,12 +5246,14 @@ function renderHomePlanBanner(){
   if(!plan){el.style.display='none';return;}
   el.style.display='block';
   const semG=semanaActualPlan(plan);
-  const pct=mqFmtPct((semG/plan.totalSemanas)*100);
-  const bloque=plan.bloques?.[Math.floor((semG-1)/4)]||{nombre:'—'};
+  const totalSemanas=plan.totalSemanas||16;
+  const semDisplay=Math.min(totalSemanas,semG+1);
+  const pct=mqFmtPct((semDisplay/totalSemanas)*100);
+  const bloque=plan.bloques?.[Math.floor((semDisplay-1)/4)]||{nombre:'—'};
   const ses=forge.sessions||[];
   const hoy=new Date(); const wStart=new Date(hoy); wStart.setDate(hoy.getDate()-(hoy.getDay()||7)+1); wStart.setHours(0,0,0,0);
   const semana=ses.filter(s=>new Date(s.date)>=wStart).length;
-  el.innerHTML=`<section class="mq-plan-card card"><div class="mq-card-head"><div><div class="mq-kicker">¿Cómo vamos con el plan?</div><h2>${plan.nombre}</h2><p>Bloque actual: <strong>${bloque.nombre}</strong></p></div><div class="mq-plan-week"><span>Plan activo</span><strong>${semG}.${String(plan.totalSemanas).padStart(2,'0')}</strong></div></div><div class="mq-plan-progress"><span style="width:${pct}%"></span></div><div class="mq-mini-grid"><div>${mqIcon('plan')}<strong>${semana}</strong><span>Esta semana</span></div><div>${mqIcon('streak')}<strong>${calcStreak()}</strong><span>Racha</span></div><div>${mqIcon('medal')}<strong>${ses.length}</strong><span>Total sesiones</span></div></div></section>`;
+  el.innerHTML=`<section class="mq-plan-card card"><div class="mq-card-head"><div><div class="mq-kicker">¿Cómo vamos con el plan?</div><h2>${plan.nombre}</h2><p>Bloque actual: <strong>${bloque.nombre}</strong></p></div><div class="mq-plan-week"><span>Plan activo</span><strong>${semDisplay}<small>/${totalSemanas}</small></strong></div></div><div class="mq-plan-progress"><span style="width:${pct}%"></span></div><div class="mq-mini-grid"><div>${mqIcon('plan')}<strong>${semana}</strong><span>Esta semana</span></div><div>${mqIcon('streak')}<strong>${calcStreak()}</strong><span>Racha</span></div><div>${mqIcon('medal')}<strong>${ses.length}</strong><span>Total sesiones</span></div></div></section>`;
 }
 function renderPesoBanner(){
   const el=document.getElementById('home-peso-banner'); if(!el) return;
@@ -5262,7 +5265,7 @@ function renderPesoBanner(){
   const perdidos=Math.max(0,+(inicio-actual).toFixed(1));
   const faltan=Math.max(0,+(actual-objetivo).toFixed(1));
   const pct=mqFmtPct((perdidos/brecha)*100);
-  el.innerHTML=`<section class="mq-weight-card card"><div class="mq-card-head compact"><div><div class="mq-kicker">Peso de la semana</div><h2>${actual.toFixed(1)}<small>kg</small></h2></div><div class="mq-goal-box"><span>Meta</span><strong>${objetivo.toFixed(1).replace('.0','')}</strong><em>kg</em></div></div><div class="mq-weight-meta"><span>Progreso</span><strong>${pct}%</strong></div><div class="mq-plan-progress weight"><span style="width:${pct}%"></span></div>${mqWeightChart(points, objetivo)}<div class="mq-weight-summary"><div><strong>-${perdidos}kg</strong><span>Perdidos</span></div><div><strong>${faltan}kg</strong><span>Faltan</span></div></div></section>`;
+  el.innerHTML=`<section class="mq-weight-card card"><div class="mq-card-head compact"><div><div class="mq-kicker">Peso de la semana</div><h2>${actual.toFixed(1)}<small>kg</small></h2></div><div class="mq-weight-actions"><button class="mq-ghost-btn" onclick="registrarPesoRapido()">+ Peso</button><button class="mq-overflow-btn" onclick="abrirPesoObjetivo()">···</button></div></div><div class="mq-weight-layout"><div class="mq-chart-panel"><div class="mq-weight-meta"><span>Progreso</span><strong>${pct}%</strong></div><div class="mq-plan-progress weight"><span style="width:${pct}%"></span></div>${mqWeightChart(points, objetivo)}</div><aside class="mq-weight-side"><div class="mq-goal-box"><span>Objetivo</span><strong>${objetivo.toFixed(1).replace('.0','')}</strong><em>kg</em></div><div class="mq-progress-ring" style="--p:${pct}"><svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="fg" cx="50" cy="50" r="42" style="stroke-dasharray:263.9;stroke-dashoffset:${(263.9*(1-pct/100)).toFixed(1)}"/></svg><strong>${pct}%</strong><span>Progreso</span></div></aside></div><div class="mq-weight-summary"><div><strong>-${perdidos}kg</strong><span>Perdidos</span></div><div><strong>${faltan}kg</strong><span>Faltan</span></div></div></section>`;
 }
 function renderStreakBanner(){
   const el=document.getElementById('home-streak-banner'); if(!el) return;
