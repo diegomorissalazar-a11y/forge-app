@@ -4,3 +4,9 @@ Incluye logo SVG propio, Inter/Inter Tight, modo claro/oscuro, Home rediseñada,
 
 ## v202 sprint 1 retry
 Reempaquetado del Sprint 1 Home para descarga directa. Archivos listos para subir a GitHub Pages.
+
+
+## v202 aprobado
+- Agua Home: 10 vasos / 2500ml, consistente con Nutrición.
+- Nutrición Home: muestra todas las comidas reales del día.
+- Peso Home: últimos 7 registros, sin fechas abajo, botón + Peso, menú objetivo y progreso circular.
