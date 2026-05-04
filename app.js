@@ -849,6 +849,8 @@ function renderHome(){
   renderHomePlanBanner();
   renderStreakBanner();
   renderPesoBanner();
+  renderHomeNutritionCard();
+  renderHomeWaterCard();
 
   const ses    = forge.sessions||[];
   const wStart = new Date(hoy); wStart.setDate(hoy.getDate()-(hoy.getDay()||7)+1); wStart.setHours(0,0,0,0);
@@ -4143,6 +4145,141 @@ function viewFoto(id){
   if(confirm(`Foto del ${p.date}\n¿Eliminar?`)){ forge.photos=forge.photos.filter(x=>x.id!==id); saveDB(); renderProgFotos(); }
 }
 
+
+// ---------------------------------------------------------------
+//  NUTRICIÓN INTELIGENTE V1 — MELQART
+// ---------------------------------------------------------------
+const NUTRITION_TARGETS = {
+  cereales:3, frutas:2, proteinas:12, lacteoProtein:2, lacteoDescremado:1,
+  lipidos:0.5, aceites:1, verduras:2, aguaMl:2500, aguaVasos:11
+};
+const PORTION_LABELS = {
+  cereales:'Cereales', frutas:'Frutas', proteinas:'Proteínas', lacteoProtein:'Lácteo protein',
+  lacteoDescremado:'Lácteo descremado', lipidos:'Lípidos', aceites:'Aceites', verduras:'Verduras'
+};
+const MEAL_PORTIONS = {
+  desayuno:{proteinas:2, frutas:1, cereales:0.5, lipidos:0.5},
+  fruta_1000:{frutas:1},
+  almuerzo_post:{cereales:2, proteinas:2.5, verduras:1},
+  leche_protein_1700:{lacteoProtein:1},
+  huevos_1800:{proteinas:2},
+  leche_descremada_casa:{lacteoDescremado:1},
+  cena:{proteinas:3, verduras:1}
+};
+const FREQUENT_FOODS = [
+  {id:'scoop_proteina', name:'Scoop proteína', portions:{proteinas:2}},
+  {id:'medio_platano', name:'1/2 plátano', portions:{frutas:1}},
+  {id:'pan_molde', name:'Pan molde', portions:{cereales:0.5}},
+  {id:'mantequilla_mani', name:'Mantequilla de maní', portions:{lipidos:0.5}},
+  {id:'fruta', name:'Fruta', portions:{frutas:1}},
+  {id:'papa_cocida', name:'Papa cocida', portions:{cereales:1}},
+  {id:'presa_pollo', name:'Presa de pollo', portions:{proteinas:2.5}},
+  {id:'leche_protein', name:'Leche protein', portions:{lacteoProtein:1}},
+  {id:'huevos_duros', name:'Huevos duros', portions:{proteinas:2}},
+  {id:'leche_descremada', name:'Leche descremada', portions:{lacteoDescremado:1}},
+  {id:'barra_low_carb', name:'Barra low carb', detail:'45g · 5,3g proteína · 6g carbos netos · 8g fibra', portions:{proteinas:0.5}},
+  {id:'atun', name:'Atún', portions:{proteinas:2}},
+  {id:'pollo_pavo_pescado', name:'Pollo/pavo/pescado', portions:{proteinas:2}},
+  {id:'verduras', name:'Verduras', portions:{verduras:1}},
+  {id:'aceite', name:'Aceite', portions:{aceites:1}}
+];
+function clonePortionZero(){
+  return Object.keys(NUTRITION_TARGETS).filter(k=>!['aguaMl','aguaVasos'].includes(k)).reduce((o,k)=>{o[k]=0;return o;},{});
+}
+function sumPortionsInto(base, add){ Object.entries(add||{}).forEach(([k,v])=>{base[k]=(base[k]||0)+(parseFloat(v)||0);}); return base; }
+function calcPortionsConsumed(fd){
+  const total=clonePortionZero();
+  (COMIDAS||[]).forEach(c=>{ if(fd.comidas?.[c.id]?.completada) sumPortionsInto(total, c.portions||MEAL_PORTIONS[c.id]||{}); });
+  (fd.extraFoods||[]).forEach(f=>sumPortionsInto(total, f.portions||{}));
+  return total;
+}
+function calcPortionsRemaining(consumed){
+  const rem=clonePortionZero();
+  Object.keys(rem).forEach(k=>{rem[k]=Math.max(0, +(NUTRITION_TARGETS[k]-(consumed[k]||0)).toFixed(2));});
+  return rem;
+}
+function getMealProgress(fd){
+  const total=COMIDAS.length;
+  const done=Object.values(fd.comidas||{}).filter(x=>x.completada).length;
+  return {done,total,pct: total?Math.round(done/total*100):0};
+}
+function getCurrentMeal(fd){
+  const pending=(COMIDAS||[]).find(c=>!fd.comidas?.[c.id]?.completada);
+  if(!pending) return {current:null,next:null,allDone:true};
+  const idx=COMIDAS.findIndex(c=>c.id===pending.id);
+  const next=(COMIDAS||[]).slice(idx+1).find(c=>!fd.comidas?.[c.id]?.completada)||null;
+  return {current:pending,next,allDone:false};
+}
+function completeCurrentMealFromHome(){
+  const fd=getFD(today());
+  const cur=getCurrentMeal(fd).current;
+  if(!cur){ showToast('Alimentación completa',1800,'ok'); return; }
+  if(!fd.comidas[cur.id]) fd.comidas[cur.id]={completada:false,texto:''};
+  fd.comidas[cur.id].completada=true;
+  if(!fd.comidas[cur.id].texto) fd.comidas[cur.id].texto=cur.ejemplo||cur.detail||'';
+  saveFD(fd); showToast('Comida ingresada',1700,'ok');
+  renderHomeNutritionCard(); renderFoodIfVisible();
+}
+function editCurrentMealFromHome(){
+  const fd=getFD(today()); const cur=getCurrentMeal(fd).current;
+  if(cur){ foodFecha=today(); foodOpenId=cur.id; goTo('food'); setTimeout(()=>{ const el=document.getElementById('food-comidas-list'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); },80); }
+  else goTo('food');
+}
+function renderFoodIfVisible(){ if(currentScreen==='food') renderFood(); }
+function renderHomeNutritionCard(){
+  const el=document.getElementById('home-food-today'); if(!el) return;
+  const fd=getFD(today()); const prog=getMealProgress(fd); const cm=getCurrentMeal(fd);
+  const cur=cm.current, next=cm.next;
+  const status=cm.allDone?'Completado':'Pendiente';
+  el.innerHTML=`<div class="mq-nutri-card mq-card">
+    <div class="mq-card-head"><div><div class="mq-kicker">Alimentación de hoy</div><div class="mq-card-title">${prog.pct}% de adherencia</div></div><span class="mq-pill ${cm.allDone?'ok':''}">${status}</span></div>
+    <div class="mq-progress"><div style="width:${prog.pct}%"></div></div>
+    ${cur?`<div class="mq-pending"><div class="mq-label">${prog.done>0?'Pendiente':'Pendiente anterior'}</div><strong>${cur.nombre}</strong><p>${cur.ejemplo||cur.detail||cur.grupos||''}</p></div>
+    <div class="mq-actions"><button class="btn btn-p btn-sm" onclick="completeCurrentMealFromHome()">Completar</button><button class="btn btn-s btn-sm" onclick="editCurrentMealFromHome()">Editar comida</button></div>
+    <div class="mq-next"><span>Próxima comida:</span> ${next?`${next.hora} — ${next.nombre}`:'Sin pendientes posteriores'}</div>`:`<div class="mq-pending"><strong>Día alimentario completo</strong><p>Completaste los ${prog.total} hitos del día.</p></div>`}
+  </div>`;
+}
+function setHomeWaterCups(n){
+  const fd=getFD(today()); fd.agua=Math.max(0, Math.min(NUTRITION_TARGETS.aguaVasos, n));
+  fd.aguaMl=Math.round(fd.agua*(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos));
+  saveFD(fd); showToast('Agua registrada',1400,'ok'); renderHomeWaterCard(); renderFoodIfVisible();
+}
+function addHomeWaterMl(ml){
+  const fd=getFD(today());
+  const cur=fd.aguaMl || Math.round((fd.agua||0)*(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos));
+  fd.aguaMl=Math.max(0,cur+ml); fd.agua=Math.min(NUTRITION_TARGETS.aguaVasos, Math.round(fd.aguaMl/(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos)));
+  saveFD(fd); showToast(fd.aguaMl>=NUTRITION_TARGETS.aguaMl?'Meta cumplida':'Agua registrada',1600,'ok'); renderHomeWaterCard(); renderFoodIfVisible();
+}
+function renderHomeWaterCard(){
+  const el=document.getElementById('home-water-today'); if(!el) return;
+  const fd=getFD(today()); const ml=fd.aguaMl || Math.round((fd.agua||0)*(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos));
+  const pct=Math.min(100, Math.round(ml/NUTRITION_TARGETS.aguaMl*100)); const vasos=fd.agua||0;
+  el.innerHTML=`<div class="mq-water-card mq-card">
+    <div class="mq-card-head"><div><div class="mq-kicker">Agua de hoy</div><div class="mq-card-title">${(ml/1000).toFixed(1).replace('.',',')} / 2,5 L</div></div><span class="mq-pill ${pct>=100?'ok':''}">${pct}%</span></div>
+    <div class="mq-progress aqua"><div style="width:${pct}%"></div></div>
+    <div class="mq-cups">${Array.from({length:NUTRITION_TARGETS.aguaVasos},(_,i)=>`<button class="mq-cup ${i<vasos?'on':''}" onclick="setHomeWaterCups(${i+1})" aria-label="${i+1} vasos"></button>`).join('')}</div>
+    <div class="mq-actions"><button class="btn btn-s btn-sm" onclick="addHomeWaterMl(250)">+250 ml</button><button class="btn btn-s btn-sm" onclick="addHomeWaterMl(500)">+500 ml</button><button class="btn btn-s btn-sm" onclick="addHomeWaterMl(750)">+750 ml</button></div>
+    <div class="mq-next"><span>Restante:</span> ${Math.max(0,(NUTRITION_TARGETS.aguaMl-ml)/1000).toFixed(1).replace('.',',')} L</div>
+  </div>`;
+}
+function addFrequentFood(foodId){
+  const food=FREQUENT_FOODS.find(f=>f.id===foodId); if(!food) return;
+  const fd=getFD(foodFecha); if(!fd.extraFoods) fd.extraFoods=[];
+  fd.extraFoods.push({id:food.id,name:food.name,portions:food.portions,ts:Date.now()});
+  saveFD(fd); showToast('Alimento registrado',1400,'ok'); renderFood(); renderHomeNutritionCard();
+}
+function renderNutritionPortionDashboard(fd){
+  const consumed=calcPortionsConsumed(fd), remaining=calcPortionsRemaining(consumed);
+  const keys=Object.keys(remaining);
+  return `<div class="mq-portion-card mq-card" style="margin-bottom:12px">
+    <div class="mq-card-head"><div><div class="mq-kicker">Porciones del día</div><div class="mq-card-title">Consumido / restante</div></div></div>
+    <div class="mq-portion-grid">${keys.map(k=>{const c=+(consumed[k]||0).toFixed(2), r=remaining[k], target=NUTRITION_TARGETS[k]; const p=Math.min(100,Math.round(c/target*100)); return `<div class="mq-portion-row"><div><strong>${PORTION_LABELS[k]}</strong><span>${c} / ${target}</span></div><div class="mq-mini-progress"><div style="width:${p}%"></div></div><small>Restan ${r}</small></div>`;}).join('')}</div>
+  </div>`;
+}
+function renderFrequentFoods(){
+  return `<div class="mq-card" style="margin-bottom:12px"><div class="mq-card-head"><div><div class="mq-kicker">Alimentos frecuentes</div><div class="mq-card-title">Registro rápido</div></div></div><div class="mq-food-buttons">${FREQUENT_FOODS.map(f=>`<button onclick="addFrequentFood('${f.id}')">${f.name}</button>`).join('')}</div></div>`;
+}
+
 // ---------------------------------------------------------------
 //  AGUA CHECKPOINTS
 // ---------------------------------------------------------------
@@ -4167,7 +4304,7 @@ function toggleAguaCp(idx){
   // Sincronizar vasos legacy (cada cp = 1 vaso aprox)
   fd.agua=cps.filter(Boolean).length;
   saveFD(fd);
-  renderAguaCheckpoints(fd);
+  renderAguaCheckpoints(fd); renderHomeWaterCard();
   const totalMl=AGUA_CPS.filter((_,i)=>cps[i]).reduce((a,c)=>a+c.ml,0);
   if(totalMl>=AGUA_META_ML) showToast('Meta de agua alcanzada',2500,'ok');
 }
@@ -4199,12 +4336,13 @@ function renderAguaCheckpoints(fd){
 //  SCREEN: NUTRICIÓN
 // ---------------------------------------------------------------
 const COMIDAS=[
-  {id:'desayuno',      emoji:'☼',  nombre:'Desayuno',    hora:'08:00', grupos:'1 lácteo · 0.5 cereal · 3 carnes',         ejemplo:'Yogur protein + pan molde + 3 huevos + jamón pavo'},
-  {id:'colacion_am',   emoji:'◍',  nombre:'Colación AM', hora:'10:30', grupos:'1 fruta',                                   ejemplo:'120g arándanos o 1 manzana'},
-  {id:'almuerzo',      emoji:'◐',  nombre:'Almuerzo',    hora:'13:00', grupos:'4 carnes · verduras',                       ejemplo:'320g merluza + ensalada + limón'},
-  {id:'colacion_pm',   emoji:'◓',  nombre:'Colación PM', hora:'16:00', grupos:'1 lácteo protein',                         ejemplo:'1 yogur Soprole protein'},
-  {id:'pre_entreno',   emoji:'✶',  nombre:'Pre-Entreno', hora:'18:00', grupos:'1 fruta · 1 lácteo desc · 1 scoop',        ejemplo:'1 fruta + 200ml leche desc + proteína'},
-  {id:'cena',          emoji:'☾',  nombre:'Cena',         hora:'20:30', grupos:'2 cereales · 3 carnes · verduras · 0.5 líp',ejemplo:'1 tortilla + 200g pollo + lechuga + 50g palta'},
+  {id:'desayuno', nombre:'Desayuno', hora:'08:00', grupos:'2 proteínas · 1 fruta · 0.5 cereal · 0.5 lípidos', ejemplo:'1 scoop proteína + 1/2 plátano + pan molde + mantequilla de maní medida', portions:MEAL_PORTIONS.desayuno},
+  {id:'fruta_1000', nombre:'Fruta 10:00', hora:'10:00', grupos:'1 fruta', ejemplo:'1 fruta', portions:MEAL_PORTIONS.fruta_1000},
+  {id:'almuerzo_post', nombre:'Almuerzo post-entreno', hora:'13:30', grupos:'2 cereales · 2 a 3 proteínas · verduras', ejemplo:'2 papas cocidas + 1 presa de pollo + verduras si puedes', portions:MEAL_PORTIONS.almuerzo_post},
+  {id:'leche_protein_1700', nombre:'Leche protein 17:00', hora:'17:00', grupos:'1 lácteo protein', ejemplo:'1 leche protein', portions:MEAL_PORTIONS.leche_protein_1700},
+  {id:'huevos_1800', nombre:'Huevos duros 18:00', hora:'18:00', grupos:'2 proteínas', ejemplo:'2 huevos duros', portions:MEAL_PORTIONS.huevos_1800},
+  {id:'leche_descremada_casa', nombre:'Leche descremada al llegar', hora:'19:30', grupos:'1 lácteo descremado', ejemplo:'200 ml leche descremada', portions:MEAL_PORTIONS.leche_descremada_casa},
+  {id:'cena', nombre:'Cena', hora:'21:00', grupos:'Proteína magra + verduras · cereal/aceite solo si queda pendiente', ejemplo:'Pollo, pescado, pavo, atún, huevos o jamón de pavo + verduras', portions:MEAL_PORTIONS.cena},
 ];
 const PORCIONES=[
   {emoji:'◌',nombre:'Cereales',              meta:'3'},
@@ -4287,7 +4425,7 @@ function renderFood(){
   const completadas=Object.values(fd.comidas).filter(c=>c.completada).length;
   const pct=Math.round((completadas/COMIDAS.length)*100);
   document.getElementById('food-stats-row').innerHTML=`
-    <div class="stat-box"><div class="stat-num" style="color:#22d3ee">${fd.agua}</div><div class="stat-label">Vasos</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--orange)">${fd.agua||0}/${NUTRITION_TARGETS.aguaVasos}</div><div class="stat-label">Vasos</div></div>
     <div class="stat-box"><div class="stat-num">${completadas}/${COMIDAS.length}</div><div class="stat-label">Comidas</div></div>
     <div class="stat-box"><div class="stat-num" style="color:${pct===100?'var(--green)':'var(--orange)'}">${pct}%</div><div class="stat-label">Adherencia</div></div>`;
   // Agua
@@ -4295,16 +4433,17 @@ function renderFood(){
   document.getElementById('food-comidas-count').textContent=`${completadas} / ${COMIDAS.length}`;
   // Menú sugerido
   const menu=MENU_SEMANA[d.getDay()];
+  const nutritionDash = renderNutritionPortionDashboard(fd) + renderFrequentFoods();
   const sug=menu&&esHoy?`<div style="background:var(--bg3);border-radius:var(--rl);padding:10px 14px;margin-bottom:10px;border-left:3px solid var(--orange)">
     <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">▦ Menú sugerido · ${menu.r}</div>
     <div style="font-size:12px;color:var(--ink2);line-height:1.7"><strong style="color:var(--orange)">D:</strong> ${menu.d}<br><strong style="color:var(--orange)">A:</strong> ${menu.a}<br><strong style="color:var(--orange)">C:</strong> ${menu.c}</div>
   </div>`:'';
-  document.getElementById('food-comidas-list').innerHTML=sug+COMIDAS.map(c=>{
+  document.getElementById('food-comidas-list').innerHTML=nutritionDash+sug+COMIDAS.map(c=>{
     const est=fd.comidas[c.id]||{completada:false,texto:''};
     const ab=foodOpenId===c.id;
     return `<div class="comida-card">
       <div class="comida-head" onclick="toggleComida('${c.id}')">
-        <div class="comida-emoji">${c.emoji}</div>
+        <div class="comida-emoji">◉</div>
         <div class="comida-info">
           <div class="comida-nombre">${c.nombre}</div>
           <div class="comida-hora">${c.hora}</div>
@@ -4331,7 +4470,7 @@ function toggleComidaCheck(id){
   const fd=getFD(foodFecha); if(!fd.comidas[id]) fd.comidas[id]={completada:false,texto:''};
   fd.comidas[id].completada=!fd.comidas[id].completada; saveFD(fd);
   if(Object.values(fd.comidas).filter(c=>c.completada).length===COMIDAS.length) showToast('🎯 ¡Todas las comidas del día!',3000,'ok');
-  renderFood();
+  renderFood(); renderHomeNutritionCard();
 }
 function saveComidaTxt(id,txt){
   const fd=getFD(foodFecha); if(!fd.comidas[id]) fd.comidas[id]={completada:false,texto:''};
@@ -4343,8 +4482,8 @@ function usarIdea(id,txt){
 }
 function cambiarAgua(delta){
   const fd=getFD(foodFecha);
-  fd.agua=Math.min(10,Math.max(0,(fd.agua||0)+delta)); saveFD(fd);
-  if(fd.agua>=10) showToast('Meta de agua alcanzada',2500,'ok');
+  fd.agua=Math.min(NUTRITION_TARGETS.aguaVasos,Math.max(0,(fd.agua||0)+delta)); fd.aguaMl=Math.round(fd.agua*(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos)); saveFD(fd);
+  if(fd.agua>=NUTRITION_TARGETS.aguaVasos) showToast('Meta de agua alcanzada',2500,'ok');
   renderAguaCheckpoints(fd);
   renderFood();
 }

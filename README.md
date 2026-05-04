@@ -78,3 +78,11 @@ Sube todo el contenido de esta carpeta a la raíz del repo. `index.html`, `style
 - Favicon M limpio con cache busting.
 - Safe area inferior reforzado para iPhone.
 - Wordmark limpio aplicado si está disponible.
+
+
+## v108 Nutrition MVP
+- Home con tarjetas Alimentación de hoy y Agua de hoy.
+- Agua visual con 11 vasos y meta 2,5 L.
+- Nutrición con 7 hitos diarios.
+- Porciones consumidas/restantes y alimentos frecuentes.
+- Sin alertas ni modal de aclaración.
