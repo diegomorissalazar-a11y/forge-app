@@ -758,51 +758,177 @@ function guardarPesoObjetivo(){
   renderPesoBanner();
   showToast('✓ Objetivo actualizado',2000,'ok');
 }
+
+// ═══════════════════════════════════════════════════════
+//  MELQART DESIGN SYSTEM — SVG Icons + UI Helpers
+// ═══════════════════════════════════════════════════════
+const MQ = {
+  // Ícono balanza (peso)
+  balanza:`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="19"/><line x1="5" y1="8" x2="19" y2="8"/><circle cx="12" cy="3" r="1.5" fill="currentColor" stroke="none"/><path d="M5,8 L3,15 Q5,17 7,15 L5,8" fill="none"/><path d="M19,8 L17,15 Q19,17 21,15 L19,8" fill="none"/><line x1="4" y1="21" x2="20" y2="21"/></svg>`,
+  // Ícono antorcha (racha)
+  antorcha:`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="15" width="4" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M12,2 Q8,8 8,12 Q8,15 12,15 Q16,15 16,12 Q16,8 12,2" stroke="#CDA349" stroke-width="1.5" fill="none"/><path d="M12,7 Q10,10 10,12 Q10,14 12,15 Q14,14 14,12 Q14,10 12,7" fill="#CDA349" fill-opacity="0.4" stroke="none"/></svg>`,
+  // Ícono columna (sesiones)
+  columna:`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8,8 Q12,6 16,8"/><rect x="8" y="8" width="8" height="10" rx="1"/><line x1="10" y1="8" x2="10" y2="18" opacity=".3"/><line x1="14" y1="8" x2="14" y2="18" opacity=".3"/><rect x="7" y="18" width="10" height="3" rx="1"/><rect x="6" y="5" width="12" height="3" rx="1"/></svg>`,
+  // Ícono ánfora (agua) — turquesa
+  anfora:`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="4" rx="1.5" stroke="#2EC4C7" stroke-width="1.5"/><line x1="8" y1="2" x2="16" y2="2" stroke="#2EC4C7" stroke-width="1.5"/><path d="M9,6 Q6,10 6,15 Q6,20 8,22 L8,23 L16,23 L16,22 Q18,20 18,15 Q18,10 15,6 Z" stroke="#2EC4C7" stroke-width="1.5"/><path d="M9,9 Q4,10 4,16" stroke="#2EC4C7" stroke-width="1.3"/><path d="M15,9 Q20,10 20,16" stroke="#2EC4C7" stroke-width="1.3"/><path d="M12,10 Q10,13 10,16 Q10,19 12,19 Q14,19 14,16 Q14,13 12,10" fill="#2EC4C7" fill-opacity="0.45" stroke="none"/></svg>`,
+  // Ícono plato desde arriba (comidas) — dorado
+  plato:`<svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="10" fill="#FFF8E6" stroke="#CDA349" stroke-width="1.7"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#CDA349" stroke-width="1.1"/><circle cx="12" cy="12" r="3" fill="#CDA349" fill-opacity="0.6"/></svg>`,
+  // Laurel (logros)
+  laurel:`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6,17 Q3,13 5,9 Q8,12 7,16"/><path d="M7,16 Q4,12 6,8 Q9,11 8,15"/><path d="M8,15 Q6,11 8,7 Q11,11 9,15"/><path d="M9,14 Q8,10 11,7 Q13,11 11,14"/><path d="M18,17 Q21,13 19,9 Q16,12 17,16"/><path d="M17,16 Q20,12 18,8 Q15,11 16,15"/><path d="M16,15 Q18,11 16,7 Q13,11 15,15"/><path d="M15,14 Q16,10 13,7 Q11,11 13,14"/><path d="M9,17 Q12,19 15,17" stroke-width="1.6"/></svg>`,
+};
+
+// Genera anillo SVG de progreso — r=38, circ=238.76
+function mqRing(pct, label, sub){
+  const r=38, circ=238.76, dash=(pct/100)*circ, gap=circ-dash, off=circ*0.25;
+  return '<svg viewBox="0 0 100 100" width="100" height="100" style="display:block">'
+    +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="var(--mq-ring-bg,#E8E0F8)" stroke-width="9"/>'
+    +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="var(--mq-purple,#5A2D82)" stroke-width="9"'
+    +' stroke-dasharray="'+dash.toFixed(1)+' '+gap.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" stroke-linecap="round"/>'
+    +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="#CDA349" stroke-width="9"'
+    +' stroke-dasharray="3 '+(circ-3).toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" stroke-linecap="round"/>'
+    // antorcha centro
+    +'<rect x="47" y="54" width="6" height="11" rx="1.5" fill="none" stroke="#5A2D82" stroke-width="1.2"/>'
+    +'<path d="M50 32 Q46 38 46 43 Q46 50 50 52 Q54 50 54 43 Q54 38 50 32" fill="none" stroke="#CDA349" stroke-width="1.3" stroke-linecap="round"/>'
+    +'<path d="M50 37 Q48 41 48 44 Q48 48 50 52 Q52 48 52 44 Q52 41 50 37" fill="#CDA349" fill-opacity="0.32" stroke="none"/>'
+    +'<text x="50" y="73" text-anchor="middle" font-size="10" font-weight="700" fill="#5A2D82" font-family="sans-serif">'+label+'</text>'
+    +(sub?'<text x="50" y="84" text-anchor="middle" font-size="7.5" fill="#9B7FC7" font-family="sans-serif">'+sub+'</text>':'')
+    +'</svg>';
+}
+
+// Ánforas agua: activas ON (turquesa), OFF (gris)
+function mqAnforas(activas, total){
+  let h='<div class="mq-tracker-row">';
+  for(let i=0;i<total;i++){
+    const on=i<activas;
+    h+='<button class="mq-anfora-btn'+(on?' on':'')+'" onclick="mqToggleAnfora('+i+')" aria-label="Ánfora '+(i+1)+'">'+MQ.anfora+'</button>';
+  }
+  h+='</div><div class="mq-tracker-lbl" style="color:#2EC4C7">'+activas+' / '+total+' ánforas</div>';
+  return h;
+}
+
+// Platos comidas: ON (dorado), OFF (gris)
+function mqPlatos(activas, total){
+  let h='<div class="mq-tracker-row">';
+  for(let i=0;i<total;i++){
+    const on=i<activas;
+    h+='<div class="mq-plato-btn'+(on?'':' off')+'" aria-label="Comida '+(i+1)+'">'+MQ.plato+'</div>';
+  }
+  h+='</div><div class="mq-tracker-lbl" style="color:#CDA349">'+activas+' / '+total+' comidas</div>';
+  return h;
+}
+
+// Toggle ánfora desde home (sincroniza con sistema existente)
+function mqToggleAnfora(idx){
+  const fd=getFD(typeof foodDate!=='undefined'?foodDate:today());
+  const cps=getAguaCps(fd);
+  cps[idx]=!cps[idx];
+  fd.aguaCps=cps;
+  fd.agua=cps.filter(Boolean).length;
+  saveFD(fd);
+  const totalMl=AGUA_CPS.filter((_,i)=>cps[i]).reduce((a,c)=>a+c.ml,0);
+  if(totalMl>=AGUA_META_ML) showToast('Meta de agua alcanzada',2500,'ok');
+  renderHomeWaterCard();
+  renderAguaCheckpoints(fd);
+}
+
+// Gráfico sparkline últimos 7 pesajes en SVG
+function mqPesoChart(mets){
+  if(!mets||mets.length<2) return '';
+  const datos=mets.slice(-7);
+  const W=200,H=60,pad=6;
+  const pesos=datos.map(m=>m.peso);
+  const min=Math.min(...pesos)-0.5, max=Math.max(...pesos)+0.5;
+  const xStep=(W-pad*2)/(datos.length-1);
+  const yOf=p=>pad+(1-(p-min)/(max-min))*(H-pad*2);
+  const pts=datos.map((m,i)=>[pad+i*xStep, yOf(m.peso)]);
+  const pathD='M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L');
+  // Área rellena
+  const areaD=pathD+' L'+pts[pts.length-1][0].toFixed(1)+','+(H-pad)+' L'+pad+','+(H-pad)+' Z';
+  // Etiquetas eje (min/max/actual)
+  const dias=['D','L','M','M','J','V','S'];
+  const labDays=datos.map(m=>{ const d=new Date(m.date+'T12:00:00'); return dias[d.getDay()]; });
+  // SVG
+  let svg='<svg viewBox="0 0 '+W+' '+(H+18)+'" width="100%" style="overflow:visible;display:block">';
+  // línea meta
+  const yMeta=yOf(parseFloat((document.getElementById('home-peso-banner')?'':0)||0));
+  // Área rellena bajo la curva
+  svg+='<defs><linearGradient id="pgr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5A2D82" stop-opacity="0.28"/><stop offset="100%" stop-color="#5A2D82" stop-opacity="0.03"/></linearGradient></defs>';
+  svg+='<path d="'+areaD+'" fill="url(#pgr)" stroke="none"/>';
+  // Línea dashes meta peso
+  // Línea principal
+  svg+='<path d="'+pathD+'" fill="none" stroke="#5A2D82" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+  // Puntos
+  pts.forEach((p,i)=>{
+    const isLast=i===pts.length-1;
+    svg+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(isLast?4:2.5)+'" fill="'+(isLast?'#5A2D82':'#B79CFF')+'" stroke="'+(isLast?'#fff':'none')+'" stroke-width="1.5"/>';
+    if(isLast){
+      svg+='<text x="'+p[0].toFixed(1)+'" y="'+(p[1]-8).toFixed(1)+'" text-anchor="middle" font-size="9" font-weight="700" fill="#5A2D82" font-family="sans-serif">'+datos[i].peso+'</text>';
+    }
+  });
+  // Etiquetas días eje X
+  pts.forEach((p,i)=>{
+    svg+='<text x="'+p[0].toFixed(1)+'" y="'+(H+14)+'" text-anchor="middle" font-size="8" fill="#9B7FC7" font-family="sans-serif">'+labDays[i]+'</text>';
+  });
+  svg+='</svg>';
+  return svg;
+}
+
+
 function renderPesoBanner(){
   const el=document.getElementById('home-peso-banner'); if(!el) return;
   const po=getPesoObjetivo();
-  const PESO_INICIO=po.inicio;
-  const PESO_OBJETIVO=po.objetivo;
+  const PESO_INICIO=po.inicio, PESO_OBJETIVO=po.objetivo;
   const BRECHA=PESO_INICIO-PESO_OBJETIVO;
   if(BRECHA<=0){ el.innerHTML=''; return; }
-  const mets=(forge.bodyMetrics||[]).filter(m=>m.peso).sort((a,b)=>a.date>b.date?1:-1);
+  const mets=(forge.bodyMetrics||[]).filter(m=>m.peso).sort((a,b)=>a.date.localeCompare(b.date));
   if(!mets.length){ el.innerHTML=''; return; }
   const actual=mets[mets.length-1].peso;
   const perdidos=Math.max(0,parseFloat((PESO_INICIO-actual).toFixed(1)));
   const faltan=Math.max(0,parseFloat((actual-PESO_OBJETIVO).toFixed(1)));
   const pct=Math.min(100,Math.round((perdidos/BRECHA)*100));
   const completado=actual<=PESO_OBJETIVO;
+  const colPct=completado?'var(--green)':'#5A2D82';
 
-  el.innerHTML='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-      +'<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:700">Objetivo de peso</div>'
-      +'<div style="display:flex;gap:6px">'
-        +'<button onclick="registrarPesoRapido()" style="background:var(--orange);color:#fff;border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px">+ Peso</button>'
-        +'<button onclick="abrirPesoObjetivo()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--ink3);padding:2px 6px">✏️</button>'
+  el.innerHTML=
+    // Card principal
+    '<div class="mq-home-card">'
+    // Header fila
+    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:10px">'
+      +'<div class="mq-hrow" style="gap:8px;color:#5A2D82">'+MQ.balanza+'<span class="mq-kicker">Peso de la semana</span></div>'
+      +'<div class="mq-hrow" style="gap:6px">'
+        +'<button class="mq-btn-pill" onclick="registrarPesoRapido()">+ Peso</button>'
+        +'<button class="mq-btn-icon" onclick="abrirPesoObjetivo()" title="Editar objetivo">✏</button>'
       +'</div>'
     +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start">'
-    +'<div>'
-      +'<div style="display:flex;justify-content:space-between;margin-bottom:6px">'
-        +'<span style="font-size:13px;color:var(--ink2)">'+actual+'kg <span style="color:var(--ink3);font-size:11px">actual</span></span>'
-        +'<span style="font-size:13px;font-weight:700;color:'+(completado?'var(--green)':'var(--orange)')+'">'+pct+'%</span>'
+    // KPI + sparkline + ring
+    +'<div class="mq-hrow" style="align-items:flex-start;gap:12px">'
+      // Columna izquierda: KPI + gráfico
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px">'
+          +'<span class="mq-kpi-big">'+actual+'</span>'
+          +'<span class="mq-kpi-unit">kg</span>'
+          +'<span style="font-size:11px;color:var(--ink3);margin-left:4px">'+(faltan>0?'faltan '+faltan+'kg':'✓ meta')+'</span>'
+        +'</div>'
+        // Sparkline últimos 7 pesajes
+        +mqPesoChart(mets)
+        // Barra progreso slim
+        +'<div style="display:flex;align-items:center;gap:8px;margin-top:8px">'
+          +'<div style="flex:1;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden">'
+            +'<div style="width:'+pct+'%;height:100%;background:'+colPct+';border-radius:3px;transition:width .5s"></div>'
+          +'</div>'
+          +'<span style="font-size:11px;font-weight:700;color:'+colPct+'">'+pct+'%</span>'
+        +'</div>'
       +'</div>'
-      +'<div style="background:var(--bg4);border-radius:6px;height:10px;overflow:hidden">'
-        +'<div style="width:'+pct+'%;height:100%;background:'+(completado?'var(--green)':'var(--orange)')+';border-radius:6px;transition:width .4s"></div>'
+      // Columna derecha: ring + meta
+      +'<div style="text-align:center;flex-shrink:0">'
+        +'<div style="font-size:10px;color:var(--ink3);margin-bottom:4px">Meta</div>'
+        +'<div style="font-size:18px;font-weight:800;color:#CDA349">'+PESO_OBJETIVO+' kg</div>'
+        +'<div style="margin-top:6px">'+mqRing(pct,pct+'%','Progreso')+'</div>'
       +'</div>'
-      +'<div style="display:flex;gap:16px;margin-top:8px">'
-        +'<div><div style="font-size:18px;font-weight:800;color:var(--green)">-'+perdidos+'kg</div><div style="font-size:10px;color:var(--ink3)">Perdidos</div></div>'
-        +'<div><div style="font-size:18px;font-weight:800;color:'+(faltan>0?'var(--orange)':'var(--green)')+'">'+( faltan>0?faltan+'kg':'✓')+'</div><div style="font-size:10px;color:var(--ink3)">'+(faltan>0?'Faltan':'Logrado')+'</div></div>'
-      +'</div>'
-    +'</div>'
-    +'<div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center;min-width:70px">'
-      +'<div style="font-size:10px;color:var(--ink3);margin-bottom:4px">Objetivo</div>'
-      +'<div style="font-size:26px;font-weight:800;font-family:var(--fd);color:var(--orange)">'+PESO_OBJETIVO+'</div>'
-      +'<div style="font-size:10px;color:var(--ink3)">kg</div>'
-    +'</div>'
     +'</div>'
     +'</div>';
 }
+
 function renderStreakBanner(){
   const el=document.getElementById('home-streak-banner'); if(!el) return;
   const anio=new Date().getFullYear()+'';
@@ -814,26 +940,21 @@ function renderStreakBanner(){
   const estaSemana=mapSem[hoyLunes]||0;
   if(!rachaActual&&!mejor.count){ el.innerHTML=''; return; }
   const esNuevaMejor=mejor.lunes===hoyLunes&&estaSemana>0;
-  let html='<div class="home-soft-card">';
-  html+='<div class="home-soft-kicker">Seguimiento semanal · '+anio+'</div>';
-  if(mejor.count>0){
-    html+='<div class="home-soft-note">Mejor semana del año: <strong>'+mejor.count+' sesiones</strong>';
-    if(mejor.lunes) html+=' <span style="color:var(--ink3)">('+fmtRangoSemana(mejor.lunes)+')</span>';
-    html+='</div>';
-  }
-  if(rachaActual>0){
-    html+='<div class="home-soft-note">Racha actual: <strong>'+rachaActual+' semana'+(rachaActual>1?'s':'')+' seguida'+(rachaActual>1?'s':'')+'</strong></div>';
-  }
-  if(rachaMejor>rachaActual){
-    html+='<div class="home-soft-note">Mejor racha: <strong>'+rachaMejor+' semanas</strong></div>';
-  }
-  if(esNuevaMejor){
-    html+='<div class="home-soft-highlight">Esta semana: <strong>'+estaSemana+' sesiones</strong> — nueva mejor semana del año</div>';
-  } else if(estaSemana>0){
-    html+='<div class="home-soft-sub">Esta semana: <strong>'+estaSemana+' sesiones</strong></div>';
-  }
-  html+='</div>';
-  el.innerHTML=html;
+
+  el.innerHTML='<div class="mq-home-card">'
+    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:10px;color:#5A2D82">'
+      +MQ.laurel
+      +'<span class="mq-kicker" style="flex:1;margin-left:8px">Seguimiento · '+anio+'</span>'
+      +(esNuevaMejor?'<span class="mq-chip-gold">Nueva mejor</span>':'')
+    +'</div>'
+    +'<div class="mq-hrow" style="gap:20px;flex-wrap:wrap">'
+      +'<div><div class="mq-stat-val" style="color:#5A2D82">'+rachaActual+'</div><div class="mq-stat-lbl">Racha</div></div>'
+      +(rachaMejor>rachaActual?'<div><div class="mq-stat-val">'+rachaMejor+'</div><div class="mq-stat-lbl">Mejor racha</div></div>':'')
+      +(mejor.count?'<div><div class="mq-stat-val" style="color:#CDA349">'+mejor.count+'</div><div class="mq-stat-lbl">Mejor semana</div></div>':'')
+      +'<div><div class="mq-stat-val">'+estaSemana+'</div><div class="mq-stat-lbl">Esta semana</div></div>'
+    +'</div>'
+    +(mejor.lunes?'<div class="mq-stat-lbl" style="margin-top:6px;color:var(--ink3)">'+fmtRangoSemana(mejor.lunes)+'</div>':'')
+    +'</div>';
 }
 
 function renderHome(){
@@ -856,9 +977,9 @@ function renderHome(){
   const wStart = new Date(hoy); wStart.setDate(hoy.getDate()-(hoy.getDay()||7)+1); wStart.setHours(0,0,0,0);
   const semana = ses.filter(s=>new Date(s.date)>=wStart).length;
   document.getElementById('home-stats').innerHTML=`
-    <div class="stat-box"><div class="stat-num">${semana}</div><div class="stat-label">Esta semana</div></div>
-    <div class="stat-box"><div class="stat-num" style="color:var(--orange)">${calcStreak()}</div><div class="stat-label">Racha semanas</div></div>
-    <div class="stat-box"><div class="stat-num">${ses.length}</div><div class="stat-label">Total</div></div>`;
+    <div class="mq-stat-box"><div class="mq-stat-ico" style="color:#5A2D82">${MQ.columna}</div><div class="mq-stat-num">${semana}</div><div class="mq-stat-lbl">Esta semana</div></div>
+    <div class="mq-stat-box"><div class="mq-stat-ico" style="color:#CDA349">${MQ.antorcha}</div><div class="mq-stat-num" style="color:#5A2D82">${calcStreak()}</div><div class="mq-stat-lbl">Racha</div></div>
+    <div class="mq-stat-box"><div class="mq-stat-ico" style="color:#5A2D82">${MQ.laurel}</div><div class="mq-stat-num">${ses.length}</div><div class="mq-stat-lbl">Total</div></div>`;
 
   const ultimas = [...ses].sort((a,b)=>b.date-a.date);
   const el = document.getElementById('home-sessions');
@@ -4230,14 +4351,29 @@ function renderHomeNutritionCard(){
   const el=document.getElementById('home-food-today'); if(!el) return;
   const fd=getFD(today()); const prog=getMealProgress(fd); const cm=getCurrentMeal(fd);
   const cur=cm.current, next=cm.next;
-  const status=cm.allDone?'Completado':'Pendiente';
-  el.innerHTML=`<div class="mq-nutri-card mq-card">
-    <div class="mq-card-head"><div><div class="mq-kicker">Alimentación de hoy</div><div class="mq-card-title">${prog.pct}% de adherencia</div></div><span class="mq-pill ${cm.allDone?'ok':''}">${status}</span></div>
-    <div class="mq-progress"><div style="width:${prog.pct}%"></div></div>
-    ${cur?`<div class="mq-pending"><div class="mq-label">${prog.done>0?'Pendiente':'Pendiente anterior'}</div><strong>${cur.nombre}</strong><p>${cur.ejemplo||cur.detail||cur.grupos||''}</p></div>
-    <div class="mq-actions"><button class="btn btn-p btn-sm" onclick="completeCurrentMealFromHome()">Completar</button><button class="btn btn-s btn-sm" onclick="editCurrentMealFromHome()">Editar comida</button></div>
-    <div class="mq-next"><span>Próxima comida:</span> ${next?`${next.hora} — ${next.nombre}`:'Sin pendientes posteriores'}</div>`:`<div class="mq-pending"><strong>Día alimentario completo</strong><p>Completaste los ${prog.total} hitos del día.</p></div>`}
-  </div>`;
+  const activas=prog.done||0, total=prog.total||5;
+  el.innerHTML='<div class="mq-home-card">'
+    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:10px">'
+      +'<div class="mq-hrow" style="gap:8px;color:#CDA349">'+MQ.plato+'<span class="mq-kicker">Nutrición</span></div>'
+      +'<span style="font-size:13px;font-weight:700;color:'+(cm.allDone?'var(--green)':'#CDA349')+'">'+prog.pct+'%</span>'
+    +'</div>'
+    // Platos tracker
+    +mqPlatos(activas, total)
+    // Siguiente comida
+    +(cur
+      ?('<div style="margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:10px">'
+        +'<div class="mq-stat-lbl">Pendiente</div>'
+        +'<div style="font-size:14px;font-weight:700;color:var(--ink);margin:2px 0">'+cur.nombre+'</div>'
+        +'<div style="font-size:11px;color:var(--ink3)">'+( cur.ejemplo||cur.detail||cur.grupos||'')+'</div>'
+        +'<div class="mq-hrow" style="gap:8px;margin-top:8px">'
+          +'<button class="mq-btn-pill" onclick="completeCurrentMealFromHome()">Completar</button>'
+          +'<button class="mq-btn-sec" onclick="editCurrentMealFromHome()">Editar</button>'
+        +'</div>'
+        +(next?'<div class="mq-stat-lbl" style="margin-top:6px">Próxima: '+next.hora+' — '+next.nombre+'</div>':'')
+        +'</div>')
+      :'<div class="mq-stat-lbl" style="margin-top:8px;color:var(--green)">Día alimentario completo</div>'
+    )
+    +'</div>';
 }
 function setHomeWaterCups(n){
   const fd=getFD(today()); fd.agua=Math.max(0, Math.min(NUTRITION_TARGETS.aguaVasos, n));
@@ -4252,15 +4388,29 @@ function addHomeWaterMl(ml){
 }
 function renderHomeWaterCard(){
   const el=document.getElementById('home-water-today'); if(!el) return;
-  const fd=getFD(today()); const ml=fd.aguaMl || Math.round((fd.agua||0)*(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos));
-  const pct=Math.min(100, Math.round(ml/NUTRITION_TARGETS.aguaMl*100)); const vasos=fd.agua||0;
-  el.innerHTML=`<div class="mq-water-card mq-card">
-    <div class="mq-card-head"><div><div class="mq-kicker">Agua de hoy</div><div class="mq-card-title">${(ml/1000).toFixed(1).replace('.',',')} / 2,5 L</div></div><span class="mq-pill ${pct>=100?'ok':''}">${pct}%</span></div>
-    <div class="mq-progress aqua"><div style="width:${pct}%"></div></div>
-    <div class="mq-cups">${Array.from({length:NUTRITION_TARGETS.aguaVasos},(_,i)=>`<button class="mq-cup ${i<vasos?'on':''}" onclick="setHomeWaterCups(${i+1})" aria-label="${i+1} vasos"></button>`).join('')}</div>
-    <div class="mq-actions"><button class="btn btn-s btn-sm" onclick="addHomeWaterMl(250)">+250 ml</button><button class="btn btn-s btn-sm" onclick="addHomeWaterMl(500)">+500 ml</button><button class="btn btn-s btn-sm" onclick="addHomeWaterMl(750)">+750 ml</button></div>
-    <div class="mq-next"><span>Restante:</span> ${Math.max(0,(NUTRITION_TARGETS.aguaMl-ml)/1000).toFixed(1).replace('.',',')} L</div>
-  </div>`;
+  const fd=getFD(today());
+  const ml=fd.aguaMl||Math.round((fd.agua||0)*(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos));
+  const pct=Math.min(100,Math.round(ml/NUTRITION_TARGETS.aguaMl*100));
+  const vasos=fd.agua||0;
+  const totalVasos=NUTRITION_TARGETS.aguaVasos||8;
+  // Usar ánforas si hay AGUA_CPS, si no usar vasos simples
+  const cps=getAguaCps(fd);
+  const activas=cps.filter(Boolean).length;
+  el.innerHTML='<div class="mq-home-card">'
+    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:10px">'
+      +'<div class="mq-hrow" style="gap:8px;color:#2EC4C7">'+MQ.anfora+'<span class="mq-kicker">Agua hoy</span></div>'
+      +'<span style="font-size:13px;font-weight:700;color:'+(pct>=100?'var(--green)':'#2EC4C7')+'">'+Math.round(ml/100)/10+' L</span>'
+    +'</div>'
+    // Ánforas clickeables (usando AGUA_CPS)
+    +mqAnforas(activas, AGUA_CPS.length)
+    // Botones +ml
+    +'<div class="mq-hrow" style="gap:6px;margin-top:10px;flex-wrap:wrap">'
+      +'<button class="mq-btn-aqua" onclick="addHomeWaterMl(250)">+250 ml</button>'
+      +'<button class="mq-btn-aqua" onclick="addHomeWaterMl(500)">+500 ml</button>'
+      +'<button class="mq-btn-aqua" onclick="addHomeWaterMl(750)">+750 ml</button>'
+    +'</div>'
+    +'<div class="mq-stat-lbl" style="margin-top:6px">Restante: '+Math.max(0,(NUTRITION_TARGETS.aguaMl-ml)/1000).toFixed(1).replace('.',',')+' L</div>'
+    +'</div>';
 }
 function addFrequentFood(foodId){
   const food=FREQUENT_FOODS.find(f=>f.id===foodId); if(!food) return;

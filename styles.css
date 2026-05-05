@@ -608,70 +608,170 @@ nav{height:calc(74px + env(safe-area-inset-bottom)) !important;min-height:calc(7
 .mq-card{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:14px 16px;box-shadow:0 8px 22px rgba(24,27,29,.035)}
 .mq-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}.mq-kicker{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--ink3);font-weight:700;margin-bottom:3px}.mq-card-title{font-size:19px;font-weight:800;color:var(--ink);font-family:var(--fd)}.mq-pill{font-size:11px;font-weight:800;color:var(--orange);background:var(--bg3);border:1px solid var(--border2);border-radius:999px;padding:5px 9px;white-space:nowrap}.mq-pill.ok{color:var(--green);border-color:var(--green)}
 .mq-progress{height:8px;background:var(--bg4);border-radius:99px;overflow:hidden;margin:8px 0 12px}.mq-progress>div{height:100%;background:var(--orange);border-radius:99px;transition:width .25s}.mq-progress.aqua>div{background:#2EC4C7}.mq-pending strong{display:block;font-size:15px;color:var(--ink);margin-bottom:4px}.mq-pending p{font-size:13px;color:var(--ink2);line-height:1.45;margin:0 0 10px}.mq-label{font-size:11px;color:var(--ink3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}.mq-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.mq-next{font-size:12px;color:var(--ink2);margin-top:9px}.mq-next span{color:var(--ink3);font-weight:700}.mq-cups{display:grid;grid-template-columns:repeat(11,1fr);gap:5px;margin:12px 0}.mq-cup{height:25px;border:1.5px solid var(--border2);background:var(--bg3);clip-path:polygon(18% 0,82% 0,72% 100%,28% 100%);cursor:pointer}.mq-cup.on{background:#2EC4C7;border-color:#2EC4C7}.mq-portion-grid{display:flex;flex-direction:column;gap:10px}.mq-portion-row{display:grid;grid-template-columns:1.1fr 1fr auto;gap:8px;align-items:center}.mq-portion-row strong{display:block;font-size:12px;color:var(--ink)}.mq-portion-row span,.mq-portion-row small{font-size:11px;color:var(--ink3)}.mq-mini-progress{height:6px;border-radius:99px;background:var(--bg4);overflow:hidden}.mq-mini-progress>div{height:100%;background:var(--orange);border-radius:99px}.mq-food-buttons{display:flex;flex-wrap:wrap;gap:7px}.mq-food-buttons button{border:1px solid var(--border2);background:var(--bg3);color:var(--ink2);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer}.mq-food-buttons button:active{border-color:var(--orange);color:var(--orange)}
-/* MELQART — Patch visual mínimo: logo, fecha y saludo */
 
-/* Logo del header */
-.mq-brand-wordmark,
-.mq-logo,
-.melqart-logo {
-  color: var(--text, #17151C);
+/* ═══════════════════════════════════════════════════
+   MELQART DESIGN SYSTEM — Tab Inicio v109
+   Paleta: #5A2D82 púrpura · #CDA349 oro · #2EC4C7 turquesa
+   Reglas: flat, sin sombras, borde 1px sutil, pill buttons
+═══════════════════════════════════════════════════ */
+
+/* Variables del sistema fenicio */
+:root {
+  --mq-purple:   #5A2D82;
+  --mq-purple-d: #2D1452;
+  --mq-gold:     #CDA349;
+  --mq-aqua:     #2EC4C7;
+  --mq-ring-bg:  #E8E0F8;
 }
 
-/* Si el logo es una imagen SVG externa, no siempre toma color por CSS.
-   En ese caso este bloque solo controla tamaño/posición, no relleno interno. */
-.mq-brand img,
-.mq-brand-wordmark img,
-.melqart-logo img {
-  display: block;
-  height: 18px;
-  width: auto;
+/* Card base del home — flat, sin sombra */
+.mq-home-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
 }
 
-/* Fecha en Inicio */
-.home-date,
-.home-greet-date,
-#home-greet .home-date,
-#home-greet > div:first-child {
-  color: var(--text-muted, #7B7285) !important;
-  font-family: var(--font-ui, Inter, system-ui, sans-serif);
-  font-size: 12px;
-  font-weight: 400;
-}
+/* Fila flex reutilizable */
+.mq-hrow { display: flex; align-items: center; gap: 8px; }
+.mq-hrow-sb { justify-content: space-between; }
 
-/* Saludo */
-.home-greeting-title,
-.home-greet-title,
-#home-greet h1,
-#home-greet > div:last-child {
-  color: var(--text, #17151C) !important;
-  font-family: var(--font-ui, Inter, system-ui, sans-serif);
-  font-size: 20px;
+/* Kicker — etiqueta superior */
+.mq-kicker {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
   font-weight: 700;
-  line-height: 1.15;
+  color: var(--ink3);
 }
 
-/* Acento del saludo */
-.home-greeting-accent,
-.home-greet-accent {
-  color: var(--primary, #5B2A86) !important;
+/* KPI grande — peso */
+.mq-kpi-big { font-size: 34px; font-weight: 800; color: var(--mq-purple); line-height: 1; }
+.mq-kpi-unit { font-size: 16px; font-weight: 600; color: var(--ink3); }
+
+/* Stat boxes — 3 columnas superiores */
+.mq-stat-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.mq-stat-ico { display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
+.mq-stat-num { font-size: 26px; font-weight: 800; color: var(--ink); line-height: 1; }
+.mq-stat-val { font-size: 22px; font-weight: 800; color: var(--ink); line-height: 1; }
+.mq-stat-lbl { font-size: 10px; color: var(--ink3); font-weight: 500; }
+
+/* Chip dorado — badge */
+.mq-chip-gold {
+  font-size: 10px;
+  font-weight: 700;
+  color: #7A5200;
+  background: #FFF3CC;
+  border: 1px solid #CDA349;
+  border-radius: 20px;
+  padding: 2px 8px;
 }
 
-/* Dark mode */
-html[data-theme="dark"] .home-date,
-html[data-theme="dark"] .home-greet-date,
-html[data-theme="dark"] #home-greet .home-date,
-html[data-theme="dark"] #home-greet > div:first-child {
-  color: var(--text-muted, #A8A0B4) !important;
+/* Botón pill primario */
+.mq-btn-pill {
+  background: var(--mq-purple);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.mq-btn-pill:active { opacity: 0.85; }
+
+/* Botón secundario contorno */
+.mq-btn-sec {
+  background: none;
+  color: var(--mq-purple);
+  border: 1.5px solid var(--mq-purple);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
 }
 
-html[data-theme="dark"] .home-greeting-title,
-html[data-theme="dark"] .home-greet-title,
-html[data-theme="dark"] #home-greet h1,
-html[data-theme="dark"] #home-greet > div:last-child {
-  color: var(--text, #FAFAF7) !important;
+/* Botón ícono */
+.mq-btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--ink3);
+  padding: 2px 4px;
 }
 
-html[data-theme="dark"] .home-greeting-accent,
-html[data-theme="dark"] .home-greet-accent {
-  color: var(--primary, #B79CFF) !important;
+/* Botón agua turquesa */
+.mq-btn-aqua {
+  background: #E6FAFA;
+  color: #0A6B6E;
+  border: 1px solid #2EC4C7;
+  border-radius: 16px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
 }
+
+/* Tracker de ánforas */
+.mq-tracker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.mq-anfora-btn {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  opacity: 0.28;
+  transition: opacity 0.2s;
+  border-radius: 4px;
+}
+.mq-anfora-btn.on { opacity: 1; }
+.mq-anfora-btn:active { transform: scale(0.9); }
+
+/* Tracker de platos */
+.mq-plato-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+.mq-plato-btn.off { opacity: 0.25; }
+
+.mq-tracker-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 2px;
+  margin-bottom: 0;
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --mq-ring-bg: #2D1452;
+  }
+  .mq-home-card { border-color: #3D2466; }
+  .mq-stat-box  { border-color: #3D2466; }
+  .mq-kpi-big   { color: #B79CFF; }
+  .mq-chip-gold { background: #2D2000; color: #CDA349; border-color: #8A6520; }
+  .mq-btn-aqua  { background: #0A2A2B; color: #2EC4C7; }
+}
+
