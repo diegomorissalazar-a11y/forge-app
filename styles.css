@@ -777,243 +777,193 @@ nav{height:calc(74px + env(safe-area-inset-bottom)) !important;min-height:calc(7
 
 
 
-/* =======================================================
-   MELQART v112 — Paleta clara fenicia sobre base funcional
-   Alcance: solo tokens visuales y colores. No cambia lógica.
-   ======================================================= */
-:root[data-theme="light"] {
-  /* Base / fondos */
-  --color-bg: #F7F5F1;
-  --color-bg-soft: #F1EADF;
-  --color-bg-muted: #E7DED2;
-
-  /* Superficies */
-  --color-surface: #FFFFFF;
-  --color-surface-soft: #FAF8F4;
-  --color-surface-raised: #FFFFFF;
-
-  /* Texto */
-  --color-text-primary: #17151C;
-  --color-text-secondary: #5E5868;
-  --color-text-muted: #8B8397;
-  --color-text-inverse: #FFFFFF;
-
-  /* Marca */
-  --color-primary: #5B2A86;
-  --color-primary-dark: #2D1452;
-  --color-primary-soft: #E9DDF7;
-  --color-primary-light: #B79CFF;
-
-  /* Acentos */
-  --color-gold: #D4AF37;
-  --color-bronze: #B8860B;
-  --color-turquoise: #2EC4C7;
-  --color-turquoise-soft: #D9F6F6;
-
-  /* Bordes */
-  --color-border: #DED3C4;
-  --color-border-strong: #CFC1AE;
-  --color-border-soft: #ECE4DA;
-
-  /* Estados */
-  --color-success: #6F8A4A;
-  --color-success-soft: #E8F0DD;
-  --color-danger: #A65D4E;
-  --color-danger-soft: #F3E2DC;
-  --color-warning: #D4AF37;
-  --color-warning-soft: #F8EFCB;
-
-  /* Sombras */
-  --shadow-card: 0 8px 24px rgba(23, 21, 28, 0.05);
-  --shadow-soft: 0 4px 14px rgba(23, 21, 28, 0.04);
-  --shadow-none: none;
-
-  /* Compatibilidad con tokens antiguos */
-  --bg: var(--color-bg);
-  --bg2: var(--color-surface);
-  --bg3: var(--color-surface-soft);
-  --bg4: var(--color-bg-muted);
-
-  --border: var(--color-border);
-  --border2: var(--color-border-strong);
-
-  --ink: var(--color-text-primary);
-  --ink2: var(--color-text-secondary);
-  --ink3: var(--color-text-muted);
-
-  --orange: var(--color-primary);
-  --orange2: var(--color-primary-dark);
-  --blue: var(--color-primary);
-  --gold: var(--color-gold);
-  --green: var(--color-success);
-  --red: var(--color-danger);
+/* MELQART v114 — Plan unificado real: una sola tarjeta, sin redundancia */
+#home-stats,
+#home-streak-banner {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
 }
 
-html[data-theme="light"],
-html[data-theme="light"] body {
-  background: var(--color-bg) !important;
-  color: var(--color-text-primary) !important;
+#home-plan-banner {
+  display: block !important;
+  margin-bottom: 14px !important;
 }
 
-html[data-theme="light"] #app { background: var(--color-bg) !important; }
-
-html[data-theme="light"] .topbar {
-  background: var(--color-surface) !important;
-  border-bottom: 1px solid var(--color-border-soft) !important;
-  box-shadow: none !important;
+.home-plan-unified {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  margin: 0;
+  box-shadow: 0 8px 24px rgba(23,21,28,.035);
+  cursor: pointer;
 }
 
-html[data-theme="light"] .mq-brand-wordmark,
-html[data-theme="light"] .tlogo { color: var(--color-text-primary) !important; }
-
-html[data-theme="light"] #sync-dot { background: var(--color-success) !important; }
-html[data-theme="light"] #user-btn {
-  background: var(--color-primary) !important;
-  color: var(--color-text-inverse) !important;
+.home-plan-unified__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
 }
 
-html[data-theme="light"] .card,
-html[data-theme="light"] .hevy-card,
-html[data-theme="light"] .rutina-card,
-html[data-theme="light"] .comida-card,
-html[data-theme="light"] .stat-box,
-html[data-theme="light"] .plan-card,
-html[data-theme="light"] .lumen-stat,
-html[data-theme="light"] .modal,
-html[data-theme="light"] .mq-home-card {
-  background: var(--color-surface) !important;
-  border-color: var(--color-border) !important;
-  color: var(--color-text-primary) !important;
-  box-shadow: var(--shadow-card) !important;
+.home-plan-unified__copy {
+  min-width: 0;
 }
 
-html[data-theme="light"] .section-label,
-html[data-theme="light"] .hm-label,
-html[data-theme="light"] .stat-label,
-html[data-theme="light"] .rutina-meta,
-html[data-theme="light"] .med-date,
-html[data-theme="light"] .comida-hora,
-html[data-theme="light"] .comida-grupos,
-html[data-theme="light"] .empty-sub,
-html[data-theme="light"] .home-greet-date {
-  color: var(--color-text-muted) !important;
+.home-plan-unified__title {
+  margin: 0 0 9px;
+  font-family: var(--fb);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--ink);
+  letter-spacing: 0;
 }
 
-html[data-theme="light"] .hm-val,
-html[data-theme="light"] .stat-num,
-html[data-theme="light"] .rutina-name,
-html[data-theme="light"] .comida-nombre,
-html[data-theme="light"] .empty-text,
-html[data-theme="light"] .home-greet-title {
-  color: var(--color-text-primary) !important;
+.home-plan-unified__name {
+  margin-bottom: 4px;
+  font-family: var(--fb);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--ink);
 }
 
-html[data-theme="light"] .btn-p,
-html[data-theme="light"] .auth-tab.on {
-  background: var(--color-primary) !important;
-  color: var(--color-text-inverse) !important;
-}
-html[data-theme="light"] .btn-p:active { background: var(--color-primary-dark) !important; }
-html[data-theme="light"] .btn-s {
-  background: var(--color-surface) !important;
-  border-color: var(--color-border-strong) !important;
-  color: var(--color-text-secondary) !important;
+.home-plan-unified__block {
+  font-family: var(--fb);
+  font-size: 13px;
+  line-height: 1.25;
+  color: var(--ink3);
 }
 
-html[data-theme="light"] .tab-btn { color: var(--color-text-muted) !important; }
-html[data-theme="light"] .tab-btn.on {
-  color: var(--color-primary) !important;
-  border-bottom-color: var(--color-primary) !important;
+.home-plan-unified__block strong {
+  color: var(--orange);
+  font-weight: 700;
 }
 
-html[data-theme="light"] nav {
-  background: var(--color-surface) !important;
-  border-top: 1px solid var(--color-border-soft) !important;
-}
-html[data-theme="light"] .nb { color: var(--color-text-muted) !important; }
-html[data-theme="light"] .nb.on {
-  color: var(--color-primary) !important;
-  border-top-color: var(--color-primary) !important;
+.home-plan-unified__status {
+  flex: 0 0 auto;
+  text-align: right;
+  min-width: 82px;
 }
 
-html[data-theme="light"] .chart-line { stroke: var(--color-primary) !important; }
-html[data-theme="light"] .chart-dot { fill: var(--color-primary) !important; }
-html[data-theme="light"] .chart-grid { stroke: var(--color-border-soft) !important; }
-html[data-theme="light"] .chart-axis { stroke: var(--color-border-strong) !important; }
-html[data-theme="light"] .prog-bar-fill,
-html[data-theme="light"] .division-fill { background: var(--color-primary) !important; }
-html[data-theme="light"] .prog-bar-bg,
-html[data-theme="light"] .division-bar { background: var(--color-bg-muted) !important; }
-
-html[data-theme="light"] #home-peso-banner .mq-kpi-big,
-html[data-theme="light"] .weight-current,
-html[data-theme="light"] .peso-actual { color: var(--color-primary) !important; }
-
-html[data-theme="light"] #home-peso-banner .meta,
-html[data-theme="light"] .weight-goal,
-html[data-theme="light"] .peso-meta { color: var(--color-gold) !important; }
-
-html[data-theme="light"] #home-water-today,
-html[data-theme="light"] .water-card,
-html[data-theme="light"] .home-water-widget { --water-color: var(--color-turquoise); }
-
-html[data-theme="light"] .water-glass.filled,
-html[data-theme="light"] .agua-dot.on,
-html[data-theme="light"] .progress-bar.aqua > div,
-html[data-theme="light"] .mq-anfora-btn.on svg * {
-  background: var(--color-turquoise) !important;
-  border-color: var(--color-turquoise) !important;
+.home-plan-unified__badge {
+  margin-bottom: 4px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--ink3);
+  font-weight: 700;
+  letter-spacing: .04em;
 }
 
-html[data-theme="light"] .water-glass,
-html[data-theme="light"] .agua-dot { border-color: var(--color-border-strong) !important; }
-
-html[data-theme="light"] #home-food-today,
-html[data-theme="light"] .nutrition-card,
-html[data-theme="light"] .home-food-widget { --nutrition-color: var(--color-gold); }
-
-html[data-theme="light"] .meal-dot.done,
-html[data-theme="light"] .comida-check.done,
-html[data-theme="light"] .mq-plato-btn:not(.off) {
-  background: var(--color-gold) !important;
-  border-color: var(--color-gold) !important;
+.home-plan-unified__week {
+  font-family: var(--fd);
+  font-size: 33px;
+  line-height: .9;
+  font-weight: 900;
+  color: #5B2A86;
+  white-space: nowrap;
 }
 
-html[data-theme="light"] .meal-dot { border-color: var(--color-border-strong) !important; }
-
-html[data-theme="light"] .toast.ok,
-html[data-theme="light"] .set-check.done {
-  background: var(--color-success) !important;
-  border-color: var(--color-success) !important;
-}
-html[data-theme="light"] .btn-r,
-html[data-theme="light"] .toast.err {
-  background: var(--color-danger) !important;
-  color: var(--color-text-inverse) !important;
+.home-plan-unified__week span {
+  font-size: 18px;
+  color: #8B8397;
+  margin-left: 2px;
 }
 
-html[data-theme="light"] .badge,
-html[data-theme="light"] .pr-badge,
-html[data-theme="light"] .chip-status,
-html[data-theme="light"] .pill,
-html[data-theme="light"] .carga-tag {
-  background: var(--color-primary-soft) !important;
-  border-color: rgba(91, 42, 134, 0.25) !important;
-  color: var(--color-primary) !important;
+.home-plan-unified__bar {
+  height: 7px;
+  background: #E9DDF7;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 12px 0 0;
 }
 
-html[data-theme="light"] .state-done,
-html[data-theme="light"] .badge-done,
-html[data-theme="light"] .pill-done {
-  background: var(--color-success-soft) !important;
-  border-color: rgba(111, 138, 74, 0.30) !important;
-  color: var(--color-success) !important;
+.home-plan-unified__bar-fill {
+  height: 100%;
+  background: #5B2A86 !important;
+  border-radius: inherit;
+  transition: width .35s ease;
 }
 
-html[data-theme="light"] .state-pending,
-html[data-theme="light"] .badge-pending,
-html[data-theme="light"] .pill-pending {
-  background: var(--color-bg-soft) !important;
-  border-color: var(--color-border) !important;
-  color: var(--color-text-muted) !important;
+.home-plan-unified__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.home-plan-unified__metric {
+  min-width: 0;
+  padding: 0 12px;
+  border-right: 1px solid var(--border);
+}
+
+.home-plan-unified__metric:first-child {
+  padding-left: 0;
+}
+
+.home-plan-unified__metric:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.home-plan-unified__metric-icon {
+  height: 18px;
+  margin-bottom: 5px;
+  color: #D4AF37;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.home-plan-unified__metric-label {
+  margin-bottom: 4px;
+  font-size: 11px;
+  line-height: 1.1;
+  color: var(--ink3);
+  font-weight: 600;
+}
+
+.home-plan-unified__metric-value {
+  font-family: var(--fb);
+  font-size: 23px;
+  font-weight: 850;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.home-plan-unified__metric-value--accent {
+  color: #5B2A86;
+}
+
+.home-plan-unified__best {
+  margin-top: 13px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(222,211,196,.7);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink3);
+}
+
+.home-plan-unified__best strong {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+@media (max-width: 430px) {
+  .home-plan-unified { padding: 16px; }
+  .home-plan-unified__top { gap: 12px; }
+  .home-plan-unified__title { font-size: 17px; }
+  .home-plan-unified__name { font-size: 15px; }
+  .home-plan-unified__week { font-size: 29px; }
+  .home-plan-unified__week span { font-size: 15px; }
+  .home-plan-unified__metric { padding: 0 8px; }
+  .home-plan-unified__metric-value { font-size: 21px; }
+  .home-plan-unified__metric-label { font-size: 10px; }
 }

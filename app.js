@@ -963,26 +963,28 @@ function renderHome(){
   const hoy   = new Date();
   const nombre= currentUser?.displayName?.split(' ')[0]||'Diego';
 
-  document.getElementById('home-greet').innerHTML=`
-    <div class="home-greet-date">${dias[hoy.getDay()]} ${hoy.getDate()} de ${meses[hoy.getMonth()]}</div>
-    <div class="home-greet-title">Hola, ${nombre}</div>`;
+  const greet=document.getElementById('home-greet');
+  if(greet){
+    greet.innerHTML=`
+      <div class="home-greet-date">${dias[hoy.getDay()]} ${hoy.getDate()} de ${meses[hoy.getMonth()]}</div>
+      <div class="home-greet-title">Hola, ${nombre}</div>`;
+  }
 
   renderHomePlanBanner();
-  renderStreakBanner();
+
+  const stats=document.getElementById('home-stats');
+  if(stats){ stats.innerHTML=''; stats.style.display='none'; }
+  const streak=document.getElementById('home-streak-banner');
+  if(streak){ streak.innerHTML=''; streak.style.display='none'; }
+
   renderPesoBanner();
   renderHomeNutritionCard();
   renderHomeWaterCard();
 
   const ses    = forge.sessions||[];
-  const wStart = new Date(hoy); wStart.setDate(hoy.getDate()-(hoy.getDay()||7)+1); wStart.setHours(0,0,0,0);
-  const semana = ses.filter(s=>new Date(s.date)>=wStart).length;
-  document.getElementById('home-stats').innerHTML=`
-    <div class="mq-stat-box"><div class="mq-stat-ico" style="color:#5A2D82">${MQ.columna}</div><div class="mq-stat-num">${semana}</div><div class="mq-stat-lbl">Esta semana</div></div>
-    <div class="mq-stat-box"><div class="mq-stat-ico" style="color:#CDA349">${MQ.antorcha}</div><div class="mq-stat-num" style="color:#5A2D82">${calcStreak()}</div><div class="mq-stat-lbl">Racha</div></div>
-    <div class="mq-stat-box"><div class="mq-stat-ico" style="color:#5A2D82">${MQ.laurel}</div><div class="mq-stat-num">${ses.length}</div><div class="mq-stat-lbl">Total</div></div>`;
-
   const ultimas = [...ses].sort((a,b)=>b.date-a.date);
   const el = document.getElementById('home-sessions');
+  if(!el) return;
   if(!ultimas.length){
     el.innerHTML=`<div class="empty"><div class="empty-icon">◈</div><div class="empty-text">Sin sesiones aún</div><div class="empty-sub">Inicia tu primera rutina para ver el historial.</div></div>`;
     return;
@@ -993,20 +995,76 @@ function renderHome(){
 function renderHomePlanBanner(){
   const plan=(forge.planes||[]).find(p=>p.activo);
   const el=document.getElementById('home-plan-banner');
-  if(!plan){el.style.display='none';return;}
+  if(!el) return;
   el.style.display='block';
+
+  const hoy=new Date();
+  const wStart=new Date(hoy); wStart.setDate(hoy.getDate()-(hoy.getDay()||7)+1); wStart.setHours(0,0,0,0);
+  const sesiones=forge.sessions||[];
+  const sesionesSemana=sesiones.filter(s=>new Date(s.date)>=wStart).length;
+  const racha=calcStreak();
+  const totalSesiones=sesiones.length;
+  const anio=new Date().getFullYear()+'';
+  const mejor=getMejorSemanaAnio(anio);
+  const mejorTxt=mejor?.count ? `Mejor semana del año: <strong>${mejor.count} sesiones</strong>${mejor.lunes ? ` · ${fmtRangoSemana(mejor.lunes)}` : ''}` : '';
+
+  if(!plan){
+    el.innerHTML=`
+      <section class="home-plan-unified" onclick="goTo('perfil')">
+        <div class="home-plan-unified__top">
+          <div class="home-plan-unified__copy">
+            <h2 class="home-plan-unified__title">¿Cómo vamos con el plan?</h2>
+            <div class="home-plan-unified__name">Sin plan activo</div>
+            <div class="home-plan-unified__block">Crea o activa un plan para ver tu progreso.</div>
+          </div>
+        </div>
+      </section>`;
+    return;
+  }
+
   const semG=semanaActualPlan(plan);
-  const pct=Math.round((semG/plan.totalSemanas)*100);
+  const totalSemanas=plan.totalSemanas||16;
+  const pct=Math.min(100, Math.round((semG/totalSemanas)*100));
   const bloque=plan.bloques?.[Math.floor((semG-1)/4)]||{nombre:'—'};
+
   el.innerHTML=`
-    <div class="card" onclick="goTo('perfil')" style="cursor:pointer;border-color:var(--orange)">
-      <div style="font-size:10px;color:var(--orange);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Plan activo · Sem ${semG}/${plan.totalSemanas}</div>
-      <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px">${plan.nombre}</div>
-      <div style="font-size:11px;color:var(--ink3);margin-bottom:8px">Bloque actual: ${bloque.nombre}</div>
-      <div style="background:var(--bg3);border-radius:3px;height:5px;overflow:hidden">
-        <div style="width:${pct}%;height:100%;background:var(--orange);border-radius:3px;transition:width .4s"></div>
+    <section class="home-plan-unified" onclick="goTo('perfil')">
+      <div class="home-plan-unified__top">
+        <div class="home-plan-unified__copy">
+          <h2 class="home-plan-unified__title">¿Cómo vamos con el plan?</h2>
+          <div class="home-plan-unified__name">${plan.nombre}</div>
+          <div class="home-plan-unified__block">Bloque actual: <strong>${bloque.nombre}</strong></div>
+        </div>
+        <div class="home-plan-unified__status">
+          <div class="home-plan-unified__badge">Plan activo</div>
+          <div class="home-plan-unified__week">${semG}<span>/${totalSemanas}</span></div>
+        </div>
       </div>
-    </div>`;
+
+      <div class="home-plan-unified__bar" aria-label="Progreso del plan ${pct}%">
+        <div class="home-plan-unified__bar-fill" style="width:${pct}%"></div>
+      </div>
+
+      <div class="home-plan-unified__metrics">
+        <div class="home-plan-unified__metric">
+          <div class="home-plan-unified__metric-icon">▣</div>
+          <div class="home-plan-unified__metric-label">Esta semana</div>
+          <div class="home-plan-unified__metric-value">${sesionesSemana}</div>
+        </div>
+        <div class="home-plan-unified__metric">
+          <div class="home-plan-unified__metric-icon">♨</div>
+          <div class="home-plan-unified__metric-label">Racha</div>
+          <div class="home-plan-unified__metric-value home-plan-unified__metric-value--accent">${racha}</div>
+        </div>
+        <div class="home-plan-unified__metric">
+          <div class="home-plan-unified__metric-icon">◉</div>
+          <div class="home-plan-unified__metric-label">Total sesiones</div>
+          <div class="home-plan-unified__metric-value">${totalSesiones}</div>
+        </div>
+      </div>
+
+      ${mejorTxt ? `<div class="home-plan-unified__best">${mejorTxt}</div>` : ''}
+    </section>`;
 }
 
 // Calcular ritmo promedio de una sesión de carrera
