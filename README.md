@@ -1,14 +1,19 @@
-# MELQART v111 — Original Visual Restore
+# MELQART v112 — Palette Tokens
 
-Base: archivos v110 entregados por el usuario.
+Base: v110 uploaded files.
 
-Objetivo:
-- Volver a la paleta original azul/gris previa a cobre/tierra/fenicio.
-- Mantener funcionalidades nuevas de Home, agua, comidas y nutrición.
-- No tocar Firebase, auth, sesiones, exportar ni lógica de datos.
+## Scope
+- Applied light-mode Phoenician palette tokens in `styles.css`.
+- Added `data-theme="light"` to `index.html`.
+- Preserved `app.js` unchanged.
+- Preserved Firebase/Auth, training, nutrition, water, meals, export, sessions and localStorage logic.
 
-Cambios principales:
-- Override final en `styles.css`.
-- Logo vuelve a formato textual MELQART con acento azul.
-- Cards, botones, tabs y navegación vuelven al look original claro.
-- Se preservan `home-food-today` y `home-water-today`.
+## Main colors
+- Primary / Phoenician purple: `#5B2A86`
+- Primary dark: `#2D1452`
+- Gold: `#D4AF37`
+- Bronze: `#B8860B`
+- Turquoise: `#2EC4C7`
+- Background: `#F7F5F1`
+- Surface: `#FFFFFF`
+- Text: `#17151C`

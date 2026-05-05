@@ -778,133 +778,242 @@ nav{height:calc(74px + env(safe-area-inset-bottom)) !important;min-height:calc(7
 
 
 /* =======================================================
-   MELQART v111 — RESTORE ORIGINAL VISUAL SYSTEM
-   Mantiene funcionalidades nuevas (agua/comidas/nutrición)
-   y vuelve a la paleta azul/gris original previa a cobre/tierra.
+   MELQART v112 — Paleta clara fenicia sobre base funcional
+   Alcance: solo tokens visuales y colores. No cambia lógica.
    ======================================================= */
-:root{
-  --bg:#f2f4f7 !important;
-  --bg2:#ffffff !important;
-  --bg3:#f8f9fb !important;
-  --bg4:#eef0f4 !important;
-  --border:#e2e5ea !important;
-  --border2:#d0d5dd !important;
-  --ink:#101828 !important;
-  --ink2:#475467 !important;
-  --ink3:#98a2b3 !important;
-  --orange:#2563eb !important;
-  --orange2:#1d4ed8 !important;
-  --bronze:#2563eb !important;
-  --bronze2:#1d4ed8 !important;
-  --sand:#e2e5ea !important;
-  --stone:#f2f4f7 !important;
-  --ivory:#ffffff !important;
-  --green:#16a34a !important;
-  --red:#dc2626 !important;
-  --gold:#d97706 !important;
-  --blue:#2563eb !important;
-  --primary:#2563eb !important;
-  --primary-deep:#1d4ed8 !important;
-  --aqua:#22d3ee !important;
-  --surface:#ffffff !important;
-  --surface-soft:#f8f9fb !important;
-  --text:#101828 !important;
-  --text-muted:#98a2b3 !important;
-  --fd:'Barlow Condensed', sans-serif !important;
-  --fb:'Barlow', sans-serif !important;
-  --r:8px !important;
-  --rl:14px !important;
+:root[data-theme="light"] {
+  /* Base / fondos */
+  --color-bg: #F7F5F1;
+  --color-bg-soft: #F1EADF;
+  --color-bg-muted: #E7DED2;
+
+  /* Superficies */
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #FAF8F4;
+  --color-surface-raised: #FFFFFF;
+
+  /* Texto */
+  --color-text-primary: #17151C;
+  --color-text-secondary: #5E5868;
+  --color-text-muted: #8B8397;
+  --color-text-inverse: #FFFFFF;
+
+  /* Marca */
+  --color-primary: #5B2A86;
+  --color-primary-dark: #2D1452;
+  --color-primary-soft: #E9DDF7;
+  --color-primary-light: #B79CFF;
+
+  /* Acentos */
+  --color-gold: #D4AF37;
+  --color-bronze: #B8860B;
+  --color-turquoise: #2EC4C7;
+  --color-turquoise-soft: #D9F6F6;
+
+  /* Bordes */
+  --color-border: #DED3C4;
+  --color-border-strong: #CFC1AE;
+  --color-border-soft: #ECE4DA;
+
+  /* Estados */
+  --color-success: #6F8A4A;
+  --color-success-soft: #E8F0DD;
+  --color-danger: #A65D4E;
+  --color-danger-soft: #F3E2DC;
+  --color-warning: #D4AF37;
+  --color-warning-soft: #F8EFCB;
+
+  /* Sombras */
+  --shadow-card: 0 8px 24px rgba(23, 21, 28, 0.05);
+  --shadow-soft: 0 4px 14px rgba(23, 21, 28, 0.04);
+  --shadow-none: none;
+
+  /* Compatibilidad con tokens antiguos */
+  --bg: var(--color-bg);
+  --bg2: var(--color-surface);
+  --bg3: var(--color-surface-soft);
+  --bg4: var(--color-bg-muted);
+
+  --border: var(--color-border);
+  --border2: var(--color-border-strong);
+
+  --ink: var(--color-text-primary);
+  --ink2: var(--color-text-secondary);
+  --ink3: var(--color-text-muted);
+
+  --orange: var(--color-primary);
+  --orange2: var(--color-primary-dark);
+  --blue: var(--color-primary);
+  --gold: var(--color-gold);
+  --green: var(--color-success);
+  --red: var(--color-danger);
 }
 
-html,body{background:var(--bg)!important;color:var(--ink)!important;font-family:var(--fb)!important;}
-#app{background:var(--bg)!important;}
-.topbar{
-  min-height:56px!important;
-  background:var(--bg)!important;
-  border-bottom:1px solid var(--border)!important;
-  padding:12px 16px!important;
-  box-shadow:none!important;
-  backdrop-filter:none!important;
+html[data-theme="light"],
+html[data-theme="light"] body {
+  background: var(--color-bg) !important;
+  color: var(--color-text-primary) !important;
 }
-.mq-brand{display:flex!important;align-items:center!important;gap:0!important;min-height:auto!important;}
-.mq-brand-wordmark,.mq-auth-wordmark{display:none!important;}
-.tlogo,.auth-logo{
-  font-family:var(--fd)!important;
-  font-size:24px!important;
-  font-weight:900!important;
-  font-style:italic!important;
-  letter-spacing:2px!important;
-  color:var(--ink)!important;
-  line-height:1!important;
-}
-.auth-logo{font-size:56px!important;letter-spacing:4px!important;margin-bottom:4px!important;text-align:center!important;}
-.tlogo span,.auth-logo span{color:var(--orange)!important;}
-.auth-sub{display:block!important;font-size:11px!important;letter-spacing:4px!important;text-transform:uppercase!important;color:var(--ink3)!important;margin-bottom:40px!important;}
-#auth{background:var(--bg)!important;padding:32px 24px!important;}
-.auth-tabs{border-color:var(--border2)!important;border-radius:var(--r)!important;max-width:320px!important;margin-bottom:24px!important;}
-.auth-tab.on{background:var(--orange)!important;color:#fff!important;}
-#auth-form{max-width:320px!important;gap:10px!important;}
 
-.card,.hevy-card,.rutina-card,.comida-card,.stat-box,.plan-card,.lumen-stat,.modal,.mq-home-card,.nutrition-card{
-  background:var(--bg2)!important;
-  border:1px solid var(--border)!important;
-  border-radius:var(--rl)!important;
-  box-shadow:none!important;
-}
-.section-label,.mq-kicker{
-  color:var(--ink3)!important;
-  font-size:10px!important;
-  letter-spacing:2px!important;
-  text-transform:uppercase!important;
-  font-weight:700!important;
-}
-.btn{font-family:var(--fb)!important;border-radius:var(--r)!important;text-transform:uppercase!important;letter-spacing:.5px!important;font-weight:600!important;}
-.btn-p,.mq-btn-pill,.auth-tab.on{
-  background:var(--orange)!important;
-  color:#fff!important;
-  border:none!important;
-  box-shadow:none!important;
-}
-.btn-s,.mq-btn-icon,.export-btn{
-  background:var(--bg3)!important;
-  color:var(--ink2)!important;
-  border:1px solid var(--border2)!important;
-}
-.tab-row{background:var(--bg)!important;border-bottom:1px solid var(--border)!important;}
-.tab-btn.on{color:var(--orange)!important;border-bottom-color:var(--orange)!important;}
-nav{background:var(--bg2)!important;border-top:1px solid var(--border)!important;}
-.nb{color:var(--ink3)!important;font-family:var(--fb)!important;}
-.nb.on{color:var(--orange)!important;border-top-color:var(--orange)!important;}
-.nb svg{stroke:currentColor!important;}
+html[data-theme="light"] #app { background: var(--color-bg) !important; }
 
-.stat-box,.mq-stat-box{background:var(--bg3)!important;border:none!important;border-radius:10px!important;padding:12px!important;text-align:center!important;}
-.stat-num,.mq-stat-num,.mq-stat-val{font-family:var(--fd)!important;color:var(--ink)!important;font-weight:800!important;}
-.stat-label,.mq-stat-lbl{color:var(--ink3)!important;}
-.home-greet-date{color:var(--ink3)!important;font-size:12px!important;font-family:var(--fb)!important;}
-.home-greet-title{font-family:var(--fd)!important;font-size:26px!important;font-weight:800!important;line-height:1.1!important;color:var(--ink)!important;}
+html[data-theme="light"] .topbar {
+  background: var(--color-surface) !important;
+  border-bottom: 1px solid var(--color-border-soft) !important;
+  box-shadow: none !important;
+}
 
-/* Home nutrition widgets keep functionality but return to original visual grammar */
-.mq-kpi-big{color:var(--orange)!important;font-family:var(--fd)!important;}
-.mq-kpi-unit{color:var(--orange)!important;}
-.mq-home-card svg path,.mq-home-card svg line,.mq-home-card svg circle{stroke:currentColor;}
-.mq-hrow{display:flex;align-items:center;}
-.mq-hrow-sb{justify-content:space-between;}
-.mq-chip-gold{background:rgba(217,119,6,.12)!important;color:var(--gold)!important;border:1px solid rgba(217,119,6,.25)!important;border-radius:999px!important;padding:3px 9px!important;font-size:11px!important;font-weight:700!important;}
-.progress-bar>div,.prog-bar-fill,.division-fill{background:var(--orange)!important;}
-.progress-bar.aqua>div{background:#22d3ee!important;}
-.water-glass,.mq-anfora-btn{border-color:#22d3ee!important;}
-.water-glass.filled,.mq-anfora-btn.on{background:#22d3ee!important;color:#fff!important;}
-.meal-dot.done,.mq-plato-btn:not(.off){background:var(--gold)!important;border-color:var(--gold)!important;}
-.meal-dot,.mq-plato-btn.off{border-color:var(--border2)!important;background:transparent!important;}
-.export-label{display:inline-block!important;color:var(--ink2)!important;}
-.export-icon{color:var(--ink3)!important;}
+html[data-theme="light"] .mq-brand-wordmark,
+html[data-theme="light"] .tlogo { color: var(--color-text-primary) !important; }
 
-.inp,input,select,textarea{background:var(--bg3)!important;border:1px solid var(--border2)!important;border-radius:var(--r)!important;color:var(--ink)!important;font-family:var(--fb)!important;}
-.inp:focus,input:focus,select:focus,textarea:focus{border-color:var(--orange)!important;box-shadow:none!important;}
-#user-btn,.hevy-avatar{background:var(--orange)!important;color:#fff!important;}
-#sync-dot{background:var(--green)!important;}
-.toast.ok{border-color:var(--green)!important;color:var(--green)!important;background:var(--bg2)!important;}
-.toast.err{border-color:var(--red)!important;color:var(--red)!important;background:var(--bg2)!important;}
+html[data-theme="light"] #sync-dot { background: var(--color-success) !important; }
+html[data-theme="light"] #user-btn {
+  background: var(--color-primary) !important;
+  color: var(--color-text-inverse) !important;
+}
 
-/* Remove fenicio/copper visual leftovers */
-.mq-auth-mark,.home-brand-intro,.home-brand-mark,.home-brand-word,.home-brand-sub,.mq-ver{display:none!important;}
+html[data-theme="light"] .card,
+html[data-theme="light"] .hevy-card,
+html[data-theme="light"] .rutina-card,
+html[data-theme="light"] .comida-card,
+html[data-theme="light"] .stat-box,
+html[data-theme="light"] .plan-card,
+html[data-theme="light"] .lumen-stat,
+html[data-theme="light"] .modal,
+html[data-theme="light"] .mq-home-card {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-primary) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+html[data-theme="light"] .section-label,
+html[data-theme="light"] .hm-label,
+html[data-theme="light"] .stat-label,
+html[data-theme="light"] .rutina-meta,
+html[data-theme="light"] .med-date,
+html[data-theme="light"] .comida-hora,
+html[data-theme="light"] .comida-grupos,
+html[data-theme="light"] .empty-sub,
+html[data-theme="light"] .home-greet-date {
+  color: var(--color-text-muted) !important;
+}
+
+html[data-theme="light"] .hm-val,
+html[data-theme="light"] .stat-num,
+html[data-theme="light"] .rutina-name,
+html[data-theme="light"] .comida-nombre,
+html[data-theme="light"] .empty-text,
+html[data-theme="light"] .home-greet-title {
+  color: var(--color-text-primary) !important;
+}
+
+html[data-theme="light"] .btn-p,
+html[data-theme="light"] .auth-tab.on {
+  background: var(--color-primary) !important;
+  color: var(--color-text-inverse) !important;
+}
+html[data-theme="light"] .btn-p:active { background: var(--color-primary-dark) !important; }
+html[data-theme="light"] .btn-s {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border-strong) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="light"] .tab-btn { color: var(--color-text-muted) !important; }
+html[data-theme="light"] .tab-btn.on {
+  color: var(--color-primary) !important;
+  border-bottom-color: var(--color-primary) !important;
+}
+
+html[data-theme="light"] nav {
+  background: var(--color-surface) !important;
+  border-top: 1px solid var(--color-border-soft) !important;
+}
+html[data-theme="light"] .nb { color: var(--color-text-muted) !important; }
+html[data-theme="light"] .nb.on {
+  color: var(--color-primary) !important;
+  border-top-color: var(--color-primary) !important;
+}
+
+html[data-theme="light"] .chart-line { stroke: var(--color-primary) !important; }
+html[data-theme="light"] .chart-dot { fill: var(--color-primary) !important; }
+html[data-theme="light"] .chart-grid { stroke: var(--color-border-soft) !important; }
+html[data-theme="light"] .chart-axis { stroke: var(--color-border-strong) !important; }
+html[data-theme="light"] .prog-bar-fill,
+html[data-theme="light"] .division-fill { background: var(--color-primary) !important; }
+html[data-theme="light"] .prog-bar-bg,
+html[data-theme="light"] .division-bar { background: var(--color-bg-muted) !important; }
+
+html[data-theme="light"] #home-peso-banner .mq-kpi-big,
+html[data-theme="light"] .weight-current,
+html[data-theme="light"] .peso-actual { color: var(--color-primary) !important; }
+
+html[data-theme="light"] #home-peso-banner .meta,
+html[data-theme="light"] .weight-goal,
+html[data-theme="light"] .peso-meta { color: var(--color-gold) !important; }
+
+html[data-theme="light"] #home-water-today,
+html[data-theme="light"] .water-card,
+html[data-theme="light"] .home-water-widget { --water-color: var(--color-turquoise); }
+
+html[data-theme="light"] .water-glass.filled,
+html[data-theme="light"] .agua-dot.on,
+html[data-theme="light"] .progress-bar.aqua > div,
+html[data-theme="light"] .mq-anfora-btn.on svg * {
+  background: var(--color-turquoise) !important;
+  border-color: var(--color-turquoise) !important;
+}
+
+html[data-theme="light"] .water-glass,
+html[data-theme="light"] .agua-dot { border-color: var(--color-border-strong) !important; }
+
+html[data-theme="light"] #home-food-today,
+html[data-theme="light"] .nutrition-card,
+html[data-theme="light"] .home-food-widget { --nutrition-color: var(--color-gold); }
+
+html[data-theme="light"] .meal-dot.done,
+html[data-theme="light"] .comida-check.done,
+html[data-theme="light"] .mq-plato-btn:not(.off) {
+  background: var(--color-gold) !important;
+  border-color: var(--color-gold) !important;
+}
+
+html[data-theme="light"] .meal-dot { border-color: var(--color-border-strong) !important; }
+
+html[data-theme="light"] .toast.ok,
+html[data-theme="light"] .set-check.done {
+  background: var(--color-success) !important;
+  border-color: var(--color-success) !important;
+}
+html[data-theme="light"] .btn-r,
+html[data-theme="light"] .toast.err {
+  background: var(--color-danger) !important;
+  color: var(--color-text-inverse) !important;
+}
+
+html[data-theme="light"] .badge,
+html[data-theme="light"] .pr-badge,
+html[data-theme="light"] .chip-status,
+html[data-theme="light"] .pill,
+html[data-theme="light"] .carga-tag {
+  background: var(--color-primary-soft) !important;
+  border-color: rgba(91, 42, 134, 0.25) !important;
+  color: var(--color-primary) !important;
+}
+
+html[data-theme="light"] .state-done,
+html[data-theme="light"] .badge-done,
+html[data-theme="light"] .pill-done {
+  background: var(--color-success-soft) !important;
+  border-color: rgba(111, 138, 74, 0.30) !important;
+  color: var(--color-success) !important;
+}
+
+html[data-theme="light"] .state-pending,
+html[data-theme="light"] .badge-pending,
+html[data-theme="light"] .pill-pending {
+  background: var(--color-bg-soft) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-muted) !important;
+}
