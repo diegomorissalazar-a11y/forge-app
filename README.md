@@ -1,10 +1,12 @@
-# MELQART v114 — Plan unificado real
+# MELQART v117 · Plan y peso corregidos
 
-Cambio puntual:
-- Fusiona Plan activo + 3 KPIs + Seguimiento semanal en una sola tarjeta.
-- Oculta `home-stats` y `home-streak-banner` para evitar redundancia.
-- Barra de progreso en Púrpura Fenicio `#5B2A86`.
-- Fondo de barra `#E9DDF7`.
-- No toca Firebase, nutrición, agua, comidas, sesiones ni exportar.
+Cambios:
+- Card plan unificada: plan activo + KPIs + seguimiento en una sola tarjeta.
+- Barra de plan en púrpura fenicio.
+- Card peso: últimos 7 registros sin días/fechas en eje X.
+- Ring de progreso sin vela, porcentaje más legible.
+- Agua Home: botones +250/+500/+750 sincronizados con ánforas y litros.
+- Login con botón/foco en púrpura.
+- Nav: Entrenar con pesa, Estadísticas → Progreso.
 
-Subir todo el contenido a la raíz de GitHub Pages.
+No se tocaron Firebase/Auth, sesiones ni exportación.
