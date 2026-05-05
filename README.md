@@ -1,37 +1,14 @@
-# MELQART Assets Sprint 2
+# MELQART v111 — Original Visual Restore
 
-Paquete de assets exportables individuales para integración en la app.
+Base: archivos v110 entregados por el usuario.
 
-## Incluye
-- Brand: wordmark, mark, favicon, app icon
-- Navegación inferior (5)
-- Íconos Home/KPI
-- Assets UI: vasos, comidas, racha
-- Variantes dark de los íconos principales
+Objetivo:
+- Volver a la paleta original azul/gris previa a cobre/tierra/fenicio.
+- Mantener funcionalidades nuevas de Home, agua, comidas y nutrición.
+- No tocar Firebase, auth, sesiones, exportar ni lógica de datos.
 
-## Estructura
-```
-assets/
-  brand/
-  icons/
-  ui/
-```
-
-## Paleta usada
-- Púrpura Fenicio: #5A2D82
-- Púrpura Profundo: #2D1452
-- Oro Antiguo: #CDA349
-- Turquesa Atenuado: #2EC4C7
-- Carbón: #1C1C1E
-- Marfil: #F7F6F2
-- Arena Clara: #ECE6DA
-
-## v109 sprint 3 assets integration retry
-
-Base funcional: v108 nutrition MVP.
-Assets integrados desde Sprint 2 aprobado:
-- assets/brand/
-- assets/icons/
-- assets/ui/
-
-Nota: esta versión mantiene la funcionalidad de v108 y agrega el banco de assets aprobado para integración visual progresiva sin romper lógica.
+Cambios principales:
+- Override final en `styles.css`.
+- Logo vuelve a formato textual MELQART con acento azul.
+- Cards, botones, tabs y navegación vuelven al look original claro.
+- Se preservan `home-food-today` y `home-water-today`.
