@@ -1,19 +1,11 @@
-# MELQART v112 — Palette Tokens
+# MELQART v113 — Plan unificado
 
-Base: v110 uploaded files.
+Cambio visual puntual sobre v110/v112:
 
-## Scope
-- Applied light-mode Phoenician palette tokens in `styles.css`.
-- Added `data-theme="light"` to `index.html`.
-- Preserved `app.js` unchanged.
-- Preserved Firebase/Auth, training, nutrition, water, meals, export, sessions and localStorage logic.
+- Fusiona card de plan, stats y seguimiento semanal en una sola tarjeta.
+- Mantiene la funcionalidad existente.
+- Barra de progreso en Púrpura Fenicio `#5B2A86`.
+- Fondo suave de barra `#E9DDF7`.
+- No toca Firebase/Auth, nutrición, agua, comidas, sesiones ni exportar.
 
-## Main colors
-- Primary / Phoenician purple: `#5B2A86`
-- Primary dark: `#2D1452`
-- Gold: `#D4AF37`
-- Bronze: `#B8860B`
-- Turquoise: `#2EC4C7`
-- Background: `#F7F5F1`
-- Surface: `#FFFFFF`
-- Text: `#17151C`
+Subir todos los archivos a la raíz de GitHub Pages.
