@@ -608,3 +608,70 @@ nav{height:calc(74px + env(safe-area-inset-bottom)) !important;min-height:calc(7
 .mq-card{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:14px 16px;box-shadow:0 8px 22px rgba(24,27,29,.035)}
 .mq-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}.mq-kicker{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--ink3);font-weight:700;margin-bottom:3px}.mq-card-title{font-size:19px;font-weight:800;color:var(--ink);font-family:var(--fd)}.mq-pill{font-size:11px;font-weight:800;color:var(--orange);background:var(--bg3);border:1px solid var(--border2);border-radius:999px;padding:5px 9px;white-space:nowrap}.mq-pill.ok{color:var(--green);border-color:var(--green)}
 .mq-progress{height:8px;background:var(--bg4);border-radius:99px;overflow:hidden;margin:8px 0 12px}.mq-progress>div{height:100%;background:var(--orange);border-radius:99px;transition:width .25s}.mq-progress.aqua>div{background:#2EC4C7}.mq-pending strong{display:block;font-size:15px;color:var(--ink);margin-bottom:4px}.mq-pending p{font-size:13px;color:var(--ink2);line-height:1.45;margin:0 0 10px}.mq-label{font-size:11px;color:var(--ink3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}.mq-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.mq-next{font-size:12px;color:var(--ink2);margin-top:9px}.mq-next span{color:var(--ink3);font-weight:700}.mq-cups{display:grid;grid-template-columns:repeat(11,1fr);gap:5px;margin:12px 0}.mq-cup{height:25px;border:1.5px solid var(--border2);background:var(--bg3);clip-path:polygon(18% 0,82% 0,72% 100%,28% 100%);cursor:pointer}.mq-cup.on{background:#2EC4C7;border-color:#2EC4C7}.mq-portion-grid{display:flex;flex-direction:column;gap:10px}.mq-portion-row{display:grid;grid-template-columns:1.1fr 1fr auto;gap:8px;align-items:center}.mq-portion-row strong{display:block;font-size:12px;color:var(--ink)}.mq-portion-row span,.mq-portion-row small{font-size:11px;color:var(--ink3)}.mq-mini-progress{height:6px;border-radius:99px;background:var(--bg4);overflow:hidden}.mq-mini-progress>div{height:100%;background:var(--orange);border-radius:99px}.mq-food-buttons{display:flex;flex-wrap:wrap;gap:7px}.mq-food-buttons button{border:1px solid var(--border2);background:var(--bg3);color:var(--ink2);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer}.mq-food-buttons button:active{border-color:var(--orange);color:var(--orange)}
+/* MELQART — Patch visual mínimo: logo, fecha y saludo */
+
+/* Logo del header */
+.mq-brand-wordmark,
+.mq-logo,
+.melqart-logo {
+  color: var(--text, #17151C);
+}
+
+/* Si el logo es una imagen SVG externa, no siempre toma color por CSS.
+   En ese caso este bloque solo controla tamaño/posición, no relleno interno. */
+.mq-brand img,
+.mq-brand-wordmark img,
+.melqart-logo img {
+  display: block;
+  height: 18px;
+  width: auto;
+}
+
+/* Fecha en Inicio */
+.home-date,
+.home-greet-date,
+#home-greet .home-date,
+#home-greet > div:first-child {
+  color: var(--text-muted, #7B7285) !important;
+  font-family: var(--font-ui, Inter, system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* Saludo */
+.home-greeting-title,
+.home-greet-title,
+#home-greet h1,
+#home-greet > div:last-child {
+  color: var(--text, #17151C) !important;
+  font-family: var(--font-ui, Inter, system-ui, sans-serif);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+/* Acento del saludo */
+.home-greeting-accent,
+.home-greet-accent {
+  color: var(--primary, #5B2A86) !important;
+}
+
+/* Dark mode */
+html[data-theme="dark"] .home-date,
+html[data-theme="dark"] .home-greet-date,
+html[data-theme="dark"] #home-greet .home-date,
+html[data-theme="dark"] #home-greet > div:first-child {
+  color: var(--text-muted, #A8A0B4) !important;
+}
+
+html[data-theme="dark"] .home-greeting-title,
+html[data-theme="dark"] .home-greet-title,
+html[data-theme="dark"] #home-greet h1,
+html[data-theme="dark"] #home-greet > div:last-child {
+  color: var(--text, #FAFAF7) !important;
+}
+
+html[data-theme="dark"] .home-greeting-accent,
+html[data-theme="dark"] .home-greet-accent {
+  color: var(--primary, #B79CFF) !important;
+}
