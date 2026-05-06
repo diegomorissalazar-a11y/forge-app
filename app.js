@@ -1014,6 +1014,37 @@ function renderHomePlanBanner(){
   const totalSemanas=plan.totalSemanas||16;
   const pct=Math.min(100,Math.round((semG/totalSemanas)*100));
   const bloque=plan.bloques?.[Math.floor((semG-1)/4)]||{nombre:'—'};
+
+  // ── Adherencia nutricional y agua (días completados) ──
+  const HOY = today();
+  let diasNutriOK = 0, diasAguaOK = 0;
+  // Contar días del mes actual con pauta completa
+  const mesStr = HOY.slice(0, 7);
+  for (let d = 1; d <= new Date().getDate(); d++) {
+    const f = `${mesStr}-${String(d).padStart(2,'0')}`;
+    try {
+      const r = localStorage.getItem('ff_' + f);
+      if (r) {
+        const fd2 = JSON.parse(r);
+        // Nutrición completa: ≥5 comidas marcadas
+        const mealsDone = (fd2.meals||[]).filter(m=>m.done).length + (fd2.extraFoods||[]).length;
+        if (mealsDone >= 5 || fd2.allDone) diasNutriOK++;
+        // Agua completa: ≥7 checkpoints o ≥2500ml
+        const aguaCps = (fd2.aguaCps||[]).filter(Boolean).length;
+        const aguaMl = fd2.aguaMl || 0;
+        if (aguaCps >= 7 || aguaMl >= 2500) diasAguaOK++;
+      }
+    } catch {}
+  }
+
+  // ── Ejercicio del día según plan ──
+  const diasOrden = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const diaHoyNombre = diasOrden[new Date().getDay()];
+  const rutinaHoy = (forge.routines||[]).find(r => r.name.toLowerCase().includes(diaHoyNombre));
+  const ejHoyHtml = rutinaHoy
+    ? `<div class="home-plan-ej-hoy">Hoy: <strong>${rutinaHoy.name}</strong></div>`
+    : '';
+
   el.innerHTML=`
     <section class="home-plan-unified">
       <div class="home-plan-unified__top">
@@ -1046,7 +1077,22 @@ function renderHomePlanBanner(){
           <div class="home-plan-unified__metric-label">Total sesiones</div>
         </div>
       </div>
-      ${mejor?.count?`<div class="home-plan-unified__best">Mejor semana del año: <strong>${mejor.count} sesiones</strong>${mejor.lunes?` · ${fmtRangoSemana(mejor.lunes)}`:''}</div>`:''}
+      <div class="home-plan-adherencia">
+        <div class="home-plan-adherencia-item">
+          <div class="home-plan-adherencia-val">${diasNutriOK}</div>
+          <div class="home-plan-adherencia-lbl">Días pauta</div>
+        </div>
+        <div class="home-plan-adherencia-item">
+          <div class="home-plan-adherencia-val">${diasAguaOK}</div>
+          <div class="home-plan-adherencia-lbl">Días agua</div>
+        </div>
+        <div class="home-plan-adherencia-item" style="border-left:1px solid var(--border);padding-left:12px;text-align:left;flex:2">
+          <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:2px">Este mes</div>
+          <div style="font-size:10px;color:var(--ink3)">Nutrición · Agua</div>
+        </div>
+      </div>
+      ${ejHoyHtml}
+      ${mejor?.count?`<div class="home-plan-unified__best" style="margin-top:6px">Mejor semana: <strong>${mejor.count} sesiones</strong></div>`:''}
     </section>`;
 }
 
@@ -1568,7 +1614,7 @@ function renderRutinas(){
 
     return `<div class="rutina-card" style="border-color:${borderColor}">
       ${bannerSugerida}
-      <div class="rutina-head" onclick="toggleRutinaDetalle('${r.id}');iniciarRutina('${r.id}')">
+      <div class="rutina-head" onclick="openRutinaPreview('${r.id}')">
         <span class="rutina-emoji">${r.emoji||'◈'}</span>
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:2px">
           <div class="rutina-name">${r.name}</div>${diaTag}
@@ -1578,7 +1624,7 @@ function renderRutinas(){
       </div>
       ${cargaHint}
       <button onclick="iniciarRutina('${r.id}')"
-        style="width:100%;padding:10px;background:${esSugerida?'var(--p)':esClavePlan?'var(--ok)':'var(--bg3)'};
+        style="width:100%;padding:10px;background:${esSugerida?'var(--p)':esClavePlan?'var(--p)':'var(--bg3)'};
         color:${esSugerida||esClavePlan?'#fff':'var(--ink2)'};border:none;font-family:var(--ff);
         font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;
         display:flex;align-items:center;justify-content:center;gap:6px;
@@ -1627,14 +1673,86 @@ function deleteRutina(rutinaId){
   showToast('Rutina eliminada');
 }
 
-function toggleRutinaDetalle(rutinaId){
-  const det=document.getElementById('rutina-detalle-'+rutinaId);
-  const chev=document.getElementById('rutina-chevron-'+rutinaId);
-  if(!det) return;
-  const abierto=det.style.display!=='none';
-  det.style.display=abierto?'none':'block';
-  if(chev) chev.style.transform=abierto?'':'rotate(180deg)';
+function openRutinaPreview(rutinaId) {
+  const r = (forge.routines||[]).find(x => x.id === rutinaId); if (!r) return;
+  const plan = (forge.planes||[]).find(p => p.activo);
+  const semG = plan ? semanaActualPlan(plan) : 0;
+  const cargas = plan ? getCargasSemana(rutinaId) : {};
+  const exs = (r.exercises||[]).map(id => getEx(id)).filter(Boolean);
+
+  const exRows = exs.map(e => {
+    const isRun = e.type === 'run' || e.type === 'hiit';
+    const pr = getPR(e.id);
+    const carga = cargas[e.id];
+    const series = r._series?.[e.id] || [];
+    const pdrVal = isRun ? getRunPR(e.id) : (pr.weight > 0 ? `${pr.weight} kg` : '—');
+
+    let seriesHtml = '';
+    if (!isRun) {
+      const sugeridoKg = carga || pr.weight || '—';
+      if (series.length) {
+        seriesHtml = series.map((s, i) =>
+          `<div style="display:flex;gap:10px;font-size:12px;color:var(--ink2);padding:4px 0;border-bottom:1px solid var(--border)">
+            <span style="color:var(--ink3);min-width:20px;font-size:11px">${i+1}</span>
+            <span style="font-weight:600;color:var(--p)">${s.peso||sugeridoKg} kg</span>
+            <span style="color:var(--ink3)">× ${s.reps||8} reps</span>
+            ${carga ? `<span style="font-size:10px;color:var(--p);margin-left:auto">Plan: ${carga}kg</span>` : ''}
+          </div>`).join('');
+      } else {
+        seriesHtml = `<div style="font-size:12px;color:var(--ink3);padding:4px 0">
+          3 series · ${sugeridoKg} kg × 8 reps
+          ${carga ? `<span style="font-size:10px;color:var(--p);margin-left:6px">Plan sem ${semG}: ${carga}kg</span>` : ''}
+        </div>`;
+      }
+    } else {
+      seriesHtml = `<div style="font-size:12px;color:var(--ink3)">Cardio — km, tiempo, FC</div>`;
+    }
+
+    return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:700;color:var(--ink)">${e.name}</div>
+        <div style="text-align:right;flex-shrink:0;margin-left:8px">
+          <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3)">PDR</div>
+          <div style="font-size:13px;font-weight:700;color:var(--p)">${pdrVal}</div>
+        </div>
+      </div>
+      ${seriesHtml}
+    </div>`;
+  }).join('');
+
+  // Usar el modal genérico
+  const modalBg = document.createElement('div');
+  modalBg.className = 'modal-bg on';
+  modalBg.id = 'rutina-preview-modal';
+  modalBg.innerHTML = `
+    <div class="modal" style="max-height:85dvh">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <div style="font-size:16px;font-weight:700;color:var(--ink)">${r.emoji||'◈'} ${r.name}</div>
+        <button onclick="document.getElementById('rutina-preview-modal')?.remove()" class="bicon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:11px;color:var(--ink3);margin-bottom:12px">${exs.length} ejercicios · Descanso ${fmtTime(r.restSec||90)} entre series</div>
+        ${exRows}
+        <button onclick="document.getElementById('rutina-preview-modal')?.remove();iniciarRutina('${rutinaId}')"
+          class="btn btn-p" style="margin-top:16px">
+          ▶ Iniciar sesión
+        </button>
+      </div>
+    </div>`;
+  // Cerrar al tocar fuera
+  modalBg.addEventListener('click', e => { if (e.target === modalBg) modalBg.remove(); });
+  document.body.appendChild(modalBg);
 }
+
+function toggleRutinaDetalle(rutinaId) {
+  // Mantenida por compatibilidad — ahora abre preview
+  openRutinaPreview(rutinaId);
+}
+
+
 
 function buildDurSelects(){
   const hhSel=document.getElementById('edit-ses-hh');
@@ -4504,6 +4622,31 @@ function renderProgPlan(){
   const ses=forge.sessions||[];
   const inicioDate=new Date(plan.inicio+'T12:00:00');
 
+  // Tooltip global para el plan
+  const ttId = 'plan-chart-tooltip';
+  if (!document.getElementById(ttId)) {
+    const tt = document.createElement('div');
+    tt.id = ttId; tt.className = 'plan-tooltip';
+    document.body.appendChild(tt);
+  }
+
+  function showPlanTooltip(evt, val, fecha, unidad) {
+    const tt = document.getElementById(ttId); if (!tt) return;
+    const d = new Date(fecha + 'T12:00:00');
+    const fmtDate = `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+    tt.innerHTML = `<div class="plan-tooltip-val">${val} ${unidad}</div><div class="plan-tooltip-date">${fmtDate}</div>`;
+    tt.classList.add('on');
+    const x = evt.clientX, y = evt.clientY;
+    tt.style.left = (x + 12) + 'px';
+    tt.style.top  = (y - 40) + 'px';
+  }
+  function hidePlanTooltip() {
+    const tt = document.getElementById(ttId); if (tt) tt.classList.remove('on');
+  }
+  // Exponer para onclick inline
+  window._showPlanTT = showPlanTooltip;
+  window._hidePlanTT = hidePlanTooltip;
+
   // ── Progresión ejercicios clave ───────────────────────────────
   const clavesHtml=EJERCICIOS_CLAVE.map(ec=>{
     const e=getEx(ec.id); if(!e) return '';
@@ -4515,54 +4658,89 @@ function renderProgPlan(){
       const semIni=new Date(inicioDate); semIni.setDate(semIni.getDate()+(s-1)*7);
       const semFin=new Date(semIni); semFin.setDate(semFin.getDate()+7);
       const sessSem=ses.filter(x=>{ const d=new Date(x.date); return d>=semIni&&d<semFin; });
-      let realVal=null;
+      let realVal=null, realFecha=null;
       sessSem.forEach(sx=>{
         const exData=(sx.exercises||[]).find(ex=>ex.exId===ec.id);
         if(!exData) return;
         if(isRun){
-          const dist=(exData.sets||[]).reduce((a,st)=>a+(parseFloat(st.distance)||0),0);
-          if(dist>0) realVal=dist;
+          // Para trote: usar RITMO (min/km), no distancia
+          let totalDist=0, totalMins=0;
+          (exData.sets||[]).forEach(st=>{
+            const d=parseFloat(st.distance)||0;
+            totalDist+=d;
+            if(st.time){ const p=(st.time+'').split(':'); totalMins+=(parseInt(p[0])||0)+(parseInt(p[1])||0)/60; }
+          });
+          if(totalDist>0&&totalMins>0){
+            const ritmo=totalMins/totalDist;
+            if(realVal===null||ritmo<realVal){ realVal=Math.round(ritmo*100)/100; realFecha=localDateStr(sx.date); }
+          }
         } else {
           const maxW=Math.max(0,...(exData.sets||[]).filter(st=>st.done&&st.weight).map(st=>parseFloat(st.weight)||0));
-          if(maxW>0) realVal=maxW;
+          if(maxW>0){ realVal=maxW; realFecha=localDateStr(sx.date); }
         }
       });
-      const sugerido=roundCarga(base*Math.pow(1.025,s-1), e.type||'barbell');
-      puntos.push({sem:s, real:realVal, sugerido});
+      // Sugerido: para run usar meta en min/km (velocidad creciente = ritmo decreciente)
+      const sugerido = isRun
+        ? (base > 0 ? Math.round(base * Math.pow(0.985, s-1) * 100) / 100 : 0)
+        : roundCarga(base*Math.pow(1.025,s-1), e.type||'barbell');
+      puntos.push({sem:s, real:realVal, sugerido, fecha:realFecha});
     }
     const W=300, H=80, pad=10;
+    // Para ritmo: menor = mejor → invertir eje Y
     const vals=[...puntos.map(p=>p.sugerido), ...puntos.filter(p=>p.real).map(p=>p.real), meta].filter(Boolean);
+    if(!vals.length) return '';
     const minV=Math.min(...vals)*0.97, maxV=Math.max(...vals)*1.03;
     const xs=puntos.map((_,i)=>pad+(i/(Math.max(puntos.length-1,1)))*(W-pad*2));
-    const yv=v=>H-pad-(v-minV)/(maxV-minV)*(H-pad*2);
-    const lineS=puntos.map((p,i)=>`${i===0?'M':'L'}${xs[i].toFixed(1)},${yv(p.sugerido).toFixed(1)}`).join(' ');
+    const yv = isRun
+      ? v => pad + (v - minV) / (maxV - minV) * (H - pad*2)   // ritmo: mayor=abajo (peor), menor=arriba (mejor)
+      : v => H - pad - (v - minV) / (maxV - minV) * (H - pad*2);
+    const lineS=puntos.map((p,i)=>p.sugerido?`${i===0?'M':'L'}${xs[i].toFixed(1)},${yv(p.sugerido).toFixed(1)}`:'').filter(Boolean).join(' ');
     const realPts=puntos.filter(p=>p.real!==null);
     const lineR=realPts.length>1?realPts.map((p,i)=>{const idx=puntos.indexOf(p);return `${i===0?'M':'L'}${xs[idx].toFixed(1)},${yv(p.real).toFixed(1)}`;}).join(' '):'';
-    const dots=puntos.map((p,i)=>p.real!==null?`<circle cx="${xs[i].toFixed(1)}" cy="${yv(p.real).toFixed(1)}" r="3.5" fill="${p.real>=p.sugerido?'var(--green)':'var(--gold)'}"/>`:``).join('');
-    const metaLine=meta>0?`<line x1="${pad}" y1="${yv(meta).toFixed(1)}" x2="${W-pad}" y2="${yv(meta).toFixed(1)}" stroke="var(--red)" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>`:'';
+
+    // Dots con tooltip
+    const unidad = isRun ? 'min/km' : 'kg';
+    const dots=puntos.map((p,i)=>{
+      if(p.real===null) return '';
+      const dispVal = isRun ? decimalToPace(p.real) : p.real;
+      const safeVal = String(dispVal).replace(/'/g, '&apos;');
+      const safeDate = (p.fecha||'').replace(/"/g,'');
+      return `<circle cx="${xs[i].toFixed(1)}" cy="${yv(p.real).toFixed(1)}" r="4" fill="var(--p)"
+        stroke="var(--bg2)" stroke-width="1.5" style="cursor:pointer"
+        onmouseenter="_showPlanTT(event,'${safeVal}','${safeDate}','${unidad}')"
+        onmouseleave="_hidePlanTT()"
+        ontouchstart="_showPlanTT(event,'${safeVal}','${safeDate}','${unidad}')"
+        ontouchend="_hidePlanTT()"/>`;
+    }).join('');
+
+    const metaLine=meta>0?`<line x1="${pad}" y1="${yv(meta).toFixed(1)}" x2="${W-pad}" y2="${yv(meta).toFixed(1)}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>`:'';
     const ultimo=puntos.filter(p=>p.real!==null).pop();
-    const pctMeta=meta&&ultimo?Math.min(100,Math.round((ultimo.real/meta)*100)):0;
-    const unidad=isRun?'km':'kg';
-    return `<div class="card" style="margin-bottom:14px">
+    const pctMeta = isRun
+      ? (meta&&ultimo ? Math.min(100,Math.round((meta/ultimo.real)*100)) : 0)  // ritmo: acercarse a meta (menor)
+      : (meta&&ultimo ? Math.min(100,Math.round((ultimo.real/meta)*100)) : 0);
+    const dispUltimo = ultimo ? (isRun ? decimalToPace(ultimo.real) : ultimo.real) : null;
+    const dispMeta = meta ? (isRun ? decimalToPace(meta) : meta) : null;
+
+    return `<div class="card" style="margin-bottom:14px;padding:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:14px;font-weight:800;color:var(--ink)">${e.name}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--ink)">${e.name}</div>
         <div style="text-align:right">
-          ${ultimo?`<div style="font-size:16px;font-weight:800;color:var(--orange)">${ultimo.real}${unidad}</div>`:''}
-          ${meta?`<div style="font-size:10px;color:var(--ink3)">Meta: ${meta}${unidad}${pctMeta>0?' · '+pctMeta+'%':''}</div>`:''}
+          ${dispUltimo?`<div style="font-size:16px;font-weight:800;color:var(--p)">${dispUltimo} ${unidad}</div>`:''}
+          ${dispMeta?`<div style="font-size:10px;color:var(--ink3)">Meta: ${dispMeta} ${unidad}${pctMeta>0?' · '+pctMeta+'%':''}</div>`:''}
         </div>
       </div>
       <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;margin-bottom:8px">
         ${metaLine}
         <path d="${lineS}" fill="none" stroke="var(--border2)" stroke-width="1.5" stroke-dasharray="4,3"/>
-        ${lineR?`<path d="${lineR}" fill="none" stroke="var(--orange)" stroke-width="2.5"/>`:''}
+        ${lineR?`<path d="${lineR}" fill="none" stroke="var(--p)" stroke-width="2.5"/>`:''}
         ${dots}
       </svg>
       <div style="display:flex;align-items:center;gap:12px;font-size:10px;color:var(--ink3)">
         <span><span style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--border2);vertical-align:middle"></span> Sugerido</span>
-        <span><span style="display:inline-block;width:14px;height:2px;background:var(--orange);vertical-align:middle"></span> Real</span>
-        ${meta?`<span><span style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--red);vertical-align:middle;opacity:.5"></span> Meta</span>`:''}
+        <span><span style="display:inline-block;width:14px;height:2px;background:var(--p);vertical-align:middle"></span> Real</span>
+        ${dispMeta?`<span><span style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--warn);vertical-align:middle;opacity:.5"></span> Meta</span>`:''}
       </div>
-      ${pctMeta>0?`<div style="margin-top:8px;background:var(--bg3);border-radius:3px;height:5px;overflow:hidden"><div style="width:${pctMeta}%;height:100%;background:var(--orange)"></div></div>`:''}
+      ${pctMeta>0?`<div style="margin-top:8px;background:var(--bg3);border-radius:3px;height:5px;overflow:hidden"><div style="width:${pctMeta}%;height:100%;background:var(--p)"></div></div>`:''}
     </div>`;
   }).join('');
 
@@ -4593,13 +4771,13 @@ function renderProgPlan(){
         </div>
       </div>`;
     }).join('');
-    return `<div class="card" style="margin-bottom:10px;${esActual?'border-color:var(--orange)':''}">
+    return `<div class="card" style="margin-bottom:10px;${esActual?'border-color:var(--p)':''}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <div>
-          <span style="font-size:13px;font-weight:800;color:${esActual?'var(--orange)':'var(--ink)'}">Semana ${s}</span>
+          <span style="font-size:13px;font-weight:800;color:${esActual?'var(--p)':'var(--ink)'}">Semana ${s}</span>
           ${bloque?`<span style="font-size:10px;color:var(--ink3);margin-left:6px">${bloque.nombre.split('(')[0].trim()}</span>`:''}
         </div>
-        <span style="font-size:11px;font-weight:700;color:${sessSem.length>0?'var(--green)':'var(--ink3)'}">${sessSem.length} sesión${sessSem.length!==1?'es':''}</span>
+        <span style="font-size:11px;font-weight:700;color:${sessSem.length>0?'var(--ok)':'var(--ink3)'}">${sessSem.length} sesión${sessSem.length!==1?'es':''}</span>
       </div>
       ${filas||`<div style="font-size:12px;color:var(--ink3);padding:4px 0">Sin entrenamientos esta semana</div>`}
     </div>`;
@@ -4788,28 +4966,58 @@ function addHomeWaterMl(ml){
 function renderHomeWaterCard(){
   const el=document.getElementById('home-water-today'); if(!el) return;
   const fd=getFD(today());
-  const ml=fd.aguaMl||Math.round((fd.agua||0)*(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos));
-  const pct=Math.min(100,Math.round(ml/NUTRITION_TARGETS.aguaMl*100));
-  const vasos=fd.agua||0;
-  const totalVasos=NUTRITION_TARGETS.aguaVasos||8;
-  // Usar ánforas si hay AGUA_CPS, si no usar vasos simples
   const cps=getAguaCps(fd);
   const activas=cps.filter(Boolean).length;
+  const totalMl=AGUA_CPS.filter((_,i)=>cps[i]).reduce((a,c)=>a+c.ml,0);
+  const pct=Math.min(100,Math.round(totalMl/AGUA_META_ML*100));
+
+  // Próximo checkpoint no completado
+  const ahoraHHMM = (() => {
+    const n = new Date();
+    return String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+  })();
+  const proximo = AGUA_CPS.find((cp, i) => !cps[i] && cp.hora >= ahoraHHMM);
+  const proximoHtml = proximo
+    ? `<div class="agua-proximo">◷ Próximo: <strong>${proximo.hora}</strong> — ${proximo.label} (${proximo.ml} ml)</div>`
+    : (activas === AGUA_CPS.length ? `<div class="agua-proximo" style="color:var(--ok)">✓ Meta de agua completada</div>` : '');
+
   el.innerHTML='<div class="mq-home-card">'
     +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:10px">'
-      +'<div class="mq-hrow" style="gap:8px;color:#2EC4C7">'+MQ.anfora+'<span class="mq-kicker">Agua hoy</span></div>'
-      +'<span style="font-size:13px;font-weight:700;color:'+(pct>=100?'var(--green)':'#2EC4C7')+'">'+Math.round(ml/100)/10+' L</span>'
+      +'<div class="mq-hrow" style="gap:8px;color:var(--teal)">'+MQ.anfora+'<span class="mq-kicker">Agua hoy</span></div>'
+      +'<span style="font-size:13px;font-weight:700;color:'+(pct>=100?'var(--ok)':'var(--teal)')+'">'+Math.round(totalMl/100)/10+' L</span>'
     +'</div>'
-    // Ánforas clickeables (usando AGUA_CPS)
-    +mqAnforas(activas, AGUA_CPS.length)
+    // Ánforas clickeables — ahora con onclick por índice
+    +'<div class="mq-tracker-row">'
+    + AGUA_CPS.map((cp, i) =>
+        `<button class="mq-anfora-btn${cps[i]?' on':''}" onclick="toggleAguaCpHome(${i})" title="${cp.hora} — ${cp.label} (${cp.ml}ml)">`
+        + MQ.anfora
+        + '</button>'
+      ).join('')
+    +'</div>'
+    +'<div style="font-size:11px;font-weight:700;color:var(--teal);margin-top:4px">'+activas+' / '+AGUA_CPS.length+' ánforas</div>'
     // Botones +ml
     +'<div class="mq-hrow" style="gap:6px;margin-top:10px;flex-wrap:wrap">'
       +'<button class="mq-btn-aqua" onclick="addHomeWaterMl(250)">+250 ml</button>'
       +'<button class="mq-btn-aqua" onclick="addHomeWaterMl(500)">+500 ml</button>'
       +'<button class="mq-btn-aqua" onclick="addHomeWaterMl(750)">+750 ml</button>'
     +'</div>'
-    +'<div class="mq-stat-lbl" style="margin-top:6px">Restante: '+Math.max(0,(NUTRITION_TARGETS.aguaMl-ml)/1000).toFixed(1).replace('.',',')+' L</div>'
+    +'<div class="mq-stat-lbl" style="margin-top:6px">Restante: '+Math.max(0,(AGUA_META_ML-totalMl)/1000).toFixed(1).replace('.',',')+' L</div>'
+    + proximoHtml
     +'</div>';
+}
+
+function toggleAguaCpHome(idx) {
+  const fd = getFD(today());
+  const cps = getAguaCps(fd);
+  cps[idx] = !cps[idx];
+  fd.aguaCps = cps;
+  fd.agua = cps.filter(Boolean).length;
+  const totalMl = AGUA_CPS.filter((_,i) => cps[i]).reduce((a,c) => a+c.ml, 0);
+  fd.aguaMl = totalMl;
+  saveFD(fd);
+  if (totalMl >= AGUA_META_ML) showToast('Meta de agua alcanzada', 2500, 'ok');
+  renderHomeWaterCard();
+  renderFoodIfVisible();
 }
 function addFrequentFood(foodId){
   const food=FREQUENT_FOODS.find(f=>f.id===foodId); if(!food) return;
@@ -5099,6 +5307,12 @@ function renderHabitsLumen(){
   const year=new Date().getFullYear();
   const todayStr=today();
 
+  // Estado de hoy para alcohol y pauta
+  const habAlcohol = (forge.habitos||[]).find(x=>x.tipo==='alcohol');
+  const todayAlcohol = (habAlcohol?.registros||{})[todayStr];
+  let todayPauta = false;
+  try { const r = localStorage.getItem('ff_'+todayStr); if(r){ const fd2=JSON.parse(r); todayPauta = fd2.pautaManual || false; } } catch {}
+
   el.innerHTML=`
     <div class="lumen-stat-row">
       <div class="lumen-stat"><div class="lumen-num">${streak}</div><div class="lumen-lbl">Racha actual</div><div class="lumen-sub">semanas seguidas</div></div>
@@ -5106,14 +5320,44 @@ function renderHabitsLumen(){
       <div class="lumen-stat"><div class="lumen-num">${total}</div><div class="lumen-lbl">Días totales</div><div class="lumen-sub">registrados</div></div>
     </div>
     ${renderLumenHabitoGrid('◈ Días entrenados','Cada día que completaste un entrenamiento',year,todayStr,d=>entreDias.has(d)?1:-1)}
-    ${renderLumenHabitoGrid('⊘ Días sin alcohol','Bronce = sin alcohol · Terracota = bebiste · Toca un día para marcar',year,todayStr,d=>{
+
+    <div style="margin-bottom:10px">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:8px">Consumo de alcohol hoy</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="hab-alcohol-btn${todayAlcohol==='bebio'?' active':''}" onclick="toggleAlcohol('${todayStr}')">
+          ${todayAlcohol==='bebio'?'🍷 Bebí hoy':'✓ Sin alcohol hoy'}
+        </button>
+      </div>
+    </div>
+
+    ${renderLumenHabitoGrid('⊘ Días sin alcohol','Por defecto sin alcohol · Toca el botón de arriba para marcar si bebiste',year,todayStr,d=>{
       const h=(forge.habitos||[]).find(x=>x.tipo==='alcohol');
-      if(!h) return 1; // sin registro = sin alcohol (verde)
+      if(!h) return 1;
       const r=(h.registros||{})[d];
-      return r==='bebio'?0:1; // bebio=rojo, sin registro=verde
+      return r==='bebio'?0:1;
     }, 'alcohol')}
-    ${renderLumenHabitoGrid('◈ Meta de agua (10 vasos)','Días que alcanzaste los 10 vasos',year,todayStr,d=>{
-      try{ const r=localStorage.getItem('ff_'+d); if(!r) return -1; const fd=JSON.parse(r); return fd.agua>=10?1:fd.agua>=6?0.5:fd.agua>0?0.25:-1; }catch{ return -1; }
+
+    <div style="margin-bottom:10px;margin-top:4px">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:8px">Pauta nutricional hoy</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="hab-pauta-btn${todayPauta?' active':''}" onclick="togglePautaHoy()">
+          ${todayPauta?'✓ Pauta completada hoy':'Marcar pauta completada'}
+        </button>
+      </div>
+    </div>
+
+    ${renderLumenHabitoGrid('◈ Pauta nutricional','Días con pauta alimentaria completada',year,todayStr,d=>{
+      try{ const r=localStorage.getItem('ff_'+d); if(!r) return -1; const fd2=JSON.parse(r);
+        const mealsDone=(fd2.meals||[]).filter(m=>m.done).length+(fd2.extraFoods||[]).length;
+        return fd2.pautaManual?1:(mealsDone>=5||fd2.allDone)?1:mealsDone>=3?0.5:mealsDone>0?0.25:-1;
+      }catch{ return -1; }
+    })}
+
+    ${renderLumenHabitoGrid('◈ Meta de agua','Días que alcanzaste los 7 checkpoints de agua',year,todayStr,d=>{
+      try{ const r=localStorage.getItem('ff_'+d); if(!r) return -1; const fd2=JSON.parse(r);
+        const aguaCps=(fd2.aguaCps||[]).filter(Boolean).length;
+        return aguaCps>=7?1:aguaCps>=5?0.5:aguaCps>=3?0.25:-1;
+      }catch{ return -1; }
     })}`;
 }
 
@@ -5169,8 +5413,19 @@ function renderLumenHabitoGrid(titulo,subtitulo,year,todayStr,valFn,tipo=''){
   </div>`;
 }
 
-function toggleAlcohol(fecha){
-  if(!forge.habitos) forge.habitos=[];
+function togglePautaHoy() {
+  const f = today();
+  try {
+    const r = localStorage.getItem('ff_'+f);
+    const fd2 = r ? JSON.parse(r) : {};
+    fd2.pautaManual = !fd2.pautaManual;
+    localStorage.setItem('ff_'+f, JSON.stringify(fd2));
+    showToast(fd2.pautaManual ? '✓ Pauta completada' : 'Pauta desmarcada', 1500, fd2.pautaManual ? 'ok' : '');
+    renderHabitsLumen();
+  } catch {}
+}
+
+function toggleAlcohol(fecha){  if(!forge.habitos) forge.habitos=[];
   let h=forge.habitos.find(x=>x.tipo==='alcohol');
   if(!h){ h={id:'hab_alcohol',tipo:'alcohol',registros:{}}; forge.habitos.push(h); }
   if(!h.registros) h.registros={};

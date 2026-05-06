@@ -1896,3 +1896,175 @@ td, th {
   color: var(--p) !important;
 }
 
+
+/* =======================================================
+   MELQART v126 — Ajustes múltiples
+   ======================================================= */
+
+/* ── Entrenar: paleta fenicia, sin verde ─────────────────
+   Botones y bordes usan --p y --ok, no hardcoded green
+   -------------------------------------------------------- */
+#rutinas-list .rutina-card button {
+  background: var(--bg3) !important;
+  color: var(--ink2) !important;
+}
+#rutinas-list .rutina-card button[style*="ok"],
+#rutinas-list .rutina-card button[style*="green"] {
+  background: var(--p) !important;
+  color: #fff !important;
+}
+/* Tag Plan · Sem N — usa púrpura fenicio */
+#rutinas-list span[style*="green"][style*="background"] {
+  background: var(--p) !important;
+  color: #fff !important;
+}
+/* Carga hint */
+#rutinas-list div[style*="green"][style*="color"] {
+  color: var(--p) !important;
+}
+
+/* ── Agua: distribución horaria próximo vaso ─────────── */
+.agua-proximo {
+  font-size: 11px;
+  color: var(--teal);
+  font-weight: 600;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Plan: tooltips SVG ──────────────────────────────── */
+.plan-tooltip {
+  position: fixed;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  pointer-events: none;
+  z-index: 9999;
+  max-width: 180px;
+  display: none;
+}
+.plan-tooltip.on { display: block; }
+.plan-tooltip-val { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+.plan-tooltip-date { font-size: 10px; opacity: .7; }
+
+/* ── Card inicio: más compacto ───────────────────────── */
+.home-plan-unified {
+  padding: 14px 14px 12px !important;
+}
+.home-plan-unified__title {
+  font-size: 15px !important;
+  margin-bottom: 6px !important;
+}
+.home-plan-unified__metric-value {
+  font-size: 22px !important;
+}
+.home-plan-unified__week {
+  font-size: 26px !important;
+}
+.home-plan-unified__bar {
+  margin: 10px 0 10px !important;
+}
+.home-plan-unified__metrics {
+  padding: 10px 0 !important;
+}
+.home-plan-unified__metric-icon {
+  font-size: 13px !important;
+  height: 15px !important;
+  margin-bottom: 4px !important;
+}
+.home-plan-unified__metric-label {
+  font-size: 10px !important;
+}
+/* Adherencia nutricional en home plan */
+.home-plan-adherencia {
+  display: flex;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+.home-plan-adherencia-item {
+  flex: 1;
+  text-align: center;
+}
+.home-plan-adherencia-val {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--p);
+  line-height: 1;
+}
+.home-plan-adherencia-lbl {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink3);
+  margin-top: 3px;
+}
+/* Ejercicio del día dentro del card */
+.home-plan-ej-hoy {
+  font-size: 11px;
+  color: var(--ink3);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.home-plan-ej-hoy strong {
+  color: var(--p);
+  font-weight: 700;
+}
+
+/* ── Hábitos: botón marcar alcohol ───────────────────── */
+.hab-alcohol-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  color: var(--ink2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 10px;
+  font-family: inherit;
+}
+.hab-alcohol-btn.active {
+  background: var(--warn-l);
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.hab-pauta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  color: var(--ink2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 10px;
+  font-family: inherit;
+}
+.hab-pauta-btn.active {
+  background: var(--ok-l);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+/* ── Gráfico plan — tooltips interactivos ────────────── */
+.plan-chart-dot {
+  cursor: pointer;
+  transition: r 0.1s;
+}
