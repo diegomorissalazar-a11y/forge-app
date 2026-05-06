@@ -37,17 +37,3 @@ app.js
 README.md
 assets/
 ```
-
-
-## v118 Progress Dashboard
-- Rediseña Progreso > Ejercicios con filtro global: Todo, 1 mes, 4 meses, 6 meses, 12 meses.
-- Categorías cerradas por defecto: Tren inferior, Tren superior, Carrera / trote, Otros.
-- Cada categoría muestra cantidad de ejercicios con registros.
-- Al expandir, muestra tarjetas con gráfico por ejercicio.
-- Fuerza grafica peso máximo por sesión.
-- Carrera/trote grafica ritmo.
-- PR destacado con punto púrpura profundo.
-- Tooltip tap/hover con KPI y fecha dd-mm-yyyy.
-- Eje dinámico con margen 20% y margen mínimo visual.
-- Medidas corporales agrega acordeón con Peso, Grasa e IMC.
-- No toca Firebase/Auth, Home, Nutrición, Agua, Exportar ni Entrenar.

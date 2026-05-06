@@ -3002,10 +3002,6 @@ function crearPlan(){
 //  SCREEN: PROGRESO
 // ---------------------------------------------------------------
 let progTab='ejercicios', photoTab='frente', showRM=false;
-let progressExerciseRange='all';
-let progressOpenCategory=null;
-let bodyMeasuresOpen=false;
-let activeProgressTooltip=null;
 
 function renderProgress(){
   if(progTab==='ejercicios') renderProgEjercicios();
@@ -3028,178 +3024,39 @@ function switchPhotoTab(tipo,btn){
   renderProgFotos();
 }
 
-
-// ── Dashboard Progreso v118 ────────────────────────────────────
-const PROGRESS_RANGES = [
-  {id:'all', label:'Todo'},
-  {id:'1m', label:'1 mes'},
-  {id:'4m', label:'4 meses'},
-  {id:'6m', label:'6 meses'},
-  {id:'12m', label:'12 meses'},
-];
-function formatDateDDMMYYYY(dateStr){
-  const d = new Date(String(dateStr).includes('T') ? dateStr : dateStr+'T12:00:00');
-  const dd=String(d.getDate()).padStart(2,'0');
-  const mm=String(d.getMonth()+1).padStart(2,'0');
-  const yy=d.getFullYear();
-  return `${dd}-${mm}-${yy}`;
-}
-function progressCutoff(range){
-  if(range==='all') return null;
-  const d=new Date();
-  if(range==='1m') d.setMonth(d.getMonth()-1);
-  if(range==='4m') d.setMonth(d.getMonth()-4);
-  if(range==='6m') d.setMonth(d.getMonth()-6);
-  if(range==='12m') d.setFullYear(d.getFullYear()-1);
-  return localDateStr(d.getTime());
-}
-function progressInRange(fecha, range){
-  const cutoff=progressCutoff(range);
-  if(!cutoff) return true;
-  return fecha>=cutoff;
-}
-function parseTimeToSeconds(time){
-  if(!time) return 0;
-  const p=String(time).split(':').map(x=>parseInt(x)||0);
-  if(p.length===3) return p[0]*3600+p[1]*60+p[2];
-  if(p.length===2) return p[0]*60+p[1];
-  return parseInt(time)||0;
-}
-function formatPace(secondsPerKm){
-  if(!secondsPerKm||!isFinite(secondsPerKm)) return '—';
-  const m=Math.floor(secondsPerKm/60);
-  const s=Math.round(secondsPerKm%60);
-  return `${m}:${String(s).padStart(2,'0')}/km`;
-}
-function getExerciseCategory(e){
-  const name=(e.name||'').toLowerCase();
-  const muscle=(e.muscle||'').toLowerCase();
-  const type=(e.type||'').toLowerCase();
-  if(type==='run'||type==='hiit'||/carrera|trote|correr|cinta|running|run/.test(name)) return 'run';
-  if(/piernas|glute|glúte|femoral/.test(muscle) || /sentadilla|peso muerto|hip thrust|búlgara|bulgara|femoral|cajón|cajon/.test(name)) return 'lower';
-  if(/pecho|espalda|hombro|brazos|brazo/.test(muscle) || /press|banca|inclinado|remo|jalón|jalon|hombro|elevaciones/.test(name)) return 'upper';
-  return 'other';
-}
-function getCategoryLabel(id){return ({lower:'Tren inferior',upper:'Tren superior',run:'Carrera / trote',other:'Otros'})[id]||id;}
-function getStrengthSeries(exId, range){
-  const pts=[];
-  (forge.sessions||[]).slice().sort((a,b)=>a.date-b.date).forEach(s=>{
-    const fecha=localDateStr(s.date);
-    if(!progressInRange(fecha, range)) return;
-    const ex=(s.exercises||[]).find(x=>x.exId===exId); if(!ex) return;
-    const sets=(ex.sets||[]).filter(st=>st.done && parseFloat(st.weight)>0);
-    if(!sets.length) return;
-    const maxW=Math.max(...sets.map(st=>parseFloat(st.weight)||0));
-    pts.push({fecha, val:maxW, label:`${maxW}kg`, raw:maxW});
-  });
-  return pts;
-}
-function getRunSeries(exId, range){
-  const pts=[];
-  (forge.sessions||[]).slice().sort((a,b)=>a.date-b.date).forEach(s=>{
-    const fecha=localDateStr(s.date);
-    if(!progressInRange(fecha, range)) return;
-    const ex=(s.exercises||[]).find(x=>x.exId===exId); if(!ex) return;
-    const sets=(ex.sets||[]).filter(st=>parseFloat(st.distance)>0 && (st.time||s.elapsed));
-    let dist=0, secs=0;
-    sets.forEach(st=>{dist += parseFloat(st.distance)||0; secs += parseTimeToSeconds(st.time);});
-    if(dist>0 && secs===0 && s.elapsed) secs=s.elapsed;
-    if(dist>0 && secs>0){
-      const pace=secs/dist;
-      pts.push({fecha, val:pace, label:formatPace(pace), raw:pace});
-    }
-  });
-  return pts;
-}
-function getExerciseSeriesForChart(e, range){
-  const isRun=e.type==='run'||e.type==='hiit'||getExerciseCategory(e)==='run';
-  return isRun ? getRunSeries(e.id, range) : getStrengthSeries(e.id, range);
-}
-function calcAxisBounds(values, type){
-  if(!values.length) return {min:0,max:1};
-  const min=Math.min(...values), max=Math.max(...values);
-  let range=max-min;
-  let margin=range*0.2;
-  if(type==='run' && range<10) margin=20;
-  if(type!=='run' && range<1) margin=2;
-  if(range===0) margin=type==='run'?20:2;
-  return {min:min-margin, max:max+margin};
-}
-function smoothPath(points){
-  if(points.length<2) return '';
-  let d=`M${points[0][0].toFixed(1)},${points[0][1].toFixed(1)}`;
-  for(let i=1;i<points.length;i++){
-    const [x0,y0]=points[i-1], [x1,y1]=points[i];
-    const mx=(x0+x1)/2;
-    d+=` Q${x0.toFixed(1)},${y0.toFixed(1)} ${mx.toFixed(1)},${((y0+y1)/2).toFixed(1)} T${x1.toFixed(1)},${y1.toFixed(1)}`;
-  }
-  return d;
-}
-function formatProgressTooltipValue(value,type){return type==='run'?formatPace(value):`${Math.round(value*10)/10}kg`;}
-function showProgressTooltip(el,value,fecha){
-  document.querySelectorAll('.progress-tooltip.on').forEach(t=>t.classList.remove('on'));
-  const card=el.closest('.progress-chart-card'); if(!card) return;
-  const tooltip=card.querySelector('.progress-tooltip'); if(!tooltip) return;
-  const box=card.getBoundingClientRect(), dot=el.getBoundingClientRect();
-  tooltip.innerHTML=`<strong>${value}</strong><span>${fecha}</span>`;
-  tooltip.style.left=Math.max(8,Math.min(dot.left-box.left-36,box.width-88))+'px';
-  tooltip.style.top=Math.max(10,dot.top-box.top-46)+'px';
-  tooltip.classList.add('on');
-}
-document.addEventListener('click',e=>{if(!e.target.closest('.progress-chart-dot')) document.querySelectorAll('.progress-tooltip.on').forEach(t=>t.classList.remove('on'));});
-function findExerciseMeta(exId){const plan=(forge.planes||[]).find(p=>p.activo); return plan?.metas?.[exId]||null;}
-function renderSmoothLineChart(series, options={}){
-  const type=options.type||'strength';
-  if(!series || series.length<2) return `<div class="progress-empty-chart">Pocos datos en el período</div>`;
-  const W=320,H=150,PL=16,PR=16,PT=18,PB=18;
-  const values=series.map(p=>p.val);
-  const bounds=calcAxisBounds(values,type);
-  const span=(bounds.max-bounds.min)||1;
-  const xs=series.map((_,i)=>PL+(i/(series.length-1))*(W-PL-PR));
-  const ys=series.map(p=>PT+(1-(p.val-bounds.min)/span)*(H-PT-PB));
-  const pts=xs.map((x,i)=>[x,ys[i]]);
-  const line=smoothPath(pts);
-  const area=line+` L${xs[xs.length-1].toFixed(1)},${H-PB} L${xs[0].toFixed(1)},${H-PB} Z`;
-  const bestVal=type==='run'?Math.min(...values):Math.max(...values);
-  let bestIndex=-1; for(let i=series.length-1;i>=0;i--){if(series[i].val===bestVal){bestIndex=i;break;}}
-  const grid=[0,0.5,1].map(f=>{const y=PT+f*(H-PT-PB);return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}" class="progress-chart-grid"/>`;}).join('');
-  const dots=series.map((p,i)=>{
-    const isPR=i===bestIndex, cls=isPR?'progress-chart-dot pr':'progress-chart-dot';
-    const value=formatProgressTooltipValue(p.val,type), fecha=formatDateDDMMYYYY(p.fecha);
-    return `<circle class="${cls}" cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="${isPR?5:3.5}" onclick="showProgressTooltip(this,'${value}','${fecha}')"><title>${value} · ${fecha}</title></circle>`;
-  }).join('');
-  return `<div class="progress-chart-wrap"><div class="progress-tooltip"></div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="progress-chart-svg">${grid}<path d="${area}" class="progress-chart-area"/><path d="${line}" class="progress-chart-line"/>${dots}</svg></div>`;
-}
-function renderExerciseChartCard(e,series){
-  const cat=getExerciseCategory(e), type=cat==='run'?'run':'strength', values=series.map(p=>p.val); if(!values.length) return '';
-  const prValue=type==='run'?Math.min(...values):Math.max(...values);
-  let prPoint=null; for(let i=series.length-1;i>=0;i--){if(series[i].val===prValue){prPoint=series[i];break;}}
-  const prLabel=type==='run'?formatPace(prValue):`${Math.round(prValue*10)/10}kg`, meta=findExerciseMeta(e.id);
-  return `<article class="progress-chart-card"><div class="progress-chart-head"><div><h3>${e.name}</h3><div class="progress-pr">PR: ${prLabel}${prPoint?` · ${formatDateDDMMYYYY(prPoint.fecha)}`:''}</div></div>${meta?`<div class="progress-meta">Meta: ${meta}${type==='run'?'min':'kg'}</div>`:''}</div>${renderSmoothLineChart(series,{type})}</article>`;
-}
-function setProgressRange(range){progressExerciseRange=range; document.querySelectorAll('.progress-filter').forEach(b=>b.classList.toggle('on',b.dataset.range===range)); renderProgressCategories();}
-function toggleProgressCategory(categoryId){progressOpenCategory=progressOpenCategory===categoryId?null:categoryId; renderProgressCategories();}
-function buildProgressExerciseGroups(){
-  const groups={lower:[],upper:[],run:[],other:[]};
-  (forge.exercises||[]).forEach(e=>{const s=getExerciseSeriesForChart(e,progressExerciseRange); if(!s.length) return; groups[getExerciseCategory(e)].push({exercise:e,series:s});});
-  Object.values(groups).forEach(arr=>arr.sort((a,b)=>a.exercise.name.localeCompare(b.exercise.name)));
-  return groups;
-}
-function renderProgressFilters(){return `<div class="progress-filter-row">${PROGRESS_RANGES.map(r=>`<button class="progress-filter ${progressExerciseRange===r.id?'on':''}" data-range="${r.id}" onclick="setProgressRange('${r.id}')">${r.label}</button>`).join('')}</div>`;}
-function renderProgressCategories(){
-  const el=document.getElementById('prog-ex-list'); if(!el) return;
-  const groups=buildProgressExerciseGroups(), order=['lower','upper','run','other'];
-  const html=order.map(id=>{const arr=groups[id]; if(!arr.length) return ''; const open=progressOpenCategory===id; return `<section class="progress-category"><button class="progress-category-head" onclick="toggleProgressCategory('${id}')"><div><strong>${getCategoryLabel(id)}</strong><span>${arr.length} ejercicios con registros</span></div><span class="category-chevron">${open?'⌃':'⌄'}</span></button>${open?`<div class="progress-category-body">${arr.map(item=>renderExerciseChartCard(item.exercise,item.series)).join('')}</div>`:''}</section>`;}).join('');
-  el.innerHTML=html||`<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Sin datos en este período</div><div class="empty-sub">Prueba con otro filtro o registra sesiones.</div></div>`;
-}
-function renderProgressExercisesDashboard(){
-  const kpi=document.getElementById('prog-kpi-row'); if(kpi) kpi.innerHTML=renderProgressFilters();
-  renderProgressCategories();
-}
-
 // ── Ejercicios ──────────────────────────────────────────────────
 function renderProgEjercicios(){
-  renderProgressExercisesDashboard();
+  const kpis=renderKPIEjClave();
+  document.getElementById('prog-kpi-row').innerHTML=kpis;
+  const exs=forge.exercises||[];
+  const sesiones=forge.sessions||[];
+  // Filtrar ejercicios que tienen al menos 1 sesión
+  const exsConData=exs.filter(e=>{
+    const isCardio=e.type==='run'||e.type==='hiit';
+    return sesiones.some(s=>s.exercises?.some(ex=>ex.exId===e.id&&(ex.sets||[]).some(s=>s.done&&(s.weight>0||s.distance))));
+  });
+  const clave=['ex_sentadilla','ex_press_banca','ex_correr'];
+  const clavesData=clave.map(id=>exs.find(e=>e.id===id)).filter(Boolean);
+  const resto=exsConData.filter(e=>!clave.includes(e.id));
+  const all=[...clavesData,...resto];
+  if(!all.length){
+    document.getElementById('prog-ex-list').innerHTML=`<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Sin datos aún</div><div class="empty-sub">Completa sesiones para ver estadísticas.</div></div>`;
+    return;
+  }
+  document.getElementById('prog-ex-list').innerHTML=all.map(e=>{
+    const isClave=clave.includes(e.id);
+    const isRun=e.type==='run'||e.type==='hiit';
+    const pr=getPR(e.id);
+    const prStr=isRun?getRunPR(e.id):pr.weight>0?`${pr.weight} kg × ${pr.reps} reps`:'—';
+    const sub=isRun?'ritmo/distancia máximos':'PR: '+prStr;
+    return `<div class="prog-ex-row" onclick="openExDetail('${e.id}')">
+      <div style="flex:1">
+        <div class="prog-ex-name">${isClave?'⭐ ':''} ${e.name}</div>
+        <div class="prog-ex-sub">${sub}</div>
+      </div>
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>`;
+  }).join('');
 }
 
 function renderKPIEjClave(){
@@ -3743,12 +3600,6 @@ function openCuerpoChart(key, mets){
 function closeCuerpoChart(){
   document.getElementById('cuerpo-chart-ov').style.display='none';
 }
-
-
-function toggleBodyMeasuresAccordion(){bodyMeasuresOpen=!bodyMeasuresOpen;renderProgCuerpo();}
-function getBodyMetricPoints(metric){return (forge.bodyMetrics||[]).filter(m=>m[metric]!=null&&m[metric]!==''&&!isNaN(parseFloat(m[metric]))).sort((a,b)=>a.date.localeCompare(b.date)).map(m=>({fecha:m.date,val:parseFloat(m[metric]),label:String(m[metric])}));}
-function renderBodyMeasureChart(metric,label,unit){const pts=getBodyMetricPoints(metric); if(pts.length<2) return `<div class="progress-empty-chart">Pocos datos para ${label}</div>`; return `<article class="progress-chart-card"><div class="progress-chart-head"><div><h3>${label}</h3><div class="progress-pr">${pts.length} registros</div></div></div>${renderSmoothLineChart(pts,{type:'body'})}</article>`;}
-function renderBodyMeasuresAccordion(){const body=document.getElementById('cuerpo-charts'); if(!body) return; body.innerHTML=`<section class="progress-category body-measures-category"><button class="progress-category-head" onclick="toggleBodyMeasuresAccordion()"><div><strong>Medidas corporales</strong><span>Peso · Grasa · IMC</span></div><span class="category-chevron">${bodyMeasuresOpen?'⌃':'⌄'}</span></button>${bodyMeasuresOpen?`<div class="progress-category-body">${renderBodyMeasureChart('peso','Peso','kg')}${renderBodyMeasureChart('grasa','Grasa','%')}${renderBodyMeasureChart('imc','IMC','')}</div>`:''}</section>`;}
 
 function renderProgCuerpo(){
   const porFecha={};
