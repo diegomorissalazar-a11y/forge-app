@@ -2068,3 +2068,59 @@ td, th {
   cursor: pointer;
   transition: r 0.1s;
 }
+
+/* =======================================================
+   MELQART v129 — Fix toasts + paleta fenicia
+   ======================================================= */
+
+/* ── TOAST: fix definitivo de visibilidad ─────────────────
+   Cada estado tiene fondo sólido + texto siempre blanco o
+   muy oscuro según el fondo. Sin capas que se contradigan.
+   -------------------------------------------------------- */
+.toast {
+  position: fixed !important;
+  bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+  left: 50% !important;
+  transform: translateX(-50%) translateY(16px) !important;
+  border-radius: 20px !important;
+  padding: 10px 20px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  max-width: 90vw !important;
+  opacity: 0 !important;
+  transition: opacity .25s, transform .25s !important;
+  z-index: 9999 !important;
+
+  /* Default — fondo neutro oscuro, texto blanco */
+  background: var(--ink) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.22) !important;
+}
+.toast.on {
+  opacity: 1 !important;
+  transform: translateX(-50%) translateY(0) !important;
+}
+
+/* ok → fondo púrpura fenicio, texto blanco */
+.toast.ok {
+  background: var(--p) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+/* err → fondo terracota, texto blanco */
+.toast.err {
+  background: var(--warn) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+/* rec → fondo dorado, texto oscuro */
+.toast.rec {
+  background: var(--acc) !important;
+  color: #181B1D !important;
+  border: none !important;
+}

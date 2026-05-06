@@ -456,32 +456,168 @@ function switchTab(scope,tab,btn){
 // ---------------------------------------------------------------
 //  RUTINAS INICIALES
 // ---------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────
+//  BIBLIOTECA DE EJERCICIOS — clasificada por grupo muscular
+//  Variantes: barbell · smith · dumbbell · cable · machine · bodyweight
+//  restSec en segundos · bilateral:true = se registra una extremidad
+// ─────────────────────────────────────────────────────────────
 const EJERCICIOS_BASE = [
-  {id:'ex_sentadilla',    name:'Sentadilla (Barra)',       type:'barbell',    muscle:'piernas', restSec:180},
-  {id:'ex_peso_muerto',   name:'Peso Muerto (Barra)',       type:'barbell',    muscle:'espalda', restSec:180},
-  {id:'ex_press_banca',   name:'Press Banca (Barra)',       type:'barbell',    muscle:'pecho',   restSec:180},
-  {id:'ex_remo_barra',    name:'Remo Pecho Apoyado (Máquina)', type:'machine', muscle:'espalda', restSec:150},
-  {id:'ex_press_hombros', name:'Press Hombros (Barra)',     type:'barbell',    muscle:'hombros', restSec:150},
-  {id:'ex_press_inclinado',name:'Press Inclinado (Barra)', type:'barbell',    muscle:'pecho',   restSec:180},
-  {id:'ex_jalon_pecho',   name:'Jalón al Pecho (Cable)',   type:'cable',      muscle:'espalda', restSec:150},
-  {id:'ex_press_homb_manc',name:'Press Hombros (Mancuerna)',type:'dumbbell',  muscle:'hombros', restSec:150},
-  {id:'ex_sent_bulgara',  name:'Sentadilla Búlgara',       type:'dumbbell',   muscle:'piernas', restSec:120, bilateral:true},
-  {id:'ex_peso_muerto_rum',name:'Peso Muerto Rumano',      type:'barbell',    muscle:'piernas', restSec:180},
-  {id:'ex_hip_thrust',    name:'Hip Thrust (Barra)',        type:'barbell',    muscle:'gluteos', restSec:180},
-  {id:'ex_saltos_cajon',  name:'Saltos al Cajón',           type:'plyo',       muscle:'piernas', restSec:60},
-  {id:'ex_correr',       name:'Carrera / Trote',           type:'run',        muscle:'cardio',  restSec:0},
-  {id:'ex_cinta',        name:'Correr en Cinta',            type:'run',        muscle:'cardio',  restSec:0},
-  {id:'ex_hiit',         name:'HIIT Carrera',               type:'hiit',       muscle:'cardio',  restSec:60, youtubeId:'qO0hUgxd-d4'},
-  {id:'ex_curl_femoral', name:'Curl Femoral (Máquina)',     type:'machine',    muscle:'piernas', restSec:120},
-  {id:'ex_elev_lateral', name:'Elevaciones Laterales',      type:'dumbbell',   muscle:'hombros', restSec:150},
-  {id:'ex_crunch',       name:'Abdominal Banco Inclinado',  type:'bodyweight', muscle:'core',    restSec:60},
-  {id:'ex_cal_inf',      name:'Calentamiento Tren Inferior', type:'warmup',     muscle:'piernas', restSec:0, youtubeId:'jSACK-0lKi4'},
-  {id:'ex_cal_trote',    name:'Calentamiento Trote',         type:'warmup',     muscle:'cardio',  restSec:0, youtubeId:'bZWd5jKhbVo'},
-  {id:'ex_cal_sup',      name:'Calentamiento Tren Superior', type:'warmup',     muscle:'hombros', restSec:0, youtubeId:'sytmEGA0HKU'},
-  {id:'ex_est_inf',      name:'Estiramiento Tren Inferior',  type:'stretch',    muscle:'piernas', restSec:0, youtubeId:'byeZQ8cNIFs'},
-  {id:'ex_est_sup',      name:'Estiramiento Tren Superior',  type:'stretch',    muscle:'hombros', restSec:0, youtubeId:'FozCaXSnB6A'},
-  {id:'ex_est_trote',    name:'Estiramiento Trote',          type:'stretch',    muscle:'cardio',  restSec:0, youtubeId:'e8Y6Y-PST2g'},
+
+  // ── CALENTAMIENTO / ESTIRAMIENTO (no tocar IDs) ──────────
+  {id:'ex_cal_inf',  name:'Calentamiento Tren Inferior', type:'warmup',     muscle:'piernas',  restSec:0, youtubeId:'jSACK-0lKi4'},
+  {id:'ex_cal_trote',name:'Calentamiento Trote',          type:'warmup',     muscle:'cardio',   restSec:0, youtubeId:'bZWd5jKhbVo'},
+  {id:'ex_cal_sup',  name:'Calentamiento Tren Superior',  type:'warmup',     muscle:'hombros',  restSec:0, youtubeId:'sytmEGA0HKU'},
+  {id:'ex_est_inf',  name:'Estiramiento Tren Inferior',   type:'stretch',    muscle:'piernas',  restSec:0, youtubeId:'byeZQ8cNIFs'},
+  {id:'ex_est_sup',  name:'Estiramiento Tren Superior',   type:'stretch',    muscle:'hombros',  restSec:0, youtubeId:'FozCaXSnB6A'},
+  {id:'ex_est_trote',name:'Estiramiento Trote',            type:'stretch',    muscle:'cardio',   restSec:0, youtubeId:'e8Y6Y-PST2g'},
+
+  // ── CARDIO ───────────────────────────────────────────────
+  {id:'ex_correr',   name:'Carrera / Trote',              type:'run',        muscle:'cardio',   restSec:0},
+  {id:'ex_cinta',    name:'Correr en Cinta',               type:'run',        muscle:'cardio',   restSec:0},
+  {id:'ex_hiit',     name:'HIIT Carrera',                  type:'hiit',       muscle:'cardio',   restSec:60, youtubeId:'qO0hUgxd-d4'},
+  {id:'ex_bici',     name:'Bicicleta Estática',            type:'run',        muscle:'cardio',   restSec:0},
+  {id:'ex_remo_erg', name:'Remo Ergómetro',                type:'run',        muscle:'cardio',   restSec:0},
+  {id:'ex_eliptica', name:'Elíptica',                      type:'run',        muscle:'cardio',   restSec:0},
+  {id:'ex_saltar_cuerda', name:'Saltar Cuerda',            type:'hiit',       muscle:'cardio',   restSec:60},
+
+  // ── CUÁDRICEPS / PIERNAS (compuesto) ─────────────────────
+  {id:'ex_sentadilla',       name:'Sentadilla (Barra)',          type:'barbell',    muscle:'cuadriceps', restSec:180, grupo:'Cuádriceps'},
+  {id:'ex_sent_smith',       name:'Sentadilla (Smith)',           type:'smith',      muscle:'cuadriceps', restSec:180, grupo:'Cuádriceps'},
+  {id:'ex_sent_manc',        name:'Sentadilla (Mancuernas)',      type:'dumbbell',   muscle:'cuadriceps', restSec:150, grupo:'Cuádriceps'},
+  {id:'ex_sent_hack',        name:'Hack Squat (Máquina)',         type:'machine',    muscle:'cuadriceps', restSec:150, grupo:'Cuádriceps'},
+  {id:'ex_sent_goblet',      name:'Sentadilla Goblet',            type:'dumbbell',   muscle:'cuadriceps', restSec:120, grupo:'Cuádriceps'},
+  {id:'ex_prensa',           name:'Prensa de Piernas (Máquina)',  type:'machine',    muscle:'cuadriceps', restSec:150, grupo:'Cuádriceps'},
+  {id:'ex_extension_cuad',   name:'Extensión de Cuádriceps',      type:'machine',    muscle:'cuadriceps', restSec:90,  grupo:'Cuádriceps'},
+  {id:'ex_zancada_barra',    name:'Zancadas (Barra)',             type:'barbell',    muscle:'cuadriceps', restSec:90,  grupo:'Cuádriceps', bilateral:true},
+  {id:'ex_zancada_manc',     name:'Zancadas (Mancuernas)',        type:'dumbbell',   muscle:'cuadriceps', restSec:90,  grupo:'Cuádriceps', bilateral:true},
+  {id:'ex_zancada_caminando',name:'Zancadas Caminando',           type:'dumbbell',   muscle:'cuadriceps', restSec:90,  grupo:'Cuádriceps', bilateral:true},
+  {id:'ex_saltos_cajon',     name:'Saltos al Cajón',              type:'plyo',       muscle:'cuadriceps', restSec:60,  grupo:'Cuádriceps'},
+
+  // ── ISQUIOTIBIALES ────────────────────────────────────────
+  {id:'ex_curl_femoral',     name:'Curl Femoral (Máquina)',       type:'machine',    muscle:'isquios',    restSec:120, grupo:'Isquiotibiales'},
+  {id:'ex_curl_fem_tumbado', name:'Curl Femoral Tumbado',         type:'machine',    muscle:'isquios',    restSec:120, grupo:'Isquiotibiales'},
+  {id:'ex_peso_muerto',      name:'Peso Muerto (Barra)',          type:'barbell',    muscle:'isquios',    restSec:180, grupo:'Isquiotibiales'},
+  {id:'ex_peso_muerto_rum',  name:'Peso Muerto Rumano (Barra)',   type:'barbell',    muscle:'isquios',    restSec:180, grupo:'Isquiotibiales'},
+  {id:'ex_pdr_smith',        name:'Peso Muerto Rumano (Smith)',   type:'smith',      muscle:'isquios',    restSec:180, grupo:'Isquiotibiales'},
+  {id:'ex_pdr_manc',         name:'Peso Muerto Rumano (Mancuernas)', type:'dumbbell', muscle:'isquios',  restSec:150, grupo:'Isquiotibiales'},
+  {id:'ex_buenos_dias',      name:'Buenos Días (Barra)',          type:'barbell',    muscle:'isquios',    restSec:120, grupo:'Isquiotibiales'},
+  {id:'ex_nordic_curl',      name:'Nordic Curl',                  type:'bodyweight', muscle:'isquios',    restSec:120, grupo:'Isquiotibiales'},
+
+  // ── GLÚTEOS ───────────────────────────────────────────────
+  {id:'ex_hip_thrust',       name:'Hip Thrust (Barra)',           type:'barbell',    muscle:'gluteos',    restSec:180, grupo:'Glúteos'},
+  {id:'ex_hip_thrust_smith', name:'Hip Thrust (Smith)',           type:'smith',      muscle:'gluteos',    restSec:180, grupo:'Glúteos'},
+  {id:'ex_hip_thrust_maq',   name:'Hip Thrust (Máquina)',         type:'machine',    muscle:'gluteos',    restSec:180, grupo:'Glúteos'},
+  {id:'ex_sent_bulgara',     name:'Sentadilla Búlgara',           type:'dumbbell',   muscle:'gluteos',    restSec:120, grupo:'Glúteos', bilateral:true},
+  {id:'ex_sent_bulg_barra',  name:'Sentadilla Búlgara (Barra)',   type:'barbell',    muscle:'gluteos',    restSec:150, grupo:'Glúteos', bilateral:true},
+  {id:'ex_kickback_cable',   name:'Kickback Glúteo (Cable)',      type:'cable',      muscle:'gluteos',    restSec:90,  grupo:'Glúteos', bilateral:true},
+  {id:'ex_abduccion_maq',    name:'Abducción (Máquina)',          type:'machine',    muscle:'gluteos',    restSec:90,  grupo:'Glúteos'},
+  {id:'ex_puente_gluteo',    name:'Puente de Glúteo',             type:'bodyweight', muscle:'gluteos',    restSec:60,  grupo:'Glúteos'},
+
+  // ── GEMELOS / PANTORRILLA ─────────────────────────────────
+  {id:'ex_elevacion_talones_maq', name:'Elevación Talones (Máquina)', type:'machine', muscle:'gemelos', restSec:90, grupo:'Gemelos'},
+  {id:'ex_elevacion_talones_bar', name:'Elevación Talones (Barra)',   type:'barbell', muscle:'gemelos', restSec:90, grupo:'Gemelos'},
+  {id:'ex_elevacion_sentado',     name:'Elevación Talones Sentado',   type:'machine', muscle:'gemelos', restSec:90, grupo:'Gemelos'},
+
+  // ── PECHO ─────────────────────────────────────────────────
+  {id:'ex_press_banca',       name:'Press Banca (Barra)',          type:'barbell',    muscle:'pecho',    restSec:180, grupo:'Pecho'},
+  {id:'ex_press_banca_smith', name:'Press Banca (Smith)',          type:'smith',      muscle:'pecho',    restSec:180, grupo:'Pecho'},
+  {id:'ex_press_banca_manc',  name:'Press Banca (Mancuernas)',     type:'dumbbell',   muscle:'pecho',    restSec:180, grupo:'Pecho'},
+  {id:'ex_press_inclinado',   name:'Press Inclinado (Barra)',      type:'barbell',    muscle:'pecho',    restSec:180, grupo:'Pecho'},
+  {id:'ex_press_incl_smith',  name:'Press Inclinado (Smith)',      type:'smith',      muscle:'pecho',    restSec:180, grupo:'Pecho'},
+  {id:'ex_press_incl_manc',   name:'Press Inclinado (Mancuernas)',  type:'dumbbell',  muscle:'pecho',    restSec:150, grupo:'Pecho'},
+  {id:'ex_press_declinado',   name:'Press Declinado (Barra)',      type:'barbell',    muscle:'pecho',    restSec:150, grupo:'Pecho'},
+  {id:'ex_press_decl_manc',   name:'Press Declinado (Mancuernas)', type:'dumbbell',  muscle:'pecho',    restSec:150, grupo:'Pecho'},
+  {id:'ex_aperturas_manc',    name:'Aperturas (Mancuernas)',        type:'dumbbell',  muscle:'pecho',    restSec:120, grupo:'Pecho'},
+  {id:'ex_aperturas_cable',   name:'Aperturas (Cable)',             type:'cable',     muscle:'pecho',    restSec:120, grupo:'Pecho'},
+  {id:'ex_fondos',            name:'Fondos en Paralelas',           type:'bodyweight',muscle:'pecho',    restSec:120, grupo:'Pecho'},
+  {id:'ex_push_up',           name:'Flexiones de Pecho',            type:'bodyweight',muscle:'pecho',    restSec:60,  grupo:'Pecho'},
+  {id:'ex_peck_deck',         name:'Peck Deck (Mariposa)',          type:'machine',   muscle:'pecho',    restSec:120, grupo:'Pecho'},
+  {id:'ex_press_maq_pecho',   name:'Press de Pecho (Máquina)',     type:'machine',   muscle:'pecho',    restSec:150, grupo:'Pecho'},
+
+  // ── ESPALDA ───────────────────────────────────────────────
+  {id:'ex_remo_barra',        name:'Remo con Barra',               type:'barbell',   muscle:'espalda',  restSec:150, grupo:'Espalda'},
+  {id:'ex_remo_manc',         name:'Remo con Mancuerna',           type:'dumbbell',  muscle:'espalda',  restSec:120, grupo:'Espalda', bilateral:true},
+  {id:'ex_remo_cable',        name:'Remo en Polea (Cable)',         type:'cable',     muscle:'espalda',  restSec:120, grupo:'Espalda'},
+  {id:'ex_remo_maq',          name:'Remo Pecho Apoyado (Máquina)', type:'machine',   muscle:'espalda',  restSec:150, grupo:'Espalda'},
+  {id:'ex_remo_sentado',      name:'Remo Sentado (Cable)',          type:'cable',     muscle:'espalda',  restSec:150, grupo:'Espalda'},
+  {id:'ex_jalon_pecho',       name:'Jalón al Pecho (Cable)',        type:'cable',     muscle:'espalda',  restSec:150, grupo:'Espalda'},
+  {id:'ex_jalon_prono',       name:'Jalón Pronado (Cable)',         type:'cable',     muscle:'espalda',  restSec:150, grupo:'Espalda'},
+  {id:'ex_jalon_supino',      name:'Jalón Supino (Cable)',          type:'cable',     muscle:'espalda',  restSec:150, grupo:'Espalda'},
+  {id:'ex_dominadas',         name:'Dominadas (Peso Corporal)',     type:'bodyweight',muscle:'espalda',  restSec:150, grupo:'Espalda'},
+  {id:'ex_dominadas_asist',   name:'Dominadas Asistidas',          type:'machine',   muscle:'espalda',  restSec:150, grupo:'Espalda'},
+  {id:'ex_pullover_manc',     name:'Pullover (Mancuerna)',          type:'dumbbell',  muscle:'espalda',  restSec:120, grupo:'Espalda'},
+  {id:'ex_pullover_cable',    name:'Pullover (Cable)',              type:'cable',     muscle:'espalda',  restSec:120, grupo:'Espalda'},
+  {id:'ex_facepull',          name:'Face Pull (Cable)',             type:'cable',     muscle:'espalda',  restSec:90,  grupo:'Espalda'},
+
+  // ── HOMBROS ───────────────────────────────────────────────
+  {id:'ex_press_hombros',      name:'Press Hombros (Barra)',        type:'barbell',  muscle:'hombros',  restSec:150, grupo:'Hombros'},
+  {id:'ex_press_homb_smith',   name:'Press Hombros (Smith)',        type:'smith',    muscle:'hombros',  restSec:150, grupo:'Hombros'},
+  {id:'ex_press_homb_manc',    name:'Press Hombros (Mancuernas)',   type:'dumbbell', muscle:'hombros',  restSec:150, grupo:'Hombros'},
+  {id:'ex_press_arnold',       name:'Press Arnold',                 type:'dumbbell', muscle:'hombros',  restSec:150, grupo:'Hombros'},
+  {id:'ex_press_homb_maq',     name:'Press Hombros (Máquina)',      type:'machine',  muscle:'hombros',  restSec:150, grupo:'Hombros'},
+  {id:'ex_elev_lateral',       name:'Elevaciones Laterales',        type:'dumbbell', muscle:'hombros',  restSec:120, grupo:'Hombros'},
+  {id:'ex_elev_lat_cable',     name:'Elevaciones Laterales (Cable)',type:'cable',    muscle:'hombros',  restSec:120, grupo:'Hombros', bilateral:true},
+  {id:'ex_elev_frontal',       name:'Elevaciones Frontales',        type:'dumbbell', muscle:'hombros',  restSec:90,  grupo:'Hombros'},
+  {id:'ex_elev_frontal_barra', name:'Elevaciones Frontales (Barra)',type:'barbell',  muscle:'hombros',  restSec:90,  grupo:'Hombros'},
+  {id:'ex_pajaros',            name:'Pájaros (Mancuernas)',          type:'dumbbell', muscle:'hombros', restSec:90,  grupo:'Hombros'},
+  {id:'ex_pajaros_cable',      name:'Pájaros (Cable)',               type:'cable',    muscle:'hombros', restSec:90,  grupo:'Hombros'},
+  {id:'ex_encogimiento',       name:'Encogimiento de Hombros (Barra)',type:'barbell', muscle:'hombros', restSec:90,  grupo:'Hombros'},
+  {id:'ex_encogimiento_manc',  name:'Encogimiento de Hombros (Manc)',type:'dumbbell', muscle:'hombros', restSec:90, grupo:'Hombros'},
+
+  // ── BÍCEPS ────────────────────────────────────────────────
+  {id:'ex_curl_barra',        name:'Curl de Bíceps (Barra)',        type:'barbell',  muscle:'biceps',   restSec:90,  grupo:'Bíceps'},
+  {id:'ex_curl_manc',         name:'Curl de Bíceps (Mancuernas)',   type:'dumbbell', muscle:'biceps',   restSec:90,  grupo:'Bíceps', bilateral:true},
+  {id:'ex_curl_martillo',     name:'Curl Martillo (Mancuernas)',    type:'dumbbell', muscle:'biceps',   restSec:90,  grupo:'Bíceps', bilateral:true},
+  {id:'ex_curl_cable',        name:'Curl de Bíceps (Cable)',        type:'cable',    muscle:'biceps',   restSec:90,  grupo:'Bíceps'},
+  {id:'ex_curl_predicador',   name:'Curl Predicador (Barra)',       type:'barbell',  muscle:'biceps',   restSec:90,  grupo:'Bíceps'},
+  {id:'ex_curl_pred_cable',   name:'Curl Predicador (Cable)',       type:'cable',    muscle:'biceps',   restSec:90,  grupo:'Bíceps'},
+  {id:'ex_curl_concentrado',  name:'Curl Concentrado (Mancuerna)', type:'dumbbell', muscle:'biceps',   restSec:90,  grupo:'Bíceps', bilateral:true},
+  {id:'ex_curl_barra_z',      name:'Curl con Barra Z',              type:'barbell',  muscle:'biceps',   restSec:90,  grupo:'Bíceps'},
+
+  // ── TRÍCEPS ───────────────────────────────────────────────
+  {id:'ex_tricep_polea',      name:'Tríceps en Polea (Cable)',      type:'cable',    muscle:'triceps',  restSec:90,  grupo:'Tríceps'},
+  {id:'ex_tricep_cuerda',     name:'Tríceps Cuerda (Cable)',        type:'cable',    muscle:'triceps',  restSec:90,  grupo:'Tríceps'},
+  {id:'ex_press_frances',     name:'Press Francés (Barra)',         type:'barbell',  muscle:'triceps',  restSec:90,  grupo:'Tríceps'},
+  {id:'ex_press_franc_manc',  name:'Press Francés (Mancuernas)',    type:'dumbbell', muscle:'triceps',  restSec:90,  grupo:'Tríceps'},
+  {id:'ex_patada_tricep',     name:'Patada de Tríceps (Mancuerna)',type:'dumbbell', muscle:'triceps',  restSec:90,  grupo:'Tríceps', bilateral:true},
+  {id:'ex_fondos_tricep',     name:'Fondos para Tríceps',           type:'bodyweight',muscle:'triceps', restSec:90,  grupo:'Tríceps'},
+  {id:'ex_tricep_detras',     name:'Tríceps Detrás de Cabeza (Manc)',type:'dumbbell',muscle:'triceps', restSec:90,  grupo:'Tríceps'},
+  {id:'ex_tricep_det_barra',  name:'Tríceps Detrás de Cabeza (Barra)',type:'barbell',muscle:'triceps', restSec:90, grupo:'Tríceps'},
+
+  // ── CORE / ABDOMEN ────────────────────────────────────────
+  {id:'ex_crunch',            name:'Abdominal Banco Inclinado',     type:'bodyweight',muscle:'core',    restSec:60,  grupo:'Core'},
+  {id:'ex_crunch_cable',      name:'Crunch en Polea (Cable)',       type:'cable',    muscle:'core',     restSec:60,  grupo:'Core'},
+  {id:'ex_plancha',           name:'Plancha',                       type:'bodyweight',muscle:'core',    restSec:60,  grupo:'Core'},
+  {id:'ex_plancha_lateral',   name:'Plancha Lateral',               type:'bodyweight',muscle:'core',    restSec:60,  grupo:'Core', bilateral:true},
+  {id:'ex_elevacion_piernas', name:'Elevación de Piernas',          type:'bodyweight',muscle:'core',    restSec:60,  grupo:'Core'},
+  {id:'ex_rueda_abdominal',   name:'Rueda Abdominal',               type:'bodyweight',muscle:'core',    restSec:60,  grupo:'Core'},
+  {id:'ex_giro_ruso',         name:'Giro Ruso (Peso)',              type:'dumbbell', muscle:'core',     restSec:60,  grupo:'Core'},
+  {id:'ex_deadbug',           name:'Dead Bug',                      type:'bodyweight',muscle:'core',    restSec:60,  grupo:'Core'},
+  {id:'ex_cable_pallof',      name:'Pallof Press (Cable)',          type:'cable',    muscle:'core',     restSec:60,  grupo:'Core'},
+  {id:'ex_ab_machine',        name:'Abdominal en Máquina',          type:'machine',  muscle:'core',     restSec:60,  grupo:'Core'},
 ];
+
+// Mapa de grupos musculares para la UI del selector
+const GRUPOS_MUSCULARES = [
+  {key:'cardio',      label:'Cardio', emoji:'🏃'},
+  {key:'cuadriceps',  label:'Cuádriceps', emoji:'🦵'},
+  {key:'isquios',     label:'Isquiotibiales', emoji:'🦵'},
+  {key:'gluteos',     label:'Glúteos', emoji:'🍑'},
+  {key:'gemelos',     label:'Gemelos', emoji:'🦵'},
+  {key:'pecho',       label:'Pecho', emoji:'💪'},
+  {key:'espalda',     label:'Espalda', emoji:'🏋️'},
+  {key:'hombros',     label:'Hombros', emoji:'💪'},
+  {key:'biceps',      label:'Bíceps', emoji:'💪'},
+  {key:'triceps',     label:'Tríceps', emoji:'💪'},
+  {key:'core',        label:'Core', emoji:'⚡'},
+];
+
+// Mapa de tipo a label corto para mostrar junto al nombre
+const TIPO_LABEL = {
+  barbell:'Barra', smith:'Smith', dumbbell:'Manc.', cable:'Cable',
+  machine:'Máq.', bodyweight:'PC', plyo:'Plyo', run:'Cardio', hiit:'HIIT',
+  warmup:'Cal.', stretch:'Est.'
+};
 const RUTINAS_BASE = [
   {id:'r_lunes',   name:'Lunes — Tren Inferior A',  emoji:'◉', exercises:['ex_cal_inf','ex_sentadilla','ex_peso_muerto','ex_saltos_cajon','ex_curl_femoral','ex_est_inf'],        restSec:180},
   {id:'r_martes',  name:'Martes — Tren Superior A', emoji:'◈', exercises:['ex_cal_sup','ex_press_banca','ex_remo_barra','ex_press_hombros','ex_elev_lateral','ex_est_sup'],      restSec:180},
@@ -901,13 +1037,7 @@ function renderPesoBanner(){
         +'</div>'
         // Sparkline últimos 7 pesajes
         +mqPesoChart(mets)
-        // Barra progreso slim
-        +'<div style="display:flex;align-items:center;gap:8px;margin-top:8px">'
-          +'<div style="flex:1;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden">'
-            +'<div style="width:'+pct+'%;height:100%;background:'+colPct+';border-radius:3px;transition:width .5s"></div>'
-          +'</div>'
-          +'<span style="font-size:11px;font-weight:700;color:'+colPct+'">'+pct+'%</span>'
-        +'</div>'
+        // sin barra de progreso — el ring ya lo muestra
       +'</div>'
       // Columna derecha: ring + meta
       +'<div style="text-align:center;flex-shrink:0">'
@@ -2400,12 +2530,68 @@ function guardarPostSesion(){
 }
 
 function openAddExToSession(){
-  const exs=forge.exercises||[];
-  const html=exs.map(e=>`<div onclick="addExToSession('${e.id}')" class="prog-ex-row"><div><div class="prog-ex-name">${e.name}</div><div class="prog-ex-sub">${e.type} · ${e.muscle}</div></div></div>`).join('');
-  // Reutilizamos modal-ejercicio como selector rápido
-  document.getElementById('modal-ejercicio').querySelector('.modal-title').textContent='Añadir ejercicio';
-  document.getElementById('modal-ejercicio').querySelector('.modal-body').innerHTML=`<div>${html}</div>`;
+  // Construir selector agrupado igual que en editor de rutinas
+  const el = document.getElementById('modal-ejercicio');
+  el.querySelector('.modal-title').textContent = 'Añadir ejercicio';
+  el.querySelector('.modal-body').innerHTML = `
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <input class="inp" id="ses-search-ex" placeholder="Buscar ejercicio…" style="flex:1;font-size:13px"
+        oninput="_renderSesExList(this.value)">
+    </div>
+    <div id="ses-ex-list" style="max-height:55dvh;overflow-y:auto;border:1px solid var(--border);border-radius:12px;overflow:hidden"></div>`;
   openModal('modal-ejercicio');
+  _renderSesExList('');
+}
+
+function _renderSesExList(q) {
+  const ql = q.toLowerCase().trim();
+  const todos = forge.exercises || [];
+  const OCULTAR = ['warmup', 'stretch'];
+
+  let html = '';
+
+  if (ql.length >= 2) {
+    // Búsqueda plana
+    const filtrados = todos
+      .filter(e => !OCULTAR.includes(e.type) && (e.name.toLowerCase().includes(ql) || (e.muscle||'').includes(ql)))
+      .sort((a,b) => a.name.localeCompare(b.name,'es'));
+    html = filtrados.map(e =>
+      `<div style="display:flex;align-items:center;border-bottom:1px solid var(--border)" onclick="addExToSession('${e.id}')">
+        <div style="flex:1;padding:10px 14px;cursor:pointer">
+          <div style="font-size:13px;font-weight:600;color:var(--ink)">${e.name}</div>
+          <div style="font-size:10px;color:var(--ink3)">${TIPO_LABEL[e.type]||e.type} · ${e.muscle||''}</div>
+        </div>
+        <div style="padding:10px 14px;color:var(--p);font-size:18px;cursor:pointer">+</div>
+      </div>`
+    ).join('') || '<div style="padding:20px;text-align:center;color:var(--ink3)">Sin resultados</div>';
+  } else {
+    // Agrupado por músculo
+    const porMusculo = {};
+    todos.forEach(e => {
+      if (OCULTAR.includes(e.type)) return;
+      const m = e.muscle || 'otros';
+      if (!porMusculo[m]) porMusculo[m] = [];
+      porMusculo[m].push(e);
+    });
+    const orden = [...GRUPOS_MUSCULARES.map(g => g.key), 'piernas', 'otros'];
+    new Set(orden).forEach(mKey => {
+      const exs = porMusculo[mKey]; if (!exs || !exs.length) return;
+      const gInfo = GRUPOS_MUSCULARES.find(g => g.key === mKey) || { label: mKey, emoji: '◈' };
+      html += `<div style="background:var(--bg3);padding:7px 14px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:700">${gInfo.emoji} ${gInfo.label}</div>`;
+      exs.forEach(e => {
+        html += `<div style="display:flex;align-items:center;border-bottom:1px solid var(--border)" onclick="addExToSession('${e.id}')">
+          <div style="flex:1;padding:9px 14px;cursor:pointer">
+            <div style="font-size:13px;font-weight:600;color:var(--ink)">${e.name}</div>
+            <div style="font-size:10px;color:var(--ink3)">${TIPO_LABEL[e.type]||e.type}${e.restSec>0?' · '+Math.floor(e.restSec/60)+'min':''}</div>
+          </div>
+          <div style="padding:10px 14px;color:var(--p);font-size:18px;cursor:pointer">+</div>
+        </div>`;
+      });
+    });
+  }
+
+  const listEl = document.getElementById('ses-ex-list');
+  if (listEl) listEl.innerHTML = html;
 }
 function addExToSession(exId){
   if(!activeSession) return;
@@ -2473,56 +2659,127 @@ function abrirReemplazarEx(ei){
 
 function reexRenderLista(q){
   const exActualId = activeSession?.exercises[_reexIdx]?.exId;
-  const exActual = getEx(exActualId);
-  const musculo = exActual?.muscle||'';
-  const ql = q.toLowerCase();
+  const exActual   = getEx(exActualId);
+  const musculoActual = exActual?.muscle || '';
+  const grupoActual   = exActual?.grupo  || '';   // ej. "Sentadilla"
+  const ql = q.toLowerCase().trim();
 
-  const todos = (forge.exercises||[])
-    .filter(e => e.id !== exActualId)
-    .filter(e => !q || e.name.toLowerCase().includes(ql));
+  // Pool: todos excepto el actual, sin calentamiento ni estiramiento
+  const pool = (forge.exercises||[])
+    .filter(e => e.id !== exActualId && e.type !== 'warmup' && e.type !== 'stretch');
 
-  // Separar mismo grupo muscular del resto
-  const mismoGrupo = todos.filter(e => e.muscle === musculo);
-  const otros = todos.filter(e => e.muscle !== musculo);
+  // Con búsqueda → lista plana filtrada, sin secciones
+  if (ql.length >= 2) {
+    const filtrados = pool
+      .filter(e => e.name.toLowerCase().includes(ql) ||
+                   (e.muscle||'').includes(ql) ||
+                   (e.grupo||'').toLowerCase().includes(ql))
+      .sort((a,b) => {
+        // Mismo grupo primero, luego mismo músculo, luego el resto
+        const aGr = a.grupo === grupoActual ? 0 : a.muscle === musculoActual ? 1 : 2;
+        const bGr = b.grupo === grupoActual ? 0 : b.muscle === musculoActual ? 1 : 2;
+        return aGr - bGr || a.name.localeCompare(b.name, 'es');
+      });
 
-  const renderFila = e => `
-    <div onclick="reexConfirmar('${e.id}')" class="prog-ex-row" style="cursor:pointer">
-      <div style="flex:1">
-        <div class="prog-ex-name">${e.name}</div>
-        <div class="prog-ex-sub">${e.type} · ${e.muscle||'—'}</div>
-      </div>
-      <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--orange);fill:none;stroke-width:2.5;flex-shrink:0">
-        <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
-        <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
-      </svg>
-    </div>`;
+    document.getElementById('reex-lista').innerHTML =
+      (filtrados.map(_reexFila).join('') ||
+       '<div style="padding:20px;text-align:center;color:var(--ink3);font-size:13px">Sin resultados</div>')
+      + _reexOtroHtml();
+    return;
+  }
 
-  const otroHtml = `
-    <div style="border-top:2px solid var(--border);padding:10px 16px;background:var(--bg3)">
-      <div style="display:flex;gap:8px;align-items:center">
-        <input class="inp" id="reex-otro-nombre" placeholder="Nombre del ejercicio nuevo…" style="flex:1;font-size:13px"
-          onkeydown="if(event.key==='Enter') reexAgregarOtro()">
-        <button class="btn btn-p btn-sm" onclick="reexAgregarOtro()">Agregar</button>
-      </div>
-    </div>`;
+  // ── Sin búsqueda: 3 secciones ──────────────────────────────
+
+  // 1. Variantes del mismo ejercicio base (mismo grupo, ej. "Sentadilla")
+  const variantes = grupoActual
+    ? pool.filter(e => e.grupo === grupoActual)
+    : [];
+
+  // 2. Mismo grupo muscular (ej. cuadriceps) pero distinto grupo de variante
+  const mismoMusculo = pool
+    .filter(e => e.muscle === musculoActual && e.grupo !== grupoActual)
+    .sort((a,b) => a.name.localeCompare(b.name,'es'));
+
+  // 3. Resto — ordenado por músculo → nombre
+  const GRUPO_ORDER = ['cuadriceps','isquios','gluteos','gemelos','pecho','espalda','hombros','biceps','triceps','core','cardio'];
+  const resto = pool
+    .filter(e => e.muscle !== musculoActual)
+    .sort((a,b) => {
+      const ia = GRUPO_ORDER.indexOf(a.muscle), ib = GRUPO_ORDER.indexOf(b.muscle);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.name.localeCompare(b.name,'es');
+    });
 
   let html = '';
-  if(!q && mismoGrupo.length){
-    html += '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--orange);font-weight:700;padding:8px 16px 4px">Mismo grupo — '+musculo+'</div>';
-    html += mismoGrupo.map(renderFila).join('');
-    if(otros.length){
-      html += '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:700;padding:8px 16px 4px">Otros ejercicios</div>';
-      html += otros.map(renderFila).join('');
-    }
-  } else if(todos.length){
-    html += todos.map(renderFila).join('');
-  } else {
-    html = '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Sin resultados</div></div>';
-  }
-  html += '<div class="prog-ex-row" style="border-top:2px solid var(--border);cursor:default"><div style="flex:1"><div class="prog-ex-name" style="color:var(--ink3)">➕ Otro — agregar nuevo</div></div></div>';
-  html += otroHtml;
 
-  document.getElementById('reex-lista').innerHTML = html;
+  // Sección 1 — variantes del mismo ejercicio
+  if (variantes.length) {
+    const gInfo = GRUPOS_MUSCULARES.find(g => g.key === musculoActual);
+    html += _reexHeader(`Variantes · ${grupoActual}`, 'var(--p)');
+    html += variantes.map(_reexFila).join('');
+  }
+
+  // Sección 2 — mismo músculo
+  if (mismoMusculo.length) {
+    const gInfo = GRUPOS_MUSCULARES.find(g => g.key === musculoActual);
+    const label = gInfo ? `${gInfo.emoji} ${gInfo.label}` : musculoActual;
+    html += _reexHeader(label, 'var(--ink2)');
+    html += mismoMusculo.map(_reexFila).join('');
+  }
+
+  // Sección 3 — resto agrupado por músculo
+  if (resto.length) {
+    html += _reexHeader('Otros grupos musculares', 'var(--ink3)');
+    let lastMuscle = '';
+    resto.forEach(e => {
+      if (e.muscle !== lastMuscle) {
+        const gInfo = GRUPOS_MUSCULARES.find(g => g.key === e.muscle);
+        const lbl = gInfo ? `${gInfo.emoji} ${gInfo.label}` : e.muscle;
+        html += `<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);padding:6px 16px 2px;background:var(--bg3)">${lbl}</div>`;
+        lastMuscle = e.muscle;
+      }
+      html += _reexFila(e);
+    });
+  }
+
+  if (!html) html = '<div style="padding:20px;text-align:center;color:var(--ink3)">Sin ejercicios disponibles</div>';
+  document.getElementById('reex-lista').innerHTML = html + _reexOtroHtml();
+}
+
+// Cabecera de sección en el modal de reemplazo
+function _reexHeader(label, color) {
+  return `<div style="font-size:9px;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;
+    padding:8px 16px 4px;background:var(--bg3);border-bottom:1px solid var(--border);
+    color:${color}">${label}</div>`;
+}
+
+// Fila individual de ejercicio en el modal de reemplazo
+function _reexFila(e) {
+  const tipoLabel = TIPO_LABEL[e.type] || e.type;
+  const descansa  = e.restSec > 0 ? ` · ${Math.floor(e.restSec/60)}'` : '';
+  return `<div onclick="reexConfirmar('${e.id}')" style="display:flex;align-items:center;
+    border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s"
+    onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+    <div style="flex:1;padding:10px 14px">
+      <div style="font-size:13px;font-weight:600;color:var(--ink)">${e.name}</div>
+      <div style="font-size:10px;color:var(--ink3);margin-top:1px">${tipoLabel}${descansa}${e.bilateral?' · bilateral':''}</div>
+    </div>
+    <svg viewBox="0 0 24 24" width="16" height="16" style="flex-shrink:0;margin:0 14px;stroke:var(--p);fill:none;stroke-width:2.5">
+      <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+      <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+    </svg>
+  </div>`;
+}
+
+// Bloque "agregar ejercicio personalizado" al pie del modal
+function _reexOtroHtml() {
+  return `<div style="padding:10px 16px;background:var(--bg3);border-top:2px solid var(--border)">
+    <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:6px">Ejercicio personalizado</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input class="inp" id="reex-otro-nombre" placeholder="Nombre del ejercicio…" style="flex:1;font-size:13px"
+        onkeydown="if(event.key==='Enter') reexAgregarOtro()">
+      <button class="btn btn-p btn-sm" onclick="reexAgregarOtro()">Agregar</button>
+    </div>
+  </div>`;
 }
 
 function reexAgregarOtro(){
@@ -2754,42 +3011,139 @@ function reAbrirSelectorEx(){
   reRenderSelectorEx('');
   document.getElementById('re-selector-ex').style.display='flex';
 }
-function reRenderSelectorEx(q){
-  const ql=q.toLowerCase();
-  const todos=(forge.exercises||[])
-    .filter(e=>!q||e.name.toLowerCase().includes(ql))
-    .sort((a,b)=>a.name.localeCompare(b.name,'es'));
+function reRenderSelectorEx(q) {
+  const ql = q.toLowerCase().trim();
+  const todos = (forge.exercises || []);
 
-  const filas=todos.map(e=>`
-    <div class="prog-ex-row" style="cursor:pointer">
-      <div style="flex:1" onclick="reAgregarEx('${e.id}')">
-        <div class="prog-ex-name">${e.name}</div>
-        <div class="prog-ex-sub">${e.type} · ${e.muscle||'—'}${e.youtubeId?' · 🎬':''}</div>
-      </div>
-      <button onclick="event.stopPropagation();abrirEditarEjercicio('${e.id}')" style="background:none;border:none;cursor:pointer;padding:6px 8px;color:var(--ink3);font-size:15px" title="Editar">✏️</button>
-      <svg onclick="reAgregarEx('${e.id}')" viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </div>`).join('');
+  // Si hay búsqueda → lista plana filtrada
+  if (ql.length >= 2) {
+    const filtrados = todos
+      .filter(e => e.name.toLowerCase().includes(ql) || (e.muscle||'').toLowerCase().includes(ql) || (e.grupo||'').toLowerCase().includes(ql))
+      .filter(e => e.type !== 'warmup' && e.type !== 'stretch')
+      .sort((a, b) => a.name.localeCompare(b.name, 'es'));
 
-  // Fila "Otro" siempre al final
-  const otroHtml=`
-    <div class="prog-ex-row" style="border-top:2px solid var(--border);cursor:default">
-      <div style="flex:1">
-        <div class="prog-ex-name" style="color:var(--ink3)">➕ Otro — agregar nuevo</div>
-        <div class="prog-ex-sub">Escribe el nombre y se guardará en tu lista</div>
+    const filas = filtrados.map(e => _exSelectorRow(e)).join('');
+    document.getElementById('re-ex-list').innerHTML =
+      (filas || '<div style="padding:20px;text-align:center;color:var(--ink3);font-size:13px">Sin resultados</div>')
+      + _exOtroHtml(q);
+    return;
+  }
+
+  // Sin búsqueda → agrupar por músculo
+  // Ocultar calentamiento/estiramiento en el selector principal
+  const OCULTAR = ['warmup','stretch'];
+
+  // Construir mapa músculo → ejercicios
+  const porMusculo = {};
+  todos.forEach(e => {
+    if (OCULTAR.includes(e.type)) return;
+    const m = e.muscle || 'otros';
+    if (!porMusculo[m]) porMusculo[m] = [];
+    porMusculo[m].push(e);
+  });
+
+  // Renderizar por grupos en el orden definido
+  let html = '';
+  const gruposOrden = [...GRUPOS_MUSCULARES.map(g => g.key), 'piernas', 'otros'];
+
+  // Agregar grupos que existan en los datos pero no estén en GRUPOS_MUSCULARES
+  Object.keys(porMusculo).forEach(k => {
+    if (!gruposOrden.includes(k)) gruposOrden.push(k);
+  });
+
+  new Set(gruposOrden).forEach(mKey => {
+    const exsDeMusculo = porMusculo[mKey];
+    if (!exsDeMusculo || !exsDeMusculo.length) return;
+
+    const grupoInfo = GRUPOS_MUSCULARES.find(g => g.key === mKey) || { label: mKey.charAt(0).toUpperCase() + mKey.slice(1), emoji: '◈' };
+
+    // Agrupar variantes del mismo ejercicio base (por campo grupo o por nombre base)
+    const conGrupo = exsDeMusculo.filter(e => e.grupo);
+    const sinGrupo = exsDeMusculo.filter(e => !e.grupo);
+
+    // Ejercicios con grupo (variantes agrupadas)
+    const subgrupos = {};
+    conGrupo.forEach(e => {
+      const g = e.grupo;
+      if (!subgrupos[g]) subgrupos[g] = [];
+      subgrupos[g].push(e);
+    });
+
+    let grupoHtml = '';
+
+    // Subgrupos de variantes
+    Object.entries(subgrupos).forEach(([sgLabel, variantes]) => {
+      if (variantes.length === 1) {
+        grupoHtml += _exSelectorRow(variantes[0]);
+      } else {
+        // Acordeón de variantes
+        const sgId = 'sg_' + sgLabel.replace(/\s/g,'_') + '_' + mKey;
+        grupoHtml += `
+          <div style="border-bottom:1px solid var(--border)">
+            <div onclick="toggleExSubgrupo('${sgId}')" style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;cursor:pointer;background:var(--bg2)">
+              <div>
+                <div style="font-size:13px;font-weight:600;color:var(--ink)">${sgLabel}</div>
+                <div style="font-size:10px;color:var(--ink3);margin-top:1px">${variantes.length} variantes · ${variantes.map(v=>TIPO_LABEL[v.type]||v.type).join(' · ')}</div>
+              </div>
+              <svg id="chev-${sgId}" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--ink3)" stroke-width="2" style="transition:transform .2s;flex-shrink:0">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+            <div id="${sgId}" style="display:none;background:var(--bg3)">
+              ${variantes.map(v => _exSelectorRow(v, true)).join('')}
+            </div>
+          </div>`;
+      }
+    });
+
+    // Ejercicios sin subgrupo (cardio, plyo, etc.)
+    sinGrupo.forEach(e => {
+      grupoHtml += _exSelectorRow(e);
+    });
+
+    if (!grupoHtml) return;
+    html += `
+      <div style="background:var(--bg3);padding:8px 16px 4px;border-bottom:1px solid var(--border)">
+        <div style="font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--ink3);font-weight:700">${grupoInfo.emoji} ${grupoInfo.label}</div>
       </div>
+      ${grupoHtml}`;
+  });
+
+  document.getElementById('re-ex-list').innerHTML = (html || '<div style="padding:20px;text-align:center;color:var(--ink3)">Sin ejercicios disponibles</div>') + _exOtroHtml('');
+}
+
+// Fila individual de ejercicio en el selector
+function _exSelectorRow(e, indent = false) {
+  return `<div style="display:flex;align-items:center;border-bottom:1px solid var(--border);${indent?'padding-left:8px':''}">
+    <div style="flex:1;padding:10px ${indent?'12px':'16px'};cursor:pointer" onclick="reAgregarEx('${e.id}')">
+      <div style="font-size:13px;font-weight:600;color:var(--ink)">${e.name}</div>
+      <div style="font-size:10px;color:var(--ink3);margin-top:1px">${TIPO_LABEL[e.type]||e.type}${e.restSec>0?' · '+Math.floor(e.restSec/60)+'min descanso':''}${e.youtubeId?' · 🎬':''}${e.bilateral?' · bilateral':''}</div>
     </div>
-    <div style="padding:10px 16px;background:var(--bg3);border-bottom:1px solid var(--border)">
-      <div style="display:flex;gap:8px;align-items:center">
-        <input class="inp" id="re-otro-nombre" placeholder="Nombre del ejercicio…"
-          value="${q}" style="flex:1;font-size:13px"
-          onkeydown="if(event.key==='Enter') reAgregarOtro()">
-        <button class="btn btn-p btn-sm" onclick="reAgregarOtro()">Agregar</button>
-      </div>
-    </div>`;
+    <button onclick="event.stopPropagation();abrirEditarEjercicio('${e.id}')" style="background:none;border:none;cursor:pointer;padding:10px 8px;color:var(--ink3);font-size:14px;flex-shrink:0" title="Editar">✏</button>
+    <div onclick="reAgregarEx('${e.id}')" style="padding:10px 14px;cursor:pointer;color:var(--p);flex-shrink:0;font-size:18px;font-weight:300">+</div>
+  </div>`;
+}
 
-  document.getElementById('re-ex-list').innerHTML=
-    (filas||'<div class="empty" style="padding:20px"><div class="empty-icon">🔍</div><div class="empty-text">Sin resultados</div></div>')
-    + otroHtml;
+// HTML del bloque "Otro"
+function _exOtroHtml(q) {
+  return `<div style="padding:10px 16px;background:var(--bg3);border-top:2px solid var(--border)">
+    <div style="font-size:11px;color:var(--ink3);font-weight:600;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Agregar ejercicio personalizado</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input class="inp" id="re-otro-nombre" placeholder="Nombre del ejercicio…"
+        value="${q}" style="flex:1;font-size:13px"
+        onkeydown="if(event.key==='Enter') reAgregarOtro()">
+      <button class="btn btn-p btn-sm" onclick="reAgregarOtro()">Agregar</button>
+    </div>
+  </div>`;
+}
+
+function toggleExSubgrupo(id) {
+  const el = document.getElementById(id);
+  const chev = document.getElementById('chev-' + id);
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
 }
 
 function reAgregarOtro(){
