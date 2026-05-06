@@ -335,7 +335,17 @@ function renderAll() {
 // ---------------------------------------------------------------
 //  UTILIDADES
 // ---------------------------------------------------------------
-function fmtTime(s){ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60; return h>0?`${h}:${pad(m)}:${pad(ss)}`:`${pad(m)}:${pad(ss)}`; }
+/** Formatea número con punto de miles. Independiente del locale del dispositivo.
+ *  fmtMiles(3476)   → "3.476"
+ *  fmtMiles(3476.5) → "3.476,5"  (no aplica, solo enteros)
+ */
+function fmtMiles(n){
+  if(n===null||n===undefined||isNaN(n)) return '—';
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+}
+
+function fmtTime(s){
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60; return h>0?`${h}:${pad(m)}:${pad(ss)}`:`${pad(m)}:${pad(ss)}`; }
 function pad(n){ return String(n).padStart(2,'0'); }
 function fmtDate(ts){ return new Date(ts).toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'}); }
 // Convertir timestamp a fecha local YYYY-MM-DD (evita desfase UTC en Santiago UTC-3/UTC-4)
@@ -1328,9 +1338,9 @@ function renderSesCard(s, hoy){
       <div class="hm-item"><div class="hm-label">Distancia</div><div class="hm-val">${distStr}</div></div>
       <div class="hm-item"><div class="hm-label">Ritmo</div><div class="hm-val">${ritmoStr}</div></div>
       ${ritmoData.fcMedia>0?`<div class="hm-item"><div class="hm-label">FC media</div><div class="hm-val" style="color:#f87171">❤️ ${ritmoData.fcMedia}</div></div>`:''}
-      ${ritmoData.pasos>0?`<div class="hm-item"><div class="hm-label">Pasos</div><div class="hm-val" style="color:var(--blue)">👟 ${ritmoData.pasos.toLocaleString('es')}</div></div>`:''}`;
+      ${ritmoData.pasos>0?`<div class="hm-item"><div class="hm-label">Pasos</div><div class="hm-val" style="color:var(--blue)">👟 ${fmtMiles(ritmoData.pasos)}</div></div>`:''}`;
   } else {
-    const volStr = s.totalVolume ? `${Math.round(s.totalVolume).toLocaleString('es')} kg` : '—';
+    const volStr = s.totalVolume ? `${fmtMiles(s.totalVolume)} kg` : '—';
     const nSeries = (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(s=>s.done).length,0);
     const records = calcSesRecords(s);
     // FC: puede venir del campo top-level o del primer set de cardio de la sesión
@@ -1388,7 +1398,7 @@ function openSesDetail(id){
   const fecha=new Date(s.date).toLocaleDateString('es',{weekday:'long',day:'numeric',month:'short',year:'numeric'});
   const hora=new Date(s.date).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
   const dur=s.elapsed?fmtTime(s.elapsed):'—';
-  const vol=s.totalVolume?`${Math.round(s.totalVolume).toLocaleString('es')} kg`:'—';
+  const vol=s.totalVolume?`${fmtMiles(s.totalVolume)} kg`:'—';
   const nS=(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(s=>s.done).length,0);
   const rec=calcSesRecords(s);
   const div=calcDivMuscular(s);
@@ -1435,7 +1445,7 @@ function openSesDetail(id){
             <span style="font-size:16px;font-weight:700;color:var(--ink)">${i+1}</span>
             <span style="font-size:14px;color:var(--ink2)">${isRun?
               [set.distance?set.distance+'km':'',set.time||''].filter(Boolean).join(' · ')+
-              (set.fc?` ❤️${set.fc}bpm`:'')+(set.pasos?` 👟${parseInt(set.pasos).toLocaleString('es')}p`:'')
+              (set.fc?` ❤️${set.fc}bpm`:'')+(set.pasos?` 👟${fmtMiles(parseInt(set.pasos))}p`:'')
               :(set.weight||0)+' kg × '+(set.reps||0)}</span>
           </div>`).join('')}
         </div>`;
@@ -2189,7 +2199,7 @@ function renderSexBlock(ex,ei){
     const pasos=sets.find(s=>s.pasos);
     ultCardioStr=dist>0?`${dist.toFixed(2)}km`:'';
     if(fc) ultCardioStr+=` · ❤️${fc.fc}bpm`;
-    if(pasos) ultCardioStr+=` · 👟${parseInt(pasos.pasos).toLocaleString('es')}p`;
+    if(pasos) ultCardioStr+=` · 👟${fmtMiles(parseInt(pasos.pasos))}p`;
   }
 
   // ── PR ────────────────────────────────────────────────────────
@@ -2491,7 +2501,7 @@ function abrirPostSesion(){
   document.getElementById('post-ses-resumen').innerHTML=`
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:4px">
       <div class="hm-item"><div class="hm-label">Duración</div><div class="hm-val">${dur}</div></div>
-      ${vol>0?`<div class="hm-item"><div class="hm-label">Volumen</div><div class="hm-val">${vol.toLocaleString('es')} kg</div></div>`:''}
+      ${vol>0?`<div class="hm-item"><div class="hm-label">Volumen</div><div class="hm-val">${fmtMiles(vol)} kg</div></div>`:''}
     </div>`;
   document.getElementById('post-ses-fc').value='';
   document.getElementById('post-ses-kcal').value='';
@@ -2552,7 +2562,7 @@ function guardarPostSesion(){
   checkLogros();
   closeModal('modal-post-sesion');
   const vol=Math.round(activeSession.totalVolume||0);
-  showToast(`✓ Sesión guardada · ${vol.toLocaleString('es')} kg`,3000,'ok');
+  showToast(`✓ Sesión guardada · ${fmtMiles(vol)} kg`,3000,'ok');
   activeSession=null; sesSeconds=0;
   setTimeout(()=>syncCloud(),1000);
   renderTrain();
@@ -4059,7 +4069,7 @@ function renderExDetail(exId){
           </div>
           <div style="text-align:right">
             <div style="font-size:14px;font-weight:700;color:var(--green)">${s.totalDist.toFixed(2)}km</div>
-            <div style="font-size:11px;color:var(--blue)">${ritmoStr}${s.fcMedia>0?' · ❤️'+s.fcMedia:''}${s.pasosTot>0?' · 👟'+s.pasosTot.toLocaleString('es'):''}</div>
+            <div style="font-size:11px;color:var(--blue)">${ritmoStr}${s.fcMedia>0?' · ❤️'+s.fcMedia:''}${s.pasosTot>0?' · 👟'+fmtMiles(s.pasosTot):''}</div>
           </div>
         </div>`;
       } else {
@@ -4502,13 +4512,15 @@ function renderProgCuerpo() {
   const ult = metsAll[metsAll.length - 1];
   const perfil = getDatosPersonales();
 
-  // IMC automático: usa el de la última medición o calcula si hay estatura
-  let imcActual = ult.imc ? parseFloat(ult.imc) : null;
-  if (!imcActual && ult.peso && perfil.estatura) {
-    const h = parseFloat(perfil.estatura) / 100;
-    if (h > 0) imcActual = Math.round((parseFloat(ult.peso) / (h * h)) * 10) / 10;
+  // IMC: prioridad → valor guardado en la medición → calcular con estatura del perfil
+  let imcActual = null;
+  if (ult.imc && parseFloat(ult.imc) > 0) {
+    imcActual = parseFloat(ult.imc);
+  } else if (ult.peso && perfil.estatura) {
+    imcActual = calcIMC(ult.peso, perfil.estatura);
   }
   const imcStr = imcActual ? imcActual.toFixed(1) : '—';
+  const estaturaStr = perfil.estatura || ult.estatura || '';
 
   // ── KPI strip superior (solo si hay datos) ──
   document.getElementById('cuerpo-kpis').innerHTML = '';
@@ -4525,16 +4537,31 @@ function renderProgCuerpo() {
         const delta = pesosArr.length >= 2 ? Math.round((pesosArr[pesosArr.length-1] - pesosArr[0]) * 10) / 10 : null;
         const dColor = delta === null ? 'var(--ink3)' : delta < 0 ? 'var(--ok)' : 'var(--warn)';
 
+        // Buscar estatura en todas las fuentes posibles
+        const estaturaFinal = parseFloat(
+          perfil.estatura ||
+          metsAll.slice().reverse().find(m => m.estatura)?.estatura ||
+          ''
+        ) || 0;
+
+        // Recalcular IMC con la estatura encontrada
+        let imcFinal = imcActual;
+        if (!imcFinal && ult.peso && estaturaFinal > 0) {
+          const h = estaturaFinal / 100;
+          imcFinal = Math.round((parseFloat(ult.peso) / (h * h)) * 10) / 10;
+        }
+        const imcFinalStr = imcFinal ? imcFinal.toFixed(1) : '—';
+
         const imcCard = `<div class="imc-card">
-          <div>
+          <div style="flex-shrink:0;min-width:80px">
             <div class="acc-pdr-lbl" style="margin-bottom:4px">IMC</div>
-            <div class="imc-val">${imcStr}</div>
-            ${imcBadge(imcActual)}
+            <div class="imc-val" style="color:${imcFinal?'var(--p)':'var(--ink3)'}">${imcFinalStr}</div>
+            ${imcFinal ? imcBadge(imcFinal) : ''}
           </div>
-          <div style="flex:1;font-size:12px;color:var(--ink3);line-height:1.7">
+          <div style="flex:1;font-size:12px;color:var(--ink3);line-height:1.8">
             ${ult.peso ? `<div>Peso: <strong style="color:var(--ink)">${ult.peso} kg</strong></div>` : ''}
-            ${perfil.estatura ? `<div>Talla: <strong style="color:var(--ink)">${perfil.estatura} cm</strong></div>` : ''}
-            ${imcActual ? `<div style="font-size:10px;margin-top:4px;color:var(--ink3)">Fórmula: ${ult.peso} ÷ (${(parseFloat(perfil.estatura||0)/100).toFixed(2)})² = ${imcStr}</div>` : ''}
+            ${estaturaFinal > 0 ? `<div>Talla: <strong style="color:var(--ink)">${estaturaFinal} cm</strong></div>` : `<div style="color:var(--warn)">Ingresa tu talla en Perfil para ver el IMC</div>`}
+            ${imcFinal && estaturaFinal > 0 ? `<div style="font-size:10px;margin-top:2px;color:var(--ink3)">${ult.peso} ÷ (${(estaturaFinal/100).toFixed(2)})² = ${imcFinalStr}</div>` : ''}
           </div>
         </div>`;
 
@@ -4828,8 +4855,11 @@ function saveDatosPersonales(){
 }
 // Llamar al guardar cada medición de peso para calcular IMC automáticamente
 function autoCalcIMC(m){
-  const dp=getDatosPersonales();
-  if(dp.estatura&&m.peso) m.imc=calcIMC(m.peso,dp.estatura);
+  const dp = getDatosPersonales();
+  // Buscar estatura: perfil → historial de mediciones
+  const est = parseFloat(dp.estatura || '') ||
+    parseFloat((forge.bodyMetrics||[]).slice().reverse().find(x=>x.estatura)?.estatura || '') || 0;
+  if (est > 0 && m.peso) m.imc = calcIMC(m.peso, est);
   return m;
 }
 
@@ -5183,7 +5213,7 @@ function renderProgPlan(){
     const esActual=s===semG;
     const filas=sessSem.map(sx=>{
       const dur=sx.elapsed?fmtTime(sx.elapsed):'—';
-      const vol=sx.totalVolume?`${Math.round(sx.totalVolume).toLocaleString('es')}kg`:'';
+      const vol=sx.totalVolume?`${fmtMiles(sx.totalVolume)}kg`:'';
       const exResumen=(sx.exercises||[]).slice(0,2).map(ex=>{
         const eDef=getEx(ex.exId);
         const maxW=Math.max(0,...(ex.sets||[]).filter(st=>st.done&&st.weight).map(st=>parseFloat(st.weight)||0));
@@ -6669,7 +6699,7 @@ function formatMetricValue(value, type, unit) {
   if (type === 'percentage')   return `${Math.round(value)}%`;
   if (type === 'weight')       return `${parseFloat(value).toFixed(1)} ${unit || 'kg'}`;
   if (type === 'body_measure') return `${parseFloat(value).toFixed(1)} ${unit || 'cm'}`;
-  if (type === 'volume')       return `${Math.round(value).toLocaleString('es-CL')} ${unit || 'kg'}`;
+  if (type === 'volume')       return `${fmtMiles(value)} ${unit || 'kg'}`;
   if (type === 'distance')     return `${parseFloat(value).toFixed(2)} ${unit || 'km'}`;
   if (type === 'time')         return `${Math.round(value)} ${unit || 'min'}`;
   if (type === 'reps')         return `${Math.round(value)} ${unit || 'reps'}`;
@@ -6786,7 +6816,7 @@ function createExerciseVolumeChart(exerciseName, sessions, exerciseId) {
       date: localDateStr(s.date),
       label: localDateStr(s.date).slice(5).replace('-', '/'),
       value: vol,
-      displayValue: `${Math.round(vol).toLocaleString('es-CL')} kg`
+      displayValue: `${fmtMiles(Math.round(vol))} kg`
     });
   });
   return {
