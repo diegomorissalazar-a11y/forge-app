@@ -908,8 +908,38 @@ nav{height:calc(74px + env(safe-area-inset-bottom)) !important;min-height:calc(7
   .home-plan-unified__metric-value{font-size:25px;}
 }
 
-/* v121 — Numeric typography only
-   Scope: numeric values only. Does not change layouts, colors, logic, or text labels. */
+
+/* MELQART v122 — tipografía consistente sin tocar layout, colores ni lógica
+   - Letras: misma familia tipográfica en toda la interfaz.
+   - Números: misma familia + tabular nums.
+   - No cambia gráficos, colores, textos ni estructura.
+*/
+html,
+body,
+#app,
+#app *:not(svg):not(path):not(circle):not(rect):not(line):not(polyline):not(polygon),
+button,
+input,
+textarea,
+select,
+option,
+.modal,
+.toast {
+  font-family: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+/* Textos SVG generados por gráficos/anillos */
+svg text,
+.mq-home-card svg text,
+#home-peso-banner svg text,
+#home-food-today svg text,
+#home-water-today svg text,
+.chart-svg text {
+  font-family: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tipografía numérica global */
 .stat-num,
 .mq-stat-num,
 .mq-stat-val,
@@ -918,40 +948,31 @@ nav{height:calc(74px + env(safe-area-inset-bottom)) !important;min-height:calc(7
 .hm-val,
 .lumen-num,
 .ring-value-text,
+.home-plan-unified__week,
+.home-plan-unified__metric-value,
 #home-food-today strong,
 #home-water-today strong,
 #home-peso-banner strong,
 #home-peso-banner span,
 #food-comidas-count,
 #agua-total-label,
-.home-plan-unified__week,
-.home-plan-unified__metric-value,
-.weight-current,
-.weight-goal,
-.weight-progress-ring,
-.weight-footer strong,
-.progress-filter,
-.mq-percent,
-#home-food-today [style*="%"],
-#home-water-today [style*="%"],
-#home-peso-banner [style*="%"] {
+.mq-tracker-lbl,
+.mq-card-title,
+.mq-pill,
+.mq-btn-pill,
+.mq-btn-aqua,
+[class*="kpi"],
+[class*="KPI"] {
   font-family: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
 }
 
+/* Mantener fuerza visual de los KPI existentes */
 .mq-kpi-big,
 .stat-num,
 .lumen-num,
-.home-plan-unified__metric-value,
-.home-plan-unified__week {
+.home-plan-unified__week,
+.home-plan-unified__metric-value {
   font-weight: 800;
-}
-
-.mq-percent,
-#home-food-today [style*="%"],
-#home-water-today [style*="%"],
-.ring-value-text {
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
 }

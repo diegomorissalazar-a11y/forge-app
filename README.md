@@ -17,7 +17,11 @@ Corrige que la Home mostrara plan, KPIs y seguimiento como bloques separados.
 - Entrenar
 
 
-## v121 typography numbers
-- Based on v119 unified plan card.
-- Only appends CSS overrides for numeric typography.
-- Keeps colors, layouts, functions, text and logic unchanged.
+## v122 typography consistency
+- Base: v119 home plan unified.
+- Preserva la tarjeta de plan unificada.
+- No toca layout, colores, textos ni funciones.
+- Quita la vela/antorcha del anillo de progreso, dejando solo porcentaje + label.
+- Unifica la familia tipográfica en letras y números con Montserrat.
+- Números con font-variant-numeric: tabular-nums.
+- Firebase/Auth/Nutrición/Agua/Sesiones/Exportar no fueron modificados.

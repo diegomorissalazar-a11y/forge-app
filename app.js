@@ -784,14 +784,8 @@ function mqRing(pct, label, sub){
     +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="var(--mq-ring-bg,#E8E0F8)" stroke-width="9"/>'
     +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="var(--mq-purple,#5A2D82)" stroke-width="9"'
     +' stroke-dasharray="'+dash.toFixed(1)+' '+gap.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" stroke-linecap="round"/>'
-    +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="#CDA349" stroke-width="9"'
-    +' stroke-dasharray="3 '+(circ-3).toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" stroke-linecap="round"/>'
-    // antorcha centro
-    +'<rect x="47" y="54" width="6" height="11" rx="1.5" fill="none" stroke="#5A2D82" stroke-width="1.2"/>'
-    +'<path d="M50 32 Q46 38 46 43 Q46 50 50 52 Q54 50 54 43 Q54 38 50 32" fill="none" stroke="#CDA349" stroke-width="1.3" stroke-linecap="round"/>'
-    +'<path d="M50 37 Q48 41 48 44 Q48 48 50 52 Q52 48 52 44 Q52 41 50 37" fill="#CDA349" fill-opacity="0.32" stroke="none"/>'
-    +'<text x="50" y="73" text-anchor="middle" font-size="10" font-weight="700" fill="#5A2D82" font-family="sans-serif">'+label+'</text>'
-    +(sub?'<text x="50" y="84" text-anchor="middle" font-size="7.5" fill="#9B7FC7" font-family="sans-serif">'+sub+'</text>':'')
+    +'<text x="50" y="46" text-anchor="middle" font-size="18" font-weight="800" fill="#5A2D82" font-family="Montserrat, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">'+label+'</text>'
+    +(sub?'<text x="50" y="61" text-anchor="middle" font-size="8.5" font-weight="600" fill="#9B7FC7" font-family="Montserrat, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">'+sub+'</text>':'')
     +'</svg>';
 }
 
