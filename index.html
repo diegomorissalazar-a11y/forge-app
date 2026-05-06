@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=129">
 <link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=108">
 <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.svg?v=129">
-<title>MELQART v129</title>
+<title>MELQART v130</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -175,13 +175,16 @@
     <div id="food-stats-row" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px"></div>
     <!-- Agua -->
     <div class="card" style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-family:var(--fd);font-size:17px;font-weight:700">◈ Agua</div>
-        <div id="agua-total-label" style="font-size:12px;color:var(--blue);font-weight:700"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--teal)">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 7 Q9 11 9 14 Q9 17 12 17 Q15 17 15 14 Q15 11 12 7" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1"/></svg>
+          <span style="font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700">Agua</span>
+        </div>
+        <div id="agua-total-label" style="font-size:11px;color:var(--teal);font-weight:700"></div>
       </div>
       <div id="agua-checkpoints"></div>
-      <div style="margin-top:8px;background:var(--bg3);border-radius:8px;height:8px;overflow:hidden">
-        <div id="agua-progress-bar" style="height:100%;background:var(--blue);border-radius:8px;transition:width .3s"></div>
+      <div style="margin-top:8px;background:var(--bg3);border-radius:8px;height:5px;overflow:hidden">
+        <div id="agua-progress-bar" style="height:100%;background:var(--teal);border-radius:8px;transition:width .3s"></div>
       </div>
       <div id="agua-dots" style="display:none"></div>
     </div>
@@ -245,7 +248,7 @@
     Progreso
   </button>
   <button class="nb" id="nb-food"    onclick="goTo('food')">
-    <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 4-3 6-3 9H8c0-3-3-5-3-9a7 7 0 0 1 7-7z"/><line x1="8" y1="22" x2="16" y2="22"/><line x1="12" y1="17" x2="12" y2="22"/></svg>
+    <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="1.1"/><circle cx="12" cy="12" r="3" fill="currentColor" fill-opacity="0.5"/></svg>
     Nutrición
   </button>
   <button class="nb" id="nb-perfil"  onclick="goTo('perfil')">
