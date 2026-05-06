@@ -780,22 +780,27 @@ const MQ = {
 // Genera anillo SVG de progreso — r=38, circ=238.76
 function mqRing(pct, label, sub){
   const r=38, circ=238.76, dash=(pct/100)*circ, gap=circ-dash, off=circ*0.25;
-  return '<svg viewBox="0 0 100 100" width="108" height="108" style="display:block">'
-    +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="var(--mq-ring-bg,#E8E0F8)" stroke-width="10"/>'
-    +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="var(--mq-purple,#5A2D82)" stroke-width="10"'
+  return '<svg viewBox="0 0 100 100" width="100" height="100" style="display:block">'
+    +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="var(--mq-ring-bg,#E8E0F8)" stroke-width="9"/>'
+    +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="var(--mq-purple,#5A2D82)" stroke-width="9"'
     +' stroke-dasharray="'+dash.toFixed(1)+' '+gap.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" stroke-linecap="round"/>'
-    +'<text x="50" y="48" text-anchor="middle" font-size="18" font-weight="800" fill="#5A2D82" font-family="sans-serif">'+label+'</text>'
-    +(sub?'<text x="50" y="64" text-anchor="middle" font-size="8.5" font-weight="600" fill="#9B7FC7" font-family="sans-serif">'+sub+'</text>':'')
+    +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="#CDA349" stroke-width="9"'
+    +' stroke-dasharray="3 '+(circ-3).toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" stroke-linecap="round"/>'
+    // antorcha centro
+    +'<rect x="47" y="54" width="6" height="11" rx="1.5" fill="none" stroke="#5A2D82" stroke-width="1.2"/>'
+    +'<path d="M50 32 Q46 38 46 43 Q46 50 50 52 Q54 50 54 43 Q54 38 50 32" fill="none" stroke="#CDA349" stroke-width="1.3" stroke-linecap="round"/>'
+    +'<path d="M50 37 Q48 41 48 44 Q48 48 50 52 Q52 48 52 44 Q52 41 50 37" fill="#CDA349" fill-opacity="0.32" stroke="none"/>'
+    +'<text x="50" y="73" text-anchor="middle" font-size="10" font-weight="700" fill="#5A2D82" font-family="sans-serif">'+label+'</text>'
+    +(sub?'<text x="50" y="84" text-anchor="middle" font-size="7.5" fill="#9B7FC7" font-family="sans-serif">'+sub+'</text>':'')
     +'</svg>';
 }
 
-// Ánforas agua: activas ON (turquesa), OFF (gris)
 // Ánforas agua: activas ON (turquesa), OFF (gris)
 function mqAnforas(activas, total){
   let h='<div class="mq-tracker-row">';
   for(let i=0;i<total;i++){
     const on=i<activas;
-    h+='<button class="mq-anfora-btn'+(on?' on':'')+'" onclick="setHomeWaterCount('+(i+1)+')" aria-label="Ánfora '+(i+1)+'">'+MQ.anfora+'</button>';
+    h+='<button class="mq-anfora-btn'+(on?' on':'')+'" onclick="mqToggleAnfora('+i+')" aria-label="Ánfora '+(i+1)+'">'+MQ.anfora+'</button>';
   }
   h+='</div><div class="mq-tracker-lbl" style="color:#2EC4C7">'+activas+' / '+total+' ánforas</div>';
   return h;
@@ -812,62 +817,62 @@ function mqPlatos(activas, total){
   return h;
 }
 
-// Agua Home — sincroniza ml, contador visual y ánforas
-const HOME_WATER_TOTAL = 7;
-function homeWaterCountFromMl(ml){
-  const count = Math.round((Math.max(0, ml||0) / AGUA_META_ML) * HOME_WATER_TOTAL);
-  return Math.max(0, Math.min(HOME_WATER_TOTAL, count));
-}
-function syncHomeWaterState(fd){
-  const mlBase = fd.aguaMl || Math.round((fd.agua||0)*(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos));
-  const mlActual = Math.max(0, Math.min(AGUA_META_ML, mlBase));
-  fd.aguaMl = mlActual;
-  const count = homeWaterCountFromMl(mlActual);
-  fd.agua = count;
-  fd.aguaCps = Array(AGUA_CPS.length).fill(false).map((_,i)=>i<count);
-  return count;
-}
-function setHomeWaterCount(n){
-  const fd=getFD(today());
-  const current=syncHomeWaterState(fd);
-  const next=(current===n)?Math.max(0,n-1):Math.max(0,Math.min(HOME_WATER_TOTAL,n));
-  fd.aguaMl=Math.round((next/HOME_WATER_TOTAL)*AGUA_META_ML);
-  syncHomeWaterState(fd);
+// Toggle ánfora desde home (sincroniza con sistema existente)
+function mqToggleAnfora(idx){
+  const fd=getFD(typeof foodDate!=='undefined'?foodDate:today());
+  const cps=getAguaCps(fd);
+  cps[idx]=!cps[idx];
+  fd.aguaCps=cps;
+  fd.agua=cps.filter(Boolean).length;
   saveFD(fd);
-  showToast(next>=HOME_WATER_TOTAL?'Meta de agua alcanzada':'Agua registrada',1500,'ok');
+  const totalMl=AGUA_CPS.filter((_,i)=>cps[i]).reduce((a,c)=>a+c.ml,0);
+  if(totalMl>=AGUA_META_ML) showToast('Meta de agua alcanzada',2500,'ok');
   renderHomeWaterCard();
-  renderFoodIfVisible();
+  renderAguaCheckpoints(fd);
 }
-function mqToggleAnfora(idx){ setHomeWaterCount(idx+1); }
 
-// Gráfico sparkline últimos 7 pesajes en SVG
 // Gráfico sparkline últimos 7 pesajes en SVG
 function mqPesoChart(mets){
   if(!mets||mets.length<2) return '';
   const datos=mets.slice(-7);
-  const W=260,H=96,pad=10;
-  const pesos=datos.map(m=>parseFloat(m.peso));
+  const W=200,H=60,pad=6;
+  const pesos=datos.map(m=>m.peso);
   const min=Math.min(...pesos)-0.5, max=Math.max(...pesos)+0.5;
-  const range=(max-min)||1;
   const xStep=(W-pad*2)/(datos.length-1);
-  const yOf=p=>pad+(1-((p-min)/range))*(H-pad*2);
-  const pts=datos.map((m,i)=>[pad+i*xStep, yOf(parseFloat(m.peso))]);
+  const yOf=p=>pad+(1-(p-min)/(max-min))*(H-pad*2);
+  const pts=datos.map((m,i)=>[pad+i*xStep, yOf(m.peso)]);
   const pathD='M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L');
+  // Área rellena
   const areaD=pathD+' L'+pts[pts.length-1][0].toFixed(1)+','+(H-pad)+' L'+pad+','+(H-pad)+' Z';
-  let svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="96" style="overflow:visible;display:block">';
-  svg+='<defs><linearGradient id="pgr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5A2D82" stop-opacity="0.24"/><stop offset="100%" stop-color="#5A2D82" stop-opacity="0.02"/></linearGradient></defs>';
+  // Etiquetas eje (min/max/actual)
+  const dias=['D','L','M','M','J','V','S'];
+  const labDays=datos.map(m=>{ const d=new Date(m.date+'T12:00:00'); return dias[d.getDay()]; });
+  // SVG
+  let svg='<svg viewBox="0 0 '+W+' '+(H+18)+'" width="100%" style="overflow:visible;display:block">';
+  // línea meta
+  const yMeta=yOf(parseFloat((document.getElementById('home-peso-banner')?'':0)||0));
+  // Área rellena bajo la curva
+  svg+='<defs><linearGradient id="pgr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5A2D82" stop-opacity="0.28"/><stop offset="100%" stop-color="#5A2D82" stop-opacity="0.03"/></linearGradient></defs>';
   svg+='<path d="'+areaD+'" fill="url(#pgr)" stroke="none"/>';
-  svg+='<path d="'+pathD+'" fill="none" stroke="#5A2D82" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+  // Línea dashes meta peso
+  // Línea principal
+  svg+='<path d="'+pathD+'" fill="none" stroke="#5A2D82" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+  // Puntos
   pts.forEach((p,i)=>{
     const isLast=i===pts.length-1;
-    svg+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(isLast?5:3.5)+'" fill="'+(isLast?'#5A2D82':'#B79CFF')+'" stroke="'+(isLast?'#fff':'none')+'" stroke-width="1.5"/>';
+    svg+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(isLast?4:2.5)+'" fill="'+(isLast?'#5A2D82':'#B79CFF')+'" stroke="'+(isLast?'#fff':'none')+'" stroke-width="1.5"/>';
     if(isLast){
-      svg+='<text x="'+p[0].toFixed(1)+'" y="'+(p[1]-10).toFixed(1)+'" text-anchor="middle" font-size="10" font-weight="700" fill="#5A2D82" font-family="sans-serif">'+datos[i].peso+'</text>';
+      svg+='<text x="'+p[0].toFixed(1)+'" y="'+(p[1]-8).toFixed(1)+'" text-anchor="middle" font-size="9" font-weight="700" fill="#5A2D82" font-family="sans-serif">'+datos[i].peso+'</text>';
     }
+  });
+  // Etiquetas días eje X
+  pts.forEach((p,i)=>{
+    svg+='<text x="'+p[0].toFixed(1)+'" y="'+(H+14)+'" text-anchor="middle" font-size="8" fill="#9B7FC7" font-family="sans-serif">'+labDays[i]+'</text>';
   });
   svg+='</svg>';
   return svg;
 }
+
 
 function renderPesoBanner(){
   const el=document.getElementById('home-peso-banner'); if(!el) return;
@@ -963,18 +968,13 @@ function renderHome(){
     <div class="home-greet-title">Hola, ${nombre}</div>`;
 
   renderHomePlanBanner();
-  renderStreakBanner();
   renderPesoBanner();
   renderHomeNutritionCard();
   renderHomeWaterCard();
 
   const ses    = forge.sessions||[];
-  const wStart = new Date(hoy); wStart.setDate(hoy.getDate()-(hoy.getDay()||7)+1); wStart.setHours(0,0,0,0);
-  const semana = ses.filter(s=>new Date(s.date)>=wStart).length;
-  document.getElementById('home-stats').innerHTML=`
-    <div class="mq-stat-box"><div class="mq-stat-ico" style="color:#5A2D82">${MQ.columna}</div><div class="mq-stat-num">${semana}</div><div class="mq-stat-lbl">Esta semana</div></div>
-    <div class="mq-stat-box"><div class="mq-stat-ico" style="color:#CDA349">${MQ.antorcha}</div><div class="mq-stat-num" style="color:#5A2D82">${calcStreak()}</div><div class="mq-stat-lbl">Racha</div></div>
-    <div class="mq-stat-box"><div class="mq-stat-ico" style="color:#5A2D82">${MQ.laurel}</div><div class="mq-stat-num">${ses.length}</div><div class="mq-stat-lbl">Total</div></div>`;
+  const statsEl=document.getElementById('home-stats');
+  if(statsEl){ statsEl.innerHTML=''; statsEl.style.display='none'; }
 
   const ultimas = [...ses].sort((a,b)=>b.date-a.date);
   const el = document.getElementById('home-sessions');
@@ -988,20 +988,76 @@ function renderHome(){
 function renderHomePlanBanner(){
   const plan=(forge.planes||[]).find(p=>p.activo);
   const el=document.getElementById('home-plan-banner');
-  if(!plan){el.style.display='none';return;}
+  const elStats=document.getElementById('home-stats');
+  const elStreak=document.getElementById('home-streak-banner');
+  if(elStats){ elStats.innerHTML=''; elStats.style.display='none'; }
+  if(elStreak){ elStreak.innerHTML=''; elStreak.style.display='none'; }
+  if(!el) return;
   el.style.display='block';
+
+  const hoy=new Date();
+  const sesiones=forge.sessions||[];
+  const wStart=new Date(hoy);
+  wStart.setDate(hoy.getDate()-(hoy.getDay()||7)+1);
+  wStart.setHours(0,0,0,0);
+  const sesionesSemana=sesiones.filter(s=>new Date(s.date)>=wStart).length;
+  const racha=calcStreak();
+  const totalSesiones=sesiones.length;
+  const anio=hoy.getFullYear()+'';
+  const mejor=getMejorSemanaAnio(anio);
+
+  if(!plan){
+    el.innerHTML=`
+      <section class="home-plan-unified">
+        <div class="home-plan-unified__top">
+          <div>
+            <h2 class="home-plan-unified__title">¿Cómo vamos con el plan?</h2>
+            <div class="home-plan-unified__name">Sin plan activo</div>
+            <div class="home-plan-unified__block">Crea o activa un plan para ver tu progreso.</div>
+          </div>
+        </div>
+      </section>`;
+    return;
+  }
+
   const semG=semanaActualPlan(plan);
-  const pct=Math.round((semG/plan.totalSemanas)*100);
+  const totalSemanas=plan.totalSemanas||16;
+  const pct=Math.min(100,Math.round((semG/totalSemanas)*100));
   const bloque=plan.bloques?.[Math.floor((semG-1)/4)]||{nombre:'—'};
   el.innerHTML=`
-    <div class="card" onclick="goTo('perfil')" style="cursor:pointer;border-color:var(--orange)">
-      <div style="font-size:10px;color:var(--orange);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Plan activo · Sem ${semG}/${plan.totalSemanas}</div>
-      <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px">${plan.nombre}</div>
-      <div style="font-size:11px;color:var(--ink3);margin-bottom:8px">Bloque actual: ${bloque.nombre}</div>
-      <div style="background:var(--bg3);border-radius:3px;height:5px;overflow:hidden">
-        <div style="width:${pct}%;height:100%;background:var(--orange);border-radius:3px;transition:width .4s"></div>
+    <section class="home-plan-unified">
+      <div class="home-plan-unified__top">
+        <div>
+          <div class="home-plan-unified__eyebrow">Plan activo · Sem ${semG}/${totalSemanas}</div>
+          <h2 class="home-plan-unified__title">¿Cómo vamos con el plan?</h2>
+          <div class="home-plan-unified__name">${plan.nombre}</div>
+          <div class="home-plan-unified__block">Bloque actual: <strong>${bloque.nombre}</strong></div>
+        </div>
+        <div class="home-plan-unified__status">
+          <div class="home-plan-unified__badge">Plan activo</div>
+          <div class="home-plan-unified__week">${semG}<span>/${totalSemanas}</span></div>
+        </div>
       </div>
-    </div>`;
+      <div class="home-plan-unified__bar"><div class="home-plan-unified__bar-fill" style="width:${pct}%"></div></div>
+      <div class="home-plan-unified__metrics">
+        <div class="home-plan-unified__metric">
+          <div class="home-plan-unified__metric-icon">▣</div>
+          <div class="home-plan-unified__metric-value">${sesionesSemana}</div>
+          <div class="home-plan-unified__metric-label">Esta semana</div>
+        </div>
+        <div class="home-plan-unified__metric">
+          <div class="home-plan-unified__metric-icon">♨</div>
+          <div class="home-plan-unified__metric-value purple">${racha}</div>
+          <div class="home-plan-unified__metric-label">Racha</div>
+        </div>
+        <div class="home-plan-unified__metric">
+          <div class="home-plan-unified__metric-icon">◎</div>
+          <div class="home-plan-unified__metric-value">${totalSesiones}</div>
+          <div class="home-plan-unified__metric-label">Total sesiones</div>
+        </div>
+      </div>
+      ${mejor?.count?`<div class="home-plan-unified__best">Mejor semana del año: <strong>${mejor.count} sesiones</strong>${mejor.lunes?` · ${fmtRangoSemana(mejor.lunes)}`:''}</div>`:''}
+    </section>`;
 }
 
 // Calcular ritmo promedio de una sesión de carrera
@@ -4378,12 +4434,8 @@ function setHomeWaterCups(n){
 function addHomeWaterMl(ml){
   const fd=getFD(today());
   const cur=fd.aguaMl || Math.round((fd.agua||0)*(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos));
-  fd.aguaMl=Math.max(0, Math.min(AGUA_META_ML, cur+ml));
-  syncHomeWaterState(fd);
-  saveFD(fd);
-  showToast(fd.aguaMl>=NUTRITION_TARGETS.aguaMl?'Meta cumplida':'Agua registrada',1600,'ok');
-  renderHomeWaterCard();
-  renderFoodIfVisible();
+  fd.aguaMl=Math.max(0,cur+ml); fd.agua=Math.min(NUTRITION_TARGETS.aguaVasos, Math.round(fd.aguaMl/(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos)));
+  saveFD(fd); showToast(fd.aguaMl>=NUTRITION_TARGETS.aguaMl?'Meta cumplida':'Agua registrada',1600,'ok'); renderHomeWaterCard(); renderFoodIfVisible();
 }
 function renderHomeWaterCard(){
   const el=document.getElementById('home-water-today'); if(!el) return;
@@ -4392,14 +4444,16 @@ function renderHomeWaterCard(){
   const pct=Math.min(100,Math.round(ml/NUTRITION_TARGETS.aguaMl*100));
   const vasos=fd.agua||0;
   const totalVasos=NUTRITION_TARGETS.aguaVasos||8;
-  const activas=syncHomeWaterState(fd);
+  // Usar ánforas si hay AGUA_CPS, si no usar vasos simples
+  const cps=getAguaCps(fd);
+  const activas=cps.filter(Boolean).length;
   el.innerHTML='<div class="mq-home-card">'
     +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:10px">'
       +'<div class="mq-hrow" style="gap:8px;color:#2EC4C7">'+MQ.anfora+'<span class="mq-kicker">Agua hoy</span></div>'
       +'<span style="font-size:13px;font-weight:700;color:'+(pct>=100?'var(--green)':'#2EC4C7')+'">'+Math.round(ml/100)/10+' L</span>'
     +'</div>'
     // Ánforas clickeables (usando AGUA_CPS)
-    +mqAnforas(activas, HOME_WATER_TOTAL)
+    +mqAnforas(activas, AGUA_CPS.length)
     // Botones +ml
     +'<div class="mq-hrow" style="gap:6px;margin-top:10px;flex-wrap:wrap">'
       +'<button class="mq-btn-aqua" onclick="addHomeWaterMl(250)">+250 ml</button>'
