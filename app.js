@@ -3318,18 +3318,8 @@ function renderExDetail(exId){
     return puntos.filter(p=>p.fecha.startsWith(filtroSel));
   })();
 
-  // Construir gráfico filtrado
-  if(isRun&&puntosGraf.length>=2){
-    const pDist=puntosGraf.map(p=>({fecha:p.fecha,val:p.valDist,label:`${p.valDist.toFixed(2)}km`}));
-    const pRitmo=puntosGraf.filter(p=>p.valRitmo>0).map(p=>({fecha:p.fecha,val:p.valRitmo,label:p.label}));
-    chartsHtml=`
-      <div style="margin-bottom:16px">${renderLineChartTall(pDist,'Distancia (km)')}</div>
-      ${pRitmo.length>=2?`<div style="margin-bottom:16px">${renderLineChartRitmoTall(pRitmo)}</div>`:''}`;
-  } else if(!isRun&&puntosGraf.length>=2){
-    chartsHtml=`<div style="margin-bottom:16px">${renderLineChartTall(puntosGraf,showRM?'1RM estimado (kg)':'Peso máx. levantado (kg)')}</div>`;
-  } else {
-    chartsHtml=`<div class="empty" style="padding:32px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos en este período</div></div>`;
-  }
+  // Construir gráfico filtrado — sistema genérico v123
+  chartsHtml = buildExDetailCharts(puntos, isRun, exId, filtroSel);
 
   const botonesHtml = buildFiltroHtml(
     ['todo','12m',...años],
@@ -3634,9 +3624,7 @@ function openCuerpoChart(key, mets){
       <div style="display:flex;gap:4px;flex-wrap:wrap">${filtroHtml}</div>
     </div>
     ${ptsFilt.length>=2
-      ? `<div style="margin-bottom:4px;font-size:11px;color:var(--ink3);font-weight:600">${cfg.label}${cfg.unit?' ('+cfg.unit+')':''} · ${ptsFilt.length} registros</div>`
-        + renderLineChartFull(ptsFilt, cfg.label, cfg.color)
-        + statsHtml
+      ? buildCuerpoChartHtml(ptsFilt, key, cfg.unit, cfg.color, filtroSel) + statsHtml
       : `<div class="empty" style="padding:40px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos en este período</div><div class="empty-sub">Prueba con "Todo" para ver el historial completo.</div></div>`}
     <div style="margin-top:20px">
       <div class="section-label" style="margin-bottom:8px">Todos los registros · ${pts.length} total</div>
@@ -5476,3 +5464,624 @@ document.addEventListener('keydown', e=>{
 
 // ---------------------------------------------------------------
 loadDB();
+// =============================================================
+//  SISTEMA GENÉRICO DE GRÁFICOS MELQART v123
+//  renderMetricChart(config)  — un solo componente para todo
+// =============================================================
+
+// -------------------------------------------------------------
+//  HELPERS UTILITARIOS
+// -------------------------------------------------------------
+
+/** Convierte "6:54" → 6.9 (decimal para graficar) */
+function paceToDecimal(pace) {
+  if (typeof pace === 'number') return pace;
+  const parts = String(pace).split(':');
+  const minutes = parseInt(parts[0]) || 0;
+  const seconds = parseInt(parts[1]) || 0;
+  return minutes + seconds / 60;
+}
+
+/** Convierte 6.9 → "6:54" (para mostrar) */
+function decimalToPace(value) {
+  if (!value || isNaN(value)) return '—';
+  const minutes = Math.floor(value);
+  const seconds = Math.round((value - minutes) * 60);
+  if (seconds === 60) return `${minutes + 1}:00`;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+/** Detecta si un peso fue en máquina Smith (termina en .9 o equipment="smith") */
+function detectSmith(value, equipment) {
+  if (equipment) return String(equipment).toLowerCase() === 'smith';
+  return String(value).endsWith('.9');
+}
+
+/** Calcula volumen total: peso × reps × series */
+function calculateVolume(weight, reps, sets) {
+  if (!weight || !reps || !sets) return null;
+  return weight * reps * sets;
+}
+
+/** Formatea un valor según su tipo para mostrar al usuario */
+function formatMetricValue(value, type, unit) {
+  if (value === null || value === undefined || isNaN(value)) return '—';
+  if (type === 'pace')         return `${decimalToPace(value)} ${unit || 'min/km'}`;
+  if (type === 'percentage')   return `${Math.round(value)}%`;
+  if (type === 'weight')       return `${parseFloat(value).toFixed(1)} ${unit || 'kg'}`;
+  if (type === 'body_measure') return `${parseFloat(value).toFixed(1)} ${unit || 'cm'}`;
+  if (type === 'volume')       return `${Math.round(value).toLocaleString('es-CL')} ${unit || 'kg'}`;
+  if (type === 'distance')     return `${parseFloat(value).toFixed(2)} ${unit || 'km'}`;
+  if (type === 'time')         return `${Math.round(value)} ${unit || 'min'}`;
+  if (type === 'reps')         return `${Math.round(value)} ${unit || 'reps'}`;
+  if (type === 'heartrate')    return `${Math.round(value)} ${unit || 'bpm'}`;
+  return `${value} ${unit || ''}`.trim();
+}
+
+/** Formatea el tick del eje Y según tipo */
+function formatAxisTick(value, type, unit) {
+  if (type === 'pace')         return decimalToPace(value);
+  if (type === 'percentage')   return `${Math.round(value)}%`;
+  if (type === 'weight' || type === 'body_measure') return `${Math.round(value*10)/10}`;
+  if (type === 'volume')       return `${Math.round(value/1000*10)/10}k`;
+  if (type === 'distance')     return `${Math.round(value*10)/10}`;
+  if (type === 'heartrate')    return `${Math.round(value)}`;
+  return `${Math.round(value*10)/10}`;
+}
+
+/** Calcula dominio dinámico del eje Y con padding */
+function calculateYAxisDomain(values, options) {
+  options = options || {};
+  const valid = values.filter(v => typeof v === 'number' && !isNaN(v));
+  if (!valid.length) return [0, 1];
+  const minV = Math.min(...valid);
+  const maxV = Math.max(...valid);
+  const paddingRatio = options.paddingRatio !== undefined ? options.paddingRatio : 0.12;
+  const range = maxV - minV || maxV || 1;
+  const padding = range * paddingRatio;
+  let min = options.forceZero ? 0 : minV - padding;
+  let max = maxV + padding;
+  if (options.min !== undefined) min = options.min;
+  if (options.max !== undefined) max = options.max;
+  return [min, max];
+}
+
+/** Aplica filtro de tiempo a un array de puntos con campo `date` (YYYY-MM-DD) */
+function applyTimeFilter(data, range) {
+  if (!range || range === 'all') return data;
+  const now = new Date();
+  let cutoff;
+  if (range === '7d')  { cutoff = new Date(now); cutoff.setDate(now.getDate() - 7); }
+  else if (range === '30d')  { cutoff = new Date(now); cutoff.setDate(now.getDate() - 30); }
+  else if (range === '3m')   { cutoff = new Date(now); cutoff.setMonth(now.getMonth() - 3); }
+  else if (range === '6m')   { cutoff = new Date(now); cutoff.setMonth(now.getMonth() - 6); }
+  else if (range === '12m')  { cutoff = new Date(now); cutoff.setFullYear(now.getFullYear() - 1); }
+  else if (/^\d{4}$/.test(range)) { // año específico ej "2026"
+    return data.filter(p => String(p.date || '').startsWith(range));
+  }
+  else return data;
+  const cutoffStr = localDateStr(cutoff);
+  return data.filter(p => (p.date || '') >= cutoffStr);
+}
+
+/** Normaliza array de puntos: asegura campo `value` numérico */
+function normalizeChartData(data, type) {
+  return (data || []).map(p => {
+    let v = p.value;
+    if (type === 'pace' && typeof p.rawValue === 'string') {
+      v = paceToDecimal(p.rawValue);
+    } else if (typeof v === 'string') {
+      // Intentar parsear string a número
+      v = parseFloat(v.replace(',', '.'));
+    }
+    return { ...p, value: isNaN(v) ? null : v };
+  }).filter(p => p.value !== null);
+}
+
+// -------------------------------------------------------------
+//  GENERADORES DE CONFIGURACIÓN
+// -------------------------------------------------------------
+
+/** Genera config para gráfico de carga de un ejercicio */
+function createExerciseWeightChart(exerciseName, sessions, exerciseId) {
+  const data = [];
+  (sessions || []).sort((a, b) => a.date - b.date).forEach(s => {
+    const ex = (s.exercises || []).find(x => exerciseId ? x.exId === exerciseId : x.name === exerciseName);
+    if (!ex) return;
+    const sets = (ex.sets || []).filter(st => st.done && parseFloat(st.weight) > 0);
+    if (!sets.length) return;
+    const best = sets.sort((a, b) => parseFloat(b.weight) - parseFloat(a.weight))[0];
+    const w = parseFloat(best.weight);
+    data.push({
+      date: localDateStr(s.date),
+      label: localDateStr(s.date).slice(5).replace('-', '/'),
+      value: w,
+      reps: best.reps || 0,
+      sets: sets.length,
+      equipment: detectSmith(w) ? 'Smith' : 'Barra',
+      displayValue: `${w} kg × ${best.reps || '?'}`
+    });
+  });
+  return {
+    id: `ex_weight_${exerciseId || exerciseName}`,
+    title: exerciseName,
+    subtitle: 'Mejor carga por sesión',
+    unitLabel: 'kg / sesión',
+    type: 'weight', unit: 'kg',
+    data,
+    yAxis: { auto: true, forceZero: false },
+    tooltip: { showDate: true, showReps: true, showSets: true, showEquipment: true }
+  };
+}
+
+/** Genera config para gráfico de volumen de un ejercicio */
+function createExerciseVolumeChart(exerciseName, sessions, exerciseId) {
+  const data = [];
+  (sessions || []).sort((a, b) => a.date - b.date).forEach(s => {
+    const ex = (s.exercises || []).find(x => exerciseId ? x.exId === exerciseId : x.name === exerciseName);
+    if (!ex) return;
+    const sets = (ex.sets || []).filter(st => st.done && parseFloat(st.weight) > 0 && parseInt(st.reps) > 0);
+    if (!sets.length) return;
+    const vol = sets.reduce((acc, st) => acc + parseFloat(st.weight) * parseInt(st.reps), 0);
+    data.push({
+      date: localDateStr(s.date),
+      label: localDateStr(s.date).slice(5).replace('-', '/'),
+      value: vol,
+      displayValue: `${Math.round(vol).toLocaleString('es-CL')} kg`
+    });
+  });
+  return {
+    id: `ex_vol_${exerciseId || exerciseName}`,
+    title: exerciseName,
+    subtitle: 'Volumen total por sesión',
+    unitLabel: 'kg totales',
+    type: 'volume', unit: 'kg',
+    data,
+    yAxis: { auto: true, forceZero: true }
+  };
+}
+
+/** Genera config para gráfico de medida corporal */
+function createBodyMeasureChart(measureId, measureName, measurements) {
+  const data = (measurements || [])
+    .filter(m => m[measureId] != null && m[measureId] !== '')
+    .map(m => ({
+      date: m.date,
+      label: String(m.date).slice(5).replace('-', '/'),
+      value: parseFloat(m[measureId]),
+      displayValue: `${parseFloat(m[measureId]).toFixed(1)} cm`
+    }));
+  return {
+    id: `body_${measureId}`,
+    title: measureName,
+    subtitle: 'Medida corporal',
+    unitLabel: 'cm',
+    type: 'body_measure', unit: 'cm',
+    data,
+    yAxis: { auto: true, forceZero: false }
+  };
+}
+
+/** Genera config para gráfico de peso corporal */
+function createBodyWeightChart(measurements) {
+  const data = (measurements || [])
+    .filter(m => m.peso != null && m.peso !== '')
+    .map(m => ({
+      date: m.date,
+      label: String(m.date).slice(5).replace('-', '/'),
+      value: parseFloat(m.peso),
+      displayValue: `${parseFloat(m.peso).toFixed(1)} kg`
+    }));
+  return {
+    id: 'body_weight',
+    title: 'Peso corporal',
+    subtitle: 'Evolución del peso',
+    unitLabel: 'kg',
+    type: 'weight', unit: 'kg',
+    data,
+    yAxis: { auto: true, forceZero: false }
+  };
+}
+
+/** Genera config para gráfico de ritmo (carrera) */
+function createPaceChart(runningSessions) {
+  const data = (runningSessions || [])
+    .filter(s => s.ritmo > 0)
+    .map(s => ({
+      date: s.fecha,
+      label: String(s.fecha).slice(5).replace('-', '/'),
+      value: s.ritmo,
+      rawValue: `${Math.floor(s.ritmo)}:${String(Math.round((s.ritmo % 1) * 60)).padStart(2, '0')}`,
+      displayValue: `${decimalToPace(s.ritmo)} min/km`
+    }));
+  return {
+    id: 'run_pace',
+    title: 'Ritmo promedio',
+    subtitle: 'Evolución por sesión — arriba = más rápido',
+    unitLabel: 'min/km',
+    type: 'pace', unit: 'min/km',
+    data,
+    yAxis: { auto: true, forceZero: false, invertY: true }
+  };
+}
+
+/** Genera config para gráfico de distancia (carrera) */
+function createDistanceChart(runningSessions) {
+  const data = (runningSessions || [])
+    .filter(s => s.totalDist > 0)
+    .map(s => ({
+      date: s.fecha,
+      label: String(s.fecha).slice(5).replace('-', '/'),
+      value: s.totalDist,
+      displayValue: `${s.totalDist.toFixed(2)} km`
+    }));
+  return {
+    id: 'run_distance',
+    title: 'Distancia',
+    subtitle: 'Por sesión de carrera',
+    unitLabel: 'km',
+    type: 'distance', unit: 'km',
+    data,
+    yAxis: { auto: true, forceZero: true }
+  };
+}
+
+// -------------------------------------------------------------
+//  AGRUPACIONES
+// -------------------------------------------------------------
+
+function groupByWeek(data) {
+  const map = {};
+  data.forEach(p => {
+    const d = new Date(p.date);
+    // Lunes de la semana
+    const day = d.getDay();
+    const diff = (day === 0 ? -6 : 1 - day);
+    const mon = new Date(d); mon.setDate(d.getDate() + diff);
+    const key = localDateStr(mon);
+    if (!map[key]) map[key] = { date: key, label: key.slice(5).replace('-', '/'), points: [] };
+    map[key].points.push(p);
+  });
+  return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function groupByMonth(data) {
+  const map = {};
+  data.forEach(p => {
+    const key = String(p.date).slice(0, 7);
+    if (!map[key]) map[key] = { date: key + '-01', label: key.slice(5), points: [] };
+    map[key].points.push(p);
+  });
+  return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// -------------------------------------------------------------
+//  COMPONENTE PRINCIPAL: renderMetricChart(config)
+//
+//  Retorna un string HTML con la tarjeta de gráfico completa.
+//  config = {
+//    id, title, subtitle, unitLabel,
+//    type, unit,
+//    data: [{date, label, value, displayValue, ...}],
+//    yAxis: {auto, forceZero, invertY, paddingRatio},
+//    tooltip: {showDate, showReps, showSets, showEquipment, showNotes},
+//    filters: ['30d','3m','6m','12m','all'],  // opciones a mostrar
+//    activeFilter: '12m',                     // filtro activo actual
+//    onFilter: 'miFunc',                      // nombre de fn JS a llamar con nuevo filtro
+//    height: 200,                             // alto del SVG (default 220)
+//    color: '#A4713A',                        // color línea (default --orange)
+//    areaOpacity: 0.12
+//  }
+// -------------------------------------------------------------
+
+function renderMetricChart(config) {
+  const {
+    id = 'chart_' + Date.now(),
+    title = '',
+    subtitle = '',
+    unitLabel = '',
+    type = 'weight',
+    unit = '',
+    yAxis = {},
+    tooltip = {},
+    filters,
+    activeFilter,
+    onFilter,
+    height: H = 220,
+    color = 'var(--orange)',
+    areaOpacity = 0.12
+  } = config;
+
+  // Normalizar datos
+  const allData = normalizeChartData(config.data, type);
+
+  // Aplicar filtro de tiempo
+  const range = activeFilter || 'all';
+  const data = applyTimeFilter(allData, range);
+
+  // ── Cabecera de la tarjeta ────────────────────────────────
+  const headerHtml = `
+    <div class="mq-chart-header">
+      <div>
+        <div class="mq-chart-title">${title}</div>
+        ${subtitle ? `<div class="mq-chart-subtitle">${subtitle}</div>` : ''}
+      </div>
+      <div class="mq-chart-unit">${unitLabel}</div>
+    </div>`;
+
+  // ── Botones de filtro ─────────────────────────────────────
+  let filtersHtml = '';
+  if (filters && filters.length && onFilter) {
+    const labels = { '7d':'7d', '30d':'30d', '3m':'3m', '6m':'6m', '12m':'12m', 'all':'Todo' };
+    filtersHtml = `<div class="mq-chart-filters">` +
+      filters.map(f =>
+        `<button class="mq-chart-filter-btn${f === range ? ' on' : ''}" onclick="${onFilter}('${f}')">${labels[f] || f}</button>`
+      ).join('') +
+      `</div>`;
+  }
+
+  // ── Estado vacío ──────────────────────────────────────────
+  if (!data || data.length < 2) {
+    return `
+      <div class="mq-chart-card" id="${id}">
+        ${headerHtml}
+        ${filtersHtml}
+        <div class="mq-chart-empty">
+          <div class="mq-chart-empty-icon">📈</div>
+          <div class="mq-chart-empty-text">Pocos datos en este período</div>
+          <div class="mq-chart-empty-sub">Registra al menos 2 sesiones para ver tendencia</div>
+        </div>
+      </div>`;
+  }
+
+  // ── Cálculo del gráfico SVG ───────────────────────────────
+  const PL = 46, PB = 26, PT = 10, PR = 8;
+  const n = data.length;
+  const minPxPerPoint = n > 40 ? 6 : n > 20 ? 8 : 12;
+  const W = Math.max(320, PL + PR + n * minPxPerPoint);
+
+  const vals = data.map(p => p.value);
+  const invertY = type === 'pace' || yAxis.invertY;
+  const [domMin, domMax] = calculateYAxisDomain(vals, yAxis);
+
+  function toX(i) {
+    return PL + (i / (n - 1 || 1)) * (W - PL - PR);
+  }
+  function toY(v) {
+    const ratio = (domMax - domMin) > 0 ? (v - domMin) / (domMax - domMin) : 0.5;
+    const normalized = invertY ? ratio : 1 - ratio;
+    return PT + normalized * (H - PT - PB);
+  }
+
+  const xs = data.map((_, i) => toX(i));
+  const ys = data.map(p => toY(p.value));
+
+  // Línea suavizada (sin Bezier, pero aproximada con puntos intermedios)
+  const linePath = xs.map((x, i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+  const areaPath = linePath +
+    ` L${xs[n-1].toFixed(1)},${(H - PB).toFixed(1)}` +
+    ` L${xs[0].toFixed(1)},${(H - PB).toFixed(1)} Z`;
+
+  // Etiquetas Y — 4 ticks
+  const tickCount = 4;
+  const yTicksHtml = Array.from({ length: tickCount + 1 }, (_, i) => {
+    const v = domMin + (domMax - domMin) * (i / tickCount);
+    const y = toY(v);
+    const label = formatAxisTick(v, type, unit);
+    return `<text x="${PL - 4}" y="${y.toFixed(1)}" text-anchor="end" dominant-baseline="middle" fill="var(--ink3)" font-size="9">${label}</text>
+      <line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>`;
+  }).join('');
+
+  // Etiquetas X — máximo 8
+  const xStep = Math.max(1, Math.floor(n / 8));
+  const xTicksHtml = data.map((p, i) => {
+    if (i % xStep !== 0 && i !== n - 1) return '';
+    return `<text x="${xs[i].toFixed(1)}" y="${H - 2}" text-anchor="middle" fill="var(--ink3)" font-size="9">${p.label}</text>`;
+  }).join('');
+
+  // Puntos (dots) — con datos para tooltip via data-* attrs
+  const dotR = n > 40 ? 2 : n > 20 ? 3 : 4;
+  const dotsHtml = data.map((p, i) => {
+    const isSmithPoint = p.equipment ? detectSmith(p.value, p.equipment) : detectSmith(p.value);
+    const ttMain = p.displayValue || formatMetricValue(p.value, type, unit);
+    const ttSub = [
+      tooltip.showReps && p.reps ? `${p.sets || '?'}×${p.reps} reps` : '',
+      tooltip.showEquipment && isSmithPoint ? 'Smith' : (tooltip.showEquipment && p.equipment ? p.equipment : ''),
+      tooltip.showNotes && p.notes ? p.notes : ''
+    ].filter(Boolean).join(' · ');
+    const safeDate = p.date || '';
+    const safeMain = ttMain.replace(/"/g, '&quot;');
+    const safeSub  = ttSub.replace(/"/g, '&quot;');
+    return `<circle
+      cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="${dotR}"
+      fill="${isSmithPoint && n < 60 ? 'var(--green)' : color}"
+      stroke="var(--bg2)" stroke-width="1.5"
+      style="cursor:pointer"
+      onmouseenter="mqChartTooltipShow(event,'${safeDate}','${safeMain}','${safeSub}')"
+      onmouseleave="mqChartTooltipHide()"
+      ontouchstart="mqChartTooltipShow(event,'${safeDate}','${safeMain}','${safeSub}')"
+      ontouchend="mqChartTooltipHide()">
+    </circle>`;
+  }).join('');
+
+  const svgHtml = `
+    <div class="mq-chart-svg-wrap" style="overflow-x:${n > 20 ? 'auto' : 'hidden'}">
+      <svg width="${n > 20 ? W : '100%'}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block">
+        <defs>
+          <linearGradient id="mq_area_grad_${id.replace(/[^a-z0-9]/gi,'_')}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${color}" stop-opacity="${areaOpacity * 2}"/>
+            <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        ${yTicksHtml}
+        ${xTicksHtml}
+        <path d="${areaPath}" fill="url(#mq_area_grad_${id.replace(/[^a-z0-9]/gi,'_')})"/>
+        <path d="${linePath}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+        ${dotsHtml}
+      </svg>
+    </div>`;
+
+  return `
+    <div class="mq-chart-card" id="${id}">
+      ${headerHtml}
+      ${svgHtml}
+      ${filtersHtml}
+    </div>`;
+}
+
+// -------------------------------------------------------------
+//  TOOLTIP GLOBAL (hover/touch sobre puntos del gráfico)
+// -------------------------------------------------------------
+
+(function setupChartTooltip() {
+  if (document.getElementById('mq-chart-tooltip')) return;
+  const el = document.createElement('div');
+  el.id = 'mq-chart-tooltip';
+  el.className = 'mq-chart-tooltip';
+  document.body.appendChild(el);
+})();
+
+function mqChartTooltipShow(evt, date, main, sub) {
+  const el = document.getElementById('mq-chart-tooltip');
+  if (!el) return;
+  el.innerHTML = `
+    ${date ? `<div class="mq-chart-tooltip-date">${date}</div>` : ''}
+    <div class="mq-chart-tooltip-main">${main}</div>
+    ${sub ? `<div class="mq-chart-tooltip-sub">${sub}</div>` : ''}`;
+  el.classList.add('visible');
+
+  // Posicionar
+  const touch = evt.touches && evt.touches[0];
+  const x = touch ? touch.clientX : evt.clientX;
+  const y = touch ? touch.clientY : evt.clientY;
+  const W = window.innerWidth, H = window.innerHeight;
+  let left = x + 12, top = y - 40;
+  if (left + 200 > W) left = x - 212;
+  if (top < 0) top = y + 12;
+  if (top + 90 > H) top = H - 95;
+  el.style.left = left + 'px';
+  el.style.top  = top  + 'px';
+}
+
+function mqChartTooltipHide() {
+  const el = document.getElementById('mq-chart-tooltip');
+  if (el) el.classList.remove('visible');
+}
+
+// Ocultar tooltip al hacer scroll
+document.addEventListener('scroll', mqChartTooltipHide, { passive: true, capture: true });
+
+// =============================================================
+//  INTEGRACIÓN: reemplaza gráficos del tab Progreso
+//  con el nuevo sistema renderMetricChart()
+// =============================================================
+
+/**
+ * Versión mejorada de renderExDetail que usa renderMetricChart()
+ * Llamada internamente por renderExDetail() para el bloque de gráficos
+ */
+function buildExDetailCharts(puntos, isRun, exId, filtroSel) {
+  // puntos: [{fecha, val, label, valDist?, valRitmo?}]
+  const años = [...new Set(puntos.map(p => p.fecha.slice(0, 4)))].sort().reverse();
+  const hoy12m = new Date(); hoy12m.setFullYear(hoy12m.getFullYear() - 1);
+  const corte12m = localDateStr(hoy12m);
+
+  const puntosGraf = (() => {
+    if (filtroSel === 'todo') return puntos;
+    if (filtroSel === '12m')  return puntos.filter(p => p.fecha >= corte12m);
+    return puntos.filter(p => p.fecha.startsWith(filtroSel));
+  })();
+
+  if (puntosGraf.length < 2) {
+    return `<div class="mq-chart-card">
+      <div class="mq-chart-empty">
+        <div class="mq-chart-empty-icon">📈</div>
+        <div class="mq-chart-empty-text">Pocos datos en este período</div>
+        <div class="mq-chart-empty-sub">Prueba "Todo" para ver el historial completo</div>
+      </div>
+    </div>`;
+  }
+
+  if (isRun) {
+    const distData = puntosGraf
+      .filter(p => p.valDist > 0)
+      .map(p => ({ date: p.fecha, label: p.fecha.slice(5).replace('-', '/'), value: p.valDist, displayValue: `${p.valDist.toFixed(2)} km` }));
+    const ritmoData = puntosGraf
+      .filter(p => p.valRitmo > 0)
+      .map(p => ({ date: p.fecha, label: p.fecha.slice(5).replace('-', '/'), value: p.valRitmo, displayValue: `${decimalToPace(p.valRitmo)} min/km` }));
+
+    let html = renderMetricChart({
+      id: `ex_dist_${exId}_${filtroSel}`,
+      title: 'Distancia', unitLabel: 'km',
+      type: 'distance', unit: 'km',
+      data: distData,
+      yAxis: { forceZero: true },
+      tooltip: { showDate: true },
+      height: 180, color: 'var(--green)'
+    });
+    if (ritmoData.length >= 2) {
+      html += renderMetricChart({
+        id: `ex_ritmo_${exId}_${filtroSel}`,
+        title: 'Ritmo promedio',
+        subtitle: 'Arriba = más rápido · Abajo = más lento',
+        unitLabel: 'min/km',
+        type: 'pace', unit: 'min/km',
+        data: ritmoData,
+        yAxis: { invertY: true, forceZero: false },
+        tooltip: { showDate: true },
+        height: 180, color: 'var(--blue)'
+      });
+    }
+    return html;
+  } else {
+    // Fuerza
+    const isPeso1RM = puntos[0] && puntos[0].label && String(puntos[0].label).includes('1RM');
+    const wData = puntosGraf.map(p => ({
+      date: p.fecha,
+      label: p.fecha.slice(5).replace('-', '/'),
+      value: p.val,
+      displayValue: p.label || formatMetricValue(p.val, 'weight', 'kg'),
+      equipment: detectSmith(p.val) ? 'Smith' : undefined
+    }));
+    return renderMetricChart({
+      id: `ex_weight_${exId}_${filtroSel}`,
+      title: isPeso1RM ? '1RM estimado' : 'Peso máx. levantado',
+      unitLabel: isPeso1RM ? 'kg 1RM' : 'kg / sesión',
+      type: 'weight', unit: 'kg',
+      data: wData,
+      yAxis: { forceZero: false },
+      tooltip: { showDate: true, showEquipment: true },
+      height: 220, color: 'var(--orange)'
+    });
+  }
+}
+
+/**
+ * Versión mejorada de gráfico corporal que usa renderMetricChart()
+ * Sustituye a renderLineChartFull() en openCuerpoChart()
+ */
+// pts: [{fecha, val, label}] — ya filtrados por el caller (openCuerpoChart)
+function buildCuerpoChartHtml(pts, metricKey, unit, color, filtroSel) {
+  const data = pts.map(p => ({
+    date: p.fecha,
+    label: p.fecha.slice(5).replace('-', '/'),
+    value: p.val,
+    displayValue: p.label
+  }));
+  const chartType = unit === '%' ? 'percentage' : 'weight';
+  return renderMetricChart({
+    id: `cuerpo_${metricKey}_${filtroSel}`,
+    type: chartType,
+    unit,
+    unitLabel: unit || '',
+    data,
+    yAxis: { forceZero: false, paddingRatio: 0.08 },
+    tooltip: { showDate: true },
+    height: 220,
+    color
+  });
+}
+
+// =============================================================
+//  FIN SISTEMA DE GRÁFICOS MELQART v123
+// =============================================================
