@@ -1603,3 +1603,296 @@ svg text, tspan {
   color: #fff;
   border-color: var(--p);
 }
+
+/* =======================================================
+   MELQART v125 — Cinzel UI + Cards sobrias + Entrenar 2col
+   ======================================================= */
+
+/* ── 1. FUENTE CINZEL PARA TODA LA UI ────────────────────
+   Cinzel para headings, labels, nav, botones, secciones.
+   Solo inputs/textareas quedan en Montserrat por legibilidad.
+   -------------------------------------------------------- */
+:root {
+  --ff: "Cinzel", serif;       /* fuente principal UI */
+  --fm: "Montserrat", sans-serif; /* inputs, cuerpo de datos */
+}
+
+/* Reset tipográfico base */
+body, #app, button, select,
+.nb, .tab-btn, .section-label,
+.stat-label, .mq-kicker, .mq-stat-lbl,
+.acc-pdr-lbl, .acc-ex-sub, .prog-group-label,
+.rutina-name, .rutina-meta, .sex-name,
+.home-greet-date, .modal-title,
+h1, h2, h3, h4, h5, h6,
+.btn, .bicon {
+  font-family: var(--ff) !important;
+}
+
+/* Datos numéricos y cuerpo de datos → Montserrat tabular */
+input, textarea,
+.mq-kpi-big, .mq-kpi-unit,
+.acc-pdr-val, .acc-kpi-val,
+.hm-val, .stat-num, .mq-stat-num, .mq-stat-val,
+.home-plan-unified__week, .home-plan-unified__metric-value,
+.set-inp, .dp-sel, .chart-label,
+.mq-chart-title, .mq-chart-subtitle, .mq-chart-unit,
+.acc-ex-name, .body-med-val, .imc-val,
+.prog-ex-name, .prog-ex-sub,
+td, th {
+  font-family: var(--fm) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tamaños sobrios alineados al look de nutrición */
+.section-label,
+.mq-kicker,
+.acc-pdr-lbl,
+.prog-group-label,
+.stat-label,
+.mq-stat-lbl {
+  font-size: 10px !important;
+  letter-spacing: 2px !important;
+  text-transform: uppercase !important;
+  font-weight: 600 !important;
+  color: var(--ink3) !important;
+}
+
+/* Nav labels en Cinzel, sin uppercase forzado */
+.nb {
+  font-size: 8px !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+}
+
+/* Tab buttons */
+.tab-btn {
+  font-size: 12px !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase !important;
+  font-weight: 600 !important;
+}
+
+/* ── 2. BOTÓN EXPORTAR + SELECTOR SEMANAS SIMÉTRICO ─────
+   Los dos quedan igual de altura (38px) con misma apariencia
+   -------------------------------------------------------- */
+.export-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dp-sel.export-sel,
+.export-btn {
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 12px !important;
+  font-size: 12px !important;
+  font-family: var(--ff) !important;
+  font-weight: 600 !important;
+  letter-spacing: .5px !important;
+  border: 1px solid var(--border2) !important;
+  border-radius: 12px !important;
+  background: var(--bg2) !important;
+  color: var(--ink2) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  width: auto !important;
+  box-shadow: none !important;
+  text-transform: none !important;
+  letter-spacing: .3px !important;
+  cursor: pointer !important;
+}
+.export-btn:active,
+.dp-sel.export-sel:focus {
+  border-color: var(--p) !important;
+  color: var(--p) !important;
+}
+/* Ocultar el ícono separado — el texto basta */
+.export-btn .export-icon { display: none !important; }
+.export-btn .export-label {
+  font-family: var(--ff) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--ink2) !important;
+}
+
+/* ── 3. CARDS GLOBALES — ESTILO NUTRICIÓN (sobrio) ──────
+   Sin negritas en labels, jerarquía suave, colores fenicicos
+   -------------------------------------------------------- */
+.card, .hevy-card, .rutina-card, .comida-card,
+.stat-box, .plan-card, .lumen-stat, .modal,
+.home-soft-card, .mq-home-card, .mq-card,
+.acc-card, .body-acc-card, .mq-chart-card {
+  background: var(--bg2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  box-shadow: none !important;
+}
+
+/* Labels en cards — sobrios, sin negrita pesada */
+.mq-kicker, .section-label, .mq-stat-lbl,
+.acc-pdr-lbl, .acc-kpi-lbl, .body-med-lbl,
+.rutina-meta, .home-soft-kicker, .prog-group-label,
+.stat-label {
+  font-weight: 600 !important;
+  color: var(--ink3) !important;
+}
+
+/* Valores KPI — destacados pero no gritando */
+.mq-kpi-big { font-size: 30px !important; font-weight: 700 !important; }
+.stat-num   { font-size: 24px !important; font-weight: 700 !important; }
+
+/* Solo hola + KPIs principales van en 800 */
+.home-greet-title { font-weight: 800 !important; }
+
+/* Chips / pills — ligeros */
+.carga-tag, .badge, .pr-badge, .chip-status, .pill, .mq-chip-gold,
+.acc-filter-btn, .mq-chart-filter-btn {
+  font-family: var(--ff) !important;
+  font-weight: 600 !important;
+  font-size: 10px !important;
+  letter-spacing: .5px !important;
+}
+
+/* ── 4. ENTRENAR — 2 COLUMNAS SOBRIAS ───────────────────
+   Tarjetas compactas al estilo nutrición: sin emoji grande,
+   sin número flotante, sin gradientes.
+   -------------------------------------------------------- */
+
+/* Grid de 2 columnas */
+#rutinas-list {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+  margin-top: 4px;
+}
+
+/* Override de .rutina-card para el nuevo layout */
+.rutina-card {
+  background: var(--bg2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  margin-bottom: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+/* Cabecera compacta de la rutina */
+.rutina-head {
+  padding: 12px 12px 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  align-items: flex-start !important;
+}
+
+/* Nombre de la rutina */
+.rutina-name {
+  font-family: var(--ff) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: var(--ink) !important;
+  line-height: 1.2 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+}
+
+/* Meta (ejercicios, descanso, último) */
+.rutina-meta {
+  font-family: var(--fm) !important;
+  font-size: 10px !important;
+  color: var(--ink3) !important;
+  margin-top: 3px !important;
+  line-height: 1.4 !important;
+}
+
+/* Emoji en tarjeta — pequeño, sin círculo */
+.rutina-emoji {
+  font-size: 14px !important;
+  margin-bottom: 4px !important;
+  display: block !important;
+}
+
+/* Chips de ejercicios dentro de la rutina — ocultar en 2col (demasiado espacio) */
+#rutinas-list .rutina-card > div[style*="padding:0 16px 10px"] {
+  display: none !important;
+}
+
+/* Botón iniciar en tarjeta 2col — más compacto */
+#rutinas-list .rutina-card > button {
+  padding: 10px 8px !important;
+  font-size: 11px !important;
+  font-family: var(--ff) !important;
+  letter-spacing: 1px !important;
+  border-top: 1px solid var(--border) !important;
+  border-radius: 0 0 16px 16px !important;
+  margin-top: auto !important;
+}
+
+/* Banner sugerida — más sobrio */
+#rutinas-list .rutina-card > div[style*="linear-gradient"] {
+  padding: 4px 10px !important;
+  font-size: 9px !important;
+}
+
+/* Botón sesión libre — ancho completo, fuera del grid */
+#train-home > .btn {
+  font-family: var(--ff) !important;
+  font-size: 12px !important;
+  letter-spacing: 1px !important;
+}
+
+/* Ocultar número flotante (posición absoluta) en 2col */
+#rutinas-list .rutina-card div[style*="position:absolute"] {
+  display: none !important;
+}
+
+/* ── 5. PROGRESO — fix accordion medidas corporales ─────
+   La clase .acc-body debe usar display:block cuando open
+   -------------------------------------------------------- */
+.body-acc-card.open .acc-body,
+.acc-card.open .acc-body {
+  display: block !important;
+}
+.body-acc-card .acc-body,
+.acc-card .acc-body {
+  display: none;
+}
+
+/* ── 6. PROG ACCORDION — EJERCICIO DENTRO DEL GRUPO ────
+   Estilo sándwich: grupo cerrado muestra resumen,
+   ejercicio abierto muestra gráfico + PDR + series
+   -------------------------------------------------------- */
+
+/* Título de grupo */
+.prog-group-label {
+  font-family: var(--ff) !important;
+  font-size: 9px !important;
+  letter-spacing: 3px !important;
+  text-transform: uppercase !important;
+  color: var(--ink3) !important;
+  padding: 16px 16px 6px !important;
+  font-weight: 700 !important;
+}
+
+/* Nombre ejercicio en accordion */
+.acc-ex-name {
+  font-family: var(--fm) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: var(--ink) !important;
+}
+
+/* PDR valor */
+.acc-pdr-val {
+  font-family: var(--fm) !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: var(--p) !important;
+}
+

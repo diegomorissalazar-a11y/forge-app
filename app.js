@@ -842,7 +842,7 @@ function mqPesoChart(mets){
   const dias=['D','L','M','M','J','V','S'];
   const labDays=datos.map(m=>{ const d=new Date(m.date+'T12:00:00'); return dias[d.getDay()]; });
   // SVG
-  let svg='<svg viewBox="0 0 '+W+' '+(H+18)+'" width="100%" style="overflow:visible;display:block">';
+  let svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="overflow:visible;display:block">';
   // línea meta
   const yMeta=yOf(parseFloat((document.getElementById('home-peso-banner')?'':0)||0));
   // Área rellena bajo la curva
@@ -858,10 +858,6 @@ function mqPesoChart(mets){
     if(isLast){
       svg+='<text x="'+p[0].toFixed(1)+'" y="'+(p[1]-8).toFixed(1)+'" text-anchor="middle" font-size="9" font-weight="700" fill="#5A2D82" font-family="sans-serif">'+datos[i].peso+'</text>';
     }
-  });
-  // Etiquetas días eje X
-  pts.forEach((p,i)=>{
-    svg+='<text x="'+p[0].toFixed(1)+'" y="'+(H+14)+'" text-anchor="middle" font-size="8" fill="#9B7FC7" font-family="sans-serif">'+labDays[i]+'</text>';
   });
   svg+='</svg>';
   return svg;
@@ -1572,58 +1568,22 @@ function renderRutinas(){
 
     return `<div class="rutina-card" style="border-color:${borderColor}">
       ${bannerSugerida}
-      <div class="rutina-head" onclick="toggleRutinaDetalle('${r.id}')" style="cursor:pointer">
-        <div style="position:relative">
-          <div class="rutina-emoji">${r.emoji||'◈'}</div>
-          <div style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:${esSugerida?'var(--orange)':btnColor};color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">${num}</div>
+      <div class="rutina-head" onclick="toggleRutinaDetalle('${r.id}');iniciarRutina('${r.id}')">
+        <span class="rutina-emoji">${r.emoji||'◈'}</span>
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:2px">
+          <div class="rutina-name">${r.name}</div>${diaTag}
         </div>
-        <div class="rutina-info">
-          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
-            <div class="rutina-name">${r.name}</div>${planTag}${diaTag}
-          </div>
-          <div class="rutina-meta">${exs.length} ejerc. · Desc. ${fmtTime(r.restSec||90)} · ${ultstxt}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:2px">
-          <svg id="rutina-chevron-${r.id}" viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
-          <button class="bicon" onclick="event.stopPropagation();abrirMenuRutina('${r.id}',this)">
-            <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-          </button>
-        </div>
-      </div>
-      <!-- Chips resumen -->
-      <div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 10px">
-        ${exs.map(e=>{ const c=cargas[e.id]; return `<span style="border:1px solid ${c?'var(--green)':'var(--border2)'};border-radius:20px;padding:3px 10px;font-size:11px;color:${c?'var(--green)':'var(--ink2)'};background:var(--bg3)">${e.name.split('(')[0].trim()}${c?' '+c+'kg':''}</span>`; }).join('')}
-      </div>
-      <!-- Detalle expandible -->
-      <div id="rutina-detalle-${r.id}" style="display:none;border-top:1px solid var(--border)">
-        ${exs.map(e=>{
-          const c=cargas[e.id];
-          const series=r._series?.[e.id]||[];
-          const pr=getPR(e.id);
-          const isRun=e.type==='run'||e.type==='hiit';
-          return `<div style="padding:10px 16px;border-bottom:1px solid var(--border)">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-              <div style="font-size:13px;font-weight:700;color:var(--ink)">${e.name}</div>
-              ${c?`<span style="font-size:10px;background:var(--bg3);border:1px solid var(--green);color:var(--green);padding:2px 8px;border-radius:4px;font-weight:700">Plan: ${c}kg</span>`:
-                pr.weight?`<span style="font-size:10px;color:var(--gold)">PR: ${pr.weight}kg</span>`:''}
-            </div>
-            ${isRun?`<div style="font-size:11px;color:var(--ink3)">Cardio — km, tiempo, FC y pasos</div>`:
-              series.length?series.map((s,i)=>`<div style="display:flex;gap:10px;font-size:12px;color:var(--ink2);margin-bottom:2px">
-                <span style="color:var(--ink3);min-width:18px">${i+1}</span>
-                <span style="font-weight:600">${s.peso||c||'—'}kg × ${s.reps||8} reps</span>
-              </div>`).join(''):
-              `<div style="font-size:11px;color:var(--ink3)">3 series · ${c||pr.weight||'—'}kg × 8 reps</div>`}
-          </div>`;
-        }).join('')}
+        <div class="rutina-meta">${exs.length} ejerc. · ${ultstxt}</div>
+        ${planTag ? `<div style="margin-top:4px">${planTag}</div>` : ''}
       </div>
       ${cargaHint}
       <button onclick="iniciarRutina('${r.id}')"
-        style="width:100%;padding:13px;background:${esSugerida?'var(--orange)':esClavePlan?'var(--green)':'var(--bg3)'};
-        color:${esSugerida||esClavePlan?'#fff':'var(--ink2)'};border:none;font-family:var(--fb);
-        font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;
-        display:flex;align-items:center;justify-content:center;gap:8px;
-        border-top:1px solid var(--border);border-radius:0 0 var(--rl) var(--rl)">
-        ▶ ${esClavePlan?'INICIAR (PLAN)':'INICIAR'}
+        style="width:100%;padding:10px;background:${esSugerida?'var(--p)':esClavePlan?'var(--ok)':'var(--bg3)'};
+        color:${esSugerida||esClavePlan?'#fff':'var(--ink2)'};border:none;font-family:var(--ff);
+        font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;gap:6px;
+        border-top:1px solid var(--border);border-radius:0 0 16px 16px;margin-top:auto">
+        ▶ ${esClavePlan?'Iniciar (plan)':'Iniciar'}
       </button>
     </div>`;
   }).join('');
@@ -3234,13 +3194,12 @@ function buildAccBody(exId, filtro) {
 }
 
 function renderProgEjercicios() {
-  // KPIs clave (parte superior, sin cambios funcionales)
+  // KPIs clave (parte superior)
   document.getElementById('prog-kpi-row').innerHTML = renderKPIEjClave();
 
   const exs = forge.exercises || [];
   const sesiones = forge.sessions || [];
 
-  // Ejercicios con datos
   const exsConData = exs.filter(e =>
     sesiones.some(s => s.exercises?.some(ex =>
       ex.exId === e.id && (ex.sets || []).some(st => st.done && (st.weight > 0 || st.distance))
@@ -3255,69 +3214,109 @@ function renderProgEjercicios() {
     return;
   }
 
-  // Agrupar: Tren Inferior / Tren Superior / Correr
-  const muscleGroups = {
-    inferior: ['pierna', 'glúteo', 'isquio', 'cuádricep', 'gemelo', 'pantorrilla', 'sentadilla', 'peso muerto', 'hip', 'búlgara', 'curl femoral', 'prensa'],
-    superior: ['pecho', 'espalda', 'hombro', 'bícep', 'trícep', 'dorsal', 'remo', 'jalón', 'press', 'elevación', 'fondos', 'banca']
-  };
+  // Clasificar ejercicios por grupo
+  const KW_INF = ['pierna','glúteo','isquio','cuádricep','gemelo','pantorrilla','sentadilla','peso muerto','hip','búlgara','curl femoral','prensa','pdm','pdmr','rdl','quad','hamstring','glute','calf'];
+  const KW_SUP = ['pecho','espalda','hombro','bícep','trícep','dorsal','remo','jalón','press','elevación','fondos','banca','bicep','tricep','chest','back','shoulder','lat'];
 
   function getGrupo(e) {
     if (e.type === 'run' || e.type === 'hiit') return 'correr';
     const n = (e.name + ' ' + (e.muscle || '')).toLowerCase();
-    for (const k of muscleGroups.inferior) if (n.includes(k)) return 'inferior';
-    for (const k of muscleGroups.superior) if (n.includes(k)) return 'superior';
-    // Fallback por campo muscle
-    const m = (e.muscle || '').toLowerCase();
-    if (['quad', 'hamstring', 'glute', 'calf', 'hip'].some(k => m.includes(k))) return 'inferior';
-    if (['chest', 'back', 'shoulder', 'bicep', 'tricep', 'lat'].some(k => m.includes(k))) return 'superior';
-    return 'superior'; // default
+    for (const k of KW_INF) if (n.includes(k)) return 'inferior';
+    for (const k of KW_SUP) if (n.includes(k)) return 'superior';
+    return 'superior';
   }
 
   const grupos = {
-    inferior: { label: 'Tren Inferior', exs: [] },
-    superior: { label: 'Tren Superior', exs: [] },
-    correr:   { label: 'Correr', exs: [] }
+    inferior: { label: 'Tren Inferior', key: 'inferior', exs: [] },
+    superior: { label: 'Tren Superior', key: 'superior', exs: [] },
+    correr:   { label: 'Correr', key: 'correr', exs: [] }
   };
   exsConData.forEach(e => grupos[getGrupo(e)].exs.push(e));
 
+  // ── Construye las filas de ejercicio dentro del grupo abierto ──
+  function buildGroupBody(grupoKey, exsList) {
+    const filtro = window._progAccFiltro['_grupo_' + grupoKey] || '3m';
+    const exRows = exsList.map(e => {
+      const isRun = e.type === 'run' || e.type === 'hiit';
+      const pr = isRun ? null : getPR(e.id);
+      const runPR = isRun ? getRunPRObj(e.id) : null;
+
+      // PDR string
+      const pdrVal = isRun
+        ? (runPR && runPR.dist > 0 ? runPR.dist.toFixed(2) + ' km' : '—')
+        : (pr && pr.weight > 0 ? pr.weight + ' kg' : '—');
+      const pdrReps = !isRun && pr && pr.weight > 0 ? pr.reps + ' reps' : '';
+
+      // Últimas series de la última sesión
+      let seriesHtml = '';
+      if (!isRun) {
+        const ultSes = sesiones.filter(s => s.exercises?.some(x => x.exId === e.id))
+          .sort((a, b) => b.date - a.date)[0];
+        if (ultSes) {
+          const exEnSes = ultSes.exercises.find(x => x.exId === e.id);
+          const sets = (exEnSes?.sets || []).filter(s => s.done && s.weight).slice(0, 4);
+          if (sets.length) {
+            seriesHtml = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">` +
+              sets.map(s => `<span style="font-size:11px;color:var(--ink3);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:2px 7px">${s.weight}kg×${s.reps}</span>`).join('') +
+              `</div>`;
+          }
+        }
+      } else {
+        // Run: última sesión
+        const ultSes = sesiones.filter(s => s.exercises?.some(x => x.exId === e.id))
+          .sort((a, b) => b.date - a.date)[0];
+        if (ultSes) {
+          const exEnSes = ultSes.exercises.find(x => x.exId === e.id);
+          const sets = exEnSes?.sets || [];
+          const dist = sets.reduce((a, s) => a + parseFloat(s.distance || 0), 0);
+          if (dist > 0) {
+            seriesHtml = `<div style="margin-top:6px"><span style="font-size:11px;color:var(--ink3);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:2px 7px">${dist.toFixed(2)} km</span></div>`;
+          }
+        }
+      }
+
+      // Gráfico del ejercicio individual (al hacer clic en la fila)
+      const exIsOpen = !!window._progAccState[e.id];
+      const exBodyHtml = exIsOpen ? buildAccBody(e.id, window._progAccFiltro[e.id] || filtro) : '';
+
+      return `<div style="border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:12px 16px;cursor:pointer;gap:10px"
+          onclick="toggleProgAcc('${e.id}')">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:600;color:var(--ink)">${e.name}</div>
+            ${seriesHtml}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:2px">PDR</div>
+            <div style="font-size:15px;font-weight:700;color:var(--p)">${pdrVal}</div>
+            ${pdrReps ? `<div style="font-size:10px;color:var(--ink3)">${pdrReps}</div>` : ''}
+          </div>
+          <svg style="flex-shrink:0;color:var(--ink3);margin-top:4px;transition:transform .2s;transform:${exIsOpen ? 'rotate(180deg)' : 'none'}" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        ${exIsOpen ? `<div style="padding:0 16px 14px;background:var(--bg3);border-top:1px solid var(--border)" id="acc-body-${e.id}">${exBodyHtml}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    return exRows;
+  }
+
   const html = Object.entries(grupos)
     .filter(([, g]) => g.exs.length > 0)
-    .map(([, g]) => {
-      const items = g.exs.map(e => {
-        const isRun = e.type === 'run' || e.type === 'hiit';
-        const pr = isRun ? null : getPR(e.id);
-        const isOpen = !!window._progAccState[e.id];
-        const pdrVal = isRun
-          ? (() => { const r = getRunPRObj(e.id); return r.dist > 0 ? r.dist.toFixed(2) + ' km' : '—'; })()
-          : (pr && pr.weight > 0 ? pr.weight + ' kg' : '—');
-        const pdrSub = isRun
-          ? (() => { const r = getRunPRObj(e.id); return r.ritmo > 0 ? decimalToPace(r.ritmo) + '/km' : 'sin datos'; })()
-          : (pr && pr.weight > 0 ? pr.reps + ' reps' : '—');
-
-        const bodyHtml = isOpen ? buildAccBody(e.id, window._progAccFiltro[e.id] || '3m') : '';
-
-        return `<div class="acc-card${isOpen ? ' open' : ''}" id="acc-${e.id}">
-          <div class="acc-head" onclick="toggleProgAcc('${e.id}')">
-            <div class="acc-head-left">
-              <div class="acc-ex-name">${e.name}</div>
-              <div class="acc-ex-sub">${isRun ? 'Carrera · distancia y ritmo' : (e.muscle || e.type || '')}</div>
-            </div>
-            <div class="acc-head-right">
-              <div class="acc-pdr-lbl">PDR</div>
-              <div class="acc-pdr-val${isRun ? '' : ''}">${pdrVal}</div>
-              <div style="font-size:10px;color:var(--ink3)">${pdrSub}</div>
-            </div>
-            <svg class="acc-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="6 9 12 15 18 9"/>
-            </svg>
+    .map(([gKey, g]) => {
+      const isOpen = !!window._progAccState['_grupo_' + gKey];
+      const resumen = g.exs.length + ' ejercicio' + (g.exs.length > 1 ? 's' : '');
+      const bodyHtml = isOpen ? buildGroupBody(gKey, g.exs) : '';
+      return `<div class="acc-card${isOpen ? ' open' : ''}" id="acc-grupo-${gKey}">
+        <div class="acc-head" onclick="toggleProgAcc('_grupo_${gKey}')">
+          <div class="acc-head-left">
+            <div class="acc-ex-name" style="font-size:15px;font-weight:700">${g.label}</div>
+            <div class="acc-ex-sub">${resumen}</div>
           </div>
-          <div class="acc-body" id="acc-body-${e.id}">${bodyHtml}</div>
-        </div>`;
-      }).join('');
-
-      return `<div class="prog-section">
-        <div class="prog-group-label">${g.label}</div>
-        ${items}
+          <svg class="acc-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+        <div class="acc-body" id="acc-body-_grupo_${gKey}" style="padding:0">${bodyHtml}</div>
       </div>`;
     }).join('');
 

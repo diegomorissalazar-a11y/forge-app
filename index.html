@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=108">
 <link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=108">
 <link rel="apple-touch-icon" href="assets/brand/melqart_favicon_m.png?v=108">
-<title>MELQART v124</title>
+<title>MELQART v125</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -59,15 +59,15 @@
     <div id="home-water-today" style="margin-bottom:16px"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div class="section-label" style="margin-bottom:0">Últimos entrenamientos</div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <select id="export-semanas" class="dp-sel" style="font-size:11px;padding:5px 8px;width:auto">
+      <div class="export-row">
+        <select id="export-semanas" class="dp-sel export-sel">
           <option value="1">1 semana</option>
           <option value="2">2 semanas</option>
           <option value="4" selected>4 semanas</option>
           <option value="8">8 semanas</option>
           <option value="0">Todo</option>
         </select>
-        <button onclick="exportarSemana()" class="btn btn-s btn-sm export-btn" type="button"><span class="export-icon">▤</span><span class="export-label">Exportar</span></button>
+        <button onclick="exportarSemana()" class="export-btn" type="button"><span class="export-label">Exportar</span></button>
       </div>
     </div>
     <div id="home-sessions"></div>
