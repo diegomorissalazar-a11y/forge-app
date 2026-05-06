@@ -2124,3 +2124,28 @@ td, th {
   color: #181B1D !important;
   border: none !important;
 }
+
+/* =======================================================
+   MELQART v133 — KPIs card inicio más compactos
+   ======================================================= */
+.home-plan-unified__metric {
+  text-align: center !important;
+  flex: 1 !important;
+}
+.home-plan-unified__metric-value {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  line-height: 1.1 !important;
+  color: var(--ink) !important;
+}
+.home-plan-unified__metric-value.purple {
+  color: var(--p) !important;
+}
+.home-plan-unified__metric-label {
+  font-size: 9px !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+  color: var(--ink3) !important;
+  margin-top: 2px !important;
+}
+.home-plan-unified__metric-icon { display: none !important; }

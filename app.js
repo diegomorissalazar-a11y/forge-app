@@ -1225,17 +1225,14 @@ function renderHomePlanBanner(){
       <div class="home-plan-unified__bar"><div class="home-plan-unified__bar-fill" style="width:${pct}%"></div></div>
       <div class="home-plan-unified__metrics">
         <div class="home-plan-unified__metric">
-          <div class="home-plan-unified__metric-icon">▣</div>
           <div class="home-plan-unified__metric-value">${sesionesSemana}</div>
           <div class="home-plan-unified__metric-label">Esta semana</div>
         </div>
         <div class="home-plan-unified__metric">
-          <div class="home-plan-unified__metric-icon">♨</div>
           <div class="home-plan-unified__metric-value purple">${racha}</div>
           <div class="home-plan-unified__metric-label">Racha</div>
         </div>
         <div class="home-plan-unified__metric">
-          <div class="home-plan-unified__metric-icon">◎</div>
           <div class="home-plan-unified__metric-value">${totalSesiones}</div>
           <div class="home-plan-unified__metric-label">Total sesiones</div>
         </div>
@@ -4368,6 +4365,21 @@ function toggleBodyAcc(key) {
 }
 function setBodyAccFiltro(key, filtro) {
   window._bodyAccFiltro[key] = filtro;
+
+  // El gráfico de peso está dentro de la sección 'resumen', no en un body propio
+  // — re-renderizar el body de resumen completo cuando cambia el filtro de peso
+  if (key === 'peso') {
+    const resumenBody = document.getElementById('body-acc-body-resumen');
+    if (resumenBody) {
+      // Re-invocar el render de la sección resumen
+      renderProgCuerpo();
+      // Mantener la sección abierta
+      window._bodyAccState['resumen'] = true;
+    }
+    return;
+  }
+
+  // Para el resto (grasa, muscular, p6, p8) → actualizar solo el body del accordion hijo
   const bodyEl = document.getElementById('body-acc-body-' + key);
   if (bodyEl) bodyEl.innerHTML = buildBodyAccBody(key, filtro, window._cuerpoMets || []);
 }
@@ -7019,12 +7031,14 @@ function renderMetricChart(config) {
       <line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>`;
   }).join('');
 
-  // Etiquetas X — máximo 8
-  const xStep = Math.max(1, Math.floor(n / 8));
-  const xTicksHtml = data.map((p, i) => {
-    if (i % xStep !== 0 && i !== n - 1) return '';
-    return `<text x="${xs[i].toFixed(1)}" y="${H - 2}" text-anchor="middle" fill="var(--ink3)" font-size="9">${p.label}</text>`;
-  }).join('');
+  // Etiquetas X — solo si hay pocos puntos (≤12), sino quitar para no apretar
+  const xTicksHtml = n <= 12
+    ? data.map((p, i) => {
+        const xStep = Math.max(1, Math.floor(n / 6));
+        if (i % xStep !== 0 && i !== n - 1) return '';
+        return `<text x="${xs[i].toFixed(1)}" y="${H - 2}" text-anchor="middle" fill="var(--ink3)" font-size="9">${p.label}</text>`;
+      }).join('')
+    : ''; // Con muchos puntos: solo tooltips, sin fechas en el eje
 
   // Puntos (dots) — con datos para tooltip via data-* attrs
   const dotR = n > 40 ? 2 : n > 20 ? 3 : 4;
