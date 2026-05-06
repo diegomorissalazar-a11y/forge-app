@@ -758,171 +758,51 @@ function guardarPesoObjetivo(){
   renderPesoBanner();
   showToast('✓ Objetivo actualizado',2000,'ok');
 }
-
-// ═══════════════════════════════════════════════════════
-//  MELQART DESIGN SYSTEM — SVG Icons + UI Helpers
-// ═══════════════════════════════════════════════════════
-const MQ = {
-  // Ícono balanza (peso)
-  balanza:`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="19"/><line x1="5" y1="8" x2="19" y2="8"/><circle cx="12" cy="3" r="1.5" fill="currentColor" stroke="none"/><path d="M5,8 L3,15 Q5,17 7,15 L5,8" fill="none"/><path d="M19,8 L17,15 Q19,17 21,15 L19,8" fill="none"/><line x1="4" y1="21" x2="20" y2="21"/></svg>`,
-  // Ícono antorcha (racha)
-  antorcha:`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="15" width="4" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M12,2 Q8,8 8,12 Q8,15 12,15 Q16,15 16,12 Q16,8 12,2" stroke="#CDA349" stroke-width="1.5" fill="none"/><path d="M12,7 Q10,10 10,12 Q10,14 12,15 Q14,14 14,12 Q14,10 12,7" fill="#CDA349" fill-opacity="0.4" stroke="none"/></svg>`,
-  // Ícono columna (sesiones)
-  columna:`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8,8 Q12,6 16,8"/><rect x="8" y="8" width="8" height="10" rx="1"/><line x1="10" y1="8" x2="10" y2="18" opacity=".3"/><line x1="14" y1="8" x2="14" y2="18" opacity=".3"/><rect x="7" y="18" width="10" height="3" rx="1"/><rect x="6" y="5" width="12" height="3" rx="1"/></svg>`,
-  // Ícono ánfora (agua) — turquesa
-  anfora:`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="4" rx="1.5" stroke="#2EC4C7" stroke-width="1.5"/><line x1="8" y1="2" x2="16" y2="2" stroke="#2EC4C7" stroke-width="1.5"/><path d="M9,6 Q6,10 6,15 Q6,20 8,22 L8,23 L16,23 L16,22 Q18,20 18,15 Q18,10 15,6 Z" stroke="#2EC4C7" stroke-width="1.5"/><path d="M9,9 Q4,10 4,16" stroke="#2EC4C7" stroke-width="1.3"/><path d="M15,9 Q20,10 20,16" stroke="#2EC4C7" stroke-width="1.3"/><path d="M12,10 Q10,13 10,16 Q10,19 12,19 Q14,19 14,16 Q14,13 12,10" fill="#2EC4C7" fill-opacity="0.45" stroke="none"/></svg>`,
-  // Ícono plato desde arriba (comidas) — dorado
-  plato:`<svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="10" fill="#FFF8E6" stroke="#CDA349" stroke-width="1.7"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#CDA349" stroke-width="1.1"/><circle cx="12" cy="12" r="3" fill="#CDA349" fill-opacity="0.6"/></svg>`,
-  // Laurel (logros)
-  laurel:`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6,17 Q3,13 5,9 Q8,12 7,16"/><path d="M7,16 Q4,12 6,8 Q9,11 8,15"/><path d="M8,15 Q6,11 8,7 Q11,11 9,15"/><path d="M9,14 Q8,10 11,7 Q13,11 11,14"/><path d="M18,17 Q21,13 19,9 Q16,12 17,16"/><path d="M17,16 Q20,12 18,8 Q15,11 16,15"/><path d="M16,15 Q18,11 16,7 Q13,11 15,15"/><path d="M15,14 Q16,10 13,7 Q11,11 13,14"/><path d="M9,17 Q12,19 15,17" stroke-width="1.6"/></svg>`,
-};
-
-// Genera anillo SVG de progreso — r=38, circ=238.76
-function mqRing(pct, label, sub){
-  const r=38, circ=238.76, dash=(pct/100)*circ, gap=circ-dash, off=circ*0.25;
-  return '<svg viewBox="0 0 100 100" width="100" height="100" style="display:block">'
-    +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="var(--mq-ring-bg,#E8E0F8)" stroke-width="9"/>'
-    +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="var(--mq-purple,#5A2D82)" stroke-width="9"'
-    +' stroke-dasharray="'+dash.toFixed(1)+' '+gap.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" stroke-linecap="round"/>'
-    +'<text x="50" y="46" text-anchor="middle" font-size="18" font-weight="800" fill="#5A2D82" font-family="Montserrat, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">'+label+'</text>'
-    +(sub?'<text x="50" y="61" text-anchor="middle" font-size="8.5" font-weight="600" fill="#9B7FC7" font-family="Montserrat, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">'+sub+'</text>':'')
-    +'</svg>';
-}
-
-// Ánforas agua: activas ON (turquesa), OFF (gris)
-function mqAnforas(activas, total){
-  let h='<div class="mq-tracker-row">';
-  for(let i=0;i<total;i++){
-    const on=i<activas;
-    h+='<button class="mq-anfora-btn'+(on?' on':'')+'" onclick="mqToggleAnfora('+i+')" aria-label="Ánfora '+(i+1)+'">'+MQ.anfora+'</button>';
-  }
-  h+='</div><div class="mq-tracker-lbl" style="color:#2EC4C7">'+activas+' / '+total+' ánforas</div>';
-  return h;
-}
-
-// Platos comidas: ON (dorado), OFF (gris)
-function mqPlatos(activas, total){
-  let h='<div class="mq-tracker-row">';
-  for(let i=0;i<total;i++){
-    const on=i<activas;
-    h+='<div class="mq-plato-btn'+(on?'':' off')+'" aria-label="Comida '+(i+1)+'">'+MQ.plato+'</div>';
-  }
-  h+='</div><div class="mq-tracker-lbl" style="color:#CDA349">'+activas+' / '+total+' comidas</div>';
-  return h;
-}
-
-// Toggle ánfora desde home (sincroniza con sistema existente)
-function mqToggleAnfora(idx){
-  const fd=getFD(typeof foodDate!=='undefined'?foodDate:today());
-  const cps=getAguaCps(fd);
-  cps[idx]=!cps[idx];
-  fd.aguaCps=cps;
-  fd.agua=cps.filter(Boolean).length;
-  saveFD(fd);
-  const totalMl=AGUA_CPS.filter((_,i)=>cps[i]).reduce((a,c)=>a+c.ml,0);
-  if(totalMl>=AGUA_META_ML) showToast('Meta de agua alcanzada',2500,'ok');
-  renderHomeWaterCard();
-  renderAguaCheckpoints(fd);
-}
-
-// Gráfico sparkline últimos 7 pesajes en SVG
-function mqPesoChart(mets){
-  if(!mets||mets.length<2) return '';
-  const datos=mets.slice(-7);
-  const W=200,H=60,pad=6;
-  const pesos=datos.map(m=>m.peso);
-  const min=Math.min(...pesos)-0.5, max=Math.max(...pesos)+0.5;
-  const xStep=(W-pad*2)/(datos.length-1);
-  const yOf=p=>pad+(1-(p-min)/(max-min))*(H-pad*2);
-  const pts=datos.map((m,i)=>[pad+i*xStep, yOf(m.peso)]);
-  const pathD='M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L');
-  // Área rellena
-  const areaD=pathD+' L'+pts[pts.length-1][0].toFixed(1)+','+(H-pad)+' L'+pad+','+(H-pad)+' Z';
-  // Etiquetas eje (min/max/actual)
-  const dias=['D','L','M','M','J','V','S'];
-  const labDays=datos.map(m=>{ const d=new Date(m.date+'T12:00:00'); return dias[d.getDay()]; });
-  // SVG
-  let svg='<svg viewBox="0 0 '+W+' '+(H+18)+'" width="100%" style="overflow:visible;display:block">';
-  // línea meta
-  const yMeta=yOf(parseFloat((document.getElementById('home-peso-banner')?'':0)||0));
-  // Área rellena bajo la curva
-  svg+='<defs><linearGradient id="pgr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5A2D82" stop-opacity="0.28"/><stop offset="100%" stop-color="#5A2D82" stop-opacity="0.03"/></linearGradient></defs>';
-  svg+='<path d="'+areaD+'" fill="url(#pgr)" stroke="none"/>';
-  // Línea dashes meta peso
-  // Línea principal
-  svg+='<path d="'+pathD+'" fill="none" stroke="#5A2D82" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
-  // Puntos
-  pts.forEach((p,i)=>{
-    const isLast=i===pts.length-1;
-    svg+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(isLast?4:2.5)+'" fill="'+(isLast?'#5A2D82':'#B79CFF')+'" stroke="'+(isLast?'#fff':'none')+'" stroke-width="1.5"/>';
-    if(isLast){
-      svg+='<text x="'+p[0].toFixed(1)+'" y="'+(p[1]-8).toFixed(1)+'" text-anchor="middle" font-size="9" font-weight="700" fill="#5A2D82" font-family="sans-serif">'+datos[i].peso+'</text>';
-    }
-  });
-  // Etiquetas días eje X
-  pts.forEach((p,i)=>{
-    svg+='<text x="'+p[0].toFixed(1)+'" y="'+(H+14)+'" text-anchor="middle" font-size="8" fill="#9B7FC7" font-family="sans-serif">'+labDays[i]+'</text>';
-  });
-  svg+='</svg>';
-  return svg;
-}
-
-
 function renderPesoBanner(){
   const el=document.getElementById('home-peso-banner'); if(!el) return;
   const po=getPesoObjetivo();
-  const PESO_INICIO=po.inicio, PESO_OBJETIVO=po.objetivo;
+  const PESO_INICIO=po.inicio;
+  const PESO_OBJETIVO=po.objetivo;
   const BRECHA=PESO_INICIO-PESO_OBJETIVO;
   if(BRECHA<=0){ el.innerHTML=''; return; }
-  const mets=(forge.bodyMetrics||[]).filter(m=>m.peso).sort((a,b)=>a.date.localeCompare(b.date));
+  const mets=(forge.bodyMetrics||[]).filter(m=>m.peso).sort((a,b)=>a.date>b.date?1:-1);
   if(!mets.length){ el.innerHTML=''; return; }
   const actual=mets[mets.length-1].peso;
   const perdidos=Math.max(0,parseFloat((PESO_INICIO-actual).toFixed(1)));
   const faltan=Math.max(0,parseFloat((actual-PESO_OBJETIVO).toFixed(1)));
   const pct=Math.min(100,Math.round((perdidos/BRECHA)*100));
   const completado=actual<=PESO_OBJETIVO;
-  const colPct=completado?'var(--green)':'#5A2D82';
 
-  el.innerHTML=
-    // Card principal
-    '<div class="mq-home-card">'
-    // Header fila
-    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:10px">'
-      +'<div class="mq-hrow" style="gap:8px;color:#5A2D82">'+MQ.balanza+'<span class="mq-kicker">Peso de la semana</span></div>'
-      +'<div class="mq-hrow" style="gap:6px">'
-        +'<button class="mq-btn-pill" onclick="registrarPesoRapido()">+ Peso</button>'
-        +'<button class="mq-btn-icon" onclick="abrirPesoObjetivo()" title="Editar objetivo">✏</button>'
+  el.innerHTML='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+      +'<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:700">Objetivo de peso</div>'
+      +'<div style="display:flex;gap:6px">'
+        +'<button onclick="registrarPesoRapido()" style="background:var(--orange);color:#fff;border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px">+ Peso</button>'
+        +'<button onclick="abrirPesoObjetivo()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--ink3);padding:2px 6px">✏️</button>'
       +'</div>'
     +'</div>'
-    // KPI + sparkline + ring
-    +'<div class="mq-hrow" style="align-items:flex-start;gap:12px">'
-      // Columna izquierda: KPI + gráfico
-      +'<div style="flex:1;min-width:0">'
-        +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px">'
-          +'<span class="mq-kpi-big">'+actual+'</span>'
-          +'<span class="mq-kpi-unit">kg</span>'
-          +'<span style="font-size:11px;color:var(--ink3);margin-left:4px">'+(faltan>0?'faltan '+faltan+'kg':'✓ meta')+'</span>'
-        +'</div>'
-        // Sparkline últimos 7 pesajes
-        +mqPesoChart(mets)
-        // Barra progreso slim
-        +'<div style="display:flex;align-items:center;gap:8px;margin-top:8px">'
-          +'<div style="flex:1;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden">'
-            +'<div style="width:'+pct+'%;height:100%;background:'+colPct+';border-radius:3px;transition:width .5s"></div>'
-          +'</div>'
-          +'<span style="font-size:11px;font-weight:700;color:'+colPct+'">'+pct+'%</span>'
-        +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start">'
+    +'<div>'
+      +'<div style="display:flex;justify-content:space-between;margin-bottom:6px">'
+        +'<span style="font-size:13px;color:var(--ink2)">'+actual+'kg <span style="color:var(--ink3);font-size:11px">actual</span></span>'
+        +'<span style="font-size:13px;font-weight:700;color:'+(completado?'var(--green)':'var(--orange)')+'">'+pct+'%</span>'
       +'</div>'
-      // Columna derecha: ring + meta
-      +'<div style="text-align:center;flex-shrink:0">'
-        +'<div style="font-size:10px;color:var(--ink3);margin-bottom:4px">Meta</div>'
-        +'<div style="font-size:18px;font-weight:800;color:#CDA349">'+PESO_OBJETIVO+' kg</div>'
-        +'<div style="margin-top:6px">'+mqRing(pct,pct+'%','Progreso')+'</div>'
+      +'<div style="background:var(--bg4);border-radius:6px;height:10px;overflow:hidden">'
+        +'<div style="width:'+pct+'%;height:100%;background:'+(completado?'var(--green)':'var(--orange)')+';border-radius:6px;transition:width .4s"></div>'
       +'</div>'
+      +'<div style="display:flex;gap:16px;margin-top:8px">'
+        +'<div><div style="font-size:18px;font-weight:800;color:var(--green)">-'+perdidos+'kg</div><div style="font-size:10px;color:var(--ink3)">Perdidos</div></div>'
+        +'<div><div style="font-size:18px;font-weight:800;color:'+(faltan>0?'var(--orange)':'var(--green)')+'">'+( faltan>0?faltan+'kg':'✓')+'</div><div style="font-size:10px;color:var(--ink3)">'+(faltan>0?'Faltan':'Logrado')+'</div></div>'
+      +'</div>'
+    +'</div>'
+    +'<div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center;min-width:70px">'
+      +'<div style="font-size:10px;color:var(--ink3);margin-bottom:4px">Objetivo</div>'
+      +'<div style="font-size:26px;font-weight:800;font-family:var(--fd);color:var(--orange)">'+PESO_OBJETIVO+'</div>'
+      +'<div style="font-size:10px;color:var(--ink3)">kg</div>'
+    +'</div>'
     +'</div>'
     +'</div>';
 }
-
 function renderStreakBanner(){
   const el=document.getElementById('home-streak-banner'); if(!el) return;
   const anio=new Date().getFullYear()+'';
@@ -934,21 +814,26 @@ function renderStreakBanner(){
   const estaSemana=mapSem[hoyLunes]||0;
   if(!rachaActual&&!mejor.count){ el.innerHTML=''; return; }
   const esNuevaMejor=mejor.lunes===hoyLunes&&estaSemana>0;
-
-  el.innerHTML='<div class="mq-home-card">'
-    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:10px;color:#5A2D82">'
-      +MQ.laurel
-      +'<span class="mq-kicker" style="flex:1;margin-left:8px">Seguimiento · '+anio+'</span>'
-      +(esNuevaMejor?'<span class="mq-chip-gold">Nueva mejor</span>':'')
-    +'</div>'
-    +'<div class="mq-hrow" style="gap:20px;flex-wrap:wrap">'
-      +'<div><div class="mq-stat-val" style="color:#5A2D82">'+rachaActual+'</div><div class="mq-stat-lbl">Racha</div></div>'
-      +(rachaMejor>rachaActual?'<div><div class="mq-stat-val">'+rachaMejor+'</div><div class="mq-stat-lbl">Mejor racha</div></div>':'')
-      +(mejor.count?'<div><div class="mq-stat-val" style="color:#CDA349">'+mejor.count+'</div><div class="mq-stat-lbl">Mejor semana</div></div>':'')
-      +'<div><div class="mq-stat-val">'+estaSemana+'</div><div class="mq-stat-lbl">Esta semana</div></div>'
-    +'</div>'
-    +(mejor.lunes?'<div class="mq-stat-lbl" style="margin-top:6px;color:var(--ink3)">'+fmtRangoSemana(mejor.lunes)+'</div>':'')
-    +'</div>';
+  let html='<div class="home-soft-card">';
+  html+='<div class="home-soft-kicker">Seguimiento semanal · '+anio+'</div>';
+  if(mejor.count>0){
+    html+='<div class="home-soft-note">Mejor semana del año: <strong>'+mejor.count+' sesiones</strong>';
+    if(mejor.lunes) html+=' <span style="color:var(--ink3)">('+fmtRangoSemana(mejor.lunes)+')</span>';
+    html+='</div>';
+  }
+  if(rachaActual>0){
+    html+='<div class="home-soft-note">Racha actual: <strong>'+rachaActual+' semana'+(rachaActual>1?'s':'')+' seguida'+(rachaActual>1?'s':'')+'</strong></div>';
+  }
+  if(rachaMejor>rachaActual){
+    html+='<div class="home-soft-note">Mejor racha: <strong>'+rachaMejor+' semanas</strong></div>';
+  }
+  if(esNuevaMejor){
+    html+='<div class="home-soft-highlight">Esta semana: <strong>'+estaSemana+' sesiones</strong> — nueva mejor semana del año</div>';
+  } else if(estaSemana>0){
+    html+='<div class="home-soft-sub">Esta semana: <strong>'+estaSemana+' sesiones</strong></div>';
+  }
+  html+='</div>';
+  el.innerHTML=html;
 }
 
 function renderHome(){
@@ -962,13 +847,18 @@ function renderHome(){
     <div class="home-greet-title">Hola, ${nombre}</div>`;
 
   renderHomePlanBanner();
+  renderStreakBanner();
   renderPesoBanner();
   renderHomeNutritionCard();
   renderHomeWaterCard();
 
   const ses    = forge.sessions||[];
-  const statsEl=document.getElementById('home-stats');
-  if(statsEl){ statsEl.innerHTML=''; statsEl.style.display='none'; }
+  const wStart = new Date(hoy); wStart.setDate(hoy.getDate()-(hoy.getDay()||7)+1); wStart.setHours(0,0,0,0);
+  const semana = ses.filter(s=>new Date(s.date)>=wStart).length;
+  document.getElementById('home-stats').innerHTML=`
+    <div class="stat-box"><div class="stat-num">${semana}</div><div class="stat-label">Esta semana</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--orange)">${calcStreak()}</div><div class="stat-label">Racha semanas</div></div>
+    <div class="stat-box"><div class="stat-num">${ses.length}</div><div class="stat-label">Total</div></div>`;
 
   const ultimas = [...ses].sort((a,b)=>b.date-a.date);
   const el = document.getElementById('home-sessions');
@@ -982,76 +872,20 @@ function renderHome(){
 function renderHomePlanBanner(){
   const plan=(forge.planes||[]).find(p=>p.activo);
   const el=document.getElementById('home-plan-banner');
-  const elStats=document.getElementById('home-stats');
-  const elStreak=document.getElementById('home-streak-banner');
-  if(elStats){ elStats.innerHTML=''; elStats.style.display='none'; }
-  if(elStreak){ elStreak.innerHTML=''; elStreak.style.display='none'; }
-  if(!el) return;
+  if(!plan){el.style.display='none';return;}
   el.style.display='block';
-
-  const hoy=new Date();
-  const sesiones=forge.sessions||[];
-  const wStart=new Date(hoy);
-  wStart.setDate(hoy.getDate()-(hoy.getDay()||7)+1);
-  wStart.setHours(0,0,0,0);
-  const sesionesSemana=sesiones.filter(s=>new Date(s.date)>=wStart).length;
-  const racha=calcStreak();
-  const totalSesiones=sesiones.length;
-  const anio=hoy.getFullYear()+'';
-  const mejor=getMejorSemanaAnio(anio);
-
-  if(!plan){
-    el.innerHTML=`
-      <section class="home-plan-unified">
-        <div class="home-plan-unified__top">
-          <div>
-            <h2 class="home-plan-unified__title">¿Cómo vamos con el plan?</h2>
-            <div class="home-plan-unified__name">Sin plan activo</div>
-            <div class="home-plan-unified__block">Crea o activa un plan para ver tu progreso.</div>
-          </div>
-        </div>
-      </section>`;
-    return;
-  }
-
   const semG=semanaActualPlan(plan);
-  const totalSemanas=plan.totalSemanas||16;
-  const pct=Math.min(100,Math.round((semG/totalSemanas)*100));
+  const pct=Math.round((semG/plan.totalSemanas)*100);
   const bloque=plan.bloques?.[Math.floor((semG-1)/4)]||{nombre:'—'};
   el.innerHTML=`
-    <section class="home-plan-unified">
-      <div class="home-plan-unified__top">
-        <div>
-          <div class="home-plan-unified__eyebrow">Plan activo · Sem ${semG}/${totalSemanas}</div>
-          <h2 class="home-plan-unified__title">¿Cómo vamos con el plan?</h2>
-          <div class="home-plan-unified__name">${plan.nombre}</div>
-          <div class="home-plan-unified__block">Bloque actual: <strong>${bloque.nombre}</strong></div>
-        </div>
-        <div class="home-plan-unified__status">
-          <div class="home-plan-unified__badge">Plan activo</div>
-          <div class="home-plan-unified__week">${semG}<span>/${totalSemanas}</span></div>
-        </div>
+    <div class="card" onclick="goTo('perfil')" style="cursor:pointer;border-color:var(--orange)">
+      <div style="font-size:10px;color:var(--orange);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Plan activo · Sem ${semG}/${plan.totalSemanas}</div>
+      <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px">${plan.nombre}</div>
+      <div style="font-size:11px;color:var(--ink3);margin-bottom:8px">Bloque actual: ${bloque.nombre}</div>
+      <div style="background:var(--bg3);border-radius:3px;height:5px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:var(--orange);border-radius:3px;transition:width .4s"></div>
       </div>
-      <div class="home-plan-unified__bar"><div class="home-plan-unified__bar-fill" style="width:${pct}%"></div></div>
-      <div class="home-plan-unified__metrics">
-        <div class="home-plan-unified__metric">
-          <div class="home-plan-unified__metric-icon">▣</div>
-          <div class="home-plan-unified__metric-value">${sesionesSemana}</div>
-          <div class="home-plan-unified__metric-label">Esta semana</div>
-        </div>
-        <div class="home-plan-unified__metric">
-          <div class="home-plan-unified__metric-icon">♨</div>
-          <div class="home-plan-unified__metric-value purple">${racha}</div>
-          <div class="home-plan-unified__metric-label">Racha</div>
-        </div>
-        <div class="home-plan-unified__metric">
-          <div class="home-plan-unified__metric-icon">◎</div>
-          <div class="home-plan-unified__metric-value">${totalSesiones}</div>
-          <div class="home-plan-unified__metric-label">Total sesiones</div>
-        </div>
-      </div>
-      ${mejor?.count?`<div class="home-plan-unified__best">Mejor semana del año: <strong>${mejor.count} sesiones</strong>${mejor.lunes?` · ${fmtRangoSemana(mejor.lunes)}`:''}</div>`:''}
-    </section>`;
+    </div>`;
 }
 
 // Calcular ritmo promedio de una sesión de carrera
@@ -3075,38 +2909,122 @@ function switchPhotoTab(tipo,btn){
 }
 
 // ── Ejercicios ──────────────────────────────────────────────────
-function renderProgEjercicios(){
-  const kpis=renderKPIEjClave();
-  document.getElementById('prog-kpi-row').innerHTML=kpis;
-  const exs=forge.exercises||[];
-  const sesiones=forge.sessions||[];
-  // Filtrar ejercicios que tienen al menos 1 sesión
-  const exsConData=exs.filter(e=>{
-    const isCardio=e.type==='run'||e.type==='hiit';
-    return sesiones.some(s=>s.exercises?.some(ex=>ex.exId===e.id&&(ex.sets||[]).some(s=>s.done&&(s.weight>0||s.distance))));
-  });
-  const clave=['ex_sentadilla','ex_press_banca','ex_correr'];
-  const clavesData=clave.map(id=>exs.find(e=>e.id===id)).filter(Boolean);
-  const resto=exsConData.filter(e=>!clave.includes(e.id));
-  const all=[...clavesData,...resto];
-  if(!all.length){
-    document.getElementById('prog-ex-list').innerHTML=`<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Sin datos aún</div><div class="empty-sub">Completa sesiones para ver estadísticas.</div></div>`;
+
+// ─── MAPEO DE EJERCICIOS A BLOQUES ───────────────────────
+const SW_GRUPOS = {
+  inferior: ['piernas','glúteos','glutes','femoral','cadena posterior'],
+  superior: ['pecho','espalda','hombros','bíceps','tríceps','core','brazo','brazos','hombro'],
+  correr:   ['cardio','run','hiit','correr'],
+};
+
+function getSWGrupo(e){
+  if(!e) return 'otros';
+  if(e.type==='run'||e.type==='hiit') return 'correr';
+  const m=(e.muscle||'').toLowerCase();
+  for(const [g,keys] of Object.entries(SW_GRUPOS)){
+    if(keys.some(k=>m.includes(k))) return g;
+  }
+  return 'otros';
+}
+
+function toggleSandwich(grupo){
+  const body = document.getElementById('sw-'+grupo+'-body');
+  const chev = document.getElementById('sw-'+grupo+'-chev');
+  if(!body) return;
+  const open = body.style.display==='none';
+  body.style.display = open ? 'block' : 'none';
+  if(chev) chev.style.transform = open ? 'rotate(180deg)' : '';
+  if(open) renderSandwichGrupo(grupo);
+}
+
+function renderSandwichGrupo(grupo){
+  const listEl = document.getElementById('sw-'+grupo+'-list'); if(!listEl) return;
+  const exs = forge.exercises||[];
+  const sesiones = forge.sessions||[];
+  const filtrados = exs.filter(e=>getSWGrupo(e)===grupo&&sesiones.some(s=>s.exercises?.some(ex=>ex.exId===e.id&&(ex.sets||[]).some(st=>st.done&&(st.weight>0||st.distance)))));
+  if(!filtrados.length){
+    listEl.innerHTML='<div style="padding:16px;color:var(--ink3);font-size:13px;text-align:center">Sin datos en este grupo aún</div>';
     return;
   }
-  document.getElementById('prog-ex-list').innerHTML=all.map(e=>{
-    const isClave=clave.includes(e.id);
-    const isRun=e.type==='run'||e.type==='hiit';
-    const pr=getPR(e.id);
-    const prStr=isRun?getRunPR(e.id):pr.weight>0?`${pr.weight} kg × ${pr.reps} reps`:'—';
-    const sub=isRun?'ritmo/distancia máximos':'PR: '+prStr;
-    return `<div class="prog-ex-row" onclick="openExDetail('${e.id}')">
-      <div style="flex:1">
-        <div class="prog-ex-name">${isClave?'⭐ ':''} ${e.name}</div>
-        <div class="prog-ex-sub">${sub}</div>
-      </div>
-      <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>`;
+  listEl.innerHTML = filtrados.map(e=>{
+    const isRun = e.type==='run'||e.type==='hiit';
+    const pr = isRun ? getRunPRObj(e.id) : getPR(e.id);
+    const prStr = isRun
+      ? (pr.dist>0?pr.dist.toFixed(2)+'km':'—')
+      : (pr.weight>0?pr.weight+'kg':'—');
+    const prSub = isRun
+      ? (pr.ritmo>0?Math.floor(pr.ritmo)+"'"+pad(Math.round((pr.ritmo%1)*60))+'"/km':'—')
+      : (pr.reps>0?'× '+pr.reps+' reps':'');
+    return '<div class="sw-ex-row" onclick="openExDetail(\''+e.id+'\')">'
+      +'<div class="sw-ex-left">'
+        +'<div class="sw-ex-name">'+e.name+'</div>'
+        +'<div class="sw-ex-type">'+(e.muscle||e.type||'—')+'</div>'
+      +'</div>'
+      +'<div class="sw-ex-right">'
+        +'<div class="sw-ex-pdr">'+prStr+'</div>'
+        +'<div class="sw-ex-pdr-sub">'+prSub+'</div>'
+        +'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--ink3)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>'
+      +'</div>'
+    +'</div>';
   }).join('');
+}
+
+function renderProgEjerciciosSandwich(){
+  const exs = forge.exercises||[];
+  const sesiones = forge.sessions||[];
+  // Contar por grupo
+  const counts = {inferior:0, superior:0, correr:0, otros:0};
+  exs.forEach(e=>{
+    if(sesiones.some(s=>s.exercises?.some(ex=>ex.exId===e.id&&(ex.sets||[]).some(st=>st.done&&(st.weight>0||st.distance))))){
+      counts[getSWGrupo(e)]=(counts[getSWGrupo(e)]||0)+1;
+    }
+  });
+  ['inferior','superior','correr','otros'].forEach(g=>{
+    const meta = document.getElementById('sw-'+g+'-meta');
+    if(meta) meta.textContent = counts[g]>0 ? counts[g]+' ejercicios' : '';
+    const block = document.getElementById('sw-'+g);
+    if(block) block.style.display = counts[g]>0 ? 'block' : 'none';
+    // Abrir el primero que tenga datos automáticamente la primera vez
+  });
+  // Auto-abrir el primer bloque con datos
+  const firstWithData = ['inferior','superior','correr','otros'].find(g=>counts[g]>0);
+  if(firstWithData){
+    const body = document.getElementById('sw-'+firstWithData+'-body');
+    const chev = document.getElementById('sw-'+firstWithData+'-chev');
+    if(body && body.style.display==='none'){
+      body.style.display='block';
+      if(chev) chev.style.transform='rotate(180deg)';
+      renderSandwichGrupo(firstWithData);
+    }
+  }
+}
+
+// Mediciones sándwich — auto-abrir resumen
+function initMedSandwich(){
+  const body = document.getElementById('sw-med-resumen-body');
+  const chev = document.getElementById('sw-med-resumen-chev');
+  if(body && body.style.display==='none'){
+    body.style.display='block';
+    if(chev) chev.style.transform='rotate(180deg)';
+  }
+  // Meta labels
+  const mets=(forge.bodyMetrics||[]).filter(m=>m.peso);
+  const medMeta = document.getElementById('sw-med-resumen-meta');
+  if(medMeta&&mets.length) medMeta.textContent=mets.length+' registros';
+  const histMeta = document.getElementById('sw-med-historial-meta');
+  if(histMeta&&mets.length) histMeta.textContent=mets.length+' pesajes';
+  const comMeta = document.getElementById('sw-med-composicion-meta');
+  const comp=(forge.bodyMetrics||[]).filter(m=>m.grasa||m.muscular);
+  if(comMeta&&comp.length) comMeta.textContent=comp.length+' registros';
+}
+
+
+function renderProgEjercicios(){
+  // KPIs clave mantienen su lógica original
+  const kpis=renderKPIEjClave();
+  document.getElementById('prog-kpi-row').innerHTML=kpis;
+  // Nuevo sistema sándwich
+  renderProgEjerciciosSandwich();
 }
 
 function renderKPIEjClave(){
@@ -3318,8 +3236,18 @@ function renderExDetail(exId){
     return puntos.filter(p=>p.fecha.startsWith(filtroSel));
   })();
 
-  // Construir gráfico filtrado — sistema genérico v123
-  chartsHtml = buildExDetailCharts(puntos, isRun, exId, filtroSel);
+  // Construir gráfico filtrado
+  if(isRun&&puntosGraf.length>=2){
+    const pDist=puntosGraf.map(p=>({fecha:p.fecha,val:p.valDist,label:`${p.valDist.toFixed(2)}km`}));
+    const pRitmo=puntosGraf.filter(p=>p.valRitmo>0).map(p=>({fecha:p.fecha,val:p.valRitmo,label:p.label}));
+    chartsHtml=`
+      <div style="margin-bottom:16px">${renderLineChartTall(pDist,'Distancia (km)')}</div>
+      ${pRitmo.length>=2?`<div style="margin-bottom:16px">${renderLineChartRitmoTall(pRitmo)}</div>`:''}`;
+  } else if(!isRun&&puntosGraf.length>=2){
+    chartsHtml=`<div style="margin-bottom:16px">${renderLineChartTall(puntosGraf,showRM?'1RM estimado (kg)':'Peso máx. levantado (kg)')}</div>`;
+  } else {
+    chartsHtml=`<div class="empty" style="padding:32px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos en este período</div></div>`;
+  }
 
   const botonesHtml = buildFiltroHtml(
     ['todo','12m',...años],
@@ -3624,7 +3552,9 @@ function openCuerpoChart(key, mets){
       <div style="display:flex;gap:4px;flex-wrap:wrap">${filtroHtml}</div>
     </div>
     ${ptsFilt.length>=2
-      ? buildCuerpoChartHtml(ptsFilt, key, cfg.unit, cfg.color, filtroSel) + statsHtml
+      ? `<div style="margin-bottom:4px;font-size:11px;color:var(--ink3);font-weight:600">${cfg.label}${cfg.unit?' ('+cfg.unit+')':''} · ${ptsFilt.length} registros</div>`
+        + renderLineChartFull(ptsFilt, cfg.label, cfg.color)
+        + statsHtml
       : `<div class="empty" style="padding:40px 0"><div class="empty-icon">📈</div><div class="empty-text">Pocos datos en este período</div><div class="empty-sub">Prueba con "Todo" para ver el historial completo.</div></div>`}
     <div style="margin-top:20px">
       <div class="section-label" style="margin-bottom:8px">Todos los registros · ${pts.length} total</div>
@@ -3683,25 +3613,26 @@ function renderProgCuerpo(){
       font-size:11px;font-weight:600;cursor:pointer">${f==='todo'?'Todo':'12 meses'}</button>`).join('')}
   </div>`;
 
-  document.getElementById('cuerpo-kpis').innerHTML=`
-    <div onclick="openCuerpoChart('peso')" style="padding:16px 12px;border-right:1px solid var(--border);text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
-      <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Peso actual</div>
-      <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:var(--ink);line-height:1">${ult.peso||'—'}<span style="font-size:14px;font-weight:400;color:var(--ink3)">kg</span></div>
-      <div style="font-size:11px;font-weight:700;color:${dpeso.v<0?'var(--green)':dpeso.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dpeso.v!==0?dpeso.str+'kg '+periodoLabel:''}</div>
-      <div style="font-size:10px;color:var(--ink3);margin-top:2px">↓${pesoMin} · ↑${pesoMax}kg · 📈</div>
-    </div>
-    <div onclick="openCuerpoChart('imc')" style="padding:16px 12px;border-right:1px solid var(--border);text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
-      <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">IMC actual</div>
-      <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:var(--gold);line-height:1">${ult.imc||'—'}</div>
-      <div style="font-size:11px;font-weight:700;color:${dimc.v<0?'var(--green)':dimc.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dimc.v!==0?dimc.str+' '+periodoLabel:''}</div>
-      <div style="font-size:10px;color:var(--ink3);margin-top:2px">${ult.imc?parseFloat(ult.imc)<25?'Normal':parseFloat(ult.imc)<30?'Sobrepeso':'Obesidad':''} · 📈</div>
-    </div>
-    <div onclick="openCuerpoChart('grasa')" style="padding:16px 12px;text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
-      <div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Grasa corporal</div>
-      <div style="font-family:var(--fd);font-size:32px;font-weight:900;color:${parseFloat(ult.grasa||99)<30?'var(--green)':'var(--orange)'};line-height:1">${ult.grasa||'—'}<span style="font-size:14px;font-weight:400;color:var(--ink3)">${ult.grasa?'%':''}</span></div>
-      <div style="font-size:11px;font-weight:700;color:${dgrasa.v<0?'var(--green)':dgrasa.v>0?'var(--red)':'var(--ink3)'};margin-top:4px">${dgrasa.v!==0?dgrasa.str+'% '+periodoLabel:''}</div>
-      <div style="font-size:10px;color:var(--ink3);margin-top:2px">${mets.filter(m=>m.grasa).length} registros · 📈</div>
-    </div>`;
+  // IMC automático: peso(kg) / altura(m)²
+  const alturaM=(forge.perfil?.estatura||parseFloat(localStorage.getItem('mq_estatura')||'0'))/100||0;
+  const imcCalc=alturaM>0&&ult.peso?Math.round((parseFloat(ult.peso)/(alturaM*alturaM))*10)/10:null;
+  const imcVal=imcCalc||parseFloat(ult.imc)||null;
+  function imcStatus(v){
+    if(!v) return {label:'—',cls:''};
+    if(v<18.5) return {label:'Bajo peso',cls:'imc-bajo'};
+    if(v<25)   return {label:'Normal',cls:'imc-normal'};
+    if(v<30)   return {label:'Sobrepeso',cls:'imc-sobre'};
+    return {label:'Obesidad',cls:'imc-obeso'};
+  }
+  const ist=imcStatus(imcVal);
+  // Actualizar meta label del bloque resumen
+  const medResMeta=document.getElementById('sw-med-resumen-meta');
+  if(medResMeta) medResMeta.textContent=ult.peso?ult.peso+'kg':'';
+
+  const kpiPeso='<div onclick="openCuerpoChart(\'peso\')" style="padding:14px 10px;border-right:1px solid var(--border);text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'\'">'    +'<div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Peso actual</div>'    +'<div style="font-family:var(--fd);font-size:28px;font-weight:900;color:var(--ink);line-height:1">'+(ult.peso||'—')+'<span style="font-size:12px;font-weight:400;color:var(--ink3)">kg</span></div>'    +(dpeso.v!==0?'<div style="font-size:10px;font-weight:700;color:'+(dpeso.v<0?'var(--green)':dpeso.v>0?'var(--red)':'var(--ink3)')+';margin-top:3px">'+dpeso.str+'kg</div>':'')    +'<div style="font-size:9px;color:var(--ink3);margin-top:2px">↓'+pesoMin+' · ↑'+pesoMax+'</div>'    +'</div>';
+  const kpiImc='<div onclick="openCuerpoChart(\'imc\')" style="padding:14px 10px;border-right:1px solid var(--border);text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'\'">'    +'<div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">IMC</div>'    +'<div style="font-family:var(--fd);font-size:28px;font-weight:900;color:var(--orange);line-height:1">'+(imcVal||'—')+'</div>'    +(ist.cls?'<div style="margin-top:4px"><span class="imc-chip '+ist.cls+'">'+ist.label+'</span></div>':'')    +(alturaM>0?'<div class="imc-formula">÷'+alturaM.toFixed(2)+'²</div>':'')    +'</div>';
+  const kpiGrasa='<div onclick="openCuerpoChart(\'grasa\')" style="padding:14px 10px;text-align:center;cursor:pointer;transition:background .1s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'\'">'    +'<div style="font-size:9px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Grasa</div>'    +'<div style="font-family:var(--fd);font-size:28px;font-weight:900;color:'+(parseFloat(ult.grasa||99)<30?'var(--green)':'var(--orange)')+';line-height:1">'+(ult.grasa||'—')+'<span style="font-size:12px;font-weight:400;color:var(--ink3)">'+(ult.grasa?'%':'')+'</span></div>'    +(dgrasa.v!==0?'<div style="font-size:10px;font-weight:700;color:'+(dgrasa.v<0?'var(--green)':dgrasa.v>0?'var(--red)':'var(--ink3)')+';margin-top:3px">'+dgrasa.str+'%</div>':'')    +'<div style="font-size:9px;color:var(--ink3);margin-top:2px">'+mets.filter(m=>m.grasa).length+' reg.</div>'    +'</div>';
+  document.getElementById('cuerpo-kpis').innerHTML=kpiPeso+kpiImc+kpiGrasa;
 
   document.getElementById('cuerpo-charts').innerHTML='';
 
@@ -4384,29 +4315,14 @@ function renderHomeNutritionCard(){
   const el=document.getElementById('home-food-today'); if(!el) return;
   const fd=getFD(today()); const prog=getMealProgress(fd); const cm=getCurrentMeal(fd);
   const cur=cm.current, next=cm.next;
-  const activas=prog.done||0, total=prog.total||5;
-  el.innerHTML='<div class="mq-home-card">'
-    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:10px">'
-      +'<div class="mq-hrow" style="gap:8px;color:#CDA349">'+MQ.plato+'<span class="mq-kicker">Nutrición</span></div>'
-      +'<span style="font-size:13px;font-weight:700;color:'+(cm.allDone?'var(--green)':'#CDA349')+'">'+prog.pct+'%</span>'
-    +'</div>'
-    // Platos tracker
-    +mqPlatos(activas, total)
-    // Siguiente comida
-    +(cur
-      ?('<div style="margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:10px">'
-        +'<div class="mq-stat-lbl">Pendiente</div>'
-        +'<div style="font-size:14px;font-weight:700;color:var(--ink);margin:2px 0">'+cur.nombre+'</div>'
-        +'<div style="font-size:11px;color:var(--ink3)">'+( cur.ejemplo||cur.detail||cur.grupos||'')+'</div>'
-        +'<div class="mq-hrow" style="gap:8px;margin-top:8px">'
-          +'<button class="mq-btn-pill" onclick="completeCurrentMealFromHome()">Completar</button>'
-          +'<button class="mq-btn-sec" onclick="editCurrentMealFromHome()">Editar</button>'
-        +'</div>'
-        +(next?'<div class="mq-stat-lbl" style="margin-top:6px">Próxima: '+next.hora+' — '+next.nombre+'</div>':'')
-        +'</div>')
-      :'<div class="mq-stat-lbl" style="margin-top:8px;color:var(--green)">Día alimentario completo</div>'
-    )
-    +'</div>';
+  const status=cm.allDone?'Completado':'Pendiente';
+  el.innerHTML=`<div class="mq-nutri-card mq-card">
+    <div class="mq-card-head"><div><div class="mq-kicker">Alimentación de hoy</div><div class="mq-card-title">${prog.pct}% de adherencia</div></div><span class="mq-pill ${cm.allDone?'ok':''}">${status}</span></div>
+    <div class="mq-progress"><div style="width:${prog.pct}%"></div></div>
+    ${cur?`<div class="mq-pending"><div class="mq-label">${prog.done>0?'Pendiente':'Pendiente anterior'}</div><strong>${cur.nombre}</strong><p>${cur.ejemplo||cur.detail||cur.grupos||''}</p></div>
+    <div class="mq-actions"><button class="btn btn-p btn-sm" onclick="completeCurrentMealFromHome()">Completar</button><button class="btn btn-s btn-sm" onclick="editCurrentMealFromHome()">Editar comida</button></div>
+    <div class="mq-next"><span>Próxima comida:</span> ${next?`${next.hora} — ${next.nombre}`:'Sin pendientes posteriores'}</div>`:`<div class="mq-pending"><strong>Día alimentario completo</strong><p>Completaste los ${prog.total} hitos del día.</p></div>`}
+  </div>`;
 }
 function setHomeWaterCups(n){
   const fd=getFD(today()); fd.agua=Math.max(0, Math.min(NUTRITION_TARGETS.aguaVasos, n));
@@ -4421,29 +4337,15 @@ function addHomeWaterMl(ml){
 }
 function renderHomeWaterCard(){
   const el=document.getElementById('home-water-today'); if(!el) return;
-  const fd=getFD(today());
-  const ml=fd.aguaMl||Math.round((fd.agua||0)*(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos));
-  const pct=Math.min(100,Math.round(ml/NUTRITION_TARGETS.aguaMl*100));
-  const vasos=fd.agua||0;
-  const totalVasos=NUTRITION_TARGETS.aguaVasos||8;
-  // Usar ánforas si hay AGUA_CPS, si no usar vasos simples
-  const cps=getAguaCps(fd);
-  const activas=cps.filter(Boolean).length;
-  el.innerHTML='<div class="mq-home-card">'
-    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:10px">'
-      +'<div class="mq-hrow" style="gap:8px;color:#2EC4C7">'+MQ.anfora+'<span class="mq-kicker">Agua hoy</span></div>'
-      +'<span style="font-size:13px;font-weight:700;color:'+(pct>=100?'var(--green)':'#2EC4C7')+'">'+Math.round(ml/100)/10+' L</span>'
-    +'</div>'
-    // Ánforas clickeables (usando AGUA_CPS)
-    +mqAnforas(activas, AGUA_CPS.length)
-    // Botones +ml
-    +'<div class="mq-hrow" style="gap:6px;margin-top:10px;flex-wrap:wrap">'
-      +'<button class="mq-btn-aqua" onclick="addHomeWaterMl(250)">+250 ml</button>'
-      +'<button class="mq-btn-aqua" onclick="addHomeWaterMl(500)">+500 ml</button>'
-      +'<button class="mq-btn-aqua" onclick="addHomeWaterMl(750)">+750 ml</button>'
-    +'</div>'
-    +'<div class="mq-stat-lbl" style="margin-top:6px">Restante: '+Math.max(0,(NUTRITION_TARGETS.aguaMl-ml)/1000).toFixed(1).replace('.',',')+' L</div>'
-    +'</div>';
+  const fd=getFD(today()); const ml=fd.aguaMl || Math.round((fd.agua||0)*(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos));
+  const pct=Math.min(100, Math.round(ml/NUTRITION_TARGETS.aguaMl*100)); const vasos=fd.agua||0;
+  el.innerHTML=`<div class="mq-water-card mq-card">
+    <div class="mq-card-head"><div><div class="mq-kicker">Agua de hoy</div><div class="mq-card-title">${(ml/1000).toFixed(1).replace('.',',')} / 2,5 L</div></div><span class="mq-pill ${pct>=100?'ok':''}">${pct}%</span></div>
+    <div class="mq-progress aqua"><div style="width:${pct}%"></div></div>
+    <div class="mq-cups">${Array.from({length:NUTRITION_TARGETS.aguaVasos},(_,i)=>`<button class="mq-cup ${i<vasos?'on':''}" onclick="setHomeWaterCups(${i+1})" aria-label="${i+1} vasos"></button>`).join('')}</div>
+    <div class="mq-actions"><button class="btn btn-s btn-sm" onclick="addHomeWaterMl(250)">+250 ml</button><button class="btn btn-s btn-sm" onclick="addHomeWaterMl(500)">+500 ml</button><button class="btn btn-s btn-sm" onclick="addHomeWaterMl(750)">+750 ml</button></div>
+    <div class="mq-next"><span>Restante:</span> ${Math.max(0,(NUTRITION_TARGETS.aguaMl-ml)/1000).toFixed(1).replace('.',',')} L</div>
+  </div>`;
 }
 function addFrequentFood(foodId){
   const food=FREQUENT_FOODS.find(f=>f.id===foodId); if(!food) return;
@@ -5464,624 +5366,3 @@ document.addEventListener('keydown', e=>{
 
 // ---------------------------------------------------------------
 loadDB();
-// =============================================================
-//  SISTEMA GENÉRICO DE GRÁFICOS MELQART v123
-//  renderMetricChart(config)  — un solo componente para todo
-// =============================================================
-
-// -------------------------------------------------------------
-//  HELPERS UTILITARIOS
-// -------------------------------------------------------------
-
-/** Convierte "6:54" → 6.9 (decimal para graficar) */
-function paceToDecimal(pace) {
-  if (typeof pace === 'number') return pace;
-  const parts = String(pace).split(':');
-  const minutes = parseInt(parts[0]) || 0;
-  const seconds = parseInt(parts[1]) || 0;
-  return minutes + seconds / 60;
-}
-
-/** Convierte 6.9 → "6:54" (para mostrar) */
-function decimalToPace(value) {
-  if (!value || isNaN(value)) return '—';
-  const minutes = Math.floor(value);
-  const seconds = Math.round((value - minutes) * 60);
-  if (seconds === 60) return `${minutes + 1}:00`;
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
-}
-
-/** Detecta si un peso fue en máquina Smith (termina en .9 o equipment="smith") */
-function detectSmith(value, equipment) {
-  if (equipment) return String(equipment).toLowerCase() === 'smith';
-  return String(value).endsWith('.9');
-}
-
-/** Calcula volumen total: peso × reps × series */
-function calculateVolume(weight, reps, sets) {
-  if (!weight || !reps || !sets) return null;
-  return weight * reps * sets;
-}
-
-/** Formatea un valor según su tipo para mostrar al usuario */
-function formatMetricValue(value, type, unit) {
-  if (value === null || value === undefined || isNaN(value)) return '—';
-  if (type === 'pace')         return `${decimalToPace(value)} ${unit || 'min/km'}`;
-  if (type === 'percentage')   return `${Math.round(value)}%`;
-  if (type === 'weight')       return `${parseFloat(value).toFixed(1)} ${unit || 'kg'}`;
-  if (type === 'body_measure') return `${parseFloat(value).toFixed(1)} ${unit || 'cm'}`;
-  if (type === 'volume')       return `${Math.round(value).toLocaleString('es-CL')} ${unit || 'kg'}`;
-  if (type === 'distance')     return `${parseFloat(value).toFixed(2)} ${unit || 'km'}`;
-  if (type === 'time')         return `${Math.round(value)} ${unit || 'min'}`;
-  if (type === 'reps')         return `${Math.round(value)} ${unit || 'reps'}`;
-  if (type === 'heartrate')    return `${Math.round(value)} ${unit || 'bpm'}`;
-  return `${value} ${unit || ''}`.trim();
-}
-
-/** Formatea el tick del eje Y según tipo */
-function formatAxisTick(value, type, unit) {
-  if (type === 'pace')         return decimalToPace(value);
-  if (type === 'percentage')   return `${Math.round(value)}%`;
-  if (type === 'weight' || type === 'body_measure') return `${Math.round(value*10)/10}`;
-  if (type === 'volume')       return `${Math.round(value/1000*10)/10}k`;
-  if (type === 'distance')     return `${Math.round(value*10)/10}`;
-  if (type === 'heartrate')    return `${Math.round(value)}`;
-  return `${Math.round(value*10)/10}`;
-}
-
-/** Calcula dominio dinámico del eje Y con padding */
-function calculateYAxisDomain(values, options) {
-  options = options || {};
-  const valid = values.filter(v => typeof v === 'number' && !isNaN(v));
-  if (!valid.length) return [0, 1];
-  const minV = Math.min(...valid);
-  const maxV = Math.max(...valid);
-  const paddingRatio = options.paddingRatio !== undefined ? options.paddingRatio : 0.12;
-  const range = maxV - minV || maxV || 1;
-  const padding = range * paddingRatio;
-  let min = options.forceZero ? 0 : minV - padding;
-  let max = maxV + padding;
-  if (options.min !== undefined) min = options.min;
-  if (options.max !== undefined) max = options.max;
-  return [min, max];
-}
-
-/** Aplica filtro de tiempo a un array de puntos con campo `date` (YYYY-MM-DD) */
-function applyTimeFilter(data, range) {
-  if (!range || range === 'all') return data;
-  const now = new Date();
-  let cutoff;
-  if (range === '7d')  { cutoff = new Date(now); cutoff.setDate(now.getDate() - 7); }
-  else if (range === '30d')  { cutoff = new Date(now); cutoff.setDate(now.getDate() - 30); }
-  else if (range === '3m')   { cutoff = new Date(now); cutoff.setMonth(now.getMonth() - 3); }
-  else if (range === '6m')   { cutoff = new Date(now); cutoff.setMonth(now.getMonth() - 6); }
-  else if (range === '12m')  { cutoff = new Date(now); cutoff.setFullYear(now.getFullYear() - 1); }
-  else if (/^\d{4}$/.test(range)) { // año específico ej "2026"
-    return data.filter(p => String(p.date || '').startsWith(range));
-  }
-  else return data;
-  const cutoffStr = localDateStr(cutoff);
-  return data.filter(p => (p.date || '') >= cutoffStr);
-}
-
-/** Normaliza array de puntos: asegura campo `value` numérico */
-function normalizeChartData(data, type) {
-  return (data || []).map(p => {
-    let v = p.value;
-    if (type === 'pace' && typeof p.rawValue === 'string') {
-      v = paceToDecimal(p.rawValue);
-    } else if (typeof v === 'string') {
-      // Intentar parsear string a número
-      v = parseFloat(v.replace(',', '.'));
-    }
-    return { ...p, value: isNaN(v) ? null : v };
-  }).filter(p => p.value !== null);
-}
-
-// -------------------------------------------------------------
-//  GENERADORES DE CONFIGURACIÓN
-// -------------------------------------------------------------
-
-/** Genera config para gráfico de carga de un ejercicio */
-function createExerciseWeightChart(exerciseName, sessions, exerciseId) {
-  const data = [];
-  (sessions || []).sort((a, b) => a.date - b.date).forEach(s => {
-    const ex = (s.exercises || []).find(x => exerciseId ? x.exId === exerciseId : x.name === exerciseName);
-    if (!ex) return;
-    const sets = (ex.sets || []).filter(st => st.done && parseFloat(st.weight) > 0);
-    if (!sets.length) return;
-    const best = sets.sort((a, b) => parseFloat(b.weight) - parseFloat(a.weight))[0];
-    const w = parseFloat(best.weight);
-    data.push({
-      date: localDateStr(s.date),
-      label: localDateStr(s.date).slice(5).replace('-', '/'),
-      value: w,
-      reps: best.reps || 0,
-      sets: sets.length,
-      equipment: detectSmith(w) ? 'Smith' : 'Barra',
-      displayValue: `${w} kg × ${best.reps || '?'}`
-    });
-  });
-  return {
-    id: `ex_weight_${exerciseId || exerciseName}`,
-    title: exerciseName,
-    subtitle: 'Mejor carga por sesión',
-    unitLabel: 'kg / sesión',
-    type: 'weight', unit: 'kg',
-    data,
-    yAxis: { auto: true, forceZero: false },
-    tooltip: { showDate: true, showReps: true, showSets: true, showEquipment: true }
-  };
-}
-
-/** Genera config para gráfico de volumen de un ejercicio */
-function createExerciseVolumeChart(exerciseName, sessions, exerciseId) {
-  const data = [];
-  (sessions || []).sort((a, b) => a.date - b.date).forEach(s => {
-    const ex = (s.exercises || []).find(x => exerciseId ? x.exId === exerciseId : x.name === exerciseName);
-    if (!ex) return;
-    const sets = (ex.sets || []).filter(st => st.done && parseFloat(st.weight) > 0 && parseInt(st.reps) > 0);
-    if (!sets.length) return;
-    const vol = sets.reduce((acc, st) => acc + parseFloat(st.weight) * parseInt(st.reps), 0);
-    data.push({
-      date: localDateStr(s.date),
-      label: localDateStr(s.date).slice(5).replace('-', '/'),
-      value: vol,
-      displayValue: `${Math.round(vol).toLocaleString('es-CL')} kg`
-    });
-  });
-  return {
-    id: `ex_vol_${exerciseId || exerciseName}`,
-    title: exerciseName,
-    subtitle: 'Volumen total por sesión',
-    unitLabel: 'kg totales',
-    type: 'volume', unit: 'kg',
-    data,
-    yAxis: { auto: true, forceZero: true }
-  };
-}
-
-/** Genera config para gráfico de medida corporal */
-function createBodyMeasureChart(measureId, measureName, measurements) {
-  const data = (measurements || [])
-    .filter(m => m[measureId] != null && m[measureId] !== '')
-    .map(m => ({
-      date: m.date,
-      label: String(m.date).slice(5).replace('-', '/'),
-      value: parseFloat(m[measureId]),
-      displayValue: `${parseFloat(m[measureId]).toFixed(1)} cm`
-    }));
-  return {
-    id: `body_${measureId}`,
-    title: measureName,
-    subtitle: 'Medida corporal',
-    unitLabel: 'cm',
-    type: 'body_measure', unit: 'cm',
-    data,
-    yAxis: { auto: true, forceZero: false }
-  };
-}
-
-/** Genera config para gráfico de peso corporal */
-function createBodyWeightChart(measurements) {
-  const data = (measurements || [])
-    .filter(m => m.peso != null && m.peso !== '')
-    .map(m => ({
-      date: m.date,
-      label: String(m.date).slice(5).replace('-', '/'),
-      value: parseFloat(m.peso),
-      displayValue: `${parseFloat(m.peso).toFixed(1)} kg`
-    }));
-  return {
-    id: 'body_weight',
-    title: 'Peso corporal',
-    subtitle: 'Evolución del peso',
-    unitLabel: 'kg',
-    type: 'weight', unit: 'kg',
-    data,
-    yAxis: { auto: true, forceZero: false }
-  };
-}
-
-/** Genera config para gráfico de ritmo (carrera) */
-function createPaceChart(runningSessions) {
-  const data = (runningSessions || [])
-    .filter(s => s.ritmo > 0)
-    .map(s => ({
-      date: s.fecha,
-      label: String(s.fecha).slice(5).replace('-', '/'),
-      value: s.ritmo,
-      rawValue: `${Math.floor(s.ritmo)}:${String(Math.round((s.ritmo % 1) * 60)).padStart(2, '0')}`,
-      displayValue: `${decimalToPace(s.ritmo)} min/km`
-    }));
-  return {
-    id: 'run_pace',
-    title: 'Ritmo promedio',
-    subtitle: 'Evolución por sesión — arriba = más rápido',
-    unitLabel: 'min/km',
-    type: 'pace', unit: 'min/km',
-    data,
-    yAxis: { auto: true, forceZero: false, invertY: true }
-  };
-}
-
-/** Genera config para gráfico de distancia (carrera) */
-function createDistanceChart(runningSessions) {
-  const data = (runningSessions || [])
-    .filter(s => s.totalDist > 0)
-    .map(s => ({
-      date: s.fecha,
-      label: String(s.fecha).slice(5).replace('-', '/'),
-      value: s.totalDist,
-      displayValue: `${s.totalDist.toFixed(2)} km`
-    }));
-  return {
-    id: 'run_distance',
-    title: 'Distancia',
-    subtitle: 'Por sesión de carrera',
-    unitLabel: 'km',
-    type: 'distance', unit: 'km',
-    data,
-    yAxis: { auto: true, forceZero: true }
-  };
-}
-
-// -------------------------------------------------------------
-//  AGRUPACIONES
-// -------------------------------------------------------------
-
-function groupByWeek(data) {
-  const map = {};
-  data.forEach(p => {
-    const d = new Date(p.date);
-    // Lunes de la semana
-    const day = d.getDay();
-    const diff = (day === 0 ? -6 : 1 - day);
-    const mon = new Date(d); mon.setDate(d.getDate() + diff);
-    const key = localDateStr(mon);
-    if (!map[key]) map[key] = { date: key, label: key.slice(5).replace('-', '/'), points: [] };
-    map[key].points.push(p);
-  });
-  return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
-}
-
-function groupByMonth(data) {
-  const map = {};
-  data.forEach(p => {
-    const key = String(p.date).slice(0, 7);
-    if (!map[key]) map[key] = { date: key + '-01', label: key.slice(5), points: [] };
-    map[key].points.push(p);
-  });
-  return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
-}
-
-// -------------------------------------------------------------
-//  COMPONENTE PRINCIPAL: renderMetricChart(config)
-//
-//  Retorna un string HTML con la tarjeta de gráfico completa.
-//  config = {
-//    id, title, subtitle, unitLabel,
-//    type, unit,
-//    data: [{date, label, value, displayValue, ...}],
-//    yAxis: {auto, forceZero, invertY, paddingRatio},
-//    tooltip: {showDate, showReps, showSets, showEquipment, showNotes},
-//    filters: ['30d','3m','6m','12m','all'],  // opciones a mostrar
-//    activeFilter: '12m',                     // filtro activo actual
-//    onFilter: 'miFunc',                      // nombre de fn JS a llamar con nuevo filtro
-//    height: 200,                             // alto del SVG (default 220)
-//    color: '#A4713A',                        // color línea (default --orange)
-//    areaOpacity: 0.12
-//  }
-// -------------------------------------------------------------
-
-function renderMetricChart(config) {
-  const {
-    id = 'chart_' + Date.now(),
-    title = '',
-    subtitle = '',
-    unitLabel = '',
-    type = 'weight',
-    unit = '',
-    yAxis = {},
-    tooltip = {},
-    filters,
-    activeFilter,
-    onFilter,
-    height: H = 220,
-    color = 'var(--orange)',
-    areaOpacity = 0.12
-  } = config;
-
-  // Normalizar datos
-  const allData = normalizeChartData(config.data, type);
-
-  // Aplicar filtro de tiempo
-  const range = activeFilter || 'all';
-  const data = applyTimeFilter(allData, range);
-
-  // ── Cabecera de la tarjeta ────────────────────────────────
-  const headerHtml = `
-    <div class="mq-chart-header">
-      <div>
-        <div class="mq-chart-title">${title}</div>
-        ${subtitle ? `<div class="mq-chart-subtitle">${subtitle}</div>` : ''}
-      </div>
-      <div class="mq-chart-unit">${unitLabel}</div>
-    </div>`;
-
-  // ── Botones de filtro ─────────────────────────────────────
-  let filtersHtml = '';
-  if (filters && filters.length && onFilter) {
-    const labels = { '7d':'7d', '30d':'30d', '3m':'3m', '6m':'6m', '12m':'12m', 'all':'Todo' };
-    filtersHtml = `<div class="mq-chart-filters">` +
-      filters.map(f =>
-        `<button class="mq-chart-filter-btn${f === range ? ' on' : ''}" onclick="${onFilter}('${f}')">${labels[f] || f}</button>`
-      ).join('') +
-      `</div>`;
-  }
-
-  // ── Estado vacío ──────────────────────────────────────────
-  if (!data || data.length < 2) {
-    return `
-      <div class="mq-chart-card" id="${id}">
-        ${headerHtml}
-        ${filtersHtml}
-        <div class="mq-chart-empty">
-          <div class="mq-chart-empty-icon">📈</div>
-          <div class="mq-chart-empty-text">Pocos datos en este período</div>
-          <div class="mq-chart-empty-sub">Registra al menos 2 sesiones para ver tendencia</div>
-        </div>
-      </div>`;
-  }
-
-  // ── Cálculo del gráfico SVG ───────────────────────────────
-  const PL = 46, PB = 26, PT = 10, PR = 8;
-  const n = data.length;
-  const minPxPerPoint = n > 40 ? 6 : n > 20 ? 8 : 12;
-  const W = Math.max(320, PL + PR + n * minPxPerPoint);
-
-  const vals = data.map(p => p.value);
-  const invertY = type === 'pace' || yAxis.invertY;
-  const [domMin, domMax] = calculateYAxisDomain(vals, yAxis);
-
-  function toX(i) {
-    return PL + (i / (n - 1 || 1)) * (W - PL - PR);
-  }
-  function toY(v) {
-    const ratio = (domMax - domMin) > 0 ? (v - domMin) / (domMax - domMin) : 0.5;
-    const normalized = invertY ? ratio : 1 - ratio;
-    return PT + normalized * (H - PT - PB);
-  }
-
-  const xs = data.map((_, i) => toX(i));
-  const ys = data.map(p => toY(p.value));
-
-  // Línea suavizada (sin Bezier, pero aproximada con puntos intermedios)
-  const linePath = xs.map((x, i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
-  const areaPath = linePath +
-    ` L${xs[n-1].toFixed(1)},${(H - PB).toFixed(1)}` +
-    ` L${xs[0].toFixed(1)},${(H - PB).toFixed(1)} Z`;
-
-  // Etiquetas Y — 4 ticks
-  const tickCount = 4;
-  const yTicksHtml = Array.from({ length: tickCount + 1 }, (_, i) => {
-    const v = domMin + (domMax - domMin) * (i / tickCount);
-    const y = toY(v);
-    const label = formatAxisTick(v, type, unit);
-    return `<text x="${PL - 4}" y="${y.toFixed(1)}" text-anchor="end" dominant-baseline="middle" fill="var(--ink3)" font-size="9">${label}</text>
-      <line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>`;
-  }).join('');
-
-  // Etiquetas X — máximo 8
-  const xStep = Math.max(1, Math.floor(n / 8));
-  const xTicksHtml = data.map((p, i) => {
-    if (i % xStep !== 0 && i !== n - 1) return '';
-    return `<text x="${xs[i].toFixed(1)}" y="${H - 2}" text-anchor="middle" fill="var(--ink3)" font-size="9">${p.label}</text>`;
-  }).join('');
-
-  // Puntos (dots) — con datos para tooltip via data-* attrs
-  const dotR = n > 40 ? 2 : n > 20 ? 3 : 4;
-  const dotsHtml = data.map((p, i) => {
-    const isSmithPoint = p.equipment ? detectSmith(p.value, p.equipment) : detectSmith(p.value);
-    const ttMain = p.displayValue || formatMetricValue(p.value, type, unit);
-    const ttSub = [
-      tooltip.showReps && p.reps ? `${p.sets || '?'}×${p.reps} reps` : '',
-      tooltip.showEquipment && isSmithPoint ? 'Smith' : (tooltip.showEquipment && p.equipment ? p.equipment : ''),
-      tooltip.showNotes && p.notes ? p.notes : ''
-    ].filter(Boolean).join(' · ');
-    const safeDate = p.date || '';
-    const safeMain = ttMain.replace(/"/g, '&quot;');
-    const safeSub  = ttSub.replace(/"/g, '&quot;');
-    return `<circle
-      cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="${dotR}"
-      fill="${isSmithPoint && n < 60 ? 'var(--green)' : color}"
-      stroke="var(--bg2)" stroke-width="1.5"
-      style="cursor:pointer"
-      onmouseenter="mqChartTooltipShow(event,'${safeDate}','${safeMain}','${safeSub}')"
-      onmouseleave="mqChartTooltipHide()"
-      ontouchstart="mqChartTooltipShow(event,'${safeDate}','${safeMain}','${safeSub}')"
-      ontouchend="mqChartTooltipHide()">
-    </circle>`;
-  }).join('');
-
-  const svgHtml = `
-    <div class="mq-chart-svg-wrap" style="overflow-x:${n > 20 ? 'auto' : 'hidden'}">
-      <svg width="${n > 20 ? W : '100%'}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block">
-        <defs>
-          <linearGradient id="mq_area_grad_${id.replace(/[^a-z0-9]/gi,'_')}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="${color}" stop-opacity="${areaOpacity * 2}"/>
-            <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-        ${yTicksHtml}
-        ${xTicksHtml}
-        <path d="${areaPath}" fill="url(#mq_area_grad_${id.replace(/[^a-z0-9]/gi,'_')})"/>
-        <path d="${linePath}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
-        ${dotsHtml}
-      </svg>
-    </div>`;
-
-  return `
-    <div class="mq-chart-card" id="${id}">
-      ${headerHtml}
-      ${svgHtml}
-      ${filtersHtml}
-    </div>`;
-}
-
-// -------------------------------------------------------------
-//  TOOLTIP GLOBAL (hover/touch sobre puntos del gráfico)
-// -------------------------------------------------------------
-
-(function setupChartTooltip() {
-  if (document.getElementById('mq-chart-tooltip')) return;
-  const el = document.createElement('div');
-  el.id = 'mq-chart-tooltip';
-  el.className = 'mq-chart-tooltip';
-  document.body.appendChild(el);
-})();
-
-function mqChartTooltipShow(evt, date, main, sub) {
-  const el = document.getElementById('mq-chart-tooltip');
-  if (!el) return;
-  el.innerHTML = `
-    ${date ? `<div class="mq-chart-tooltip-date">${date}</div>` : ''}
-    <div class="mq-chart-tooltip-main">${main}</div>
-    ${sub ? `<div class="mq-chart-tooltip-sub">${sub}</div>` : ''}`;
-  el.classList.add('visible');
-
-  // Posicionar
-  const touch = evt.touches && evt.touches[0];
-  const x = touch ? touch.clientX : evt.clientX;
-  const y = touch ? touch.clientY : evt.clientY;
-  const W = window.innerWidth, H = window.innerHeight;
-  let left = x + 12, top = y - 40;
-  if (left + 200 > W) left = x - 212;
-  if (top < 0) top = y + 12;
-  if (top + 90 > H) top = H - 95;
-  el.style.left = left + 'px';
-  el.style.top  = top  + 'px';
-}
-
-function mqChartTooltipHide() {
-  const el = document.getElementById('mq-chart-tooltip');
-  if (el) el.classList.remove('visible');
-}
-
-// Ocultar tooltip al hacer scroll
-document.addEventListener('scroll', mqChartTooltipHide, { passive: true, capture: true });
-
-// =============================================================
-//  INTEGRACIÓN: reemplaza gráficos del tab Progreso
-//  con el nuevo sistema renderMetricChart()
-// =============================================================
-
-/**
- * Versión mejorada de renderExDetail que usa renderMetricChart()
- * Llamada internamente por renderExDetail() para el bloque de gráficos
- */
-function buildExDetailCharts(puntos, isRun, exId, filtroSel) {
-  // puntos: [{fecha, val, label, valDist?, valRitmo?}]
-  const años = [...new Set(puntos.map(p => p.fecha.slice(0, 4)))].sort().reverse();
-  const hoy12m = new Date(); hoy12m.setFullYear(hoy12m.getFullYear() - 1);
-  const corte12m = localDateStr(hoy12m);
-
-  const puntosGraf = (() => {
-    if (filtroSel === 'todo') return puntos;
-    if (filtroSel === '12m')  return puntos.filter(p => p.fecha >= corte12m);
-    return puntos.filter(p => p.fecha.startsWith(filtroSel));
-  })();
-
-  if (puntosGraf.length < 2) {
-    return `<div class="mq-chart-card">
-      <div class="mq-chart-empty">
-        <div class="mq-chart-empty-icon">📈</div>
-        <div class="mq-chart-empty-text">Pocos datos en este período</div>
-        <div class="mq-chart-empty-sub">Prueba "Todo" para ver el historial completo</div>
-      </div>
-    </div>`;
-  }
-
-  if (isRun) {
-    const distData = puntosGraf
-      .filter(p => p.valDist > 0)
-      .map(p => ({ date: p.fecha, label: p.fecha.slice(5).replace('-', '/'), value: p.valDist, displayValue: `${p.valDist.toFixed(2)} km` }));
-    const ritmoData = puntosGraf
-      .filter(p => p.valRitmo > 0)
-      .map(p => ({ date: p.fecha, label: p.fecha.slice(5).replace('-', '/'), value: p.valRitmo, displayValue: `${decimalToPace(p.valRitmo)} min/km` }));
-
-    let html = renderMetricChart({
-      id: `ex_dist_${exId}_${filtroSel}`,
-      title: 'Distancia', unitLabel: 'km',
-      type: 'distance', unit: 'km',
-      data: distData,
-      yAxis: { forceZero: true },
-      tooltip: { showDate: true },
-      height: 180, color: 'var(--green)'
-    });
-    if (ritmoData.length >= 2) {
-      html += renderMetricChart({
-        id: `ex_ritmo_${exId}_${filtroSel}`,
-        title: 'Ritmo promedio',
-        subtitle: 'Arriba = más rápido · Abajo = más lento',
-        unitLabel: 'min/km',
-        type: 'pace', unit: 'min/km',
-        data: ritmoData,
-        yAxis: { invertY: true, forceZero: false },
-        tooltip: { showDate: true },
-        height: 180, color: 'var(--blue)'
-      });
-    }
-    return html;
-  } else {
-    // Fuerza
-    const isPeso1RM = puntos[0] && puntos[0].label && String(puntos[0].label).includes('1RM');
-    const wData = puntosGraf.map(p => ({
-      date: p.fecha,
-      label: p.fecha.slice(5).replace('-', '/'),
-      value: p.val,
-      displayValue: p.label || formatMetricValue(p.val, 'weight', 'kg'),
-      equipment: detectSmith(p.val) ? 'Smith' : undefined
-    }));
-    return renderMetricChart({
-      id: `ex_weight_${exId}_${filtroSel}`,
-      title: isPeso1RM ? '1RM estimado' : 'Peso máx. levantado',
-      unitLabel: isPeso1RM ? 'kg 1RM' : 'kg / sesión',
-      type: 'weight', unit: 'kg',
-      data: wData,
-      yAxis: { forceZero: false },
-      tooltip: { showDate: true, showEquipment: true },
-      height: 220, color: 'var(--orange)'
-    });
-  }
-}
-
-/**
- * Versión mejorada de gráfico corporal que usa renderMetricChart()
- * Sustituye a renderLineChartFull() en openCuerpoChart()
- */
-// pts: [{fecha, val, label}] — ya filtrados por el caller (openCuerpoChart)
-function buildCuerpoChartHtml(pts, metricKey, unit, color, filtroSel) {
-  const data = pts.map(p => ({
-    date: p.fecha,
-    label: p.fecha.slice(5).replace('-', '/'),
-    value: p.val,
-    displayValue: p.label
-  }));
-  const chartType = unit === '%' ? 'percentage' : 'weight';
-  return renderMetricChart({
-    id: `cuerpo_${metricKey}_${filtroSel}`,
-    type: chartType,
-    unit,
-    unitLabel: unit || '',
-    data,
-    yAxis: { forceZero: false, paddingRatio: 0.08 },
-    tooltip: { showDate: true },
-    height: 220,
-    color
-  });
-}
-
-// =============================================================
-//  FIN SISTEMA DE GRÁFICOS MELQART v123
-// =============================================================

@@ -3,26 +3,42 @@
    VARIABLES
 --------------------------------------- */
 :root {
+  /* ── Fondos ── */
   --bg:#F2EFE6;
   --bg2:#FCFAF6;
   --bg3:#F8F5EF;
   --bg4:#EEE7DA;
+  /* ── Bordes ── */
   --border:#D8C9B2;
   --border2:#C8B79D;
+  /* ── Texto ── */
   --ink:#181B1D;
   --ink2:#5B5146;
   --ink3:#8C8478;
+  /* ── Color principal: Bronce/Oro ── */
   --orange:#A4713A;
   --orange2:#8E5E2C;
   --bronze:#A4713A;
   --bronze2:#8E5E2C;
+  --gold:#A4713A;
+  /* ── Estados semánticos ── */
+  --green:#7E8D61;
+  --red:#9A6552;
+  --alerta:#9A6552;
+  /* ── Alias legacy (no usar en nuevos) ── */
   --sand:#D8C9B2;
   --stone:#F2EFE6;
   --ivory:#FCFAF6;
-  --green:#7E8D61;
-  --red:#9A6552;
-  --gold:#A4713A;
   --blue:#A4713A;
+  /* ── MELQART Design tokens ── */
+  --mq-purple:#5A2D82;
+  --mq-purple-d:#2D1452;
+  --mq-gold:#CDA349;
+  --mq-aqua:var(--mq-aqua);
+  --mq-ring-bg:#E8E0F8;
+  --mq-border-l:#E8E0F8;
+  --mq-border-d:#3D2466;
+  /* ── Tipografía ── */
   --fd:'Cinzel', serif;
   --fb:'Montserrat', sans-serif;
   --r:12px;
@@ -270,13 +286,13 @@ select.inp{cursor:pointer}
 
 /* Agua contador */
 .agua-counter{display:flex;align-items:center;justify-content:center;gap:16px;padding:12px 0}
-.agua-num-big{font-family:var(--fd);font-size:48px;font-weight:900;color:#22d3ee;line-height:1}
+.agua-num-big{font-family:var(--fd);font-size:48px;font-weight:900;color:var(--mq-aqua);line-height:1}
 .agua-btns{display:flex;flex-direction:column;gap:6px}
 .agua-step{width:40px;height:40px;border-radius:50%;border:2px solid var(--border2);background:var(--bg3);color:var(--ink2);font-size:20px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s}
 .agua-step:active{border-color:var(--orange);color:var(--orange)}
 .agua-dots{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;padding:8px 16px}
 .agua-dot{width:12px;height:12px;border-radius:50%;background:var(--bg3);border:1.5px solid var(--border2);transition:all .2s}
-.agua-dot.on{background:#22d3ee;border-color:#22d3ee}
+.agua-dot.on{background:var(--mq-aqua);border-color:var(--mq-aqua)}
 
 /* ---------------------------------------
    SCREEN: PERFIL — HÁBITOS LUMEN
@@ -476,28 +492,7 @@ html,body{height:100%;overflow:auto !important;background:var(--bg)}
 
 
 /* v104 · clean header + board-like cards */
-:root{
-  --bg:#F2EFE6;
-  --bg2:#FCFAF6;
-  --bg3:#F8F5EF;
-  --bg4:#EEE7DA;
-  --border:#D8C9B2;
-  --border2:#C8B79D;
-  --ink:#181B1D;
-  --ink2:#5B5146;
-  --ink3:#8C8478;
-  --orange:#A4713A;
-  --orange2:#8E5E2C;
-  --bronze:#A4713A;
-  --bronze2:#8E5E2C;
-  --sand:#D8C9B2;
-  --stone:#F2EFE6;
-  --ivory:#FCFAF6;
-  --green:#7E8D61;
-  --red:#9A6552;
-  --gold:#A4713A;
-  --blue:#A4713A;
-}
+
 body{background:var(--bg);}
 .topbar{
   min-height:54px !important;
@@ -607,538 +602,151 @@ nav{height:calc(74px + env(safe-area-inset-bottom)) !important;min-height:calc(7
 /* v108 Nutrición MVP */
 .mq-card{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:14px 16px;box-shadow:0 8px 22px rgba(24,27,29,.035)}
 .mq-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}.mq-kicker{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--ink3);font-weight:700;margin-bottom:3px}.mq-card-title{font-size:19px;font-weight:800;color:var(--ink);font-family:var(--fd)}.mq-pill{font-size:11px;font-weight:800;color:var(--orange);background:var(--bg3);border:1px solid var(--border2);border-radius:999px;padding:5px 9px;white-space:nowrap}.mq-pill.ok{color:var(--green);border-color:var(--green)}
-.mq-progress{height:8px;background:var(--bg4);border-radius:99px;overflow:hidden;margin:8px 0 12px}.mq-progress>div{height:100%;background:var(--orange);border-radius:99px;transition:width .25s}.mq-progress.aqua>div{background:#2EC4C7}.mq-pending strong{display:block;font-size:15px;color:var(--ink);margin-bottom:4px}.mq-pending p{font-size:13px;color:var(--ink2);line-height:1.45;margin:0 0 10px}.mq-label{font-size:11px;color:var(--ink3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}.mq-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.mq-next{font-size:12px;color:var(--ink2);margin-top:9px}.mq-next span{color:var(--ink3);font-weight:700}.mq-cups{display:grid;grid-template-columns:repeat(11,1fr);gap:5px;margin:12px 0}.mq-cup{height:25px;border:1.5px solid var(--border2);background:var(--bg3);clip-path:polygon(18% 0,82% 0,72% 100%,28% 100%);cursor:pointer}.mq-cup.on{background:#2EC4C7;border-color:#2EC4C7}.mq-portion-grid{display:flex;flex-direction:column;gap:10px}.mq-portion-row{display:grid;grid-template-columns:1.1fr 1fr auto;gap:8px;align-items:center}.mq-portion-row strong{display:block;font-size:12px;color:var(--ink)}.mq-portion-row span,.mq-portion-row small{font-size:11px;color:var(--ink3)}.mq-mini-progress{height:6px;border-radius:99px;background:var(--bg4);overflow:hidden}.mq-mini-progress>div{height:100%;background:var(--orange);border-radius:99px}.mq-food-buttons{display:flex;flex-wrap:wrap;gap:7px}.mq-food-buttons button{border:1px solid var(--border2);background:var(--bg3);color:var(--ink2);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer}.mq-food-buttons button:active{border-color:var(--orange);color:var(--orange)}
+.mq-progress{height:8px;background:var(--bg4);border-radius:99px;overflow:hidden;margin:8px 0 12px}.mq-progress>div{height:100%;background:var(--orange);border-radius:99px;transition:width .25s}.mq-progress.aqua>div{background:var(--mq-aqua)}.mq-pending strong{display:block;font-size:15px;color:var(--ink);margin-bottom:4px}.mq-pending p{font-size:13px;color:var(--ink2);line-height:1.45;margin:0 0 10px}.mq-label{font-size:11px;color:var(--ink3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}.mq-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.mq-next{font-size:12px;color:var(--ink2);margin-top:9px}.mq-next span{color:var(--ink3);font-weight:700}.mq-cups{display:grid;grid-template-columns:repeat(11,1fr);gap:5px;margin:12px 0}.mq-cup{height:25px;border:1.5px solid var(--border2);background:var(--bg3);clip-path:polygon(18% 0,82% 0,72% 100%,28% 100%);cursor:pointer}.mq-cup.on{background:var(--mq-aqua);border-color:var(--mq-aqua)}.mq-portion-grid{display:flex;flex-direction:column;gap:10px}.mq-portion-row{display:grid;grid-template-columns:1.1fr 1fr auto;gap:8px;align-items:center}.mq-portion-row strong{display:block;font-size:12px;color:var(--ink)}.mq-portion-row span,.mq-portion-row small{font-size:11px;color:var(--ink3)}.mq-mini-progress{height:6px;border-radius:99px;background:var(--bg4);overflow:hidden}.mq-mini-progress>div{height:100%;background:var(--orange);border-radius:99px}.mq-food-buttons{display:flex;flex-wrap:wrap;gap:7px}.mq-food-buttons button{border:1px solid var(--border2);background:var(--bg3);color:var(--ink2);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer}.mq-food-buttons button:active{border-color:var(--orange);color:var(--orange)}
 
 /* ═══════════════════════════════════════════════════
-   MELQART DESIGN SYSTEM — Tab Inicio v109
-   Paleta: #5A2D82 púrpura · #CDA349 oro · #2EC4C7 turquesa
-   Reglas: flat, sin sombras, borde 1px sutil, pill buttons
+   SÁNDWICH / ACORDEÓN — Progreso y Mediciones
 ═══════════════════════════════════════════════════ */
 
-/* Variables del sistema fenicio */
-:root {
-  --mq-purple:   #5A2D82;
-  --mq-purple-d: #2D1452;
-  --mq-gold:     #CDA349;
-  --mq-aqua:     #2EC4C7;
-  --mq-ring-bg:  #E8E0F8;
-}
-
-/* Card base del home — flat, sin sombra */
-.mq-home-card {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 14px 16px;
-  margin-bottom: 12px;
-}
-
-/* Fila flex reutilizable */
-.mq-hrow { display: flex; align-items: center; gap: 8px; }
-.mq-hrow-sb { justify-content: space-between; }
-
-/* Kicker — etiqueta superior */
-.mq-kicker {
-  font-size: 10px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--ink3);
-}
-
-/* KPI grande — peso */
-.mq-kpi-big { font-size: 34px; font-weight: 800; color: var(--mq-purple); line-height: 1; }
-.mq-kpi-unit { font-size: 16px; font-weight: 600; color: var(--ink3); }
-
-/* Stat boxes — 3 columnas superiores */
-.mq-stat-box {
+/* Bloque acordeón */
+.sw-block {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 12px 8px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-.mq-stat-ico { display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
-.mq-stat-num { font-size: 26px; font-weight: 800; color: var(--ink); line-height: 1; }
-.mq-stat-val { font-size: 22px; font-weight: 800; color: var(--ink); line-height: 1; }
-.mq-stat-lbl { font-size: 10px; color: var(--ink3); font-weight: 500; }
-
-/* Chip dorado — badge */
-.mq-chip-gold {
-  font-size: 10px;
-  font-weight: 700;
-  color: #7A5200;
-  background: #FFF3CC;
-  border: 1px solid #CDA349;
-  border-radius: 20px;
-  padding: 2px 8px;
-}
-
-/* Botón pill primario */
-.mq-btn-pill {
-  background: var(--mq-purple);
-  color: #fff;
-  border: none;
-  border-radius: 20px;
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-}
-.mq-btn-pill:active { opacity: 0.85; }
-
-/* Botón secundario contorno */
-.mq-btn-sec {
-  background: none;
-  color: var(--mq-purple);
-  border: 1.5px solid var(--mq-purple);
-  border-radius: 20px;
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-/* Botón ícono */
-.mq-btn-icon {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--ink3);
-  padding: 2px 4px;
-}
-
-/* Botón agua turquesa */
-.mq-btn-aqua {
-  background: #E6FAFA;
-  color: #0A6B6E;
-  border: 1px solid #2EC4C7;
-  border-radius: 16px;
-  padding: 5px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-/* Tracker de ánforas */
-.mq-tracker-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-.mq-anfora-btn {
-  background: none;
-  border: none;
-  padding: 2px;
-  cursor: pointer;
-  opacity: 0.28;
-  transition: opacity 0.2s;
-  border-radius: 4px;
-}
-.mq-anfora-btn.on { opacity: 1; }
-.mq-anfora-btn:active { transform: scale(0.9); }
-
-/* Tracker de platos */
-.mq-plato-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.2s;
-}
-.mq-plato-btn.off { opacity: 0.25; }
-
-.mq-tracker-lbl {
-  font-size: 11px;
-  font-weight: 700;
-  margin-top: 2px;
-  margin-bottom: 0;
-}
-
-/* Dark mode overrides */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --mq-ring-bg: #2D1452;
-  }
-  .mq-home-card { border-color: #3D2466; }
-  .mq-stat-box  { border-color: #3D2466; }
-  .mq-kpi-big   { color: #B79CFF; }
-  .mq-chip-gold { background: #2D2000; color: #CDA349; border-color: #8A6520; }
-  .mq-btn-aqua  { background: #0A2A2B; color: #2EC4C7; }
-}
-
-
-
-/* v119 plan unificado real */
-#home-stats,
-#home-streak-banner{
-  display:none !important;
-}
-.home-plan-unified{
-  background:var(--bg2);
-  border:1px solid var(--border);
-  border-radius:18px;
-  padding:18px;
-  margin-bottom:14px;
-  color:var(--ink);
-}
-.home-plan-unified__top{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  gap:16px;
-}
-.home-plan-unified__eyebrow{
-  font-size:10px;
-  letter-spacing:2.2px;
-  text-transform:uppercase;
-  color:var(--orange);
-  font-weight:700;
-  margin-bottom:6px;
-}
-.home-plan-unified__title{
-  font-size:20px;
-  line-height:1.1;
-  font-weight:800;
-  margin:0 0 10px;
-  color:var(--ink);
-}
-.home-plan-unified__name{
-  font-size:16px;
-  font-weight:800;
-  color:var(--ink);
-  margin-bottom:5px;
-}
-.home-plan-unified__block{
-  font-size:13px;
-  color:var(--ink3);
-}
-.home-plan-unified__block strong{
-  color:var(--orange);
-}
-.home-plan-unified__status{
-  text-align:right;
-  min-width:74px;
-  flex-shrink:0;
-}
-.home-plan-unified__badge{
-  font-size:10px;
-  color:var(--ink3);
-  font-weight:700;
-  margin-bottom:4px;
-}
-.home-plan-unified__week{
-  font-size:34px;
-  line-height:.95;
-  font-weight:900;
-  color:#5B2A86;
-}
-.home-plan-unified__week span{
-  font-size:17px;
-  color:var(--ink3);
-  font-weight:700;
-}
-.home-plan-unified__bar{
-  height:8px;
-  background:#E9DDF7;
-  border-radius:999px;
-  overflow:hidden;
-  margin:17px 0 14px;
-}
-.home-plan-unified__bar-fill{
-  height:100%;
-  background:#5B2A86;
-  border-radius:inherit;
-}
-.home-plan-unified__metrics{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:0;
-  border-top:1px solid var(--border);
-  border-bottom:1px solid var(--border);
-  padding:13px 0;
-}
-.home-plan-unified__metric{
-  padding:0 12px;
-  border-right:1px solid var(--border);
-}
-.home-plan-unified__metric:last-child{
-  border-right:none;
-}
-.home-plan-unified__metric-icon{
-  color:#D4AF37;
-  font-size:16px;
-  height:18px;
-  margin-bottom:6px;
-}
-.home-plan-unified__metric-value{
-  font-size:28px;
-  font-weight:900;
-  color:var(--ink);
-  line-height:1;
-}
-.home-plan-unified__metric-value.purple{
-  color:#5B2A86;
-}
-.home-plan-unified__metric-label{
-  margin-top:5px;
-  font-size:12px;
-  color:var(--ink3);
-}
-.home-plan-unified__best{
-  margin-top:12px;
-  font-size:13px;
-  color:var(--ink3);
-}
-.home-plan-unified__best strong{
-  color:var(--ink);
-}
-@media(max-width:480px){
-  .home-plan-unified{padding:16px;}
-  .home-plan-unified__title{font-size:18px;}
-  .home-plan-unified__week{font-size:31px;}
-  .home-plan-unified__metric-value{font-size:25px;}
-}
-
-
-/* MELQART v122 — tipografía consistente sin tocar layout, colores ni lógica
-   - Letras: misma familia tipográfica en toda la interfaz.
-   - Números: misma familia + tabular nums.
-   - No cambia gráficos, colores, textos ni estructura.
-*/
-html,
-body,
-#app,
-#app *:not(svg):not(path):not(circle):not(rect):not(line):not(polyline):not(polygon),
-button,
-input,
-textarea,
-select,
-option,
-.modal,
-.toast {
-  font-family: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-}
-
-/* Textos SVG generados por gráficos/anillos */
-svg text,
-.mq-home-card svg text,
-#home-peso-banner svg text,
-#home-food-today svg text,
-#home-water-today svg text,
-.chart-svg text {
-  font-family: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Tipografía numérica global */
-.stat-num,
-.mq-stat-num,
-.mq-stat-val,
-.mq-kpi-big,
-.mq-kpi-unit,
-.hm-val,
-.lumen-num,
-.ring-value-text,
-.home-plan-unified__week,
-.home-plan-unified__metric-value,
-#home-food-today strong,
-#home-water-today strong,
-#home-peso-banner strong,
-#home-peso-banner span,
-#food-comidas-count,
-#agua-total-label,
-.mq-tracker-lbl,
-.mq-card-title,
-.mq-pill,
-.mq-btn-pill,
-.mq-btn-aqua,
-[class*="kpi"],
-[class*="KPI"] {
-  font-family: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
-}
-
-/* Mantener fuerza visual de los KPI existentes */
-.mq-kpi-big,
-.stat-num,
-.lumen-num,
-.home-plan-unified__week,
-.home-plan-unified__metric-value {
-  font-weight: 800;
-}
-
-/* =======================================================
-   SISTEMA DE GRÁFICOS MELQART v123
-   Componente genérico renderMetricChart()
-   ======================================================= */
-
-/* Tarjeta contenedora */
-.mq-chart-card {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 14px 14px 8px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   overflow: hidden;
 }
 
-/* Cabecera de la tarjeta */
-.mq-chart-header {
+/* Header del bloque — siempre visible */
+.sw-header {
+  width: 100%;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--fb);
+  text-align: left;
+  transition: background .12s;
   gap: 8px;
 }
-.mq-chart-title {
-  font-family: var(--fb);
-  font-size: 13px;
+.sw-header:active { background: var(--bg3); }
+
+.sw-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+}
+
+.sw-title {
+  font-size: 14px;
   font-weight: 700;
   color: var(--ink);
   letter-spacing: .2px;
-  line-height: 1.3;
 }
-.mq-chart-subtitle {
-  font-family: var(--fb);
+
+.sw-meta {
   font-size: 11px;
   color: var(--ink3);
-  margin-top: 2px;
-  font-weight: 400;
-}
-.mq-chart-unit {
-  font-family: var(--fb);
-  font-size: 10px;
-  color: var(--ink3);
-  text-align: right;
-  font-weight: 600;
-  letter-spacing: .5px;
-  text-transform: uppercase;
+  font-weight: 500;
   white-space: nowrap;
-  padding-top: 2px;
 }
 
-/* SVG del gráfico */
-.mq-chart-svg-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  border-radius: 8px;
-}
-.mq-chart-svg-wrap svg {
-  display: block;
+.sw-chevron {
+  flex-shrink: 0;
+  color: var(--ink3);
+  transition: transform .2s ease;
 }
 
-/* Filtros de tiempo */
-.mq-chart-filters {
+/* Cuerpo expandido */
+.sw-body {
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+/* Fila de ejercicio dentro del bloque */
+.sw-ex-row {
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-top: 10px;
-  margin-bottom: 2px;
-}
-.mq-chart-filter-btn {
-  font-family: var(--fb);
-  font-size: 10px;
-  font-weight: 600;
-  padding: 4px 9px;
-  border-radius: 20px;
-  border: 1px solid var(--border2);
-  background: none;
-  color: var(--ink3);
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
   cursor: pointer;
-  letter-spacing: .3px;
-  transition: all .15s;
+  transition: background .1s;
+  gap: 12px;
 }
-.mq-chart-filter-btn.on {
-  background: var(--orange);
-  color: #fff;
-  border-color: var(--orange);
-}
+.sw-ex-row:last-child { border-bottom: none; }
+.sw-ex-row:active { background: var(--bg3); }
 
-/* Estado vacío */
-.mq-chart-empty {
-  padding: 32px 0;
-  text-align: center;
-}
-.mq-chart-empty-icon {
-  font-size: 28px;
-  margin-bottom: 8px;
-  opacity: .5;
-}
-.mq-chart-empty-text {
-  font-family: var(--fb);
-  font-size: 13px;
+.sw-ex-left { flex: 1; min-width: 0; }
+
+.sw-ex-name {
+  font-size: 14px;
   font-weight: 600;
-  color: var(--ink3);
-  margin-bottom: 4px;
-}
-.mq-chart-empty-sub {
-  font-family: var(--fb);
-  font-size: 11px;
-  color: var(--ink3);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Badge Smith */
-.mq-chart-smith-badge {
-  display: inline-block;
-  font-size: 9px;
-  font-weight: 700;
-  background: var(--border);
-  color: var(--ink2);
-  padding: 1px 5px;
-  border-radius: 4px;
-  letter-spacing: .5px;
+.sw-ex-type {
+  font-size: 10px;
+  color: var(--ink3);
+  letter-spacing: 1px;
   text-transform: uppercase;
-  margin-left: 4px;
-  vertical-align: middle;
-}
-
-/* Tooltip SVG custom (posicionado absolutamente) */
-.mq-chart-tooltip {
-  position: fixed;
-  background: var(--ink);
-  color: #fff;
-  border-radius: 8px;
-  padding: 8px 11px;
-  font-family: var(--fb);
-  font-size: 11px;
-  line-height: 1.6;
-  pointer-events: none;
-  z-index: 9999;
-  max-width: 200px;
-  box-shadow: 0 4px 16px rgba(0,0,0,.18);
-  display: none;
-}
-.mq-chart-tooltip.visible {
-  display: block;
-}
-.mq-chart-tooltip-date {
-  font-size: 10px;
-  opacity: .7;
-  margin-bottom: 3px;
-}
-.mq-chart-tooltip-main {
-  font-size: 13px;
-  font-weight: 700;
-  color: #fff;
-}
-.mq-chart-tooltip-sub {
-  font-size: 10px;
-  opacity: .75;
   margin-top: 2px;
 }
 
-/* SVG text override para el nuevo sistema */
-.mq-chart-svg-wrap svg text {
-  font-family: "Montserrat", system-ui, sans-serif !important;
-  font-variant-numeric: tabular-nums;
+.sw-ex-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  text-align: right;
 }
+
+/* PDR — esquina superior derecha destacado */
+.sw-ex-pdr {
+  font-family: var(--fd);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--orange);
+  line-height: 1;
+}
+
+.sw-ex-pdr-sub {
+  font-size: 10px;
+  color: var(--ink3);
+  font-weight: 500;
+  display: block;
+  text-align: right;
+}
+
+/* IMC status chips */
+.imc-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+.imc-normal   { background: rgba(126,141,97,.12); color: var(--green); border: 1px solid rgba(126,141,97,.3); }
+.imc-sobre    { background: rgba(164,113,58,.10); color: var(--orange); border: 1px solid rgba(164,113,58,.25); }
+.imc-obeso    { background: rgba(154,101,82,.10); color: var(--red); border: 1px solid rgba(154,101,82,.25); }
+.imc-bajo     { background: rgba(140,132,120,.10); color: var(--ink3); border: 1px solid var(--border2); }
+
+/* Indicador IMC fórmula */
+.imc-formula {
+  font-size: 10px;
+  color: var(--ink3);
+  margin-top: 4px;
+  font-family: var(--fd);
+  letter-spacing: .5px;
+}
+
