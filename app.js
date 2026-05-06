@@ -972,32 +972,65 @@ function mqPesoChart(mets){
   const yOf=p=>pad+(1-(p-min)/(max-min))*(H-pad*2);
   const pts=datos.map((m,i)=>[pad+i*xStep, yOf(m.peso)]);
   const pathD='M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L');
-  // Área rellena
   const areaD=pathD+' L'+pts[pts.length-1][0].toFixed(1)+','+(H-pad)+' L'+pad+','+(H-pad)+' Z';
-  // Etiquetas eje (min/max/actual)
   const dias=['D','L','M','M','J','V','S'];
-  const labDays=datos.map(m=>{ const d=new Date(m.date+'T12:00:00'); return dias[d.getDay()]; });
-  // SVG
-  let svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="overflow:visible;display:block">';
-  // línea meta
-  const yMeta=yOf(parseFloat((document.getElementById('home-peso-banner')?'':0)||0));
-  // Área rellena bajo la curva
+  let svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="overflow:visible;display:block" id="peso-sparkline">';
   svg+='<defs><linearGradient id="pgr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5A2D82" stop-opacity="0.28"/><stop offset="100%" stop-color="#5A2D82" stop-opacity="0.03"/></linearGradient></defs>';
   svg+='<path d="'+areaD+'" fill="url(#pgr)" stroke="none"/>';
-  // Línea dashes meta peso
-  // Línea principal
   svg+='<path d="'+pathD+'" fill="none" stroke="#5A2D82" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
-  // Puntos
+  // Puntos con tooltip via data-* attrs
   pts.forEach((p,i)=>{
     const isLast=i===pts.length-1;
-    svg+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(isLast?4:2.5)+'" fill="'+(isLast?'#5A2D82':'#B79CFF')+'" stroke="'+(isLast?'#fff':'none')+'" stroke-width="1.5"/>';
+    const m=datos[i];
+    // Calcular variación respecto al punto anterior
+    let varStr='';
+    if(i>0){
+      const diff=parseFloat((parseFloat(m.peso)-parseFloat(datos[i-1].peso)).toFixed(1));
+      varStr=(diff>0?'+':'')+diff+' kg';
+    }
+    // Fecha formateada DD/MM/YYYY
+    const d=new Date(m.date+'T12:00:00');
+    const fechaFmt=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+    // Zona de toque amplia (rect invisible)
+    svg+=`<rect x="${(p[0]-8).toFixed(1)}" y="${(p[1]-8).toFixed(1)}" width="16" height="16" fill="transparent" style="cursor:pointer"
+      data-peso="${m.peso}" data-fecha="${fechaFmt}" data-var="${varStr}"
+      onmouseenter="mqPesoTT(event,this)" onmouseleave="mqPesoTTHide()"
+      ontouchstart="mqPesoTT(event,this)" ontouchend="mqPesoTTHide()"/>`;
+    svg+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(isLast?4:2.5)+'" fill="'+(isLast?'#5A2D82':'#B79CFF')+'" stroke="'+(isLast?'#fff':'none')+'" stroke-width="1.5" style="pointer-events:none"/>';
     if(isLast){
-      svg+='<text x="'+p[0].toFixed(1)+'" y="'+(p[1]-8).toFixed(1)+'" text-anchor="middle" font-size="9" font-weight="700" fill="#5A2D82" font-family="sans-serif">'+datos[i].peso+'</text>';
+      svg+='<text x="'+p[0].toFixed(1)+'" y="'+(p[1]-8).toFixed(1)+'" text-anchor="middle" font-size="9" font-weight="700" fill="#5A2D82" font-family="sans-serif" style="pointer-events:none">'+datos[i].peso+'</text>';
     }
   });
   svg+='</svg>';
   return svg;
 }
+
+// Tooltip del gráfico de peso
+(function(){
+  if(document.getElementById('peso-tt')) return;
+  const el=document.createElement('div');
+  el.id='peso-tt';
+  el.style.cssText='position:fixed;background:#181B1D;color:#fff;border-radius:8px;padding:7px 10px;font-size:11px;line-height:1.55;pointer-events:none;z-index:9999;display:none;max-width:160px;box-shadow:0 4px 16px rgba(0,0,0,.22)';
+  document.body.appendChild(el);
+})();
+
+function mqPesoTT(evt,el){
+  const tt=document.getElementById('peso-tt'); if(!tt) return;
+  const peso=el.dataset.peso, fecha=el.dataset.fecha, vari=el.dataset.var;
+  tt.innerHTML=`<div style="font-size:13px;font-weight:700">${peso} kg</div>`
+    +`<div style="font-size:10px;opacity:.7;margin-top:2px">${fecha}</div>`
+    +(vari?`<div style="font-size:11px;margin-top:3px;color:${vari.startsWith('-')?'#7ECBA1':'#F4A261'}">${vari}</div>`:'');
+  tt.style.display='block';
+  const touch=evt.touches&&evt.touches[0];
+  const x=touch?touch.clientX:evt.clientX, y=touch?touch.clientY:evt.clientY;
+  const W=window.innerWidth;
+  tt.style.left=(x+12+160>W?x-172:x+12)+'px';
+  tt.style.top=(y-44)+'px';
+}
+function mqPesoTTHide(){
+  const tt=document.getElementById('peso-tt'); if(tt) tt.style.display='none';
+}
+document.addEventListener('scroll',mqPesoTTHide,{passive:true,capture:true});
 
 
 function renderPesoBanner(){
@@ -4351,23 +4384,44 @@ function imcBadge(imc) {
 
 /** Construye el cuerpo de un accordion de medida corporal con gráfico */
 function buildBodyAccBody(metricKey, filtro, metsAll) {
-  filtro = filtro || window._bodyAccFiltro[metricKey] || '12m';
+  filtro = filtro || window._bodyAccFiltro[metricKey] || 'all';
   const isPliegue = metricKey === 'p6' || metricKey === 'p8';
-  const pts = isPliegue
+
+  // Todos los puntos sin filtrar
+  const ptsAll = isPliegue
     ? metsAll.filter(m => m.pliegues?.[metricKey]).map(m => ({ date: m.date, label: m.date.slice(5).replace('-','/'), value: parseFloat(m.pliegues[metricKey]), displayValue: `${m.pliegues[metricKey]} mm` }))
     : metsAll.filter(m => m[metricKey] != null && m[metricKey] !== '').map(m => ({ date: m.date, label: m.date.slice(5).replace('-','/'), value: parseFloat(m[metricKey]), displayValue: `${m[metricKey]} ${metricKey==='grasa'?'%':'kg'}` }));
 
-  if (!pts.length) return `<div class="mq-chart-empty" style="padding:24px 0"><div class="mq-chart-empty-icon">◬</div><div class="mq-chart-empty-text">Sin registros</div></div>`;
+  if (!ptsAll.length) return `<div class="mq-chart-empty" style="padding:24px 0"><div class="mq-chart-empty-icon">◬</div><div class="mq-chart-empty-text">Sin registros</div></div>`;
+
+  // Aplicar filtro de tiempo — días de corte por opción
+  const DIAS_FILTRO = { '1m':30, '2m':60, '4m':120, '8m':240 };
+  let pts;
+  if (DIAS_FILTRO[filtro]) {
+    const corte = new Date(); corte.setDate(corte.getDate() - DIAS_FILTRO[filtro]);
+    const corteStr = localDateStr(corte);
+    pts = ptsAll.filter(p => p.date >= corteStr);
+  } else {
+    pts = ptsAll; // 'all' o cualquier otro → todos los datos
+  }
 
   const FILTROS = [
-    { id: '1m', label: '1M' }, { id: '3m', label: '3M' },
-    { id: '6m', label: '6M' }, { id: '12m', label: '12M' }, { id: 'all', label: 'Todo' }
+    { id: '1m', label: '1M' }, { id: '2m', label: '2M' },
+    { id: '4m', label: '4M' }, { id: '8m', label: '8M' }, { id: 'all', label: 'Todo' }
   ];
   const filtrosHtml = `<div class="acc-filters">` +
     FILTROS.map(f =>
       `<button class="acc-filter-btn${f.id === filtro ? ' on' : ''}"
         onclick="event.stopPropagation();setBodyAccFiltro('${metricKey}','${f.id}')">${f.label}</button>`
     ).join('') + `</div>`;
+
+  // Estado vacío para este período
+  if (!pts.length) {
+    return filtrosHtml + `<div class="mq-chart-empty" style="padding:16px 0">
+      <div class="mq-chart-empty-text">Sin mediciones en este período</div>
+      <div class="mq-chart-empty-sub">Prueba con un rango más amplio</div>
+    </div>`;
+  }
 
   const vals = pts.map(p => p.value);
   const ult = vals[vals.length - 1], pri = vals[0];
@@ -4383,7 +4437,7 @@ function buildBodyAccBody(metricKey, filtro, metsAll) {
     </div>
     <div class="acc-kpi">
       <div class="acc-kpi-val" style="color:${deltaColor}">${delta > 0 ? '+' : ''}${delta} ${unit}</div>
-      <div class="acc-kpi-lbl">Desde inicio</div>
+      <div class="acc-kpi-lbl">Variación período</div>
     </div>
     <div class="acc-kpi">
       <div class="acc-kpi-val">${pts.length}</div>
@@ -4392,7 +4446,7 @@ function buildBodyAccBody(metricKey, filtro, metsAll) {
   </div>`;
 
   const chartHtml = renderMetricChart({
-    id: `body_${metricKey}_chart`,
+    id: `body_${metricKey}_chart_${filtro}`,
     type: metricKey === 'grasa' ? 'percentage' : 'weight',
     unit, unitLabel: unit,
     data: pts,
@@ -4400,7 +4454,7 @@ function buildBodyAccBody(metricKey, filtro, metsAll) {
     tooltip: { showDate: true },
     height: 180,
     color: metricKey === 'grasa' ? 'var(--warn)' : metricKey === 'muscular' ? 'var(--teal)' : 'var(--p)',
-    activeFilter: filtro
+    activeFilter: 'all'   // ya filtramos pts arriba, pasamos todo al gráfico
   });
 
   return kpisHtml + filtrosHtml + chartHtml;
@@ -4486,29 +4540,38 @@ function renderProgCuerpo() {
         ).join('');
 
         // Filtros para gráfico de peso
-        const filtro = window._bodyAccFiltro['peso'] || '12m';
-        const FILTROS = [
-          { id: '1m', label: '1M' }, { id: '3m', label: '3M' },
-          { id: '6m', label: '6M' }, { id: '12m', label: '12M' }, { id: 'all', label: 'Todo' }
+        const filtro = window._bodyAccFiltro['peso'] || 'all';
+        const FILTROS_PESO = [
+          { id: '1m', label: '1M' }, { id: '2m', label: '2M' },
+          { id: '4m', label: '4M' }, { id: '8m', label: '8M' }, { id: 'all', label: 'Todo' }
         ];
         const filtrosHtml = `<div class="acc-filters">` +
-          FILTROS.map(f =>
+          FILTROS_PESO.map(f =>
             `<button class="acc-filter-btn${f.id === filtro ? ' on' : ''}"
               onclick="event.stopPropagation();setBodyAccFiltro('peso','${f.id}')">${f.label}</button>`
           ).join('') + `</div>`;
 
+        // Aplicar filtro de tiempo antes de pasar al gráfico
+        const DIAS_FP = { '1m':30, '2m':60, '4m':120, '8m':240 };
+        let pesoData = metsAll.filter(m => m.peso);
+        if (DIAS_FP[filtro]) {
+          const corte = new Date(); corte.setDate(corte.getDate() - DIAS_FP[filtro]);
+          const corteStr = localDateStr(corte);
+          pesoData = pesoData.filter(m => m.date >= corteStr);
+        }
+
         const pesoChart = renderMetricChart({
-          id: 'body_peso_chart',
+          id: 'body_peso_chart_' + filtro,
           type: 'weight', unit: 'kg', unitLabel: 'kg',
           title: 'Peso corporal', subtitle: 'Evolución en el tiempo',
-          data: metsAll.filter(m => m.peso).map(m => ({
+          data: pesoData.map(m => ({
             date: m.date, label: m.date.slice(5).replace('-','/'),
             value: parseFloat(m.peso), displayValue: m.peso + ' kg'
           })),
           yAxis: { forceZero: false },
           tooltip: { showDate: true },
           height: 180, color: 'var(--p)',
-          activeFilter: filtro
+          activeFilter: 'all'
         });
 
         return imcCard + resumFilas + filtrosHtml + pesoChart;
@@ -5203,7 +5266,7 @@ function viewFoto(id){
 // ---------------------------------------------------------------
 const NUTRITION_TARGETS = {
   cereales:3, frutas:2, proteinas:12, lacteoProtein:2, lacteoDescremado:1,
-  lipidos:0.5, aceites:1, verduras:2, aguaMl:2500, aguaVasos:11
+  lipidos:0.5, aceites:1, verduras:2, aguaMl:2500, aguaVasos:10
 };
 const PORTION_LABELS = {
   cereales:'Cereales', frutas:'Frutas', proteinas:'Proteínas', lacteoProtein:'Lácteo protein',
@@ -5317,59 +5380,90 @@ function addHomeWaterMl(ml){
   fd.aguaMl=Math.max(0,cur+ml); fd.agua=Math.min(NUTRITION_TARGETS.aguaVasos, Math.round(fd.aguaMl/(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos)));
   saveFD(fd); showToast(fd.aguaMl>=NUTRITION_TARGETS.aguaMl?'Meta cumplida':'Agua registrada',1600,'ok'); renderHomeWaterCard(); renderFoodIfVisible();
 }
+// Ícono vaso SVG reutilizable para el sistema de agua
+function _vasoIco(done, w=20, h=24){
+  const c = done ? 'var(--teal)' : 'var(--border2)';
+  const f = done ? 'rgba(43,168,170,.20)' : 'none';
+  return `<svg viewBox="0 0 20 26" width="${w}" height="${h}" fill="none">
+    <path d="M5 2h10l-1.2 16H6.2Z" stroke="${c}" stroke-width="1.6" stroke-linejoin="round" fill="${f}"/>
+    <line x1="4" y1="2" x2="16" y2="2" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/>
+    ${done?`<path d="M8 8 Q10 11 12 8" stroke="var(--teal)" stroke-width="1.1" stroke-linecap="round" fill="none"/>`:''}
+  </svg>`;
+}
+
+// Recupera la meta de agua del usuario (vasos y ml) — editable desde Nutrición
+function getAguaMeta(){
+  try {
+    const s = localStorage.getItem('mq_agua_meta');
+    if(s) return JSON.parse(s);
+  } catch{}
+  return { vasos: 10, mlPorVaso: 250 }; // default
+}
+function setAguaMeta(vasos, mlPorVaso){
+  localStorage.setItem('mq_agua_meta', JSON.stringify({ vasos, mlPorVaso }));
+}
+
 function renderHomeWaterCard(){
   const el=document.getElementById('home-water-today'); if(!el) return;
   const fd=getFD(today());
-  const cps=getAguaCps(fd);
-  const activas=cps.filter(Boolean).length;
-  const totalMl=AGUA_CPS.filter((_,i)=>cps[i]).reduce((a,c)=>a+c.ml,0);
-  const pct=Math.min(100,Math.round(totalMl/AGUA_META_ML*100));
+  const meta=getAguaMeta();
+  const totalVasos=meta.vasos, mlPorVaso=meta.mlPorVaso;
+  const metaMl=totalVasos*mlPorVaso;
 
-  // Próximo checkpoint no completado
-  const ahoraHHMM = (() => {
-    const n = new Date();
-    return String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
-  })();
-  const proximo = AGUA_CPS.find((cp, i) => !cps[i] && cp.hora >= ahoraHHMM);
-  const proximoHtml = proximo
-    ? `<div class="agua-proximo">◷ Próximo: <strong>${proximo.hora}</strong> — ${proximo.label} (${proximo.ml} ml)</div>`
-    : (activas === AGUA_CPS.length ? `<div class="agua-proximo" style="color:var(--ok)">✓ Meta de agua completada</div>` : '');
+  // Sistema unificado: aguaVasosHoy = número de vasos marcados hoy
+  let vasosHoy = fd.aguaVasosHoy || 0;
+  const totalMl = vasosHoy * mlPorVaso;
+  const pct = Math.min(100, Math.round(totalMl/metaMl*100));
+
+  // Próximo vaso según hora
+  const ahoraMin=(()=>{ const n=new Date(); return n.getHours()*60+n.getMinutes(); })();
+  // Distribuir totalVasos entre 06:00 y 21:00 uniformemente
+  const paso=Math.floor(900/Math.max(totalVasos-1,1));
+  const horariosMin=Array.from({length:totalVasos},(_,i)=>360+i*paso); // 06:00=360min
+  const proximoIdx=horariosMin.findIndex((_,i)=>i>=vasosHoy && horariosMin[i]>=ahoraMin);
+  const proximoHtml = proximoIdx>=0
+    ? `<div class="agua-proximo">◷ Próximo vaso ${proximoIdx+1}: <strong>${String(Math.floor(horariosMin[proximoIdx]/60)).padStart(2,'0')}:${String(horariosMin[proximoIdx]%60).padStart(2,'0')}</strong></div>`
+    : vasosHoy>=totalVasos
+      ? `<div class="agua-proximo" style="color:var(--ok)">✓ Meta de agua completada</div>`
+      : '';
+
+  // Icono vaso vectorial para el header
+  const vasoIconHeader=`<svg viewBox="0 0 20 26" width="16" height="18" fill="none">
+    <path d="M5 2h10l-1.2 16H6.2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" fill="rgba(43,168,170,.15)"/>
+    <line x1="4" y1="2" x2="16" y2="2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>`;
 
   el.innerHTML='<div class="mq-home-card">'
-    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:10px">'
-      +'<div class="mq-hrow" style="gap:8px;color:var(--teal)">'+MQ.anfora+'<span class="mq-kicker">Agua hoy</span></div>'
-      +'<span style="font-size:13px;font-weight:700;color:'+(pct>=100?'var(--ok)':'var(--teal)')+'">'+Math.round(totalMl/100)/10+' L</span>'
+    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:8px">'
+      +`<div class="mq-hrow" style="gap:6px;color:var(--teal)">${vasoIconHeader}<span class="mq-kicker">Agua hoy</span></div>`
+      +`<span style="font-size:13px;font-weight:700;color:${pct>=100?'var(--ok)':'var(--teal)'}">${ vasosHoy}/${totalVasos}</span>`
     +'</div>'
-    // Ánforas clickeables — ahora con onclick por índice
-    +'<div class="mq-tracker-row">'
-    + AGUA_CPS.map((cp, i) =>
-        `<button class="mq-anfora-btn${cps[i]?' on':''}" onclick="toggleAguaCpHome(${i})" title="${cp.hora} — ${cp.label} (${cp.ml}ml)">`
-        + MQ.anfora
-        + '</button>'
-      ).join('')
+    // Vasos clickeables
+    +'<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px">'
+    +Array.from({length:totalVasos},(_,i)=>`
+      <button onclick="toggleVasoHoy(${i})" title="Vaso ${i+1}"
+        style="background:none;border:none;padding:2px;cursor:pointer;opacity:${i<vasosHoy?1:0.25};transition:opacity .15s">
+        ${_vasoIco(i<vasosHoy)}
+      </button>`).join('')
     +'</div>'
-    +'<div style="font-size:11px;font-weight:700;color:var(--teal);margin-top:4px">'+activas+' / '+AGUA_CPS.length+' ánforas</div>'
-    // Botones +ml
-    +'<div class="mq-hrow" style="gap:6px;margin-top:10px;flex-wrap:wrap">'
-      +'<button class="mq-btn-aqua" onclick="addHomeWaterMl(250)">+250 ml</button>'
-      +'<button class="mq-btn-aqua" onclick="addHomeWaterMl(500)">+500 ml</button>'
-      +'<button class="mq-btn-aqua" onclick="addHomeWaterMl(750)">+750 ml</button>'
-    +'</div>'
-    +'<div class="mq-stat-lbl" style="margin-top:6px">Restante: '+Math.max(0,(AGUA_META_ML-totalMl)/1000).toFixed(1).replace('.',',')+' L</div>'
-    + proximoHtml
+    +`<div class="mq-stat-lbl">Restante: ${Math.max(0,(metaMl-totalMl)/1000).toFixed(1)} L · ${totalMl} ml de ${metaMl} ml</div>`
+    +proximoHtml
     +'</div>';
 }
 
-function toggleAguaCpHome(idx) {
-  const fd = getFD(today());
-  const cps = getAguaCps(fd);
-  cps[idx] = !cps[idx];
-  fd.aguaCps = cps;
-  fd.agua = cps.filter(Boolean).length;
-  const totalMl = AGUA_CPS.filter((_,i) => cps[i]).reduce((a,c) => a+c.ml, 0);
-  fd.aguaMl = totalMl;
+// Toggle: marcar/desmarcar vasos en orden (tap → activa el siguiente, tap en activo → desmarca el último)
+function toggleVasoHoy(idx){
+  const fd=getFD(today());
+  const meta=getAguaMeta();
+  let v=fd.aguaVasosHoy||0;
+  // Si el idx clickeado es el último activo → restar, si no → sumar hasta ese idx+1
+  if(idx===v-1){ v=Math.max(0,v-1); }
+  else { v=Math.min(meta.vasos, idx+1); }
+  fd.aguaVasosHoy=v;
+  fd.agua=v;
+  fd.aguaMl=v*meta.mlPorVaso;
   saveFD(fd);
-  if (totalMl >= AGUA_META_ML) showToast('Meta de agua alcanzada', 2500, 'ok');
+  if(v>=meta.vasos) showToast('✓ Meta de agua completada',2500,'ok');
   renderHomeWaterCard();
   renderFoodIfVisible();
 }
@@ -5394,16 +5488,20 @@ function renderFrequentFoods(){
 // ---------------------------------------------------------------
 //  AGUA CHECKPOINTS
 // ---------------------------------------------------------------
+// 10 vasos de 250ml distribuidos entre 06:00 y 20:00
 const AGUA_CPS = [
-  {hora:'07:00', label:'Al levantarte',   ml:500},
-  {hora:'09:30', label:'Media mañana',    ml:300},
-  {hora:'12:00', label:'Antes almuerzo',  ml:300},
-  {hora:'14:00', label:'Post almuerzo',   ml:300},
-  {hora:'16:00', label:'Colación PM',     ml:300},
-  {hora:'18:00', label:'Pre-entreno',     ml:400},
-  {hora:'20:00', label:'Con cena',        ml:400},
+  {hora:'06:00', label:'Al levantarte',    ml:250},
+  {hora:'08:00', label:'Desayuno',         ml:250},
+  {hora:'10:00', label:'Media mañana',     ml:250},
+  {hora:'12:00', label:'Antes almuerzo',   ml:250},
+  {hora:'14:00', label:'Post almuerzo',    ml:250},
+  {hora:'15:30', label:'Tarde',            ml:250},
+  {hora:'17:00', label:'Merienda',         ml:250},
+  {hora:'18:30', label:'Pre-entreno',      ml:250},
+  {hora:'20:00', label:'Con cena',         ml:250},
+  {hora:'21:30', label:'Antes de dormir',  ml:250},
 ];
-const AGUA_META_ML = 2500;
+const AGUA_META_ML = 2500; // 10 × 250ml
 
 function getAguaCps(fd){ return fd.aguaCps || Array(AGUA_CPS.length).fill(false); }
 
@@ -5422,25 +5520,97 @@ function toggleAguaCp(idx){
 
 function renderAguaCheckpoints(fd){
   const el=document.getElementById('agua-checkpoints'); if(!el) return;
-  const cps=getAguaCps(fd);
-  const totalMl=AGUA_CPS.filter((_,i)=>cps[i]).reduce((a,c)=>a+c.ml,0);
-  const pct=Math.min(100,Math.round(totalMl/AGUA_META_ML*100));
+  const meta=getAguaMeta();
+  const totalVasos=meta.vasos, mlPorVaso=meta.mlPorVaso;
+  const metaMl=totalVasos*mlPorVaso;
+  let vasosHoy=fd.aguaVasosHoy||0;
+  const totalMl=vasosHoy*mlPorVaso;
+  const pct=Math.min(100,Math.round(totalMl/metaMl*100));
+
+  // Actualizar barra y label del HTML padre
   const lbl=document.getElementById('agua-total-label');
-  if(lbl) lbl.textContent=totalMl+'ml / '+AGUA_META_ML+'ml ('+pct+'%)';
+  if(lbl) lbl.textContent=`${totalMl} / ${metaMl} ml (${pct}%)`;
   const bar=document.getElementById('agua-progress-bar');
   if(bar) bar.style.width=pct+'%';
-  el.innerHTML=AGUA_CPS.map((cp,i)=>{
-    const done=cps[i];
-    return '<div onclick="toggleAguaCp('+i+')" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer">'
-      +'<div style="width:36px;height:36px;border-radius:50%;border:2px solid '+(done?'var(--blue)':'var(--border2)')+';background:'+(done?'var(--blue)':'var(--bg3)')+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'
-      +(done?'<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5"><polyline points="20 6 9 17 4 12"/></svg>':'<span style="font-size:14px">◈</span>')
-      +'</div>'
-      +'<div style="flex:1">'
-      +'<div style="font-size:14px;font-weight:600;color:'+(done?'var(--ink3)':'var(--ink)')+';'+(done?'text-decoration:line-through':'')+'">'+cp.hora+' — '+cp.label+'</div>'
-      +'<div style="font-size:11px;color:var(--ink3)">'+cp.ml+'ml</div>'
-      +'</div>'
-      +'</div>';
-  }).join('');
+
+  // Vasos clickeables — misma lógica que home
+  const vasosHtml=`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">`
+    +Array.from({length:totalVasos},(_,i)=>`
+      <button onclick="toggleVasoNutri(${i})" title="Vaso ${i+1}"
+        style="background:none;border:none;padding:2px;cursor:pointer;opacity:${i<vasosHoy?1:0.25};transition:opacity .15s">
+        ${_vasoIco(i<vasosHoy,22,26)}
+      </button>`).join('')
+    +`</div>
+    <div style="font-size:12px;font-weight:700;color:var(--teal);margin-bottom:10px">${vasosHoy} / ${totalVasos} vasos · ${totalMl} ml</div>`;
+
+  // Editor de meta — elegante, sin modal
+  const editorHtml=`
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:700;margin-bottom:10px">Meta diaria de agua</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">Vasos por día</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button onclick="ajustarMetaAgua('vasos',-1)"
+              style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);background:var(--bg3);font-size:16px;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:center">−</button>
+            <span id="agua-meta-vasos-lbl" style="font-size:18px;font-weight:700;color:var(--p);min-width:28px;text-align:center">${totalVasos}</span>
+            <button onclick="ajustarMetaAgua('vasos',1)"
+              style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);background:var(--bg3);font-size:16px;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:center">+</button>
+          </div>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">ml por vaso</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button onclick="ajustarMetaAgua('ml',-50)"
+              style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);background:var(--bg3);font-size:16px;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:center">−</button>
+            <span id="agua-meta-ml-lbl" style="font-size:18px;font-weight:700;color:var(--p);min-width:44px;text-align:center">${mlPorVaso}</span>
+            <button onclick="ajustarMetaAgua('ml',50)"
+              style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);background:var(--bg3);font-size:16px;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:center">+</button>
+          </div>
+        </div>
+        <div style="flex:1;min-width:100px;text-align:center;padding:8px;background:var(--bg3);border-radius:10px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--ink3);margin-bottom:2px">Total</div>
+          <div id="agua-meta-total-lbl" style="font-size:16px;font-weight:700;color:var(--teal)">${(metaMl/1000).toFixed(2).replace('.',',')} L</div>
+        </div>
+      </div>
+    </div>`;
+
+  el.innerHTML=vasosHtml+editorHtml;
+}
+
+// Toggle vasos desde el tab Nutrición
+function toggleVasoNutri(idx){
+  const fd=getFD(foodFecha);
+  const meta=getAguaMeta();
+  let v=fd.aguaVasosHoy||0;
+  if(idx===v-1){ v=Math.max(0,v-1); } else { v=Math.min(meta.vasos,idx+1); }
+  fd.aguaVasosHoy=v; fd.agua=v; fd.aguaMl=v*meta.mlPorVaso;
+  saveFD(fd);
+  if(v>=meta.vasos) showToast('✓ Meta de agua completada',2500,'ok');
+  renderAguaCheckpoints(fd);
+  renderHomeWaterCard();
+}
+
+// Ajusta la meta de agua (vasos o ml por vaso) y re-renderiza todo
+function ajustarMetaAgua(tipo, delta){
+  const m=getAguaMeta();
+  if(tipo==='vasos') m.vasos=Math.max(1,Math.min(20,m.vasos+delta));
+  else               m.mlPorVaso=Math.max(50,Math.min(1000,m.mlPorVaso+delta));
+  setAguaMeta(m.vasos,m.mlPorVaso);
+  // Actualizar labels en tiempo real sin re-renderizar todo
+  const vl=document.getElementById('agua-meta-vasos-lbl');
+  const ml=document.getElementById('agua-meta-ml-lbl');
+  const tl=document.getElementById('agua-meta-total-lbl');
+  if(vl) vl.textContent=m.vasos;
+  if(ml) ml.textContent=m.mlPorVaso;
+  if(tl) tl.textContent=((m.vasos*m.mlPorVaso)/1000).toFixed(2).replace('.',',')+' L';
+  // Re-renderizar ambos cards
+  const fd=getFD(foodFecha);
+  renderAguaCheckpoints(fd);
+  renderHomeWaterCard();
+  // Actualizar vasos en food-stats
+  const fsEl=document.getElementById('food-stats-row');
+  if(fsEl) renderFood();
 }
 
 // ---------------------------------------------------------------
@@ -5535,10 +5705,12 @@ function renderFood(){
   document.getElementById('food-fecha-lbl').textContent=`${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}${esHoy?' · Hoy':''}`;
   const completadas=Object.values(fd.comidas).filter(c=>c.completada).length;
   const pct=Math.round((completadas/COMIDAS.length)*100);
+  const meta=getAguaMeta();
+  const vasosHoy=fd.aguaVasosHoy||0;
   document.getElementById('food-stats-row').innerHTML=`
-    <div class="stat-box"><div class="stat-num" style="color:var(--orange)">${fd.agua||0}/${NUTRITION_TARGETS.aguaVasos}</div><div class="stat-label">Vasos</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--teal)">${vasosHoy}/${meta.vasos}</div><div class="stat-label">Vasos</div></div>
     <div class="stat-box"><div class="stat-num">${completadas}/${COMIDAS.length}</div><div class="stat-label">Comidas</div></div>
-    <div class="stat-box"><div class="stat-num" style="color:${pct===100?'var(--green)':'var(--orange)'}">${pct}%</div><div class="stat-label">Adherencia</div></div>`;
+    <div class="stat-box"><div class="stat-num" style="color:${pct===100?'var(--ok)':'var(--p)'}">${pct}%</div><div class="stat-label">Adherencia</div></div>`;
   // Agua
   renderAguaCheckpoints(fd);
   document.getElementById('food-comidas-count').textContent=`${completadas} / ${COMIDAS.length}`;
@@ -5679,7 +5851,7 @@ function renderHabitsLumen(){
       <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:8px">Consumo de alcohol hoy</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="hab-alcohol-btn${todayAlcohol==='bebio'?' active':''}" onclick="toggleAlcohol('${todayStr}')">
-          ${todayAlcohol==='bebio'?'🍷 Bebí hoy':'✓ Sin alcohol hoy'}
+          Marcar consumo de alcohol
         </button>
       </div>
     </div>
