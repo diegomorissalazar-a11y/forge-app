@@ -785,3 +785,55 @@ nav{height:calc(74px + env(safe-area-inset-bottom)) !important;min-height:calc(7
 #auth button[onclick="resetPass()"]{color:var(--purple)!important;font-weight:600;}
 .auth-tabs{border-color:rgba(90,45,130,.22);}
 .mq-home-card svg text{dominant-baseline:middle;}
+
+
+/* v117 · plan unificado + ajuste peso/agua/login */
+.home-plan-unified{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:14px;
+}
+.home-plan-unified__top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px;}
+.home-plan-unified__title{font-size:22px;font-weight:800;line-height:1.1;color:var(--ink);margin:0 0 12px;}
+.home-plan-unified__name{font-size:18px;font-weight:800;color:var(--ink);margin-bottom:6px;}
+.home-plan-unified__block{font-size:14px;color:var(--ink3);line-height:1.35;}
+.home-plan-unified__block strong{color:var(--ink2);font-weight:800;}
+.home-plan-unified__status{text-align:right;flex-shrink:0;min-width:72px;}
+.home-plan-unified__badge{font-size:12px;color:var(--ink3);font-weight:700;margin-bottom:3px;}
+.home-plan-unified__week{font-size:34px;font-weight:900;line-height:1;color:#5A2D82;}
+.home-plan-unified__week small{font-size:18px;color:var(--ink3);font-weight:700;}
+.home-plan-unified__bar{height:9px;background:#E9DDF7;border-radius:999px;overflow:hidden;margin:12px 0 18px;}
+.home-plan-unified__bar-fill{height:100%;background:#5A2D82;border-radius:inherit;}
+.home-plan-unified__metrics{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:14px 0;gap:0;}
+.home-plan-unified__metric{padding:0 14px;border-right:1px solid var(--border);}
+.home-plan-unified__metric:last-child{border-right:none;}
+.home-plan-unified__metric-icon{font-size:17px;color:#CDA349;margin-bottom:7px;}
+.home-plan-unified__metric-label{font-size:13px;color:var(--ink3);font-weight:700;margin-bottom:8px;}
+.home-plan-unified__metric-value{font-size:30px;font-weight:900;color:var(--ink);line-height:1;}
+.home-plan-unified__metric-value.purple{color:#5A2D82;}
+.home-plan-unified__best{margin-top:14px;font-size:14px;color:var(--ink3);line-height:1.35;}
+.home-plan-unified__best strong{color:var(--ink);}
+#home-stats,#home-streak-banner{display:none!important;}
+/* peso */
+#home-peso-banner .mq-home-card{padding:18px 20px;border-radius:18px;}
+#home-peso-banner .mq-kpi-big{font-size:42px!important;color:#5A2D82!important;}
+#home-peso-banner .mq-btn-pill{background:#5A2D82!important;color:#fff!important;border-radius:22px;padding:7px 18px;}
+#home-peso-banner .mq-btn-icon{color:#8B8397!important;}
+#home-peso-banner .mq-kicker{color:#8B8397;}
+#home-peso-banner .mq-home-card svg text{dominant-baseline:auto;}
+/* toast: evitar bloque verde sin texto */
+.toast{background:var(--bg2)!important;border:1px solid var(--border2)!important;color:var(--ink)!important;min-width:auto!important;min-height:auto!important;}
+.toast.ok{background:var(--bg2)!important;border-color:var(--green)!important;color:var(--green)!important;}
+/* login morado */
+#auth .auth-tab.on,#auth .btn-p{background:#5A2D82!important;color:#fff!important;}
+#auth .inp:focus{border-color:#5A2D82!important;box-shadow:0 0 0 3px rgba(90,45,130,.12)!important;}
+#auth button[onclick="resetPass()"]{color:#5A2D82!important;font-weight:600;}
+@media(max-width:480px){
+  .home-plan-unified__title{font-size:20px;}
+  .home-plan-unified__week{font-size:30px;}
+  .home-plan-unified__metrics{gap:0;}
+  .home-plan-unified__metric{padding:0 10px;}
+  .home-plan-unified__metric-value{font-size:26px;}
+}
