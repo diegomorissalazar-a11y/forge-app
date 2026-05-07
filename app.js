@@ -2275,9 +2275,11 @@ function renderSetRow(ei,si,set,isRun,ultSet){
     : '—';
 
   // ¿Es ejercicio bilateral?
+  // Buscar en 3 fuentes en orden: eDef (forge.exercises), exObj (sesión activa), EJERCICIOS_BASE
   const ex=activeSession?.exercises[ei];
   const eDef=getEx(ex?.exId);
-  const isBilateral=eDef?.bilateral===true;
+  const baseEx=EJERCICIOS_BASE.find(b=>b.id===ex?.exId);
+  const isBilateral = eDef?.bilateral===true || ex?.bilateral===true || baseEx?.bilateral===true;
   const isPlyo=eDef?.type==='plyo';
 
   // Render especial para ejercicios pliométricos (saltos cajón) — altura + reps
@@ -2448,8 +2450,9 @@ function toggleSet(ei,si){
   const set=ex.sets[si];
   if(!set) return;
   const e=getEx(ex.exId);
+  const baseE=EJERCICIOS_BASE.find(b=>b.id===ex.exId);
   const isRun=e?.type==='run'||e?.type==='hiit';
-  const isBilateral=e?.bilateral===true;
+  const isBilateral= e?.bilateral===true || ex.bilateral===true || baseE?.bilateral===true;
   const isPlyo=e?.type==='plyo';
   // Bilateral: no tocar desde toggleSet, lo maneja toggleLado
   if(isBilateral) return;
@@ -6569,16 +6572,21 @@ function parseCSV(line){ const r=[]; let cur='',inQ=false; for(const ch of line)
 // ---------------------------------------------------------------
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-function renderDatePicker(id, valorISO){
+function renderDatePicker(id, valorISO, opts){
   // valorISO: 'YYYY-MM-DD' o '' para hoy
+  // opts: { minYear, maxYear } — opcional para controlar el rango
   const d = valorISO ? new Date(valorISO+'T12:00:00') : new Date();
   const dd = d.getDate(), mm = d.getMonth()+1, yy = d.getFullYear();
   const añoActual = new Date().getFullYear();
 
+  // Rango de años: si se pasa opts.minYear lo usa; si el id contiene 'nac' usa 1950; si no, rango corto ±5
+  const minYear = opts?.minYear ?? (id.includes('nac') ? 1950 : añoActual - 8);
+  const maxYear = opts?.maxYear ?? añoActual;
+
   const dias = Array.from({length:31},(_,i)=>`<option value="${i+1}" ${dd===i+1?'selected':''}>${String(i+1).padStart(2,'0')}</option>`).join('');
   const meses = MESES.map((m,i)=>`<option value="${i+1}" ${mm===i+1?'selected':''}>${m}</option>`).join('');
-  const años = Array.from({length:10},(_,i)=>{
-    const y=añoActual-8+i;
+  const años = Array.from({length: maxYear - minYear + 1},(_,i)=>{
+    const y = maxYear - i; // descendente: año más reciente primero
     return `<option value="${y}" ${yy===y?'selected':''}>${y}</option>`;
   }).join('');
 
