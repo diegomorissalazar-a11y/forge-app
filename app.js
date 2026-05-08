@@ -3595,7 +3595,20 @@ function buildAccBody(exId, filtro) {
         if (set.time) { const p = (set.time + '').split(':'); totalMins += (parseInt(p[0]) || 0) + (parseInt(p[1]) || 0) / 60; }
       });
       const ritmo = totalDist > 0 && totalMins > 0 ? totalMins / totalDist : 0;
+      // FC media: promedio de los sets que tienen fc
+      const setsConFC = sets.filter(st => parseFloat(st.fc) > 0);
+      const fcMedia = setsConFC.length
+        ? Math.round(setsConFC.reduce((a, st) => a + parseFloat(st.fc), 0) / setsConFC.length)
+        : 0;
+      // Pasos totales de la sesión
+      const pasosTot = sets.reduce((a, st) => a + (parseInt(st.pasos) || 0), 0);
+      // Longitud de zancada en cm: (distancia_m / pasos) * 100
+      // distancia en km → * 1000 para metros
+      const zancadaCm = pasosTot > 0 && totalDist > 0
+        ? Math.round((totalDist * 1000 / pasosTot) * 10) / 10
+        : 0;
       puntos.push({ fecha, val: totalDist, valDist: totalDist, valRitmo: ritmo,
+        valFC: fcMedia, valZancada: zancadaCm,
         label: `${totalDist.toFixed(2)}km${ritmo > 0 ? ' · ' + decimalToPace(ritmo) + '/km' : ''}` });
     } else {
       const sets = (ex.sets || []).filter(set => set.done && set.weight);
@@ -3685,9 +3698,10 @@ function buildAccBody(exId, filtro) {
     activeFilter: filtro
   });
 
-  // Si cardio, también gráfico de ritmo
+  // Si cardio, también gráfico de ritmo + FC + Zancada
   let ritmoChartHtml = '';
   if (isRun) {
+    // ── Ritmo ──────────────────────────────────────────────────
     const ritmoData = puntos
       .filter(p => p.valRitmo > 0)
       .map(p => ({
@@ -3697,7 +3711,7 @@ function buildAccBody(exId, filtro) {
         displayValue: decimalToPace(p.valRitmo) + ' min/km'
       }));
     if (ritmoData.length >= 2) {
-      ritmoChartHtml = renderMetricChart({
+      ritmoChartHtml += renderMetricChart({
         id: `acc_ritmo_${exId}`,
         type: 'pace', unit: 'min/km', unitLabel: 'min/km',
         title: 'Ritmo', subtitle: 'Arriba = más rápido',
@@ -3707,6 +3721,59 @@ function buildAccBody(exId, filtro) {
         height: 160, color: 'var(--p)',
         activeFilter: filtro
       });
+    }
+
+    // ── FC media ───────────────────────────────────────────────
+    const fcData = puntos
+      .filter(p => p.valFC > 0)
+      .map(p => ({
+        date: p.fecha,
+        label: p.fecha.slice(5).replace('-', '/'),
+        value: p.valFC,
+        displayValue: `${p.valFC} bpm`
+      }));
+    if (fcData.length >= 2) {
+      ritmoChartHtml += renderMetricChart({
+        id: `acc_fc_${exId}`,
+        type: 'heartrate', unit: 'bpm', unitLabel: 'bpm',
+        title: 'FC media', subtitle: 'Frecuencia cardíaca promedio por sesión',
+        data: fcData,
+        yAxis: { forceZero: false, paddingRatio: 0.08 },
+        tooltip: { showDate: true },
+        height: 160, color: 'var(--warn)',
+        activeFilter: filtro
+      });
+    }
+
+    // ── Longitud de zancada ────────────────────────────────────
+    // Definición: distancia(m) / pasos = metros por zancada → convertido a cm
+    // Ejemplo: 4km / 5000 pasos = 0.8m = 80cm por zancada
+    // Un corredor eficiente apunta a ~90–100cm (mejora con técnica y velocidad)
+    const zancadaData = puntos
+      .filter(p => p.valZancada > 0)
+      .map(p => ({
+        date: p.fecha,
+        label: p.fecha.slice(5).replace('-', '/'),
+        value: p.valZancada,
+        displayValue: `${p.valZancada} cm`
+      }));
+    if (zancadaData.length >= 2) {
+      ritmoChartHtml += renderMetricChart({
+        id: `acc_zancada_${exId}`,
+        type: 'body_measure', unit: 'cm', unitLabel: 'cm / zancada',
+        title: 'Longitud de zancada',
+        subtitle: 'Distancia (m) ÷ pasos · Meta: 90–100 cm',
+        data: zancadaData,
+        yAxis: { forceZero: false, paddingRatio: 0.1 },
+        tooltip: { showDate: true },
+        height: 160, color: 'var(--teal)',
+        activeFilter: filtro
+      });
+    } else if (fcData.length < 2 && zancadaData.length < 2) {
+      // Hint para registrar pasos y FC
+      ritmoChartHtml += `<div style="padding:10px 0;font-size:11px;color:var(--ink3)">
+        ◈ Registra FC y pasos en cada sesión para ver estos gráficos.
+      </div>`;
     }
   }
 
