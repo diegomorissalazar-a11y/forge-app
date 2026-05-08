@@ -1250,15 +1250,14 @@ function renderHomePlanBanner(){
       <div class="home-plan-adherencia">
         <div class="home-plan-adherencia-item">
           <div class="home-plan-adherencia-val">${diasNutriOK}</div>
-          <div class="home-plan-adherencia-lbl">Días pauta</div>
+          <div class="home-plan-adherencia-lbl">Nutrición ✓</div>
         </div>
         <div class="home-plan-adherencia-item">
           <div class="home-plan-adherencia-val">${diasAguaOK}</div>
-          <div class="home-plan-adherencia-lbl">Días agua</div>
+          <div class="home-plan-adherencia-lbl">Agua ✓</div>
         </div>
-        <div class="home-plan-adherencia-item" style="border-left:1px solid var(--border);padding-left:12px;text-align:left;flex:2">
-          <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:2px">Este mes</div>
-          <div style="font-size:10px;color:var(--ink3)">Nutrición · Agua</div>
+        <div class="home-plan-adherencia-item" style="border-left:1px solid var(--border);padding-left:12px;text-align:left;flex:2;display:flex;align-items:center">
+          <div style="font-size:10px;color:var(--ink3)">Días completados<br>este mes</div>
         </div>
       </div>
       ${ejHoyHtml}
@@ -2489,6 +2488,8 @@ function addSetToEx(ei){
 
 function finishSession(){
   if(!activeSession) return;
+  // Cerrar el contador de descanso si está activo
+  skipRest();
   clearInterval(sesTimer);
   activeSession.elapsed=sesSeconds;
   activeSession.totalVolume=activeSession.exercises.reduce((a,ex)=>
@@ -3328,21 +3329,25 @@ function saveEjercicio(){
 // ── Audio: desbloquear AudioContext en iOS con el primer toque ─
 let _audioCtx=null;
 function getAudioCtx(){
+  // Re-crear si fue cerrado (pasa cuando el sistema libera recursos)
+  if(_audioCtx&&_audioCtx.state==='closed') _audioCtx=null;
   if(!_audioCtx){
     try{ _audioCtx=new(window.AudioContext||window.webkitAudioContext)(); }catch(e){}
   }
-  // iOS requiere resume() después de crearlo
+  // iOS: siempre intentar resume — el contexto se suspende con música de fondo
   if(_audioCtx&&_audioCtx.state==='suspended'){
     _audioCtx.resume().catch(()=>{});
   }
   return _audioCtx;
 }
 
-// Desbloquear en el primer toque del usuario (necesario en iOS Safari)
-document.addEventListener('touchstart', ()=>{
+// Desbloquear en touchstart Y click — iOS necesita gesto del usuario
+function _unlockAudio(){
   const ctx=getAudioCtx();
-  if(ctx&&ctx.state==='suspended') ctx.resume();
-}, {once:false, passive:true});
+  if(ctx&&ctx.state==='suspended') ctx.resume().catch(()=>{});
+}
+document.addEventListener('touchstart', _unlockAudio, {passive:true});
+document.addEventListener('click',      _unlockAudio, {passive:true});
 
 function beep(freq=880, dur=0.08, vol=0.3){
   const ctx=getAudioCtx(); if(!ctx) return;
@@ -3844,10 +3849,25 @@ function renderKPIEjClave(){
     const e=getEx(ec.id); if(!e) return '';
     const isRun=e.type==='run'||e.type==='hiit';
     const pr=getPR(ec.id);
-    const valStr=isRun?getRunPR(ec.id):pr.weight>0?`${pr.weight}kg`:'—';
     const meta=plan?.metas?.[ec.id];
     const metaStr=meta?(isRun?`Meta: ${meta}min`:`Meta: ${meta}kg`):'';
     const pct=meta&&pr.weight>0?Math.min(100,Math.round((pr.weight/meta)*100)):0;
+
+    // Para carrera: mostrar distancia y ritmo en líneas separadas
+    if(isRun){
+      const runPR=getRunPRObj(ec.id);
+      const distStr=runPR.dist>0?`${runPR.dist.toFixed(2)} km`:'—';
+      const ritmoStr=runPR.ritmo>0?`${Math.floor(runPR.ritmo)}'${pad(Math.round((runPR.ritmo%1)*60))}"/km`:'—';
+      return `<div class="stat-box" onclick="openExDetail('${ec.id}')" style="cursor:pointer">
+        <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">${ec.label}</div>
+        <div style="font-size:22px;font-weight:800;color:var(--p);line-height:1.15">${distStr}</div>
+        <div style="font-size:16px;font-weight:700;color:var(--p);line-height:1.2">${ritmoStr}</div>
+        ${metaStr?`<div style="font-size:10px;color:var(--ink3);margin-top:2px">${metaStr}</div>`:''}
+      </div>`;
+    }
+
+    // Para fuerza: una sola línea
+    const valStr=pr.weight>0?`${pr.weight}kg`:'—';
     return `<div class="stat-box" onclick="openExDetail('${ec.id}')" style="cursor:pointer">
       <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">${ec.label}</div>
       <div style="font-size:24px;font-weight:800;color:var(--p);line-height:1">${valStr}</div>
@@ -5341,7 +5361,10 @@ const FREQUENT_FOODS = [
   {id:'atun', name:'Atún', portions:{proteinas:2}},
   {id:'pollo_pavo_pescado', name:'Pollo/pavo/pescado', portions:{proteinas:2}},
   {id:'verduras', name:'Verduras', portions:{verduras:1}},
-  {id:'aceite', name:'Aceite', portions:{aceites:1}}
+  {id:'aceite', name:'Aceite', portions:{aceites:1}},
+  {id:'manzana', name:'Manzana', portions:{frutas:1}},
+  {id:'arroz', name:'Porción de arroz', portions:{cereales:1}},
+  {id:'tomates_cherry', name:'Tomates cherry', portions:{verduras:0.5}},
 ];
 function clonePortionZero(){
   return Object.keys(NUTRITION_TARGETS).filter(k=>!['aguaMl','aguaVasos'].includes(k)).reduce((o,k)=>{o[k]=0;return o;},{});
@@ -5796,8 +5819,12 @@ function renderFood(){
 function toggleComida(id){ foodOpenId=foodOpenId===id?null:id; renderFood(); }
 function toggleComidaCheck(id){
   const fd=getFD(foodFecha); if(!fd.comidas[id]) fd.comidas[id]={completada:false,texto:''};
-  fd.comidas[id].completada=!fd.comidas[id].completada; saveFD(fd);
-  if(Object.values(fd.comidas).filter(c=>c.completada).length===COMIDAS.length) showToast('🎯 ¡Todas las comidas del día!',3000,'ok');
+  fd.comidas[id].completada=!fd.comidas[id].completada;
+  // Persistir allDone si todas las comidas están completadas
+  const completadasCount=Object.values(fd.comidas).filter(c=>c.completada).length;
+  fd.allDone = completadasCount===COMIDAS.length;
+  saveFD(fd);
+  if(fd.allDone) showToast('🎯 ¡Plan nutricional completo!',3000,'ok');
   renderFood(); renderHomeNutritionCard();
 }
 function saveComidaTxt(id,txt){
