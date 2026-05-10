@@ -3461,9 +3461,10 @@ function addRestTime(s){
 //  PLAN DE PROGRESIÓN (+2.5% semanal)
 // ---------------------------------------------------------------
 const EJERCICIOS_CLAVE=[
-  {id:'ex_sentadilla',  label:'Sentadilla', rutinaId:'r_lunes'},
+  {id:'ex_sentadilla',  label:'Sentadilla',  rutinaId:'r_lunes'},
   {id:'ex_press_banca', label:'Press Banca', rutinaId:'r_martes'},
-  {id:'ex_correr',  label:'10K Trote',  rutinaId:'r_cardio'},
+  {id:'ex_correr',      label:'Dist. máx.',  rutinaId:'r_cardio', subkey:'dist'},
+  {id:'ex_correr',      label:'Mejor ritmo', rutinaId:'r_cardio', subkey:'ritmo'},
 ];
 
 function semanaActualPlan(plan){
@@ -3602,13 +3603,26 @@ function buildAccBody(exId, filtro) {
         : 0;
       // Pasos totales de la sesión
       const pasosTot = sets.reduce((a, st) => a + (parseInt(st.pasos) || 0), 0);
-      // Longitud de zancada en cm: (distancia_m / pasos) * 100
-      // distancia en km → * 1000 para metros
-      const zancadaCm = pasosTot > 0 && totalDist > 0
-        ? Math.round((totalDist * 1000 / pasosTot) * 10) / 10
+      // Longitud de zancada en cm
+      // Fórmula: distancia(km) × 1000 → metros ÷ pasos → m/paso × 100 → cm/paso
+      // Ejemplo validación: 4.09km × 1000 = 4090m ÷ 5575 pasos = 0.7336 m/paso × 100 = 73.4 cm
+      // Solo usar sets que tengan AMBOS: distancia > 0 Y pasos > 0
+      const setsConPasos = sets.filter(st => parseFloat(st.distance) > 0 && parseInt(st.pasos) > 0);
+      let zancadaCm = 0;
+      if (setsConPasos.length) {
+        const distConPasos = setsConPasos.reduce((a, st) => a + parseFloat(st.distance || 0), 0);
+        const pasosConDist = setsConPasos.reduce((a, st) => a + (parseInt(st.pasos) || 0), 0);
+        if (distConPasos > 0 && pasosConDist > 0) {
+          const metrosPorPaso = (distConPasos * 1000) / pasosConDist; // m/paso
+          zancadaCm = Math.round(metrosPorPaso * 100 * 10) / 10; // cm, 1 decimal
+        }
+      }
+      // Pasos por km (cadencia): pasos totales / distancia km
+      const pasosPorKm = pasosTot > 0 && totalDist > 0
+        ? Math.round(pasosTot / totalDist)
         : 0;
       puntos.push({ fecha, val: totalDist, valDist: totalDist, valRitmo: ritmo,
-        valFC: fcMedia, valZancada: zancadaCm,
+        valFC: fcMedia, valZancada: zancadaCm, valPasosPorKm: pasosPorKm,
         label: `${totalDist.toFixed(2)}km${ritmo > 0 ? ' · ' + decimalToPace(ritmo) + '/km' : ''}` });
     } else {
       const sets = (ex.sets || []).filter(set => set.done && set.weight);
@@ -3775,6 +3789,29 @@ function buildAccBody(exId, filtro) {
         ◈ Registra FC y pasos en cada sesión para ver estos gráficos.
       </div>`;
     }
+
+    // ── Pasos por km (cadencia) ────────────────────────────
+    const pasosPorKmData = puntos
+      .filter(p => p.valPasosPorKm > 0)
+      .map(p => ({
+        date: p.fecha,
+        label: p.fecha.slice(5).replace('-', '/'),
+        value: p.valPasosPorKm,
+        displayValue: `${p.valPasosPorKm.toLocaleString('es-CL')} p/km`
+      }));
+    if (pasosPorKmData.length >= 2) {
+      ritmoChartHtml += renderMetricChart({
+        id: `acc_cadencia_${exId}`,
+        type: 'reps', unit: 'p/km', unitLabel: 'pasos / km',
+        title: 'Cadencia',
+        subtitle: 'Pasos por km — eficiencia al correr',
+        data: pasosPorKmData,
+        yAxis: { forceZero: false, paddingRatio: 0.08 },
+        tooltip: { showDate: true },
+        height: 160, color: 'var(--ok)',
+        activeFilter: filtro
+      });
+    }
   }
 
   return kpisHtml + filtrosHtml + chartHtml + ritmoChartHtml;
@@ -3912,29 +3949,40 @@ function renderProgEjercicios() {
 
 function renderKPIEjClave(){
   const plan=(forge.planes||[]).find(p=>p.activo);
+  // Deduplicar IDs para obtener el PR una sola vez
+  const runPRCache={};
   return EJERCICIOS_CLAVE.map(ec=>{
     const e=getEx(ec.id); if(!e) return '';
     const isRun=e.type==='run'||e.type==='hiit';
     const pr=getPR(ec.id);
     const meta=plan?.metas?.[ec.id];
-    const metaStr=meta?(isRun?`Meta: ${meta}min`:`Meta: ${meta}kg`):'';
-    const pct=meta&&pr.weight>0?Math.min(100,Math.round((pr.weight/meta)*100)):0;
 
-    // Para carrera: mostrar distancia y ritmo en líneas separadas
     if(isRun){
-      const runPR=getRunPRObj(ec.id);
-      const distStr=runPR.dist>0?`${runPR.dist.toFixed(2)} km`:'—';
-      const ritmoStr=runPR.ritmo>0?`${Math.floor(runPR.ritmo)}'${pad(Math.round((runPR.ritmo%1)*60))}"/km`:'—';
-      return `<div class="stat-box" onclick="openExDetail('${ec.id}')" style="cursor:pointer">
-        <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">${ec.label}</div>
-        <div style="font-size:22px;font-weight:800;color:var(--p);line-height:1.15">${distStr}</div>
-        <div style="font-size:16px;font-weight:700;color:var(--p);line-height:1.2">${ritmoStr}</div>
-        ${metaStr?`<div style="font-size:10px;color:var(--ink3);margin-top:2px">${metaStr}</div>`:''}
-      </div>`;
+      // Caché para no recalcular dos veces
+      if(!runPRCache[ec.id]) runPRCache[ec.id]=getRunPRObj(ec.id);
+      const runPR=runPRCache[ec.id];
+
+      if(ec.subkey==='dist'){
+        const distStr=runPR.dist>0?`${runPR.dist.toFixed(2)} km`:'—';
+        return `<div class="stat-box" onclick="openExDetail('${ec.id}')" style="cursor:pointer">
+          <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">${ec.label}</div>
+          <div style="font-size:22px;font-weight:800;color:var(--p);line-height:1">${distStr}</div>
+        </div>`;
+      } else {
+        const ritmoStr=runPR.ritmo>0?`${Math.floor(runPR.ritmo)}'${pad(Math.round((runPR.ritmo%1)*60))}"/km`:'—';
+        const metaStr=meta?`Meta: ${meta}min`:'';
+        return `<div class="stat-box" onclick="openExDetail('${ec.id}')" style="cursor:pointer">
+          <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">${ec.label}</div>
+          <div style="font-size:20px;font-weight:800;color:var(--p);line-height:1">${ritmoStr}</div>
+          ${metaStr?`<div style="font-size:10px;color:var(--ink3);margin-top:2px">${metaStr}</div>`:''}
+        </div>`;
+      }
     }
 
-    // Para fuerza: una sola línea
+    // Fuerza
     const valStr=pr.weight>0?`${pr.weight}kg`:'—';
+    const metaStr=meta?`Meta: ${meta}kg`:'';
+    const pct=meta&&pr.weight>0?Math.min(100,Math.round((pr.weight/meta)*100)):0;
     return `<div class="stat-box" onclick="openExDetail('${ec.id}')" style="cursor:pointer">
       <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">${ec.label}</div>
       <div style="font-size:24px;font-weight:800;color:var(--p);line-height:1">${valStr}</div>
@@ -5422,7 +5470,7 @@ const FREQUENT_FOODS = [
   {id:'papa_cocida', name:'Papa cocida', portions:{cereales:1}},
   {id:'presa_pollo', name:'Presa de pollo', portions:{proteinas:2.5}},
   {id:'leche_protein', name:'Leche protein', portions:{lacteoProtein:1}},
-  {id:'huevos_duros', name:'Huevos duros', portions:{proteinas:2}},
+  {id:'huevo_duro', name:'Huevo duro', portions:{proteinas:1}},
   {id:'leche_descremada', name:'Leche descremada', portions:{lacteoDescremado:1}},
   {id:'barra_low_carb', name:'Barra low carb', detail:'45g · 5,3g proteína · 6g carbos netos · 8g fibra', portions:{proteinas:0.5}},
   {id:'atun', name:'Atún', portions:{proteinas:2}},
@@ -5476,15 +5524,47 @@ function editCurrentMealFromHome(){
   else goTo('food');
 }
 function renderFoodIfVisible(){ if(currentScreen==='food') renderFood(); }
+/** Suma todas las porciones registradas hoy (comidas + alimentos rápidos) */
+function getPorcionesHoy(fd){
+  const totales=newPorciones();
+  // Porciones de comidas completadas
+  COMIDAS.forEach(c=>{
+    if(fd.comidas?.[c.id]?.completada && c.portions){
+      Object.entries(c.portions).forEach(([k,v])=>{ totales[k]=(totales[k]||0)+v; });
+    }
+  });
+  // Porciones de alimentos rápidos registrados hoy
+  (fd.extraFoods||[]).forEach(f=>{
+    if(f.portions){ Object.entries(f.portions).forEach(([k,v])=>{ totales[k]=(totales[k]||0)+v; }); }
+  });
+  return totales;
+}
+
 function renderHomeNutritionCard(){
   const el=document.getElementById('home-food-today'); if(!el) return;
   const fd=getFD(today()); const prog=getMealProgress(fd); const cm=getCurrentMeal(fd);
   const cur=cm.current, next=cm.next;
   const activas=prog.done||0, total=prog.total||5;
+
+  // Calcular % de porciones del día (de todos los grupos)
+  const porcionesHoy=getPorcionesHoy(fd);
+  const targets=NUTRITION_TARGETS;
+  const grupos=['proteinas','lacteoProtein','lacteoDescremado','cereales','frutas','lipidos','aceites','verduras'];
+  let porDone=0, porTotal=0;
+  grupos.forEach(g=>{
+    const t=targets[g]||0;
+    porTotal+=t;
+    porDone+=Math.min(t, porcionesHoy[g]||0);
+  });
+  const porPct=porTotal>0?Math.round(porDone/porTotal*100):0;
+
   el.innerHTML='<div class="mq-home-card">'
-    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:10px">'
+    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:8px">'
       +'<div class="mq-hrow" style="gap:8px;color:#CDA349">'+MQ.plato+'<span class="mq-kicker">Nutrición</span></div>'
-      +'<span style="font-size:13px;font-weight:700;color:'+(cm.allDone?'var(--green)':'#CDA349')+'">'+prog.pct+'%</span>'
+      +'<div style="display:flex;gap:10px;align-items:center">'
+        +`<div style="text-align:right"><div style="font-size:11px;font-weight:700;color:${cm.allDone?'var(--ok)':'#CDA349'}">${prog.pct}%</div><div style="font-size:9px;color:var(--ink3)">Platos</div></div>`
+        +`<div style="text-align:right"><div style="font-size:11px;font-weight:700;color:${porPct>=100?'var(--ok)':'var(--p)'}">${porPct}%</div><div style="font-size:9px;color:var(--ink3)">Porciones</div></div>`
+      +'</div>'
     +'</div>'
     // Platos tracker
     +mqPlatos(activas, total)
@@ -5500,7 +5580,7 @@ function renderHomeNutritionCard(){
         +'</div>'
         +(next?'<div class="mq-stat-lbl" style="margin-top:6px">Próxima: '+next.hora+' — '+next.nombre+'</div>':'')
         +'</div>')
-      :'<div class="mq-stat-lbl" style="margin-top:8px;color:var(--green)">Día alimentario completo</div>'
+      :'<div class="mq-stat-lbl" style="margin-top:8px;color:var(--ok)">Día alimentario completo</div>'
     )
     +'</div>';
 }
@@ -6813,10 +6893,12 @@ function formatMetricValue(value, type, unit) {
 function formatAxisTick(value, type, unit) {
   if (type === 'pace')         return decimalToPace(value);
   if (type === 'percentage')   return `${Math.round(value)}%`;
-  if (type === 'weight' || type === 'body_measure') return `${Math.round(value*10)/10}`;
+  if (type === 'weight')       return `${Math.round(value*10)/10}`;
+  if (type === 'body_measure') return `${Math.round(value*10)/10} ${unit||'cm'}`;
   if (type === 'volume')       return `${Math.round(value/1000*10)/10}k`;
   if (type === 'distance')     return `${Math.round(value*10)/10}`;
   if (type === 'heartrate')    return `${Math.round(value)}`;
+  if (type === 'reps')         return `${Math.round(value)}`;
   return `${Math.round(value*10)/10}`;
 }
 
@@ -7126,7 +7208,9 @@ function renderMetricChart(config) {
   }
 
   // ── Cálculo del gráfico SVG ───────────────────────────────
-  const PL = 46, PB = 26, PT = 10, PR = 8;
+  // PL más ancho para tipos con etiquetas más largas en el eje Y
+  const PL = (type === 'body_measure' || type === 'heartrate' || type === 'reps') ? 58 : 46;
+  const PB = 26, PT = 10, PR = 8;
   const n = data.length;
   const minPxPerPoint = n > 40 ? 6 : n > 20 ? 8 : 12;
   const W = Math.max(320, PL + PR + n * minPxPerPoint);

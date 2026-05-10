@@ -2149,3 +2149,17 @@ td, th {
   margin-top: 2px !important;
 }
 .home-plan-unified__metric-icon { display: none !important; }
+
+/* v141: 4 columnas en kpi-row de progreso */
+#prog-kpi-row {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 0 !important;
+}
+#prog-kpi-row .stat-box {
+  border-right: 1px solid var(--border) !important;
+  border-radius: 0 !important;
+}
+#prog-kpi-row .stat-box:last-child {
+  border-right: none !important;
+}
