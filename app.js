@@ -1333,11 +1333,18 @@ function renderSesCard(s, hoy){
   if(esCardio && ritmoData){
     const distStr = ritmoData.dist>0 ? `${ritmoData.dist.toFixed(2)} km` : '—';
     const ritmoStr= ritmoData.ritmo>0 ? `${Math.floor(ritmoData.ritmo)}'${pad(Math.round((ritmoData.ritmo%1)*60))}"/km` : '—';
+    // Zancada autocalculada: (dist_m / pasos) × 100 = cm/paso
+    let zancadaStr = '';
+    if(ritmoData.pasos>0 && ritmoData.dist>0){
+      const zCm = Math.round((ritmoData.dist * 1000 / ritmoData.pasos) * 100 * 10) / 10;
+      zancadaStr = `<div class="hm-item"><div class="hm-label">Zancada</div><div class="hm-val" style="color:var(--teal)">${zCm} cm</div></div>`;
+    }
     metaRow=`
       <div class="hm-item"><div class="hm-label">Distancia</div><div class="hm-val">${distStr}</div></div>
       <div class="hm-item"><div class="hm-label">Ritmo</div><div class="hm-val">${ritmoStr}</div></div>
       ${ritmoData.fcMedia>0?`<div class="hm-item"><div class="hm-label">FC media</div><div class="hm-val" style="color:#f87171">❤️ ${ritmoData.fcMedia}</div></div>`:''}
-      ${ritmoData.pasos>0?`<div class="hm-item"><div class="hm-label">Pasos</div><div class="hm-val" style="color:var(--blue)">👟 ${fmtMiles(ritmoData.pasos)}</div></div>`:''}`;
+      ${ritmoData.pasos>0?`<div class="hm-item"><div class="hm-label">Pasos</div><div class="hm-val" style="color:var(--blue)">👟 ${fmtMiles(ritmoData.pasos)}</div></div>`:''}
+      ${zancadaStr}`;
   } else {
     const volStr = s.totalVolume ? `${fmtMiles(s.totalVolume)} kg` : '—';
     const nSeries = (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(s=>s.done).length,0);
@@ -5524,6 +5531,11 @@ function editCurrentMealFromHome(){
   else goTo('food');
 }
 function renderFoodIfVisible(){ if(currentScreen==='food') renderFood(); }
+/** Retorna objeto con todas las claves de porciones inicializadas a 0 */
+function newPorciones(){
+  return {proteinas:0,lacteoProtein:0,lacteoDescremado:0,cereales:0,frutas:0,lipidos:0,aceites:0,verduras:0};
+}
+
 /** Suma todas las porciones registradas hoy (comidas + alimentos rápidos) */
 function getPorcionesHoy(fd){
   const totales=newPorciones();
