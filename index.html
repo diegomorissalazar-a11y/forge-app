@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=129">
 <link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=108">
 <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.svg?v=129">
-<title>MELQART v144</title>
+<title>MELQART v145</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -40,16 +40,25 @@
 <!-- WRAPPER DE SCREENS -->
 <div id="wrap">
 
+<!-- TOP BAR MÓVIL — solo visible en móvil (lg oculto) -->
+<div id="mobile-topbar" class="mobile-topbar">
+  <div id="mobile-topbar-section" class="mobile-topbar-section">Inicio</div>
+  <div class="mobile-topbar-actions">
+    <div id="sync-dot-mobile" class="sync-dot-mobile"></div>
+    <div id="user-btn-mobile" onclick="toggleUserMenu()" class="user-btn-mobile" style="display:none"></div>
+  </div>
+</div>
+
 <!-- -- SCREEN: INICIO -- -->
 <div id="s-home" class="screen on">
-  <div class="topbar">
+  <div class="topbar topbar-desktop-only">
     <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_clean.png?v=108" alt="MELQART"></div>
     <div style="display:flex;align-items:center;gap:8px">
       <div id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--green)"></div>
       <div id="user-btn" onclick="toggleUserMenu()" style="width:32px;height:32px;border-radius:50%;background:var(--orange);color:#fff;display:none;align-items:center;justify-content:center;font-size:12px;font-weight:800;cursor:pointer"></div>
     </div>
   </div>
-  <div style="padding:16px">
+  <div class="screen-content p-content pb-safe">
     <div id="home-greet" style="margin-bottom:14px"></div>
     <div id="home-plan-banner" style="margin-bottom:12px"></div>
     <div id="home-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px"></div>
@@ -71,19 +80,19 @@
       </div>
     </div>
     <div id="home-sessions"></div>
-  </div>
+  </div><!-- /screen-content -->
 </div>
 
 <!-- -- SCREEN: ENTRENAR -- -->
 <div id="s-train" class="screen">
-  <div class="topbar">
+  <div class="topbar topbar-desktop-only">
     <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_clean.png?v=108" alt="MELQART"></div>
     <div id="train-topbar-right" style="display:flex;align-items:center;gap:8px">
       <span style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Rutinas</span>
     </div>
   </div>
   <!-- Vista de rutinas -->
-  <div id="train-home" style="padding:16px">
+  <div id="train-home" class="pb-safe" style="padding:16px">
     <button class="btn btn-s" style="margin-bottom:14px" onclick="startFreeSession()">
       <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Sesión libre
@@ -110,7 +119,7 @@
 
 <!-- -- SCREEN: PROGRESO -- -->
 <div id="s-progress" class="screen">
-  <div class="topbar">
+  <div class="topbar topbar-desktop-only">
     <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_clean.png?v=108" alt="MELQART"></div>
     <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">Progreso</div>
   </div>
@@ -157,7 +166,7 @@
 
 <!-- -- SCREEN: NUTRICIÓN -- -->
 <div id="s-food" class="screen">
-  <div class="topbar">
+  <div class="topbar topbar-desktop-only">
     <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_clean.png?v=108" alt="MELQART"></div>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="food-fecha-lbl" style="font-size:11px;color:var(--ink3)"></span>
@@ -217,7 +226,7 @@
 
 <!-- -- SCREEN: PERFIL -- -->
 <div id="s-perfil" class="screen">
-  <div class="topbar">
+  <div class="topbar topbar-desktop-only">
     <div class="mq-brand"><img class="mq-brand-wordmark" src="assets/brand/melqart_wordmark_clean.png?v=108" alt="MELQART"></div>
     <button class="btn btn-p btn-sm" id="perfil-action-btn">+ Nuevo</button>
   </div>
@@ -234,26 +243,26 @@
 </div><!-- /wrap -->
 
 <!-- NAV -->
-<nav>
+<nav id="bottom-nav">
   <button class="nb on" id="nb-home"    onclick="goTo('home')">
     <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    Inicio
+    <span>Inicio</span>
   </button>
   <button class="nb" id="nb-train"   onclick="goTo('train')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="10" width="3" height="4" rx="1"/><rect x="20" y="10" width="3" height="4" rx="1"/><rect x="4" y="8" width="2" height="8" rx="1"/><rect x="18" y="8" width="2" height="8" rx="1"/><line x1="6" y1="12" x2="18" y2="12"/></svg>
-    Entrenar
+    <span>Entrenar</span>
   </button>
   <button class="nb" id="nb-progress" onclick="goTo('progress')">
     <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-    Progreso
+    <span>Progreso</span>
   </button>
   <button class="nb" id="nb-food"    onclick="goTo('food')">
     <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="1.1"/><circle cx="12" cy="12" r="3" fill="currentColor" fill-opacity="0.5"/></svg>
-    Nutrición
+    <span>Nutrición</span>
   </button>
   <button class="nb" id="nb-perfil"  onclick="goTo('perfil')">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-    Perfil
+    <span>Perfil</span>
   </button>
 </nav>
 
@@ -754,5 +763,320 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="app.js"></script>
+<script>
+/* v145 — mobile topbar sync */
+(function(){
+  const sectionNames = {
+    home:'Inicio', train:'Entrenar', progress:'Progreso',
+    food:'Nutrición', perfil:'Perfil'
+  };
+  // Patch goTo to update mobile topbar title
+  const _orig = window.goTo;
+  if(typeof _orig === 'function'){
+    window.goTo = function(id){
+      _orig(id);
+      const el = document.getElementById('mobile-topbar-section');
+      if(el) el.textContent = sectionNames[id] || id;
+    };
+  }
+  // Mirror sync-dot color
+  const obs = new MutationObserver(function(){
+    const src = document.getElementById('sync-dot');
+    const dst = document.getElementById('sync-dot-mobile');
+    if(src && dst) dst.style.background = src.style.background || getComputedStyle(src).background;
+  });
+  const srcDot = document.getElementById('sync-dot');
+  if(srcDot) obs.observe(srcDot, {attributes:true, attributeFilter:['style']});
+  // Mirror user-btn initials
+  const userObs = new MutationObserver(function(){
+    const src = document.getElementById('user-btn');
+    const dst = document.getElementById('user-btn-mobile');
+    if(src && dst){
+      dst.textContent = src.textContent;
+      if(src.style.display === 'flex' || src.style.display === 'inline-flex'){
+        dst.style.display = 'flex';
+      }
+    }
+  });
+  const srcBtn = document.getElementById('user-btn');
+  if(srcBtn) userObs.observe(srcBtn, {attributes:true, childList:true, characterData:true, subtree:true});
+})();
+</script>
+
+<!-- v145 — EXPORTAR EXTENDIDO: peso + agua + pauta + ejercicio en un solo texto -->
+<script>
+(function(){
+  function patchExport(){
+    if(typeof window.exportarSemana !== 'function'){ setTimeout(patchExport, 80); return; }
+
+    window.exportarSemana = function(){
+
+      // ── helpers locales ──────────────────────────────────────
+      function isoDate(d){
+        // Fecha local YYYY-MM-DD sin desfase UTC
+        const yy = d.getFullYear();
+        const mm = String(d.getMonth()+1).padStart(2,'0');
+        const dd = String(d.getDate()).padStart(2,'0');
+        return yy+'-'+mm+'-'+dd;
+      }
+      function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+      function fmtFecha(ts){ return new Date(ts).toLocaleDateString('es-CL',{weekday:'short',day:'numeric',month:'short',year:'numeric'}); }
+      function fmtDur(s){ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h>0?(h+'h '+m+'m'):(m+'m'); }
+      function bar(val, meta, len){
+        const f = meta>0 ? Math.round(Math.min(val,meta)/meta*len) : 0;
+        return '['+'\u2588'.repeat(f)+'\u2591'.repeat(Math.max(0,len-f))+']';
+      }
+      function pad(s,n){ return (String(s)+'                    ').slice(0,n); }
+      function pct(val,meta){ return meta>0 ? Math.round(Math.min(val,meta)/meta*100) : 0; }
+
+      // ── rango de fechas ──────────────────────────────────────
+      const semanas = parseInt(document.getElementById('export-semanas')?.value||'4');
+      const hoy = new Date();
+      const lunes = new Date(hoy);
+      lunes.setDate(hoy.getDate()-(hoy.getDay()||7)+1); lunes.setHours(0,0,0,0);
+      let fechaInicio;
+      if(semanas===0){ fechaInicio=new Date(0); }
+      else { fechaInicio=new Date(lunes); fechaInicio.setDate(lunes.getDate()-((semanas-1)*7)); }
+      const domingo = new Date(hoy); domingo.setHours(23,59,59,999);
+
+      const fmtRango = d => d.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'});
+      const SEP  = '═══════════════════════════════════════';
+      const sep2 = '───────────────────────────────────────';
+      const lines = [];
+
+      // ── referencias a globals de app.js ─────────────────────
+      const forge_     = window.forge || {};
+      const sessions_  = (forge_.sessions||[]).filter(s=>new Date(s.date)>=fechaInicio&&new Date(s.date)<=domingo).sort((a,b)=>a.date-b.date);
+      const metrics_   = (forge_.bodyMetrics||[]).filter(m=>{ const d=new Date(m.date+'T12:00:00'); return d>=fechaInicio&&d<=domingo; }).sort((a,b)=>a.date.localeCompare(b.date));
+      const getEx_     = typeof getEx==='function' ? getEx : ()=>null;
+      const fmtTime_   = typeof fmtTimeStr==='function' ? fmtTimeStr : s=>s;
+      const meta_      = typeof getAguaMeta==='function' ? getAguaMeta() : {vasos:10,mlPorVaso:250};
+      const targets_   = typeof NUTRITION_TARGETS!=='undefined' ? NUTRITION_TARGETS : {cereales:3,frutas:2,proteinas:12,lacteoProtein:2,lacteoDescremado:1,lipidos:0.5,aceites:1,verduras:2};
+      const plabels_   = typeof PORTION_LABELS!=='undefined' ? PORTION_LABELS : {cereales:'Cereales',frutas:'Frutas',proteinas:'Proteínas',lacteoProtein:'Lácteo protein',lacteoDescremado:'Lácteo desc.',lipidos:'Lípidos',aceites:'Aceites',verduras:'Verduras'};
+      const comidas_   = typeof COMIDAS!=='undefined' ? COMIDAS : [];
+      const totalC_    = comidas_.length || 7;
+      const gruposPorciones = ['proteinas','cereales','frutas','lacteoProtein','lacteoDescremado','lipidos','aceites','verduras'];
+
+      // ── leer datos nutricionales por día ─────────────────────
+      const nutriDias = [];
+      let cur = new Date(fechaInicio.getTime());
+      // si fechaInicio es new Date(0) arrancar desde el primer día con datos
+      if(fechaInicio.getTime()===0 && metrics_.length){
+        cur = new Date(metrics_[0].date+'T12:00:00');
+        cur.setHours(0,0,0,0);
+      }
+      while(cur <= domingo){
+        const key = isoDate(cur);
+        let fd = null;
+        try{ const raw=localStorage.getItem('ff_'+key); if(raw) fd=JSON.parse(raw); }catch{}
+        if(fd){
+          const vasosHoy = fd.aguaVasosHoy || fd.agua || 0;
+          const comidasOk = Object.values(fd.comidas||{}).filter(c=>c.completada).length;
+
+          // calcular porciones consumidas
+          let porciones = {};
+          if(typeof calcPortionsConsumed==='function'){
+            porciones = calcPortionsConsumed(fd);
+          } else {
+            comidas_.forEach(c=>{ if(fd.comidas?.[c.id]?.completada && c.portions) Object.entries(c.portions).forEach(([k,v])=>{ porciones[k]=(porciones[k]||0)+v; }); });
+            (fd.extraFoods||[]).forEach(f=>Object.entries(f.portions||{}).forEach(([k,v])=>{ porciones[k]=(porciones[k]||0)+v; }));
+          }
+
+          let porDone=0, porTotal=0;
+          gruposPorciones.forEach(g=>{ const t=targets_[g]||0; porTotal+=t; porDone+=Math.min(t,porciones[g]||0); });
+          const pctPauta = pct(porDone,porTotal);
+
+          // ejercicio ese día
+          const sesDia = sessions_.filter(s=>{ const sd=new Date(s.date); return isoDate(sd)===key; });
+
+          nutriDias.push({ fecha:key, vasosHoy, metaVasos:meta_.vasos, comidasOk, totalC:totalC_, pctPauta, porciones, sesDia });
+        }
+        cur = addDays(cur,1);
+      }
+
+      // ════════════════════════════════════════════════════════
+      //  CABECERA
+      // ════════════════════════════════════════════════════════
+      lines.push(SEP);
+      lines.push('MELQART — INFORME DE SEGUIMIENTO');
+      lines.push((semanas===0?'HISTORIAL COMPLETO':('ÚLTIMAS '+semanas+' SEMANA'+(semanas>1?'S':'')))
+        +' · '+fmtRango(fechaInicio)+' → '+fmtRango(domingo));
+      lines.push('Generado: '+new Date().toLocaleString('es-CL'));
+      lines.push(SEP);
+      lines.push('');
+
+      // ════════════════════════════════════════════════════════
+      //  1. PESO CORPORAL
+      // ════════════════════════════════════════════════════════
+      lines.push('◬ PESO CORPORAL');
+      lines.push(sep2);
+      if(!metrics_.length){
+        lines.push('  Sin registros de peso en este período.');
+      } else {
+        const pesoInicio = metrics_[0].peso;
+        const pesoFin    = metrics_[metrics_.length-1].peso;
+        const delta      = pesoInicio && pesoFin ? +(pesoFin-pesoInicio).toFixed(1) : null;
+        const po         = forge_.pesoObjetivo || {};
+        if(po.objetivo && pesoFin){
+          const restante = +(pesoFin - po.objetivo).toFixed(1);
+          lines.push('  Objetivo: '+po.objetivo+'kg  ·  Actual: '+pesoFin+'kg  ·  Restante: '+(restante>0?'+':'')+restante+'kg');
+        }
+        if(delta!==null) lines.push('  Cambio período: '+(delta>0?'+':'')+delta+'kg  ('+pesoInicio+'kg → '+pesoFin+'kg)');
+        lines.push('');
+        lines.push('  Fecha          Peso     IMC    Grasa%  Musc.kg');
+        lines.push('  '+'-'.repeat(50));
+        metrics_.forEach(m=>{
+          const cols = [
+            pad(m.date, 14),
+            pad((m.peso||'-')+'kg', 9),
+            pad(m.imc||'-', 7),
+            pad(m.grasa ? m.grasa+'%' : '-', 8),
+            m.muscular ? m.muscular+'kg' : '-'
+          ];
+          lines.push('  '+cols.join(''));
+        });
+      }
+      lines.push('');
+
+      // ════════════════════════════════════════════════════════
+      //  2. NUTRICIÓN — RESUMEN GLOBAL
+      // ════════════════════════════════════════════════════════
+      lines.push('◐ NUTRICIÓN — RESUMEN DEL PERÍODO');
+      lines.push(sep2);
+      if(!nutriDias.length){
+        lines.push('  Sin registros de alimentación en este período.');
+      } else {
+        const nDias = nutriDias.length;
+        const proAgua   = Math.round(nutriDias.reduce((a,d)=>a+d.vasosHoy,0)/nDias);
+        const diasAgua  = nutriDias.filter(d=>d.vasosHoy>=d.metaVasos).length;
+        const diasComC  = nutriDias.filter(d=>d.comidasOk===d.totalC).length;
+        const proPauta  = Math.round(nutriDias.reduce((a,d)=>a+d.pctPauta,0)/nDias);
+
+        lines.push('  Días con registro:         '+nDias);
+        lines.push('  Agua — promedio/día:       '+proAgua+'/'+meta_.vasos+' vasos  ·  meta cumplida '+diasAgua+'/'+nDias+' días  ('+pct(diasAgua,nDias)+'%)');
+        lines.push('  Comidas — días completos:  '+diasComC+'/'+nDias+' días  ('+pct(diasComC,nDias)+'%)');
+        lines.push('  Pauta porciones — promedio:'+proPauta+'%');
+        lines.push('');
+
+        // Promedio de cada grupo de porciones
+        lines.push('  Porciones promedio/día vs. pauta:');
+        gruposPorciones.forEach(g=>{
+          const objetivo = targets_[g]||0; if(!objetivo) return;
+          const promG = +(nutriDias.reduce((a,d)=>a+(d.porciones[g]||0),0)/nDias).toFixed(1);
+          const b = bar(promG, objetivo, 10);
+          lines.push('    '+pad(plabels_[g],22)+b+'  '+promG+'/'+objetivo+'  ('+pct(promG,objetivo)+'%)');
+        });
+      }
+      lines.push('');
+
+      // ════════════════════════════════════════════════════════
+      //  3. EJERCICIO — RESUMEN GLOBAL
+      // ════════════════════════════════════════════════════════
+      lines.push('◈ EJERCICIO — RESUMEN DEL PERÍODO');
+      lines.push(sep2);
+      if(!sessions_.length){
+        lines.push('  Sin sesiones en este período.');
+      } else {
+        const totalSes   = sessions_.length;
+        const totalDur   = sessions_.reduce((a,s)=>a+(s.elapsed||0),0);
+        const totalKcal  = sessions_.reduce((a,s)=>a+(s.kcal||0),0);
+        const diasConSes = new Set(sessions_.map(s=>isoDate(new Date(s.date)))).size;
+        const diasTotal  = Math.max(1, Math.round((domingo-fechaInicio)/(1000*60*60*24))+1);
+        const frecuencia = +(diasConSes/7*(diasTotal/diasTotal)).toFixed(1);
+        lines.push('  Sesiones totales:   '+totalSes+'  ('+diasConSes+' días activos)');
+        lines.push('  Duración total:     '+fmtDur(totalDur));
+        if(totalKcal) lines.push('  Calorías totales:   '+totalKcal+' kcal');
+        lines.push('  Frecuencia:         ~'+Math.round(totalSes/(Math.ceil(diasTotal/7)||1))+' sesiones/semana');
+      }
+      lines.push('');
+
+      // ════════════════════════════════════════════════════════
+      //  4. DETALLE CRONOLÓGICO DÍA A DÍA
+      // ════════════════════════════════════════════════════════
+      lines.push('▤ DETALLE DÍA A DÍA');
+      lines.push(sep2);
+
+      // Unir todos los días que tienen datos (peso, nutrición o sesión)
+      const diasSet = new Set([
+        ...metrics_.map(m=>m.date),
+        ...nutriDias.map(d=>d.fecha),
+        ...sessions_.map(s=>isoDate(new Date(s.date)))
+      ]);
+      const diasOrdenados = Array.from(diasSet).sort();
+
+      diasOrdenados.forEach(key=>{
+        const fechaLabel = new Date(key+'T12:00:00').toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+        lines.push('');
+        lines.push('  >> '+fechaLabel);
+
+        // Peso del día
+        const pesoDay = metrics_.find(m=>m.date===key);
+        if(pesoDay){
+          let pesoStr = '  ◬ Peso: '+pesoDay.peso+'kg';
+          if(pesoDay.imc)    pesoStr += '  IMC '+pesoDay.imc;
+          if(pesoDay.grasa)  pesoStr += '  Grasa '+pesoDay.grasa+'%';
+          if(pesoDay.muscular) pesoStr += '  Musc. '+pesoDay.muscular+'kg';
+          lines.push(pesoStr);
+        }
+
+        // Nutrición del día
+        const nDay = nutriDias.find(d=>d.fecha===key);
+        if(nDay){
+          const bAgua   = bar(nDay.vasosHoy, nDay.metaVasos, 10);
+          const bComida = bar(nDay.comidasOk, nDay.totalC, 7);
+          lines.push('  ◐ Agua:    '+bAgua+' '+nDay.vasosHoy+'/'+nDay.metaVasos+' vasos ('+pct(nDay.vasosHoy,nDay.metaVasos)+'%)');
+          lines.push('  ◐ Comidas: '+bComida+' '+nDay.comidasOk+'/'+nDay.totalC+' ('+pct(nDay.comidasOk,nDay.totalC)+'%)');
+          lines.push('  ◐ Pauta porciones: '+nDay.pctPauta+'%');
+          // desglose porciones solo si no todas son 0
+          const hayPorciones = gruposPorciones.some(g=>(nDay.porciones[g]||0)>0);
+          if(hayPorciones){
+            gruposPorciones.forEach(g=>{
+              const obj=targets_[g]||0; if(!obj) return;
+              const v=+(nDay.porciones[g]||0).toFixed(1);
+              if(v===0) return;
+              lines.push('     '+pad(plabels_[g],22)+bar(v,obj,8)+'  '+v+'/'+obj);
+            });
+          }
+        }
+
+        // Sesiones del día
+        const sesDia = sessions_.filter(s=>isoDate(new Date(s.date))===key);
+        sesDia.forEach(s=>{
+          lines.push('  ◈ Entreno: '+(s.routineName||'Sesión libre')+(s.elapsed?' · '+fmtDur(s.elapsed):'')+(s.fcMedia?' · FC '+s.fcMedia+'bpm':'')+(s.kcal?' · '+s.kcal+'kcal':''));
+          (s.exercises||[]).forEach(ex=>{
+            const e=getEx_(ex.exId); if(!e) return;
+            if(e.type==='warmup'||e.type==='stretch') return;
+            const sets=(ex.sets||[]).filter(st=>st.done); if(!sets.length) return;
+            if(e.type==='run'||e.type==='hiit'){
+              const dist=sets.reduce((a,st)=>a+(parseFloat(st.distance)||0),0);
+              lines.push('     '+e.name+': '+dist.toFixed(2)+'km'+(sets[0]?.time?' · '+fmtTime_(sets[0].time):''));
+            } else {
+              lines.push('     '+e.name+': '+sets.map(st=>st.weight+'kg×'+st.reps).join(' | '));
+            }
+          });
+        });
+      });
+
+      lines.push('');
+      lines.push(SEP);
+      lines.push('Exportado desde MELQART v145 · '+new Date().toLocaleDateString('es-CL'));
+      lines.push(SEP);
+
+      // ── enviar al portapapeles (igual que el original) ───────
+      const txt = lines.join('\n');
+      if(navigator.clipboard){
+        navigator.clipboard.writeText(txt).then(()=>showToast('Informe copiado al portapapeles',3000,'ok'));
+      } else {
+        const modal = document.getElementById('modal-ejercicio');
+        modal.querySelector('.modal-title').textContent = 'Informe exportado';
+        modal.querySelector('.modal-body').innerHTML = '<textarea style="width:100%;height:300px;font-family:monospace;font-size:11px;border:1px solid var(--border);border-radius:var(--r);padding:10px;resize:none" readonly>'+txt+'</textarea>';
+        openModal('modal-ejercicio');
+      }
+    }; // fin window.exportarSemana
+  }
+
+  patchExport();
+})();
+</script>
 </body>
 </html>
