@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=129">
 <link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=108">
 <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.svg?v=129">
-<title>MELQART v145</title>
+<title>MELQART v146</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -41,9 +41,6 @@
 
 
 
-<!-- WRAPPER DE SCREENS -->
-<div id="wrap">
-
 <!-- TOP BAR MÓVIL — solo visible en móvil (lg oculto) -->
 <div id="mobile-topbar" class="mobile-topbar">
   <div id="mobile-topbar-section" class="mobile-topbar-section">Inicio</div>
@@ -52,6 +49,9 @@
     <div id="user-btn-mobile" onclick="toggleUserMenu()" class="user-btn-mobile" style="display:none"></div>
   </div>
 </div>
+
+<!-- WRAPPER DE SCREENS -->
+<div id="wrap">
 
 <!-- -- SCREEN: INICIO -- -->
 <div id="s-home" class="screen on">
@@ -62,7 +62,7 @@
       <div id="user-btn" onclick="toggleUserMenu()" style="width:32px;height:32px;border-radius:50%;background:var(--orange);color:#fff;display:none;align-items:center;justify-content:center;font-size:12px;font-weight:800;cursor:pointer"></div>
     </div>
   </div>
-  <div class="screen-content p-content pb-safe">
+  <div class="pb-safe" style="padding:16px">
     <div id="home-greet" style="margin-bottom:14px"></div>
     <div id="home-plan-banner" style="margin-bottom:12px"></div>
     <div id="home-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px"></div>
@@ -84,7 +84,7 @@
       </div>
     </div>
     <div id="home-sessions"></div>
-  </div><!-- /screen-content -->
+  </div>
 </div>
 
 <!-- -- SCREEN: ENTRENAR -- -->
@@ -769,7 +769,7 @@
 <script src="app.js"></script>
 <script>
 /* ================================================================
-   MELQART v145 — AUDIO ROBUSTO
+   MELQART v146 — AUDIO ROBUSTO
    Parcha beep() y startRest() para sonar en TODOS los escenarios:
    - Con música de fondo (AudioContext suspendido)
    - Sin música
@@ -939,7 +939,7 @@
     }
   }, 25000);
 
-  console.log('[MELQART v145] Audio robusto activo — WebAudio + HTMLAudio fallback');
+  console.log('[MELQART v146] Audio robusto activo — WebAudio + HTMLAudio fallback');
 })();
 </script>
 <script>
@@ -1238,7 +1238,7 @@
 
       lines.push('');
       lines.push(SEP);
-      lines.push('Exportado desde MELQART v145 · '+new Date().toLocaleDateString('es-CL'));
+      lines.push('Exportado desde MELQART v146 · '+new Date().toLocaleDateString('es-CL'));
       lines.push(SEP);
 
       // ── enviar al portapapeles (igual que el original) ───────

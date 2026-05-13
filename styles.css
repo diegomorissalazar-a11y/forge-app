@@ -2182,8 +2182,6 @@ td, th {
   flex-shrink: 0;
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
   z-index: 60;
 }
 .mobile-topbar-section {
@@ -2238,8 +2236,6 @@ td, th {
   background: var(--bg2);
   border-top: 1px solid var(--border);
   align-items: flex-start;
-  position: relative;
-  z-index: 55;
 }
 #bottom-nav .nb {
   flex: 1;
@@ -2276,27 +2272,17 @@ td, th {
   white-space: nowrap;
 }
 #bottom-nav .nb.on {
-  color: var(--p) !important;
-  border-top-color: var(--p) !important;
+  color: var(--orange) !important;
+  border-top-color: var(--orange) !important;
 }
 
 /* ── CONTENIDO CON SAFE AREA ─────────────────────────── */
 .pb-safe {
   padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
 }
+/* .screen-content ya no se usa como contenedor de scroll — el scroll lo maneja .screen directamente */
 .screen-content {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-.p-content {
-  padding: 16px !important;
-}
-@media (min-width: 600px) {
-  .p-content { padding: 20px !important; }
-}
-@media (min-width: 900px) {
-  .p-content { padding: 24px !important; }
+  /* clase preservada por compatibilidad, sin overflow propio */
 }
 
 /* ── GRIDS DE CARDS ADAPTATIVOS ──────────────────────── */
