@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=129">
 <link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=108">
 <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.svg?v=129">
-<title>MELQART v146</title>
+<title>MELQART v148</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -772,7 +772,141 @@
 <script src="app.js"></script>
 <script>
 /* ================================================================
-   MELQART v146 — AUDIO ROBUSTO
+   MELQART v148 — CONTORNOS CORPORALES
+   Agrega cintura, cadera y bíceps a las mediciones corporales.
+   No toca app.js — parchamos las funciones que expone globalmente.
+   ================================================================ */
+(function(){
+  function patchContornos(){
+    if(typeof MED_METRICAS === 'undefined' || typeof saveMedValor === 'undefined'){
+      setTimeout(patchContornos, 80); return;
+    }
+
+    const CONTORNO_KEYS = ['cintura','cadera','biceps'];
+    const CONTORNO_DEF = [
+      { key:'cintura', label:'Contorno cintura', emoji:'📏', unit:'cm', step:'0.5', tipo:'number', placeholder:'85.0' },
+      { key:'cadera',  label:'Contorno cadera',  emoji:'📏', unit:'cm', step:'0.5', tipo:'number', placeholder:'100.0' },
+      { key:'biceps',  label:'Contorno bíceps',  emoji:'📏', unit:'cm', step:'0.5', tipo:'number', placeholder:'35.0' },
+    ];
+    CONTORNO_DEF.forEach(def => {
+      if(!MED_METRICAS.find(m => m.key === def.key)) MED_METRICAS.push(def);
+    });
+
+    function getContorno(m, key){ return m?.contornos?.[key] ?? null; }
+    function setContorno(m, key, val){
+      if(!m.contornos) m.contornos = {};
+      m.contornos[key] = val;
+    }
+
+    // Parchamos saveMedValor para guardar en m.contornos
+    const _origSave = window.saveMedValor;
+    window.saveMedValor = function(){
+      if(!CONTORNO_KEYS.includes(window.medKeyActual)) return _origSave.call(this);
+      const input = document.getElementById('med-val-input');
+      const raw = input?.value?.trim() || '';
+      const val = typeof normDec === 'function' ? normDec(raw) : raw.replace(',','.');
+      if(!val){ showToast('Ingresa un valor'); return; }
+      if(!forge.bodyMetrics) forge.bodyMetrics = [];
+      let m = forge.bodyMetrics.find(x => x.date === window.medFechaActual);
+      if(!m){
+        m = { date:window.medFechaActual, peso:null, imc:null, grasa:null, muscular:null, pliegues:{p6:null,p8:null}, contornos:{} };
+        forge.bodyMetrics.push(m);
+        forge.bodyMetrics.sort((a,b) => a.date.localeCompare(b.date));
+      }
+      setContorno(m, window.medKeyActual, parseFloat(val));
+      saveDB();
+      const def = CONTORNO_DEF.find(d => d.key === window.medKeyActual);
+      showToast('✓ ' + def.label + ' guardado', 2000, 'ok');
+      window.medPaso = 'selector';
+      document.getElementById('med-modal-title').textContent = 'Añadir medición';
+      renderMedModal();
+      renderProgCuerpo();
+    };
+
+    // Parchamos borrarMedValor
+    const _origBorrar = window.borrarMedValor;
+    window.borrarMedValor = function(){
+      if(!CONTORNO_KEYS.includes(window.medKeyActual)) return _origBorrar.call(this);
+      if(!confirm('¿Borrar este dato?')) return;
+      const m = (forge.bodyMetrics||[]).find(x => x.date === window.medFechaActual);
+      if(m) setContorno(m, window.medKeyActual, null);
+      saveDB();
+      window.medPaso = 'selector';
+      document.getElementById('med-modal-title').textContent = 'Añadir medición';
+      renderMedModal();
+      renderProgCuerpo();
+      showToast('Dato eliminado');
+    };
+
+    // Parchamos renderMedModal para pre-rellenar valor de contorno
+    const _origRenderMed = window.renderMedModal;
+    window.renderMedModal = function(){
+      _origRenderMed.call(this);
+      if(window.medPaso === 'valor' && CONTORNO_KEYS.includes(window.medKeyActual)){
+        const existing = (forge.bodyMetrics||[]).find(m => m.date === window.medFechaActual);
+        const valActual = existing ? (getContorno(existing, window.medKeyActual) ?? '') : '';
+        const inp = document.getElementById('med-val-input');
+        if(inp && valActual !== '') inp.value = valActual;
+      }
+    };
+
+    // Parchamos renderProgCuerpo para inyectar la card de contornos
+    const _origRenderCuerpo = window.renderProgCuerpo;
+    window.renderProgCuerpo = function(){
+      _origRenderCuerpo.call(this);
+      _injectContornosCard();
+    };
+
+    function _injectContornosCard(){
+      const mets = (forge.bodyMetrics||[]).slice().sort((a,b) => a.date.localeCompare(b.date));
+      const container = document.getElementById('cuerpo-charts');
+      if(!container) return;
+
+      const ultMet = [...mets].reverse().find(m => m.contornos && Object.values(m.contornos).some(v => v != null));
+      const existingCard = document.getElementById('contornos-acc-card');
+      if(!ultMet && !existingCard) return;
+
+      const cintura = ultMet?.contornos?.cintura ?? null;
+      const cadera  = ultMet?.contornos?.cadera  ?? null;
+      const biceps  = ultMet?.contornos?.biceps  ?? null;
+      const rcc = cintura && cadera ? (cintura/cadera).toFixed(2) : null;
+      const rccColor = rcc ? (parseFloat(rcc) <= 0.85 ? 'var(--ok)' : 'var(--warn)') : 'var(--ink3)';
+
+      const rows = [
+        cintura != null ? '<div class="body-med-row"><div class="body-med-lbl">📏 Cintura</div><div class="body-med-val" style="color:var(--teal)">'+cintura+' cm</div></div>' : '',
+        cadera  != null ? '<div class="body-med-row"><div class="body-med-lbl">📏 Cadera</div><div class="body-med-val" style="color:var(--teal)">'+cadera+' cm</div></div>' : '',
+        biceps  != null ? '<div class="body-med-row"><div class="body-med-lbl">📏 Bíceps</div><div class="body-med-val" style="color:var(--teal)">'+biceps+' cm</div></div>' : '',
+        rcc     != null ? '<div class="body-med-row"><div class="body-med-lbl" style="font-size:11px;color:var(--ink3)">Índice cintura/cadera</div><div style="font-size:13px;font-weight:700;color:'+rccColor+'">'+rcc+'</div></div>' : '',
+      ].filter(Boolean).join('');
+
+      const isOpen = window._bodyAccState?.['contornos'] || false;
+      const subStr = [
+        cintura != null ? 'Cintura '+cintura+'cm' : '',
+        cadera  != null ? 'Cadera '+cadera+'cm'  : '',
+        biceps  != null ? 'Bíceps '+biceps+'cm'  : '',
+      ].filter(Boolean).join(' · ') || 'Sin datos aún';
+
+      const html = '<div id="contornos-acc-card" class="body-acc-card">'
+        + '<div class="acc-head" onclick="window._bodyAccState=window._bodyAccState||{};window._bodyAccState[\'contornos\']=!window._bodyAccState[\'contornos\'];document.getElementById(\'contornos-acc-body\').style.display=window._bodyAccState[\'contornos\']?\'block\':\'none\';this.querySelector(\'.acc-chevron\').style.transform=window._bodyAccState[\'contornos\']?\'rotate(180deg)\':\'\';">'
+        + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--ink)">Contornos corporales</div>'
+        + '<div style="font-size:11px;color:var(--ink3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+subStr+'</div></div>'
+        + '<svg class="acc-chevron" viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0;transition:transform .2s;transform:'+(isOpen?'rotate(180deg)':'')+'"><polyline points="6 9 12 15 18 9"/></svg>'
+        + '</div>'
+        + '<div id="contornos-acc-body" class="acc-body" style="display:'+(isOpen?'block':'none')+'">'
+        + (rows || '<div style="color:var(--ink3);font-size:13px;padding:8px 0">Aún no hay registros de contornos. Toca "+ Añadir" para registrar.</div>')
+        + '</div></div>';
+
+      if(existingCard){ existingCard.outerHTML = html; }
+      else { container.insertAdjacentHTML('beforeend', html); }
+    }
+
+    console.log('[MELQART v148] Contornos activos — cintura, cadera, bíceps');
+  }
+  patchContornos();
+})();
+
+/* ================================================================
+   MELQART v148 — AUDIO ROBUSTO (ex v146)
    Parcha beep() y startRest() para sonar en TODOS los escenarios:
    - Con música de fondo (AudioContext suspendido)
    - Sin música
@@ -942,7 +1076,7 @@
     }
   }, 25000);
 
-  console.log('[MELQART v146] Audio robusto activo — WebAudio + HTMLAudio fallback');
+  console.log('[MELQART v148] Audio robusto activo — WebAudio + HTMLAudio fallback');
 })();
 </script>
 <script>
