@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=129">
 <link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=108">
 <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.svg?v=129">
-<title>MELQART v150</title>
+<title>MELQART v154</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1104,175 +1104,411 @@
   }
 
   // ══════════════════════════════════════════════════════════════
-  //  4. REEMPLAZAR renderMedModal completamente
-  // ══════════════════════════════════════════════════════════════
-  function patchRenderMedModal(){
-    if(typeof MED_METRICAS === 'undefined' || typeof renderMedModal === 'undefined'){
-      setTimeout(patchRenderMedModal, 80); return;
+  // (renderMedModal is now installed via DOMContentLoaded below — see MELQART v151 block)
+
+})();
+
+/* ================================================================
+   MELQART v151 — RENDERMEDMODAL DEFINITIVO
+   Un único reemplazo limpio instalado en DOMContentLoaded,
+   después de que app.js ya cargó y definió todas las funciones.
+   Incluye: wheel iOS para fecha y valor, contornos, músculo en %.
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', function(){
+
+  function waitFor(check, fn, ms){ if(check()) fn(); else setTimeout(()=>waitFor(check,fn,ms), ms||60); }
+
+  waitFor(
+    ()=> typeof MED_METRICAS!=='undefined' && typeof saveMedValor==='function' && typeof renderMedModal==='function',
+    installMedModal
+  );
+
+  function installMedModal(){
+
+    // ── Constantes ──────────────────────────────────────────────
+    const CONTORNO_KEYS = ['cintura','cadera','biceps'];
+    const CONTORNO_DEF = [
+      { key:'cintura', label:'Contorno cintura', emoji:'📏', unit:'cm', placeholder:'85.0' },
+      { key:'cadera',  label:'Contorno cadera',  emoji:'📏', unit:'cm', placeholder:'100.0' },
+      { key:'biceps',  label:'Contorno bíceps',  emoji:'📏', unit:'cm', placeholder:'35.0' },
+    ];
+
+    // Asegurar que contornos están en MED_METRICAS (puede haberlos agregado v148)
+    CONTORNO_DEF.forEach(def=>{
+      if(!MED_METRICAS.find(m=>m.key===def.key)) MED_METRICAS.push(def);
+    });
+
+    // Masa muscular en %
+    const mMuscular = MED_METRICAS.find(x=>x.key==='muscular');
+    if(mMuscular){ mMuscular.unit='%'; mMuscular.placeholder='45.0'; }
+
+    // ── Helpers de contornos en forge ───────────────────────────
+    function getContorno(m,key){ return m?.contornos?.[key]??null; }
+    function setContorno(m,key,val){ if(!m.contornos)m.contornos={}; m.contornos[key]=val; }
+
+    // ── saveMedValor: extender para contornos ───────────────────
+    const _origSave = window.saveMedValor;
+    window.saveMedValor = function(){
+      if(!CONTORNO_KEYS.includes(window.medKeyActual)) return _origSave.call(this);
+      const inp = document.getElementById('med-val-input');
+      const raw = inp?.value?.trim()||'';
+      const val = typeof normDec==='function'?normDec(raw):raw.replace(',','.');
+      if(!val){ showToast('Selecciona un valor'); return; }
+      if(!forge.bodyMetrics) forge.bodyMetrics=[];
+      let m=forge.bodyMetrics.find(x=>x.date===window.medFechaActual);
+      if(!m){ m={date:window.medFechaActual,peso:null,imc:null,grasa:null,muscular:null,pliegues:{p6:null,p8:null},contornos:{}}; forge.bodyMetrics.push(m); forge.bodyMetrics.sort((a,b)=>a.date.localeCompare(b.date)); }
+      setContorno(m,window.medKeyActual,parseFloat(val));
+      saveDB();
+      const def=CONTORNO_DEF.find(d=>d.key===window.medKeyActual);
+      showToast('✓ '+def.label+' guardado',2000,'ok');
+      window.medPaso='selector'; document.getElementById('med-modal-title').textContent='Añadir medición';
+      renderMedModal(); renderProgCuerpo();
+    };
+
+    // ── borrarMedValor: extender para contornos ─────────────────
+    const _origBorrar = window.borrarMedValor;
+    window.borrarMedValor = function(){
+      if(!CONTORNO_KEYS.includes(window.medKeyActual)) return _origBorrar.call(this);
+      if(!confirm('¿Borrar este dato?')) return;
+      const m=(forge.bodyMetrics||[]).find(x=>x.date===window.medFechaActual);
+      if(m) setContorno(m,window.medKeyActual,null);
+      saveDB(); showToast('Dato eliminado');
+      window.medPaso='selector'; document.getElementById('med-modal-title').textContent='Añadir medición';
+      renderMedModal(); renderProgCuerpo();
+    };
+
+    // ── CSS del wheel ────────────────────────────────────────────
+    if(!document.getElementById('mq-wheel-css')){
+      const st=document.createElement('style'); st.id='mq-wheel-css';
+      st.textContent=`
+        .mqw-wrap{display:flex;gap:4px;justify-content:center;align-items:flex-start;padding:8px 0 12px;user-select:none;-webkit-user-select:none}
+        .mqw-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0}
+        .mqw-lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:700}
+        .mqw{position:relative;height:162px;overflow:hidden;border-radius:12px;background:var(--bg3);border:1.5px solid var(--border2);touch-action:none}
+        .mqw-list{position:absolute;top:0;left:0;right:0;will-change:transform}
+        .mqw-item{height:36px;line-height:36px;text-align:center;font-size:17px;font-weight:500;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px}
+        .mqw-item.mqw-sel{color:var(--ink);font-size:20px;font-weight:800}
+        .mqw-fade-top{position:absolute;top:0;left:0;right:0;height:63px;background:linear-gradient(to bottom,var(--bg3) 10%,transparent);pointer-events:none;z-index:2}
+        .mqw-fade-bot{position:absolute;bottom:0;left:0;right:0;height:63px;background:linear-gradient(to top,var(--bg3) 10%,transparent);pointer-events:none;z-index:2}
+        .mqw-line{position:absolute;left:0;right:0;height:36px;top:63px;border-top:1.5px solid var(--orange);border-bottom:1.5px solid var(--orange);pointer-events:none;z-index:3}
+        .mqw-sep{font-size:22px;font-weight:700;color:var(--ink3);padding:0 1px;margin-top:46px;flex:0 0 auto}
+        .mqw-unit{font-size:13px;font-weight:700;color:var(--ink3);padding:0 2px;margin-top:50px;flex:0 0 auto}
+        .mqw-warn{color:var(--warn);font-size:11px;text-align:center;margin-top:4px;display:none}
+      `;
+      document.head.appendChild(st);
     }
 
+    // ── Motor de wheel ───────────────────────────────────────────
+    const _wheels = {};
+
+    function createWheel(id, items, selIdx, circular){
+      const ITEM_H=36, VISIBLE=4; // 4 items visible center + 2 above/below within 162px
+      const CENTER=63; // top offset to center selected item
+
+      const wrap=document.getElementById('mqw-'+id);
+      const list=document.getElementById('mqwl-'+id);
+      if(!wrap||!list) return;
+
+      let cur=Math.max(0,Math.min(items.length-1,selIdx));
+      _wheels[id]={items,cur,circular};
+
+      function clamp(i){ return circular?((i%items.length)+items.length)%items.length:Math.max(0,Math.min(items.length-1,i)); }
+
+      function render(idx,animate){
+        cur=clamp(idx);
+        _wheels[id].cur=cur;
+        const y=CENTER-(cur*ITEM_H);
+        list.style.transition=animate?'transform .18s cubic-bezier(.25,.46,.45,.94)':'none';
+        list.style.transform='translateY('+y+'px)';
+        list.querySelectorAll('.mqw-item').forEach((el,i)=>el.classList.toggle('mqw-sel',i===cur));
+      }
+
+      // Padding so first/last items can be centered
+      list.style.paddingTop=(CENTER)+'px';
+      list.style.paddingBottom=(ITEM_H*2)+'px';
+      render(cur,false);
+
+      // Touch
+      let t0=0,y0=0,yLast=0,tLast=0,vel=0;
+      wrap.addEventListener('touchstart',e=>{
+        t0=Date.now(); y0=e.touches[0].clientY; yLast=y0; tLast=t0; vel=0;
+        list.style.transition='none';
+      },{passive:true});
+      wrap.addEventListener('touchmove',e=>{
+        const dy=e.touches[0].clientY-y0;
+        const now=Date.now();
+        vel=(e.touches[0].clientY-yLast)/(now-tLast+1);
+        yLast=e.touches[0].clientY; tLast=now;
+        render(Math.round((-dy+CENTER-(cur*ITEM_H-(cur*ITEM_H)))/ITEM_H)+selIdx,false);
+        // Simple drag: offset from drag start
+        const delta=Math.round(-dy/ITEM_H);
+        render(clamp(selIdx+delta),false);
+        e.preventDefault();
+      },{passive:false});
+      wrap.addEventListener('touchend',()=>{
+        selIdx=cur;
+        const flick=Math.round(-vel*5);
+        render(cur+flick,true);
+        selIdx=_wheels[id].cur; // update base after animation
+        // delayed update after transition
+        setTimeout(()=>{ selIdx=_wheels[id].cur; },200);
+      });
+
+      // Mouse
+      let mDown=false,my0=0,mBase=0;
+      wrap.addEventListener('mousedown',e=>{ mDown=true; my0=e.clientY; mBase=cur; list.style.transition='none'; });
+      document.addEventListener('mousemove',e=>{ if(!mDown)return; render(mBase+Math.round(-(e.clientY-my0)/ITEM_H),false); });
+      document.addEventListener('mouseup',()=>{ if(!mDown)return; mDown=false; selIdx=cur; list.style.transition=''; });
+
+      // Scroll wheel
+      wrap.addEventListener('wheel',e=>{ e.preventDefault(); render(cur+(e.deltaY>0?1:-1),true); selIdx=cur; },{passive:false});
+    }
+
+    function wheelHtml(id, items, selIdx, label, extraClass=''){
+      return '<div class="mqw-col'+( extraClass?' '+extraClass:'')+'">'
+        +(label?'<div class="mqw-lbl">'+label+'</div>':'')
+        +'<div class="mqw" id="mqw-'+id+'">'
+        +'<div class="mqw-list" id="mqwl-'+id+'">'
+        +items.map((it,i)=>'<div class="mqw-item'+(i===selIdx?' mqw-sel':'')+'" data-i="'+i+'">'+it+'</div>').join('')
+        +'</div>'
+        +'<div class="mqw-fade-top"></div><div class="mqw-fade-bot"></div>'
+        +'<div class="mqw-line"></div>'
+        +'</div></div>';
+    }
+
+    function getWheelVal(id){ const w=_wheels[id]; return w?w.items[w.cur]:null; }
+
+    // ── Wheel de FECHA ───────────────────────────────────────────
+    const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    let _fw={}; // fecha wheel state
+
+    function renderFechaWheels(containerId, fechaStr){
+      const d=fechaStr?new Date(fechaStr+'T12:00:00'):new Date();
+      const maxY=new Date().getFullYear(), minY=2014;
+      const anios=Array.from({length:maxY-minY+1},(_,i)=>String(minY+i));
+      const dias=()=>Array.from({length:new Date(_fw.y,_fw.m+1,0).getDate()},(_,i)=>String(i+1).padStart(2,'0'));
+
+      _fw={d:d.getDate(), m:d.getMonth(), y:d.getFullYear()};
+      const dIdx=_fw.d-1, mIdx=_fw.m, yIdx=_fw.y-minY;
+      const diasArr=dias();
+
+      const container=document.getElementById(containerId);
+      if(!container) return;
+
+      container.innerHTML=
+        '<div class="mqw-wrap">'
+        +wheelHtml(containerId+'-d', diasArr, dIdx, 'Día')
+        +wheelHtml(containerId+'-m', MESES, mIdx, 'Mes')
+        +wheelHtml(containerId+'-y', anios, yIdx, 'Año')
+        +'</div>'
+        +'<div class="mqw-warn" id="'+containerId+'-fw-warn">⚠ No puedes registrar una fecha futura</div>';
+
+      createWheel(containerId+'-d', diasArr, dIdx, false);
+      createWheel(containerId+'-m', MESES, mIdx, true);
+      createWheel(containerId+'-y', anios, yIdx, false);
+
+      // Reconstruir días cuando cambia mes/año — check each 300ms
+      const check=setInterval(()=>{
+        const wm=_wheels[containerId+'-m'], wy=_wheels[containerId+'-y'];
+        if(!wm||!wy) return;
+        const newM=wm.cur, newY=parseInt(anios[wy.cur]);
+        if(newM!==_fw.m||newY!==_fw.y){
+          _fw.m=newM; _fw.y=newY;
+          // Rebuild days
+          const newDias=Array.from({length:new Date(newY,newM+1,0).getDate()},(_,i)=>String(i+1).padStart(2,'0'));
+          const wd=_wheels[containerId+'-d'];
+          if(wd){ wd.items=newDias; if(wd.cur>=newDias.length)wd.cur=newDias.length-1; }
+          const listEl=document.getElementById('mqwl-'+containerId+'-d');
+          if(listEl){ listEl.innerHTML=newDias.map((it,i)=>'<div class="mqw-item'+(i===wd?.cur?' mqw-sel':'')+'" data-i="'+i+'">'+it+'</div>').join(''); }
+        }
+        // Future check
+        if(wd&&wm&&wy){
+          const dval=parseInt(newDias?.[wd.cur]||'1'),mval=wm.cur,yval=parseInt(anios[wy.cur]);
+          const sel=new Date(yval,mval,dval);
+          const hoy=new Date(); hoy.setHours(23,59,59,999);
+          const warn=document.getElementById(containerId+'-fw-warn');
+          if(warn) warn.style.display=sel>hoy?'block':'none';
+        }
+      },300);
+      // Stop checking when modal closes
+      const mo=new MutationObserver(()=>{ if(!document.getElementById(containerId)){ clearInterval(check); mo.disconnect(); }});
+      const bg=document.getElementById('modal-med'); if(bg) mo.observe(bg,{childList:true,subtree:true});
+    }
+
+    function getFechaFromWheels(cid){
+      const wd=_wheels[cid+'-d'], wm=_wheels[cid+'-m'], wy=_wheels[cid+'-y'];
+      if(!wd||!wm||!wy) return null;
+      const maxY=new Date().getFullYear(), minY=2014;
+      const anios=Array.from({length:maxY-minY+1},(_,i)=>String(minY+i));
+      const dval=parseInt(wd.items[wd.cur]),mval=wm.cur,yval=parseInt(anios[wy.cur]);
+      const sel=new Date(yval,mval,dval);
+      const hoy=new Date(); hoy.setHours(23,59,59,999);
+      if(sel>hoy) return null;
+      return yval+'-'+String(mval+1).padStart(2,'0')+'-'+String(dval).padStart(2,'0');
+    }
+
+    // ── Wheel de VALOR ───────────────────────────────────────────
+    function renderValorWheels(containerId, metKey, valActual){
+      const isPeso=metKey==='peso';
+      const isPorc=['grasa','muscular'].includes(metKey);
+      const isContorno=CONTORNO_KEYS.includes(metKey);
+      const isPliegue=metKey==='p6'||metKey==='p8';
+
+      let enteros=[], decs=null, eIdx=0, dIdx=0, unit='';
+
+      if(isPeso){
+        enteros=Array.from({length:161},(_,i)=>String(i+40));
+        decs=['0','1','2','3','4','5','6','7','8','9'];
+        unit='kg';
+        const v=parseFloat(valActual)||90;
+        eIdx=Math.max(0,enteros.indexOf(String(Math.floor(v))));
+        dIdx=Math.round((v%1)*10);
+      } else if(isPorc){
+        enteros=Array.from({length:100},(_,i)=>String(i));
+        decs=['0','1','2','3','4','5','6','7','8','9'];
+        unit='%';
+        const v=parseFloat(valActual)||(metKey==='grasa'?28:45);
+        eIdx=Math.max(0,enteros.indexOf(String(Math.floor(v))));
+        dIdx=Math.round((v%1)*10);
+      } else if(isContorno){
+        enteros=Array.from({length:121},(_,i)=>String(i+40));
+        decs=['0','5'];
+        unit='cm';
+        const v=parseFloat(valActual)||85;
+        eIdx=Math.max(0,enteros.indexOf(String(Math.floor(v))));
+        dIdx=(v%1)>=0.5?1:0;
+      } else if(isPliegue){
+        enteros=Array.from({length:251},(_,i)=>String(i+50));
+        unit='mm';
+        const v=parseFloat(valActual)||140;
+        eIdx=Math.max(0,enteros.indexOf(String(Math.floor(v))));
+      } else { // IMC
+        enteros=Array.from({length:51},(_,i)=>String(i+10));
+        decs=['0','1','2','3','4','5','6','7','8','9'];
+        unit='';
+        const v=parseFloat(valActual)||25;
+        eIdx=Math.max(0,enteros.indexOf(String(Math.floor(v))));
+        dIdx=Math.round((v%1)*10);
+      }
+
+      const container=document.getElementById(containerId);
+      if(!container) return;
+
+      container.innerHTML='<div class="mqw-wrap">'
+        +wheelHtml(containerId+'-e', enteros, eIdx, 'Entero')
+        +(decs?'<div class="mqw-sep">.</div>'+wheelHtml(containerId+'-d', decs, dIdx, 'Dec'):'')
+        +(unit?'<div class="mqw-unit">'+unit+'</div>':'')
+        +'</div>';
+
+      createWheel(containerId+'-e', enteros, eIdx, false);
+      if(decs) createWheel(containerId+'-d', decs, dIdx, false);
+    }
+
+    function getValorFromWheels(cid){
+      const we=_wheels[cid+'-e'], wd=_wheels[cid+'-d'];
+      if(!we) return null;
+      const ePart=we.items[we.cur];
+      if(wd){ return parseFloat(ePart+'.'+wd.items[wd.cur]); }
+      return parseFloat(ePart);
+    }
+
+    // ── renderMedModal DEFINITIVO ────────────────────────────────
     window.renderMedModal = function(){
-      const body = document.getElementById('med-modal-body');
+      const body=document.getElementById('med-modal-body');
+      if(!body) return;
 
-      if(window.medPaso === 'selector'){
-        const existing = (forge.bodyMetrics||[]).find(m => m.date === window.medFechaActual);
+      if(window.medPaso==='selector'){
+        const existing=(forge.bodyMetrics||[]).find(m=>m.date===window.medFechaActual);
 
-        // ── Fecha con wheels ─────────────────────────────────
-        const fechaHtml = `
-          <div style="margin-bottom:16px">
-            <div style="font-size:11px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Fecha del registro</div>
-            <div id="med-fecha-wheel"></div>
-            <div id="med-fecha-wheel-warn" style="display:none;color:var(--warn);font-size:11px;text-align:center;margin-top:-8px;margin-bottom:4px">⚠ No se puede registrar una fecha futura</div>
-          </div>`;
-
-        // ── Lista de métricas ────────────────────────────────
-        const CONTORNO_KEYS = ['cintura','cadera','biceps'];
-        const allMetricas = MED_METRICAS.concat(
-          (typeof CONTORNO_DEF !== 'undefined' ? [] : []) // contornos ya están en MED_METRICAS si v148 corrió
-        );
-
-        const metricasHtml = allMetricas.map(m => {
+        const metricasHtml=MED_METRICAS.map(m=>{
           let val;
-          if(m.key==='p6'||m.key==='p8') val = existing?.pliegues?.[m.key];
-          else if(CONTORNO_KEYS.includes(m.key)) val = existing?.contornos?.[m.key];
-          else val = existing?.[m.key];
-          const valStr = val != null ? val + (m.unit ? ' '+m.unit : '') : null;
-          return `<div onclick="window.abrirMedValorWheel('${m.key}')"
-            style="display:flex;align-items:center;justify-content:space-between;
-            padding:13px 14px;border-radius:var(--r);margin-bottom:6px;
-            background:var(--bg3);border:1px solid ${valStr?'var(--green)':'var(--border2)'};
-            cursor:pointer;transition:border-color .1s"
-            onmouseover="this.style.borderColor='var(--orange)'"
-            onmouseout="this.style.borderColor='${valStr?'var(--green)':'var(--border2)'}'">
-            <div style="display:flex;align-items:center;gap:12px">
-              <span style="font-size:20px">${m.emoji}</span>
-              <div>
-                <div style="font-size:14px;font-weight:600;color:var(--ink)">${m.label}</div>
-                ${valStr
-                  ? `<div style="font-size:12px;color:var(--green);font-weight:600">✓ ${valStr}</div>`
-                  : `<div style="font-size:11px;color:var(--ink3)">Sin dato para esta fecha</div>`}
-              </div>
-            </div>
-            <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </div>`;
+          if(m.key==='p6'||m.key==='p8') val=existing?.pliegues?.[m.key];
+          else if(CONTORNO_KEYS.includes(m.key)) val=existing?.contornos?.[m.key];
+          else val=existing?.[m.key];
+          const valStr=val!=null?String(val)+(m.unit?' '+m.unit:''):null;
+          return '<button onclick="window._medAbrirValor(''+m.key+'')" style="'
+            +'display:flex;align-items:center;justify-content:space-between;'
+            +'width:100%;padding:13px 14px;border-radius:var(--r);margin-bottom:6px;'
+            +'background:var(--bg3);border:1.5px solid '+(valStr?'var(--green)':'var(--border2)')+';'
+            +'cursor:pointer;text-align:left;font-family:var(--fb);'
+            +'transition:border-color .15s">'
+            +'<div style="display:flex;align-items:center;gap:12px">'
+            +'<span style="font-size:20px">'+m.emoji+'</span>'
+            +'<div>'
+            +'<div style="font-size:14px;font-weight:600;color:var(--ink)">'+m.label+'</div>'
+            +(valStr
+              ?'<div style="font-size:12px;color:var(--green);font-weight:600">✓ '+valStr+'</div>'
+              :'<div style="font-size:11px;color:var(--ink3)">Sin dato para esta fecha</div>')
+            +'</div></div>'
+            +'<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>'
+            +'</button>';
         }).join('');
 
-        body.innerHTML = fechaHtml + `
-          <div style="font-size:11px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:700">¿Qué quieres registrar?</div>
-          ${metricasHtml}`;
+        body.innerHTML=
+          '<div style="margin-bottom:14px">'
+          +'<div style="font-size:11px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:6px">Fecha del registro</div>'
+          +'<div id="med-fecha-wheel"></div>'
+          +'<div class="mqw-warn" id="med-fecha-fw-warn" style="display:none">⚠ No puedes registrar una fecha futura</div>'
+          +'</div>'
+          +'<div style="font-size:11px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:8px">¿Qué quieres registrar?</div>'
+          +metricasHtml;
 
-        // Inicializar wheel de fecha
         renderFechaWheels('med-fecha-wheel', window.medFechaActual);
 
-        // Sobreescribir abrirMedValorWheel para leer la fecha del wheel
-        window.abrirMedValorWheel = function(key){
-          // Leer fecha del wheel antes de navegar
-          const nueva = getFechaFromWheels('med-fecha-wheel');
-          if(!nueva){ showToast('⚠ No puedes registrar una fecha futura','2000','warn'); return; }
-          window.medFechaActual = nueva;
-          window.medKeyActual = key;
-          window.medPaso = 'valor';
-          const m = MED_METRICAS.find(x=>x.key===key);
-          document.getElementById('med-modal-title').textContent = m ? m.label : key;
+        window._medAbrirValor=function(key){
+          const nueva=getFechaFromWheels('med-fecha-wheel');
+          if(!nueva){ showToast('⚠ Fecha no válida o en el futuro'); return; }
+          window.medFechaActual=nueva;
+          window.medKeyActual=key;
+          window.medPaso='valor';
+          const m=MED_METRICAS.find(x=>x.key===key);
+          document.getElementById('med-modal-title').textContent=m?m.label:key;
           renderMedModal();
         };
 
       } else {
-        // ── Pantalla de valor ────────────────────────────────
-        const CONTORNO_KEYS = ['cintura','cadera','biceps'];
-        const m = MED_METRICAS.find(x=>x.key===window.medKeyActual);
-        const existing = (forge.bodyMetrics||[]).find(x=>x.date===window.medFechaActual);
+        const m=MED_METRICAS.find(x=>x.key===window.medKeyActual);
+        const existing=(forge.bodyMetrics||[]).find(x=>x.date===window.medFechaActual);
         let valActual;
-        if(window.medKeyActual==='p6'||window.medKeyActual==='p8') valActual = existing?.pliegues?.[window.medKeyActual]||'';
-        else if(CONTORNO_KEYS.includes(window.medKeyActual)) valActual = existing?.contornos?.[window.medKeyActual]||'';
-        else valActual = existing?.[window.medKeyActual]||'';
+        if(window.medKeyActual==='p6'||window.medKeyActual==='p8') valActual=existing?.pliegues?.[window.medKeyActual]||'';
+        else if(CONTORNO_KEYS.includes(window.medKeyActual)) valActual=existing?.contornos?.[window.medKeyActual]||'';
+        else valActual=existing?.[window.medKeyActual]||'';
 
-        body.innerHTML = `
-          <button onclick="window.medPaso='selector';renderMedModal()"
-            style="background:none;border:none;color:var(--orange);cursor:pointer;
-            font-size:13px;font-weight:600;display:flex;align-items:center;gap:4px;
-            margin-bottom:12px;padding:0">← Volver</button>
-          <div style="text-align:center;margin-bottom:12px">
-            <div style="font-size:32px;margin-bottom:4px">${m?m.emoji:'📏'}</div>
-            <div style="font-size:17px;font-weight:700;color:var(--ink)">${m?m.label:window.medKeyActual}</div>
-            <div style="font-size:12px;color:var(--ink3);margin-top:2px">${window.medFechaActual}</div>
-          </div>
-          <div id="med-valor-wheel"></div>
-          <input type="hidden" id="med-val-input">
-          <button class="btn btn-p" onclick="window._saveMedWheel()" style="margin-top:4px">
-            ✓ Guardar ${m?m.label:''}
-          </button>
-          ${valActual!=null&&valActual!==''?`<button onclick="window._borrarMedWheel()"
-            style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;
-            width:100%;margin-top:10px;font-family:var(--fb)">Borrar este dato</button>`:''}`;
+        body.innerHTML=
+          '<button onclick="window.medPaso='selector';renderMedModal()" '
+          +'style="background:none;border:none;color:var(--orange);cursor:pointer;'
+          +'font-size:13px;font-weight:600;display:flex;align-items:center;gap:4px;margin-bottom:10px;padding:0">'
+          +'← Volver</button>'
+          +'<div style="text-align:center;margin-bottom:10px">'
+          +'<div style="font-size:30px;margin-bottom:4px">'+(m?m.emoji:'📏')+'</div>'
+          +'<div style="font-size:17px;font-weight:700;color:var(--ink)">'+(m?m.label:window.medKeyActual)+'</div>'
+          +'<div style="font-size:12px;color:var(--ink3);margin-top:2px">'+window.medFechaActual+'</div>'
+          +'</div>'
+          +'<div id="med-valor-wheel"></div>'
+          +'<input type="hidden" id="med-val-input">'
+          +'<button class="btn btn-p" onclick="window._medGuardar()" style="margin-top:8px">✓ Guardar '+(m?m.label:'')+'</button>'
+          +(valActual!=null&&valActual!==''
+            ?'<button onclick="window._medBorrar()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;width:100%;margin-top:10px;font-family:var(--fb)">Borrar este dato</button>'
+            :'');
 
         renderValorWheels('med-valor-wheel', window.medKeyActual, valActual);
 
-        // Sincronizar hidden input con el wheel para que saveMedValor() siga funcionando
-        window._saveMedWheel = function(){
-          const v = getValorFromWheels('med-valor-wheel');
-          if(v===null||isNaN(v)){ showToast('Mueve la rueda para seleccionar un valor'); return; }
-          document.getElementById('med-val-input').value = String(v);
+        window._medGuardar=function(){
+          const v=getValorFromWheels('med-valor-wheel');
+          if(v===null||isNaN(v)){ showToast('Selecciona un valor en la rueda'); return; }
+          document.getElementById('med-val-input').value=String(v);
           saveMedValor();
         };
-        window._borrarMedWheel = function(){
-          document.getElementById('med-val-input').value = '';
+        window._medBorrar=function(){
+          document.getElementById('med-val-input').value='';
           borrarMedValor();
         };
       }
     };
 
-    // ── Sincronizar slot de acción en mobile-topbar ─────────────
-  function patchRenderPerfil(){
-    if(typeof renderPerfil === 'undefined'){ setTimeout(patchRenderPerfil, 80); return; }
-    const _orig = window.renderPerfil;
-    window.renderPerfil = function(){
-      _orig.call(this);
-      requestAnimationFrame(() => {
-        const slot = document.getElementById('mobile-topbar-action');
-        const btn  = document.getElementById('perfil-action-btn');
-        if(!slot || !btn) return;
-        if(btn.style.display === 'none' || btn.textContent.trim() === ''){
-          slot.innerHTML = '';
-        } else {
-          const clone = btn.cloneNode(true);
-          clone.id = 'perfil-action-btn-mobile';
-          clone.onclick = btn.onclick;
-          slot.innerHTML = '';
-          slot.appendChild(clone);
-        }
-      });
-    };
-
-    // También parchamos switchPerfilTab para re-sincronizar el slot
-    const _origSwitch = window.switchPerfilTab;
-    if(typeof _origSwitch === 'function'){
-      window.switchPerfilTab = function(tab, btn2){
-        _origSwitch.call(this, tab, btn2);
-        requestAnimationFrame(() => {
-          const slot = document.getElementById('mobile-topbar-action');
-          const btn  = document.getElementById('perfil-action-btn');
-          if(!slot || !btn) return;
-          if(btn.style.display === 'none' || btn.textContent.trim() === ''){
-            slot.innerHTML = '';
-          } else {
-            const clone = btn.cloneNode(true);
-            clone.id = 'perfil-action-btn-mobile';
-            clone.onclick = btn.onclick;
-            slot.innerHTML = '';
-            slot.appendChild(clone);
-          }
-        });
-      };
-    }
-  }
-  patchRenderPerfil();
-  }
-  patchRenderMedModal();
-
-})();
+    console.log('[MELQART v151] renderMedModal definitivo instalado');
+  } // end installMedModal
+});
    Agrega cintura, cadera y bíceps a las mediciones corporales.
    No toca app.js — parchamos las funciones que expone globalmente.
    ================================================================ */
@@ -1338,18 +1574,6 @@
       showToast('Dato eliminado');
     };
 
-    // Parchamos renderMedModal para pre-rellenar valor de contorno
-    const _origRenderMed = window.renderMedModal;
-    window.renderMedModal = function(){
-      _origRenderMed.call(this);
-      if(window.medPaso === 'valor' && CONTORNO_KEYS.includes(window.medKeyActual)){
-        const existing = (forge.bodyMetrics||[]).find(m => m.date === window.medFechaActual);
-        const valActual = existing ? (getContorno(existing, window.medKeyActual) ?? '') : '';
-        const inp = document.getElementById('med-val-input');
-        if(inp && valActual !== '') inp.value = valActual;
-      }
-    };
-
     // Parchamos renderProgCuerpo para inyectar la card de contornos
     const _origRenderCuerpo = window.renderProgCuerpo;
     window.renderProgCuerpo = function(){
@@ -1406,7 +1630,72 @@
 })();
 
 /* ================================================================
-   MELQART v148 — AUDIO ROBUSTO (ex v146)
+   MELQART v153 — FIX BILATERAL TIMER
+   Parcha toggleLado directamente después de que app.js lo define.
+   Garantiza que startRest se llame aunque haya re-renders intermedios.
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', function(){
+  function waitForBilateral(){
+    if(typeof toggleLado !== 'function' || typeof startRest !== 'function'){
+      setTimeout(waitForBilateral, 80); return;
+    }
+
+    const _origToggleLado = window.toggleLado;
+
+    window.toggleLado = function(ei, si, lado){
+      if(!activeSession) return;
+      const exObj = activeSession.exercises[ei];
+      if(!exObj) return;
+      const set = exObj.sets[si];
+      if(!set) return;
+
+      const field = lado === 'L' ? '_ladoL' : '_ladoR';
+      set[field] = !set[field];
+      const ambos = set._ladoL && set._ladoR;
+
+      // Logging para debug en consola
+      console.log('[MELQART v153] toggleLado', {ei, si, lado, _ladoL: set._ladoL, _ladoR: set._ladoR, ambos, done: set.done});
+
+      if(ambos && !set.done){
+        set.done = true;
+
+        // Leer restSec ANTES del re-render (eDef podría cambiar)
+        const eDef = typeof getEx === 'function' ? getEx(exObj.exId) : null;
+        const restSec = exObj._restSec || eDef?.restSec || activeSession.restSec || 120;
+
+        // Re-render
+        const container = document.getElementById('session-exs');
+        if(container){
+          container.innerHTML = activeSession.exercises.map((ex,i) => renderSexBlock(ex,i)).join('');
+        }
+
+        // Arrancar timer — llamar directamente, no via window.startRest
+        // para evitar cualquier problema con el patch del audio
+        console.log('[MELQART v153] Llamando startRest', restSec, 'seg');
+        try{
+          startRest(restSec, ei, si);
+        } catch(err){
+          console.error('[MELQART v153] startRest falló:', err);
+          // Fallback: mostrar overlay manualmente
+          const ov = document.getElementById('rest-ov');
+          if(ov) ov.classList.add('on');
+          const secsEl = document.getElementById('rest-secs');
+          if(secsEl) secsEl.textContent = restSec;
+        }
+
+      } else {
+        if(!ambos) set.done = false;
+        const container = document.getElementById('session-exs');
+        if(container){
+          container.innerHTML = activeSession.exercises.map((ex,i) => renderSexBlock(ex,i)).join('');
+        }
+      }
+    };
+
+    console.log('[MELQART v153] toggleLado parchado — bilateral timer garantizado');
+  }
+  waitForBilateral();
+});
    Parcha beep() y startRest() para sonar en TODOS los escenarios:
    - Con música de fondo (AudioContext suspendido)
    - Sin música
@@ -1610,23 +1899,36 @@
   });
   const srcDot = document.getElementById('sync-dot');
   if(srcDot) obs.observe(srcDot, {attributes:true, attributeFilter:['style']});
-  // Mirror user-btn initials
-  const userObs = new MutationObserver(function(){
+
+  // Mirror user-btn → user-btn-mobile
+  // Usa polling cada 500ms además del MutationObserver
+  // para capturar el estado inicial después de auth
+  function _syncUserBtn(){
     const src = document.getElementById('user-btn');
     const dst = document.getElementById('user-btn-mobile');
-    if(src && dst){
-      dst.textContent = src.textContent;
-      if(src.style.display === 'flex' || src.style.display === 'inline-flex'){
-        dst.style.display = 'flex';
-      }
+    if(!src || !dst) return;
+    if(src.textContent) dst.textContent = src.textContent;
+    const srcVisible = src.style.display && src.style.display !== 'none';
+    if(srcVisible){
+      dst.style.display = 'flex';
+    } else {
+      dst.style.display = 'none';
     }
-  });
+    // Copiar color de fondo si fue personalizado
+    if(src.style.background) dst.style.background = src.style.background;
+  }
+
+  const userObs = new MutationObserver(_syncUserBtn);
   const srcBtn = document.getElementById('user-btn');
   if(srcBtn) userObs.observe(srcBtn, {attributes:true, childList:true, characterData:true, subtree:true});
+
+  // Polling de respaldo por si el observer se registra tarde
+  const _syncInterval = setInterval(_syncUserBtn, 500);
+  setTimeout(()=> clearInterval(_syncInterval), 15000); // dejar de hacer polling tras 15s
 })();
 </script>
 
-<!-- v145 — EXPORTAR EXTENDIDO: peso + agua + pauta + ejercicio en un solo texto -->
+<!-- v154 — EXPORTAR: tres secciones limpias sin emojis -->
 <script>
 (function(){
   function patchExport(){
@@ -1634,23 +1936,29 @@
 
     window.exportarSemana = function(){
 
-      // ── helpers locales ──────────────────────────────────────
+      // ── helpers ──────────────────────────────────────────────
       function isoDate(d){
-        // Fecha local YYYY-MM-DD sin desfase UTC
-        const yy = d.getFullYear();
-        const mm = String(d.getMonth()+1).padStart(2,'0');
-        const dd = String(d.getDate()).padStart(2,'0');
-        return yy+'-'+mm+'-'+dd;
+        return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       }
       function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
-      function fmtFecha(ts){ return new Date(ts).toLocaleDateString('es-CL',{weekday:'short',day:'numeric',month:'short',year:'numeric'}); }
-      function fmtDur(s){ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h>0?(h+'h '+m+'m'):(m+'m'); }
-      function bar(val, meta, len){
-        const f = meta>0 ? Math.round(Math.min(val,meta)/meta*len) : 0;
-        return '['+'\u2588'.repeat(f)+'\u2591'.repeat(Math.max(0,len-f))+']';
+      function fmtFecha(str){
+        // YYYY-MM-DD -> DD/MM/YYYY
+        if(!str) return '';
+        const [y,m,d] = str.split('-');
+        return d+'/'+m+'/'+y;
       }
-      function pad(s,n){ return (String(s)+'                    ').slice(0,n); }
-      function pct(val,meta){ return meta>0 ? Math.round(Math.min(val,meta)/meta*100) : 0; }
+      function fmtDur(s){
+        if(!s) return '';
+        const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
+        return h>0?(h+'h '+String(m).padStart(2,'0')+'m'):(String(m).padStart(2,'0')+'m '+String(sec).padStart(2,'0')+'s');
+      }
+      function col(val, w){
+        const s = val===null||val===undefined ? '-' : String(val);
+        return s.length >= w ? s.slice(0,w-1)+' ' : s + ' '.repeat(w - s.length);
+      }
+      function row(...cols){ return cols.join(''); }
+      function line(char, w){ return char.repeat(w); }
+      function sep(){ return ''; }
 
       // ── rango de fechas ──────────────────────────────────────
       const semanas = parseInt(document.getElementById('export-semanas')?.value||'4');
@@ -1658,246 +1966,292 @@
       const lunes = new Date(hoy);
       lunes.setDate(hoy.getDate()-(hoy.getDay()||7)+1); lunes.setHours(0,0,0,0);
       let fechaInicio;
-      if(semanas===0){ fechaInicio=new Date(0); }
+      if(semanas===0){ fechaInicio=new Date(2014,0,1); }
       else { fechaInicio=new Date(lunes); fechaInicio.setDate(lunes.getDate()-((semanas-1)*7)); }
       const domingo = new Date(hoy); domingo.setHours(23,59,59,999);
 
-      const fmtRango = d => d.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'});
-      const SEP  = '═══════════════════════════════════════';
-      const sep2 = '───────────────────────────────────────';
-      const lines = [];
+      const rango = semanas===0
+        ? 'Historial completo'
+        : 'Ultimas '+semanas+' semana'+(semanas>1?'s':'');
+      const rangoFechas = fmtFecha(isoDate(fechaInicio))+' a '+fmtFecha(isoDate(domingo));
 
-      // ── referencias a globals de app.js ─────────────────────
-      const forge_     = window.forge || {};
-      const sessions_  = (forge_.sessions||[]).filter(s=>new Date(s.date)>=fechaInicio&&new Date(s.date)<=domingo).sort((a,b)=>a.date-b.date);
-      const metrics_   = (forge_.bodyMetrics||[]).filter(m=>{ const d=new Date(m.date+'T12:00:00'); return d>=fechaInicio&&d<=domingo; }).sort((a,b)=>a.date.localeCompare(b.date));
-      const getEx_     = typeof getEx==='function' ? getEx : ()=>null;
-      const fmtTime_   = typeof fmtTimeStr==='function' ? fmtTimeStr : s=>s;
-      const meta_      = typeof getAguaMeta==='function' ? getAguaMeta() : {vasos:10,mlPorVaso:250};
-      const targets_   = typeof NUTRITION_TARGETS!=='undefined' ? NUTRITION_TARGETS : {cereales:3,frutas:2,proteinas:12,lacteoProtein:2,lacteoDescremado:1,lipidos:0.5,aceites:1,verduras:2};
-      const plabels_   = typeof PORTION_LABELS!=='undefined' ? PORTION_LABELS : {cereales:'Cereales',frutas:'Frutas',proteinas:'Proteínas',lacteoProtein:'Lácteo protein',lacteoDescremado:'Lácteo desc.',lipidos:'Lípidos',aceites:'Aceites',verduras:'Verduras'};
-      const comidas_   = typeof COMIDAS!=='undefined' ? COMIDAS : [];
-      const totalC_    = comidas_.length || 7;
-      const gruposPorciones = ['proteinas','cereales','frutas','lacteoProtein','lacteoDescremado','lipidos','aceites','verduras'];
+      // ── datos de forge ───────────────────────────────────────
+      const forge_    = window.forge || {};
+      const getEx_    = typeof getEx==='function' ? getEx : ()=>null;
+      const meta_     = typeof getAguaMeta==='function' ? getAguaMeta() : {vasos:10, mlPorVaso:250};
+      const targets_  = typeof NUTRITION_TARGETS!=='undefined' ? NUTRITION_TARGETS : {proteinas:12,cereales:3,frutas:2,lacteoProtein:2,lacteoDescremado:1,lipidos:0.5,aceites:1,verduras:2};
+      const comidas_  = typeof COMIDAS!=='undefined' ? COMIDAS : [];
+      const totalC_   = comidas_.length || 7;
 
-      // ── leer datos nutricionales por día ─────────────────────
+      const allMetrics = (forge_.bodyMetrics||[])
+        .filter(m=>{ const d=new Date(m.date+'T12:00:00'); return d>=fechaInicio&&d<=domingo; })
+        .sort((a,b)=>a.date.localeCompare(b.date));
+
+      const allSessions = (forge_.sessions||[])
+        .filter(s=>{ const d=new Date(s.date); return d>=fechaInicio&&d<=domingo; })
+        .sort((a,b)=>a.date-b.date);
+
+      // ── recolectar días de nutrición ─────────────────────────
       const nutriDias = [];
-      let cur = new Date(fechaInicio.getTime());
-      // si fechaInicio es new Date(0) arrancar desde el primer día con datos
-      if(fechaInicio.getTime()===0 && metrics_.length){
-        cur = new Date(metrics_[0].date+'T12:00:00');
-        cur.setHours(0,0,0,0);
-      }
+      let cur = new Date(fechaInicio);
       while(cur <= domingo){
         const key = isoDate(cur);
         let fd = null;
         try{ const raw=localStorage.getItem('ff_'+key); if(raw) fd=JSON.parse(raw); }catch{}
         if(fd){
-          const vasosHoy = fd.aguaVasosHoy || fd.agua || 0;
+          const vasos = fd.aguaVasosHoy || fd.agua || 0;
+          const ml    = vasos * meta_.mlPorVaso;
+          const metaOk = vasos >= meta_.vasos ? 'S' : 'N';
           const comidasOk = Object.values(fd.comidas||{}).filter(c=>c.completada).length;
 
-          // calcular porciones consumidas
+          // porciones
           let porciones = {};
           if(typeof calcPortionsConsumed==='function'){
             porciones = calcPortionsConsumed(fd);
           } else {
-            comidas_.forEach(c=>{ if(fd.comidas?.[c.id]?.completada && c.portions) Object.entries(c.portions).forEach(([k,v])=>{ porciones[k]=(porciones[k]||0)+v; }); });
+            comidas_.forEach(c=>{ if(fd.comidas?.[c.id]?.completada&&c.portions) Object.entries(c.portions).forEach(([k,v])=>{ porciones[k]=(porciones[k]||0)+v; }); });
             (fd.extraFoods||[]).forEach(f=>Object.entries(f.portions||{}).forEach(([k,v])=>{ porciones[k]=(porciones[k]||0)+v; }));
           }
 
-          let porDone=0, porTotal=0;
-          gruposPorciones.forEach(g=>{ const t=targets_[g]||0; porTotal+=t; porDone+=Math.min(t,porciones[g]||0); });
-          const pctPauta = pct(porDone,porTotal);
+          // adherencia
+          const grupos = ['proteinas','cereales','frutas','lacteoProtein','lacteoDescremado','lipidos','aceites','verduras'];
+          let done=0, total=0;
+          grupos.forEach(g=>{ const t=targets_[g]||0; total+=t; done+=Math.min(t,porciones[g]||0); });
+          const adherencia = total>0 ? Math.round(done/total*100) : 0;
 
-          // ejercicio ese día
-          const sesDia = sessions_.filter(s=>{ const sd=new Date(s.date); return isoDate(sd)===key; });
-
-          nutriDias.push({ fecha:key, vasosHoy, metaVasos:meta_.vasos, comidasOk, totalC:totalC_, pctPauta, porciones, sesDia });
+          nutriDias.push({
+            fecha:key, vasos, ml, metaOk, comidasOk, adherencia,
+            prot:  +(porciones.proteinas||0).toFixed(1),
+            cereal:+(porciones.cereales||0).toFixed(1),
+            fruta: +(porciones.frutas||0).toFixed(1),
+            lacteo:+((porciones.lacteoProtein||0)+(porciones.lacteoDescremado||0)).toFixed(1),
+            verd:  +(porciones.verduras||0).toFixed(1),
+            lip:   +(porciones.lipidos||0).toFixed(1),
+            aceit: +(porciones.aceites||0).toFixed(1),
+          });
         }
         cur = addDays(cur,1);
       }
 
       // ════════════════════════════════════════════════════════
-      //  CABECERA
-      // ════════════════════════════════════════════════════════
-      lines.push(SEP);
-      lines.push('MELQART — INFORME DE SEGUIMIENTO');
-      lines.push((semanas===0?'HISTORIAL COMPLETO':('ÚLTIMAS '+semanas+' SEMANA'+(semanas>1?'S':'')))
-        +' · '+fmtRango(fechaInicio)+' → '+fmtRango(domingo));
+      const lines = [];
+      const W = 76; // ancho total
+
+      lines.push('MELQART — EXPORTABLE DE DATOS');
+      lines.push(rango+' ('+rangoFechas+')');
       lines.push('Generado: '+new Date().toLocaleString('es-CL'));
-      lines.push(SEP);
+      lines.push('='.repeat(W));
       lines.push('');
 
       // ════════════════════════════════════════════════════════
-      //  1. PESO CORPORAL
+      //  SECCION 1 — PESO CORPORAL
       // ════════════════════════════════════════════════════════
-      lines.push('◬ PESO CORPORAL');
-      lines.push(sep2);
-      if(!metrics_.length){
-        lines.push('  Sin registros de peso en este período.');
+      lines.push('SECCION 1 — PESO CORPORAL');
+      lines.push('-'.repeat(W));
+      if(!allMetrics.length){
+        lines.push('Sin registros en este periodo.');
       } else {
-        const pesoInicio = metrics_[0].peso;
-        const pesoFin    = metrics_[metrics_.length-1].peso;
-        const delta      = pesoInicio && pesoFin ? +(pesoFin-pesoInicio).toFixed(1) : null;
-        const po         = forge_.pesoObjetivo || {};
-        if(po.objetivo && pesoFin){
-          const restante = +(pesoFin - po.objetivo).toFixed(1);
-          lines.push('  Objetivo: '+po.objetivo+'kg  ·  Actual: '+pesoFin+'kg  ·  Restante: '+(restante>0?'+':'')+restante+'kg');
-        }
-        if(delta!==null) lines.push('  Cambio período: '+(delta>0?'+':'')+delta+'kg  ('+pesoInicio+'kg → '+pesoFin+'kg)');
-        lines.push('');
-        lines.push('  Fecha          Peso     IMC    Grasa%  Musc.kg');
-        lines.push('  '+'-'.repeat(50));
-        metrics_.forEach(m=>{
-          const cols = [
-            pad(m.date, 14),
-            pad((m.peso||'-')+'kg', 9),
-            pad(m.imc||'-', 7),
-            pad(m.grasa ? m.grasa+'%' : '-', 8),
-            m.muscular ? m.muscular+'kg' : '-'
-          ];
-          lines.push('  '+cols.join(''));
+        // cabecera
+        lines.push(row(col('Fecha',12), col('Peso kg',10), col('IMC',8), col('Grasa %',10), col('Muscular %',12), col('Notas',20)));
+        lines.push('-'.repeat(W));
+        allMetrics.forEach(m=>{
+          lines.push(row(
+            col(fmtFecha(m.date),12),
+            col(m.peso!=null?m.peso:'',10),
+            col(m.imc!=null?m.imc:'',8),
+            col(m.grasa!=null?m.grasa:'',10),
+            col(m.muscular!=null?m.muscular:'',12),
+            col(m.notas||'',20)
+          ));
         });
-      }
-      lines.push('');
-
-      // ════════════════════════════════════════════════════════
-      //  2. NUTRICIÓN — RESUMEN GLOBAL
-      // ════════════════════════════════════════════════════════
-      lines.push('◐ NUTRICIÓN — RESUMEN DEL PERÍODO');
-      lines.push(sep2);
-      if(!nutriDias.length){
-        lines.push('  Sin registros de alimentación en este período.');
-      } else {
-        const nDias = nutriDias.length;
-        const proAgua   = Math.round(nutriDias.reduce((a,d)=>a+d.vasosHoy,0)/nDias);
-        const diasAgua  = nutriDias.filter(d=>d.vasosHoy>=d.metaVasos).length;
-        const diasComC  = nutriDias.filter(d=>d.comidasOk===d.totalC).length;
-        const proPauta  = Math.round(nutriDias.reduce((a,d)=>a+d.pctPauta,0)/nDias);
-
-        lines.push('  Días con registro:         '+nDias);
-        lines.push('  Agua — promedio/día:       '+proAgua+'/'+meta_.vasos+' vasos  ·  meta cumplida '+diasAgua+'/'+nDias+' días  ('+pct(diasAgua,nDias)+'%)');
-        lines.push('  Comidas — días completos:  '+diasComC+'/'+nDias+' días  ('+pct(diasComC,nDias)+'%)');
-        lines.push('  Pauta porciones — promedio:'+proPauta+'%');
-        lines.push('');
-
-        // Promedio de cada grupo de porciones
-        lines.push('  Porciones promedio/día vs. pauta:');
-        gruposPorciones.forEach(g=>{
-          const objetivo = targets_[g]||0; if(!objetivo) return;
-          const promG = +(nutriDias.reduce((a,d)=>a+(d.porciones[g]||0),0)/nDias).toFixed(1);
-          const b = bar(promG, objetivo, 10);
-          lines.push('    '+pad(plabels_[g],22)+b+'  '+promG+'/'+objetivo+'  ('+pct(promG,objetivo)+'%)');
-        });
-      }
-      lines.push('');
-
-      // ════════════════════════════════════════════════════════
-      //  3. EJERCICIO — RESUMEN GLOBAL
-      // ════════════════════════════════════════════════════════
-      lines.push('◈ EJERCICIO — RESUMEN DEL PERÍODO');
-      lines.push(sep2);
-      if(!sessions_.length){
-        lines.push('  Sin sesiones en este período.');
-      } else {
-        const totalSes   = sessions_.length;
-        const totalDur   = sessions_.reduce((a,s)=>a+(s.elapsed||0),0);
-        const totalKcal  = sessions_.reduce((a,s)=>a+(s.kcal||0),0);
-        const diasConSes = new Set(sessions_.map(s=>isoDate(new Date(s.date)))).size;
-        const diasTotal  = Math.max(1, Math.round((domingo-fechaInicio)/(1000*60*60*24))+1);
-        const frecuencia = +(diasConSes/7*(diasTotal/diasTotal)).toFixed(1);
-        lines.push('  Sesiones totales:   '+totalSes+'  ('+diasConSes+' días activos)');
-        lines.push('  Duración total:     '+fmtDur(totalDur));
-        if(totalKcal) lines.push('  Calorías totales:   '+totalKcal+' kcal');
-        lines.push('  Frecuencia:         ~'+Math.round(totalSes/(Math.ceil(diasTotal/7)||1))+' sesiones/semana');
-      }
-      lines.push('');
-
-      // ════════════════════════════════════════════════════════
-      //  4. DETALLE CRONOLÓGICO DÍA A DÍA
-      // ════════════════════════════════════════════════════════
-      lines.push('▤ DETALLE DÍA A DÍA');
-      lines.push(sep2);
-
-      // Unir todos los días que tienen datos (peso, nutrición o sesión)
-      const diasSet = new Set([
-        ...metrics_.map(m=>m.date),
-        ...nutriDias.map(d=>d.fecha),
-        ...sessions_.map(s=>isoDate(new Date(s.date)))
-      ]);
-      const diasOrdenados = Array.from(diasSet).sort();
-
-      diasOrdenados.forEach(key=>{
-        const fechaLabel = new Date(key+'T12:00:00').toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-        lines.push('');
-        lines.push('  >> '+fechaLabel);
-
-        // Peso del día
-        const pesoDay = metrics_.find(m=>m.date===key);
-        if(pesoDay){
-          let pesoStr = '  ◬ Peso: '+pesoDay.peso+'kg';
-          if(pesoDay.imc)    pesoStr += '  IMC '+pesoDay.imc;
-          if(pesoDay.grasa)  pesoStr += '  Grasa '+pesoDay.grasa+'%';
-          if(pesoDay.muscular) pesoStr += '  Musc. '+pesoDay.muscular+'kg';
-          lines.push(pesoStr);
+        // resumen
+        const pesoInicio = allMetrics[0].peso;
+        const pesoFin    = allMetrics[allMetrics.length-1].peso;
+        if(pesoInicio && pesoFin){
+          const delta = +(pesoFin - pesoInicio).toFixed(1);
+          lines.push('');
+          lines.push('Cambio en el periodo: '+(delta>0?'+':'')+delta+' kg  ('+pesoInicio+' kg -> '+pesoFin+' kg)');
+          const po = forge_.pesoObjetivo;
+          if(po?.objetivo) lines.push('Objetivo: '+po.objetivo+' kg  |  Restante: '+Math.max(0,+(pesoFin-po.objetivo).toFixed(1))+' kg');
         }
+      }
+      lines.push('');
 
-        // Nutrición del día
-        const nDay = nutriDias.find(d=>d.fecha===key);
-        if(nDay){
-          const bAgua   = bar(nDay.vasosHoy, nDay.metaVasos, 10);
-          const bComida = bar(nDay.comidasOk, nDay.totalC, 7);
-          lines.push('  ◐ Agua:    '+bAgua+' '+nDay.vasosHoy+'/'+nDay.metaVasos+' vasos ('+pct(nDay.vasosHoy,nDay.metaVasos)+'%)');
-          lines.push('  ◐ Comidas: '+bComida+' '+nDay.comidasOk+'/'+nDay.totalC+' ('+pct(nDay.comidasOk,nDay.totalC)+'%)');
-          lines.push('  ◐ Pauta porciones: '+nDay.pctPauta+'%');
-          // desglose porciones solo si no todas son 0
-          const hayPorciones = gruposPorciones.some(g=>(nDay.porciones[g]||0)>0);
-          if(hayPorciones){
-            gruposPorciones.forEach(g=>{
-              const obj=targets_[g]||0; if(!obj) return;
-              const v=+(nDay.porciones[g]||0).toFixed(1);
-              if(v===0) return;
-              lines.push('     '+pad(plabels_[g],22)+bar(v,obj,8)+'  '+v+'/'+obj);
+      // ════════════════════════════════════════════════════════
+      //  SECCION 2 — SESIONES DE ENTRENAMIENTO
+      // ════════════════════════════════════════════════════════
+      lines.push('SECCION 2 — SESIONES DE ENTRENAMIENTO');
+      lines.push('-'.repeat(W));
+      if(!allSessions.length){
+        lines.push('Sin sesiones en este periodo.');
+      } else {
+        // Agrupar por semana
+        const semMap = {};
+        allSessions.forEach(s=>{
+          const d = new Date(s.date);
+          const lun = new Date(d);
+          lun.setDate(d.getDate()-(d.getDay()||7)+1);
+          lun.setHours(0,0,0,0);
+          const semKey = isoDate(lun);
+          if(!semMap[semKey]) semMap[semKey]=[];
+          semMap[semKey].push(s);
+        });
+
+        Object.keys(semMap).sort().forEach(semKey=>{
+          const sesiones = semMap[semKey];
+          const lunDate = new Date(semKey+'T12:00:00');
+          const domDate = addDays(lunDate,6);
+          lines.push('');
+          lines.push('Semana '+fmtFecha(semKey)+' — '+fmtFecha(isoDate(domDate)));
+          lines.push('~ '.repeat(Math.floor(W/2)));
+
+          sesiones.forEach(s=>{
+            const d = new Date(s.date);
+            const fechaSes = isoDate(d);
+            const diaSemana = d.toLocaleDateString('es-CL',{weekday:'long'});
+            lines.push('');
+            lines.push('  '+diaSemana.charAt(0).toUpperCase()+diaSemana.slice(1)+' '+fmtFecha(fechaSes)+'  —  '+(s.routineName||'Sesion libre'));
+            if(s.elapsed) lines.push('  Duracion: '+fmtDur(s.elapsed)+(s.fcMedia?'  |  FC media: '+s.fcMedia+' bpm':'')+(s.kcal?'  |  Calorias: '+s.kcal+' kcal':''));
+
+            const exsConSets = (s.exercises||[]).filter(ex=>{
+              const e=getEx_(ex.exId);
+              if(!e) return false;
+              if(e.type==='warmup'||e.type==='stretch') return false;
+              return (ex.sets||[]).some(st=>st.done);
             });
-          }
-        }
 
-        // Sesiones del día
-        const sesDia = sessions_.filter(s=>isoDate(new Date(s.date))===key);
-        sesDia.forEach(s=>{
-          lines.push('  ◈ Entreno: '+(s.routineName||'Sesión libre')+(s.elapsed?' · '+fmtDur(s.elapsed):'')+(s.fcMedia?' · FC '+s.fcMedia+'bpm':'')+(s.kcal?' · '+s.kcal+'kcal':''));
-          (s.exercises||[]).forEach(ex=>{
-            const e=getEx_(ex.exId); if(!e) return;
-            if(e.type==='warmup'||e.type==='stretch') return;
-            const sets=(ex.sets||[]).filter(st=>st.done); if(!sets.length) return;
-            if(e.type==='run'||e.type==='hiit'){
-              const dist=sets.reduce((a,st)=>a+(parseFloat(st.distance)||0),0);
-              lines.push('     '+e.name+': '+dist.toFixed(2)+'km'+(sets[0]?.time?' · '+fmtTime_(sets[0].time):''));
-            } else {
-              lines.push('     '+e.name+': '+sets.map(st=>st.weight+'kg×'+st.reps).join(' | '));
+            if(exsConSets.length){
+              lines.push('');
+              // cabecera de ejercicios
+              lines.push('  '+col('Ejercicio',28)+col('S1',12)+col('S2',12)+col('S3',12)+col('S4',12));
+              lines.push('  '+'-'.repeat(W-2));
+
+              exsConSets.forEach(ex=>{
+                const e=getEx_(ex.exId);
+                const nombre = e?e.name:(ex.exId||'Ejercicio');
+                const sets = (ex.sets||[]).filter(st=>st.done);
+                const isRun = e?.type==='run'||e?.type==='hiit';
+
+                let setsCols = [];
+                sets.slice(0,4).forEach(st=>{
+                  if(isRun){
+                    setsCols.push(col(st.distance?(st.distance+'km'):'', 12));
+                  } else {
+                    const w = st.weight!=null?st.weight:'';
+                    const r = st.reps!=null?st.reps:'';
+                    setsCols.push(col(w&&r?(w+'x'+r):(w||r||'-'), 12));
+                  }
+                });
+                // rellenar columnas vacías
+                while(setsCols.length<4) setsCols.push(col('',12));
+
+                lines.push('  '+col(nombre.slice(0,27),28)+setsCols.join(''));
+
+                // si tiene más de 4 series, mostrar el resto
+                if(sets.length>4){
+                  let extra = '  '+col('',28);
+                  sets.slice(4).forEach(st=>{
+                    const w=st.weight!=null?st.weight:'';
+                    const r=st.reps!=null?st.reps:'';
+                    extra += col(w&&r?(w+'x'+r):(w||r||'-'),12);
+                  });
+                  lines.push(extra);
+                }
+              });
             }
           });
         });
-      });
 
+        lines.push('');
+        lines.push('Total sesiones en el periodo: '+allSessions.length);
+      }
       lines.push('');
-      lines.push(SEP);
-      lines.push('Exportado desde MELQART v146 · '+new Date().toLocaleDateString('es-CL'));
-      lines.push(SEP);
 
-      // ── enviar al portapapeles (igual que el original) ───────
+      // ════════════════════════════════════════════════════════
+      //  SECCION 3 — NUTRICION
+      // ════════════════════════════════════════════════════════
+      lines.push('SECCION 3 — NUTRICION');
+      lines.push('-'.repeat(W));
+      if(!nutriDias.length){
+        lines.push('Sin registros de nutricion en este periodo.');
+      } else {
+        // Cabecera
+        const NH = row(
+          col('Fecha',12),
+          col('Agua ml',9),
+          col('Vasos',7),
+          col('MetaH2O',8),
+          col('Comidas',8),
+          col('Proteinas',10),
+          col('Cereales',9),
+          col('Frutas',7),
+          col('Lacteos',8),
+          col('Verduras',9),
+          col('Lipidos',8),
+          col('Aceites',8),
+          col('Adher%',7)
+        );
+        lines.push(NH);
+        lines.push('-'.repeat(W));
+
+        nutriDias.forEach(d=>{
+          lines.push(row(
+            col(fmtFecha(d.fecha),12),
+            col(d.ml,9),
+            col(d.vasos+'/'+meta_.vasos,7),
+            col(d.metaOk,8),
+            col(d.comidasOk+'/'+totalC_,8),
+            col(d.prot,10),
+            col(d.cereal,9),
+            col(d.fruta,7),
+            col(d.lacteo,8),
+            col(d.verd,9),
+            col(d.lip,8),
+            col(d.aceit,8),
+            col(d.adherencia+'%',7)
+          ));
+        });
+
+        // Resumen
+        const n = nutriDias.length;
+        const proAgua   = Math.round(nutriDias.reduce((a,d)=>a+d.vasos,0)/n);
+        const diasMetaH = nutriDias.filter(d=>d.metaOk==='S').length;
+        const promAdh   = Math.round(nutriDias.reduce((a,d)=>a+d.adherencia,0)/n);
+        const diasCom   = nutriDias.filter(d=>d.comidasOk===totalC_).length;
+        lines.push('');
+        lines.push('Resumen nutricion ('+n+' dias con registro):');
+        lines.push('  Agua promedio/dia:         '+proAgua+'/'+meta_.vasos+' vasos  —  meta cumplida '+diasMetaH+'/'+n+' dias ('+Math.round(diasMetaH/n*100)+'%)');
+        lines.push('  Comidas dias completos:    '+diasCom+'/'+n+' dias ('+Math.round(diasCom/n*100)+'%)');
+        lines.push('  Adherencia pauta promedio: '+promAdh+'%');
+      }
+      lines.push('');
+      lines.push('='.repeat(W));
+      lines.push('MELQART v154  |  '+new Date().toLocaleDateString('es-CL'));
+
+      // ── enviar al portapapeles ───────────────────────────────
       const txt = lines.join('\n');
       if(navigator.clipboard){
-        navigator.clipboard.writeText(txt).then(()=>showToast('Informe copiado al portapapeles',3000,'ok'));
+        navigator.clipboard.writeText(txt)
+          .then(()=>showToast('Exportable copiado al portapapeles',3000,'ok'))
+          .catch(()=>_fallbackExport(txt));
       } else {
-        const modal = document.getElementById('modal-ejercicio');
-        modal.querySelector('.modal-title').textContent = 'Informe exportado';
-        modal.querySelector('.modal-body').innerHTML = '<textarea style="width:100%;height:300px;font-family:monospace;font-size:11px;border:1px solid var(--border);border-radius:var(--r);padding:10px;resize:none" readonly>'+txt+'</textarea>';
-        openModal('modal-ejercicio');
+        _fallbackExport(txt);
       }
-    }; // fin window.exportarSemana
-  }
 
+      function _fallbackExport(txt){
+        // Descargar como .txt
+        const blob = new Blob([txt],{type:'text/plain;charset=utf-8'});
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url;
+        a.download = 'melqart_export_'+isoDate(new Date())+'.txt';
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+    }; // fin exportarSemana
+  }
   patchExport();
 })();
 </script>
