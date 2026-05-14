@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=129">
 <link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=108">
 <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.svg?v=129">
-<title>MELQART v149</title>
+<title>MELQART v150</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -48,6 +48,7 @@
 <div id="mobile-topbar" class="mobile-topbar">
   <div id="mobile-topbar-section" class="mobile-topbar-section">Inicio</div>
   <div class="mobile-topbar-actions">
+    <div id="mobile-topbar-action"></div>
     <div id="sync-dot-mobile" class="sync-dot-mobile"></div>
     <div id="user-btn-mobile" onclick="toggleUserMenu()" class="user-btn-mobile" style="display:none"></div>
   </div>
@@ -1223,7 +1224,51 @@
       }
     };
 
-    console.log('[MELQART v149] Wheel picker activo');
+    // ── Sincronizar slot de acción en mobile-topbar ─────────────
+  function patchRenderPerfil(){
+    if(typeof renderPerfil === 'undefined'){ setTimeout(patchRenderPerfil, 80); return; }
+    const _orig = window.renderPerfil;
+    window.renderPerfil = function(){
+      _orig.call(this);
+      requestAnimationFrame(() => {
+        const slot = document.getElementById('mobile-topbar-action');
+        const btn  = document.getElementById('perfil-action-btn');
+        if(!slot || !btn) return;
+        if(btn.style.display === 'none' || btn.textContent.trim() === ''){
+          slot.innerHTML = '';
+        } else {
+          const clone = btn.cloneNode(true);
+          clone.id = 'perfil-action-btn-mobile';
+          clone.onclick = btn.onclick;
+          slot.innerHTML = '';
+          slot.appendChild(clone);
+        }
+      });
+    };
+
+    // También parchamos switchPerfilTab para re-sincronizar el slot
+    const _origSwitch = window.switchPerfilTab;
+    if(typeof _origSwitch === 'function'){
+      window.switchPerfilTab = function(tab, btn2){
+        _origSwitch.call(this, tab, btn2);
+        requestAnimationFrame(() => {
+          const slot = document.getElementById('mobile-topbar-action');
+          const btn  = document.getElementById('perfil-action-btn');
+          if(!slot || !btn) return;
+          if(btn.style.display === 'none' || btn.textContent.trim() === ''){
+            slot.innerHTML = '';
+          } else {
+            const clone = btn.cloneNode(true);
+            clone.id = 'perfil-action-btn-mobile';
+            clone.onclick = btn.onclick;
+            slot.innerHTML = '';
+            slot.appendChild(clone);
+          }
+        });
+      };
+    }
+  }
+  patchRenderPerfil();
   }
   patchRenderMedModal();
 
@@ -1548,6 +1593,13 @@
       _orig(id);
       const el = document.getElementById('mobile-topbar-section');
       if(el) el.textContent = sectionNames[id] || id;
+      // Limpiar slot de acción al salir de perfil
+      if(id !== 'perfil'){
+        const slot = document.getElementById('mobile-topbar-action');
+        if(slot) slot.innerHTML = '';
+      } else {
+        setTimeout(() => { if(typeof renderPerfil === 'function') renderPerfil(); }, 60);
+      }
     };
   }
   // Mirror sync-dot color
