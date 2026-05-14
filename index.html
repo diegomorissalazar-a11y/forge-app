@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=129">
 <link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=108">
 <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.svg?v=129">
-<title>MELQART v148</title>
+<title>MELQART v149</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -772,7 +772,462 @@
 <script src="app.js"></script>
 <script>
 /* ================================================================
-   MELQART v148 — CONTORNOS CORPORALES
+   MELQART v149 — WHEEL PICKER + TOOLTIP FIX + MUSCULAR EN %
+   ================================================================ */
+(function(){
+
+  // ══════════════════════════════════════════════════════════════
+  //  1. TOOLTIP: reformatear fecha YYYY-MM-DD → dd-mm-yyyy
+  // ══════════════════════════════════════════════════════════════
+  function patchTooltip(){
+    if(typeof mqChartTooltipShow !== 'function'){ setTimeout(patchTooltip, 80); return; }
+    const _orig = window.mqChartTooltipShow;
+    window.mqChartTooltipShow = function(evt, date, main, sub){
+      // Convertir YYYY-MM-DD → dd-mm-yyyy
+      let fmtDate = date;
+      if(date && /^\d{4}-\d{2}-\d{2}$/.test(date)){
+        const [y,m,d] = date.split('-');
+        fmtDate = d + '-' + m + '-' + y;
+      }
+      return _orig.call(this, evt, fmtDate, main, sub);
+    };
+  }
+  patchTooltip();
+
+  // ══════════════════════════════════════════════════════════════
+  //  2. MUSCULAR: cambiar unidad de kg a % en MED_METRICAS
+  // ══════════════════════════════════════════════════════════════
+  function patchMuscular(){
+    if(typeof MED_METRICAS === 'undefined'){ setTimeout(patchMuscular, 80); return; }
+    const m = MED_METRICAS.find(x => x.key === 'muscular');
+    if(m){ m.unit = '%'; m.placeholder = '45.0'; }
+  }
+  patchMuscular();
+
+  // ══════════════════════════════════════════════════════════════
+  //  3. WHEEL PICKER — componente CSS+JS puro estilo iOS
+  // ══════════════════════════════════════════════════════════════
+
+  // Inyectar CSS del wheel
+  const WHEEL_CSS = `
+  .mq-wheel-wrap{display:flex;gap:6px;justify-content:center;align-items:center;margin:8px 0 16px;user-select:none}
+  .mq-wheel-col{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .mq-wheel-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:700;margin-bottom:4px}
+  .mq-wheel{position:relative;width:72px;height:180px;overflow:hidden;border-radius:12px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;-webkit-overflow-scrolling:touch}
+  .mq-wheel-wide{width:110px}
+  .mq-wheel-narrow{width:56px}
+  .mq-wheel-list{position:absolute;top:0;left:0;right:0;transition:transform .12s cubic-bezier(.25,.46,.45,.94)}
+  .mq-wheel-item{height:36px;line-height:36px;text-align:center;font-size:18px;font-weight:600;color:var(--ink2);transition:color .1s,font-size .1s}
+  .mq-wheel-item.sel{color:var(--ink);font-size:21px;font-weight:800}
+  .mq-wheel-overlay{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none}
+  .mq-wheel-overlay::before,.mq-wheel-overlay::after{content:'';position:absolute;left:0;right:0;height:72px;z-index:2}
+  .mq-wheel-overlay::before{top:0;background:linear-gradient(to bottom,var(--bg3) 0%,transparent 100%)}
+  .mq-wheel-overlay::after{bottom:0;background:linear-gradient(to top,var(--bg3) 0%,transparent 100%)}
+  .mq-wheel-line{position:absolute;left:0;right:0;height:36px;top:72px;border-top:2px solid var(--orange);border-bottom:2px solid var(--orange);pointer-events:none;z-index:3}
+  .mq-wheel-sep{font-size:26px;font-weight:700;color:var(--ink3);padding:0 2px;align-self:center;margin-top:18px}
+  `;
+  if(!document.getElementById('mq-wheel-css')){
+    const st = document.createElement('style');
+    st.id = 'mq-wheel-css';
+    st.textContent = WHEEL_CSS;
+    document.head.appendChild(st);
+  }
+
+  // ── Construir una rueda ──────────────────────────────────────
+  // items: array de strings; selectedIndex; id; circular: bool
+  function buildWheel(id, items, selectedIdx, label, extraClass=''){
+    const html = `
+      <div class="mq-wheel-col">
+        ${label ? '<div class="mq-wheel-label">'+label+'</div>' : ''}
+        <div class="mq-wheel ${extraClass}" id="wheel-${id}" data-id="${id}">
+          <div class="mq-wheel-list" id="wlist-${id}">
+            ${items.map((it,i) => `<div class="mq-wheel-item${i===selectedIdx?' sel':''}" data-idx="${i}">${it}</div>`).join('')}
+          </div>
+          <div class="mq-wheel-overlay"></div>
+          <div class="mq-wheel-line"></div>
+        </div>
+      </div>`;
+    return html;
+  }
+
+  // ── Inicializar eventos de una rueda ─────────────────────────
+  function initWheel(id, items, selectedIdx, circular, onChange){
+    const wrap = document.getElementById('wheel-'+id);
+    const list = document.getElementById('wlist-'+id);
+    if(!wrap || !list) return;
+
+    const ITEM_H = 36;
+    const VISIBLE = 5; // Items visibles (2 arriba + selected + 2 abajo)
+    const OFFSET = 2;  // Items arriba del selected
+    let cur = selectedIdx;
+
+    function clamp(idx){
+      if(circular) return ((idx % items.length) + items.length) % items.length;
+      return Math.max(0, Math.min(items.length-1, idx));
+    }
+
+    function render(idx, animate){
+      cur = clamp(idx);
+      const y = -(cur - OFFSET) * ITEM_H;
+      list.style.transition = animate ? 'transform .2s cubic-bezier(.25,.46,.45,.94)' : 'none';
+      list.style.transform = 'translateY('+y+'px)';
+      list.querySelectorAll('.mq-wheel-item').forEach((el,i) => {
+        el.classList.toggle('sel', i === cur);
+      });
+      onChange && onChange(cur, items[cur]);
+    }
+
+    // Altura del contenedor = 5 items
+    wrap.style.height = (VISIBLE * ITEM_H) + 'px';
+    // Padding top/bottom para centrar el primer/last item
+    list.style.paddingTop = (OFFSET * ITEM_H) + 'px';
+    list.style.paddingBottom = (OFFSET * ITEM_H) + 'px';
+    render(cur, false);
+
+    // Touch
+    let startY = 0, startCur = 0, lastY = 0, velocity = 0, lastTime = 0;
+    wrap.addEventListener('touchstart', e => {
+      startY = e.touches[0].clientY;
+      lastY = startY;
+      startCur = cur;
+      velocity = 0;
+      list.style.transition = 'none';
+    }, {passive:true});
+    wrap.addEventListener('touchmove', e => {
+      const dy = e.touches[0].clientY - startY;
+      const now = Date.now();
+      velocity = (e.touches[0].clientY - lastY) / (now - lastTime + 1);
+      lastY = e.touches[0].clientY; lastTime = now;
+      const delta = Math.round(-dy / ITEM_H);
+      render(startCur + delta, false);
+      e.preventDefault();
+    }, {passive:false});
+    wrap.addEventListener('touchend', () => {
+      const flick = Math.round(-velocity * 6);
+      render(cur + flick, true);
+    });
+
+    // Mouse (desktop)
+    let mouseDown = false, mouseStartY = 0, mouseCur = 0;
+    wrap.addEventListener('mousedown', e => {
+      mouseDown = true; mouseStartY = e.clientY; mouseCur = cur;
+    });
+    document.addEventListener('mousemove', e => {
+      if(!mouseDown) return;
+      const dy = e.clientY - mouseStartY;
+      render(mouseCur + Math.round(-dy/ITEM_H), false);
+    });
+    document.addEventListener('mouseup', () => { mouseDown = false; });
+
+    // Wheel scroll
+    wrap.addEventListener('wheel', e => {
+      e.preventDefault();
+      render(cur + (e.deltaY > 0 ? 1 : -1), true);
+    }, {passive:false});
+  }
+
+  // ── Estado de los wheels ─────────────────────────────────────
+  let _wheelState = {};
+
+  // ── Render fecha en wheels ───────────────────────────────────
+  function renderFechaWheels(containerId, fechaStr){
+    const d = fechaStr ? new Date(fechaStr+'T12:00:00') : new Date();
+    const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const hoy = new Date();
+    const maxAnio = hoy.getFullYear();
+    const minAnio = 2014;
+    const anios = [];
+    for(let y = minAnio; y <= maxAnio; y++) anios.push(String(y));
+
+    _wheelState[containerId] = {
+      dia: d.getDate(),
+      mes: d.getMonth(), // 0-based
+      anio: d.getFullYear(),
+    };
+
+    function daysInMonth(mes, anio){ return new Date(anio, mes+1, 0).getDate(); }
+
+    function getDias(mes, anio){
+      const n = daysInMonth(mes, anio);
+      return Array.from({length:n}, (_,i) => String(i+1).padStart(2,'0'));
+    }
+
+    const st = _wheelState[containerId];
+    const dias = getDias(st.mes, st.anio);
+    const diaIdx = Math.min(st.dia - 1, dias.length - 1);
+    const mesIdx = st.mes;
+    const anioIdx = st.anio - minAnio;
+
+    const html = `<div class="mq-wheel-wrap" id="${containerId}-fw">
+      ${buildWheel(containerId+'-d', dias, diaIdx, 'Día')}
+      ${buildWheel(containerId+'-m', MESES, mesIdx, 'Mes', 'mq-wheel-wide')}
+      ${buildWheel(containerId+'-y', anios, anioIdx, 'Año')}
+    </div>`;
+
+    document.getElementById(containerId).innerHTML = html;
+
+    initWheel(containerId+'-d', dias, diaIdx, false, (idx, val) => {
+      _wheelState[containerId].dia = parseInt(val);
+      _checkFuturo(containerId);
+    });
+    initWheel(containerId+'-m', MESES, mesIdx, true, (idx) => {
+      _wheelState[containerId].mes = idx;
+      // Reconstruir días si cambió el mes
+      _rebuildDias(containerId, minAnio);
+      _checkFuturo(containerId);
+    });
+    initWheel(containerId+'-y', anios, anioIdx, false, (idx, val) => {
+      _wheelState[containerId].anio = parseInt(val);
+      _rebuildDias(containerId, minAnio);
+      _checkFuturo(containerId);
+    });
+  }
+
+  function _rebuildDias(cid, minAnio){
+    const st = _wheelState[cid];
+    const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    function daysInMonth(m, y){ return new Date(y, m+1, 0).getDate(); }
+    const n = daysInMonth(st.mes, st.anio);
+    const dias = Array.from({length:n}, (_,i) => String(i+1).padStart(2,'0'));
+    // Si el día actual supera el máximo del nuevo mes, ajustar
+    if(st.dia > n) st.dia = n;
+    const diaIdx = st.dia - 1;
+    // Re-renderizar solo la rueda de días
+    const wrapD = document.getElementById('wheel-'+cid+'-d');
+    const listD = document.getElementById('wlist-'+cid+'-d');
+    if(wrapD && listD){
+      listD.innerHTML = dias.map((it,i) => `<div class="mq-wheel-item${i===diaIdx?' sel':''}" data-idx="${i}">${it}</div>`).join('');
+      initWheel(cid+'-d', dias, diaIdx, false, (idx, val) => {
+        _wheelState[cid].dia = parseInt(val);
+        _checkFuturo(cid);
+      });
+    }
+  }
+
+  function _checkFuturo(cid){
+    const st = _wheelState[cid];
+    const d = new Date(st.anio, st.mes, st.dia);
+    const hoy = new Date(); hoy.setHours(23,59,59,999);
+    const warEl = document.getElementById(cid+'-warn');
+    if(d > hoy){
+      if(warEl) warEl.style.display = 'block';
+    } else {
+      if(warEl) warEl.style.display = 'none';
+    }
+  }
+
+  function getFechaFromWheels(cid){
+    const st = _wheelState[cid];
+    if(!st) return null;
+    const d = new Date(st.anio, st.mes, st.dia);
+    const hoy = new Date(); hoy.setHours(23,59,59,999);
+    if(d > hoy) return null; // No permitir futuro
+    const yy = st.anio;
+    const mm = String(st.mes+1).padStart(2,'0');
+    const dd = String(st.dia).padStart(2,'0');
+    return `${yy}-${mm}-${dd}`;
+  }
+
+  // ── Render valor en wheels ───────────────────────────────────
+  function renderValorWheels(containerId, metKey, valActual){
+    const CONTORNO_KEYS = ['cintura','cadera','biceps'];
+    const isPeso = metKey === 'peso';
+    const isPorc = ['grasa','muscular'].includes(metKey);
+    const isContorno = CONTORNO_KEYS.includes(metKey);
+    const isPliegue = metKey === 'p6' || metKey === 'p8';
+
+    let enteros = [], decimales = null;
+    let enteroIdx = 0, decIdx = 0;
+
+    if(isPeso){
+      for(let i=40;i<=200;i++) enteros.push(String(i));
+      decimales = ['0','1','2','3','4','5','6','7','8','9'];
+      const v = parseFloat(valActual) || 90;
+      enteroIdx = Math.max(0, enteros.indexOf(String(Math.floor(v))));
+      decIdx = Math.round((v % 1) * 10);
+    } else if(isPorc){
+      for(let i=0;i<=99;i++) enteros.push(String(i));
+      decimales = ['0','1','2','3','4','5','6','7','8','9'];
+      const v = parseFloat(valActual) || (metKey==='grasa' ? 28 : 45);
+      enteroIdx = Math.max(0, enteros.indexOf(String(Math.floor(v))));
+      decIdx = Math.round((v % 1) * 10);
+    } else if(isContorno || metKey==='imc'){
+      for(let i=40;i<=200;i++) enteros.push(String(i));
+      decimales = ['0','5'];
+      const v = parseFloat(valActual) || 85;
+      enteroIdx = Math.max(0, enteros.indexOf(String(Math.floor(v))));
+      decIdx = (v % 1) >= 0.5 ? 1 : 0;
+    } else if(isPliegue){
+      for(let i=50;i<=300;i+=1) enteros.push(String(i));
+      const v = parseFloat(valActual) || 140;
+      enteroIdx = Math.max(0, enteros.indexOf(String(Math.floor(v))));
+    } else {
+      // IMC / genérico
+      for(let i=10;i<=60;i++) enteros.push(String(i));
+      decimales = ['0','1','2','3','4','5','6','7','8','9'];
+      const v = parseFloat(valActual) || 25;
+      enteroIdx = Math.max(0, enteros.indexOf(String(Math.floor(v))));
+      decIdx = Math.round((v % 1) * 10);
+    }
+
+    _wheelState[containerId] = { entero: enteros[enteroIdx], dec: decimales ? decimales[decIdx] : null };
+
+    const unit = isPorc ? '%' : isPeso ? 'kg' : isContorno ? 'cm' : isPliegue ? 'mm' : '';
+    const unitEl = unit ? `<div class="mq-wheel-sep">${unit}</div>` : '';
+
+    const html = `<div class="mq-wheel-wrap" id="${containerId}-vw">
+      ${buildWheel(containerId+'-e', enteros, enteroIdx, 'Entero')}
+      ${decimales ? '<div class="mq-wheel-sep">.</div>' + buildWheel(containerId+'-d2', decimales, decIdx, 'Decimal', 'mq-wheel-narrow') : ''}
+      ${unitEl}
+    </div>`;
+
+    document.getElementById(containerId).innerHTML = html;
+
+    initWheel(containerId+'-e', enteros, enteroIdx, false, (idx, val) => {
+      _wheelState[containerId].entero = val;
+    });
+    if(decimales){
+      initWheel(containerId+'-d2', decimales, decIdx, false, (idx, val) => {
+        _wheelState[containerId].dec = val;
+      });
+    }
+  }
+
+  function getValorFromWheels(cid){
+    const st = _wheelState[cid];
+    if(!st) return null;
+    if(st.dec !== null && st.dec !== undefined){
+      return parseFloat(st.entero + '.' + st.dec);
+    }
+    return parseFloat(st.entero);
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  4. REEMPLAZAR renderMedModal completamente
+  // ══════════════════════════════════════════════════════════════
+  function patchRenderMedModal(){
+    if(typeof MED_METRICAS === 'undefined' || typeof renderMedModal === 'undefined'){
+      setTimeout(patchRenderMedModal, 80); return;
+    }
+
+    window.renderMedModal = function(){
+      const body = document.getElementById('med-modal-body');
+
+      if(window.medPaso === 'selector'){
+        const existing = (forge.bodyMetrics||[]).find(m => m.date === window.medFechaActual);
+
+        // ── Fecha con wheels ─────────────────────────────────
+        const fechaHtml = `
+          <div style="margin-bottom:16px">
+            <div style="font-size:11px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Fecha del registro</div>
+            <div id="med-fecha-wheel"></div>
+            <div id="med-fecha-wheel-warn" style="display:none;color:var(--warn);font-size:11px;text-align:center;margin-top:-8px;margin-bottom:4px">⚠ No se puede registrar una fecha futura</div>
+          </div>`;
+
+        // ── Lista de métricas ────────────────────────────────
+        const CONTORNO_KEYS = ['cintura','cadera','biceps'];
+        const allMetricas = MED_METRICAS.concat(
+          (typeof CONTORNO_DEF !== 'undefined' ? [] : []) // contornos ya están en MED_METRICAS si v148 corrió
+        );
+
+        const metricasHtml = allMetricas.map(m => {
+          let val;
+          if(m.key==='p6'||m.key==='p8') val = existing?.pliegues?.[m.key];
+          else if(CONTORNO_KEYS.includes(m.key)) val = existing?.contornos?.[m.key];
+          else val = existing?.[m.key];
+          const valStr = val != null ? val + (m.unit ? ' '+m.unit : '') : null;
+          return `<div onclick="window.abrirMedValorWheel('${m.key}')"
+            style="display:flex;align-items:center;justify-content:space-between;
+            padding:13px 14px;border-radius:var(--r);margin-bottom:6px;
+            background:var(--bg3);border:1px solid ${valStr?'var(--green)':'var(--border2)'};
+            cursor:pointer;transition:border-color .1s"
+            onmouseover="this.style.borderColor='var(--orange)'"
+            onmouseout="this.style.borderColor='${valStr?'var(--green)':'var(--border2)'}'">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:20px">${m.emoji}</span>
+              <div>
+                <div style="font-size:14px;font-weight:600;color:var(--ink)">${m.label}</div>
+                ${valStr
+                  ? `<div style="font-size:12px;color:var(--green);font-weight:600">✓ ${valStr}</div>`
+                  : `<div style="font-size:11px;color:var(--ink3)">Sin dato para esta fecha</div>`}
+              </div>
+            </div>
+            <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </div>`;
+        }).join('');
+
+        body.innerHTML = fechaHtml + `
+          <div style="font-size:11px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:700">¿Qué quieres registrar?</div>
+          ${metricasHtml}`;
+
+        // Inicializar wheel de fecha
+        renderFechaWheels('med-fecha-wheel', window.medFechaActual);
+
+        // Sobreescribir abrirMedValorWheel para leer la fecha del wheel
+        window.abrirMedValorWheel = function(key){
+          // Leer fecha del wheel antes de navegar
+          const nueva = getFechaFromWheels('med-fecha-wheel');
+          if(!nueva){ showToast('⚠ No puedes registrar una fecha futura','2000','warn'); return; }
+          window.medFechaActual = nueva;
+          window.medKeyActual = key;
+          window.medPaso = 'valor';
+          const m = MED_METRICAS.find(x=>x.key===key);
+          document.getElementById('med-modal-title').textContent = m ? m.label : key;
+          renderMedModal();
+        };
+
+      } else {
+        // ── Pantalla de valor ────────────────────────────────
+        const CONTORNO_KEYS = ['cintura','cadera','biceps'];
+        const m = MED_METRICAS.find(x=>x.key===window.medKeyActual);
+        const existing = (forge.bodyMetrics||[]).find(x=>x.date===window.medFechaActual);
+        let valActual;
+        if(window.medKeyActual==='p6'||window.medKeyActual==='p8') valActual = existing?.pliegues?.[window.medKeyActual]||'';
+        else if(CONTORNO_KEYS.includes(window.medKeyActual)) valActual = existing?.contornos?.[window.medKeyActual]||'';
+        else valActual = existing?.[window.medKeyActual]||'';
+
+        body.innerHTML = `
+          <button onclick="window.medPaso='selector';renderMedModal()"
+            style="background:none;border:none;color:var(--orange);cursor:pointer;
+            font-size:13px;font-weight:600;display:flex;align-items:center;gap:4px;
+            margin-bottom:12px;padding:0">← Volver</button>
+          <div style="text-align:center;margin-bottom:12px">
+            <div style="font-size:32px;margin-bottom:4px">${m?m.emoji:'📏'}</div>
+            <div style="font-size:17px;font-weight:700;color:var(--ink)">${m?m.label:window.medKeyActual}</div>
+            <div style="font-size:12px;color:var(--ink3);margin-top:2px">${window.medFechaActual}</div>
+          </div>
+          <div id="med-valor-wheel"></div>
+          <input type="hidden" id="med-val-input">
+          <button class="btn btn-p" onclick="window._saveMedWheel()" style="margin-top:4px">
+            ✓ Guardar ${m?m.label:''}
+          </button>
+          ${valActual!=null&&valActual!==''?`<button onclick="window._borrarMedWheel()"
+            style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;
+            width:100%;margin-top:10px;font-family:var(--fb)">Borrar este dato</button>`:''}`;
+
+        renderValorWheels('med-valor-wheel', window.medKeyActual, valActual);
+
+        // Sincronizar hidden input con el wheel para que saveMedValor() siga funcionando
+        window._saveMedWheel = function(){
+          const v = getValorFromWheels('med-valor-wheel');
+          if(v===null||isNaN(v)){ showToast('Mueve la rueda para seleccionar un valor'); return; }
+          document.getElementById('med-val-input').value = String(v);
+          saveMedValor();
+        };
+        window._borrarMedWheel = function(){
+          document.getElementById('med-val-input').value = '';
+          borrarMedValor();
+        };
+      }
+    };
+
+    console.log('[MELQART v149] Wheel picker activo');
+  }
+  patchRenderMedModal();
+
+})();
    Agrega cintura, cadera y bíceps a las mediciones corporales.
    No toca app.js — parchamos las funciones que expone globalmente.
    ================================================================ */
