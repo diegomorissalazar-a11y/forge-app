@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=129">
 <link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=108">
 <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.svg?v=129">
-<title>MELQART v157</title>
+<title>MELQART v159</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2088,65 +2088,93 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 
-<!-- v156 — EXPORTAR: rollback al formato probado + tres secciones -->
+<!-- v159 — EXPORTAR: formato original de app.js + sección nutrición al final -->
 <script>
 (function(){
   function patchExport(){
-    if(typeof window.exportarSemana !== 'function'){ setTimeout(patchExport, 80); return; }
+    if(typeof window.exportarSemana !== 'function'){ setTimeout(patchExport,80); return; }
 
     window.exportarSemana = function(){
 
-      // ── helpers ──────────────────────────────────────────────
-      function isoDate(d){
-        return d.getFullYear()+'-'
-          +String(d.getMonth()+1).padStart(2,'0')+'-'
-          +String(d.getDate()).padStart(2,'0');
-      }
-      function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
-      function fmtDate(ts){
-        return new Date(ts).toLocaleDateString('es-CL',
-          {weekday:'long',day:'numeric',month:'long',year:'numeric'});
-      }
-      function fmtDur(s){
-        if(!s) return '';
-        const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
-        return h>0?(h+'h '+m+'m'):(m+'m '+sec+'s');
-      }
-
-      // ── rango ────────────────────────────────────────────────
-      const semanas = parseInt(document.getElementById('export-semanas')?.value||'4');
-      const hoy = new Date();
-      const lunes = new Date(hoy);
-      lunes.setDate(hoy.getDate()-(hoy.getDay()||7)+1);
-      lunes.setHours(0,0,0,0);
+      // ═══════════════════════════════════════════════════════
+      // BLOQUE ORIGINAL — idéntico a app.js, sin cambios
+      // ═══════════════════════════════════════════════════════
+      const semanas=parseInt(document.getElementById('export-semanas')?.value||'4');
+      const hoy=new Date();
+      const lunes=new Date(hoy);
+      lunes.setDate(hoy.getDate()-(hoy.getDay()||7)+1); lunes.setHours(0,0,0,0);
       let fechaInicio;
-      if(semanas===0){ fechaInicio=new Date(2014,0,1); }
+      if(semanas===0){ fechaInicio=new Date(0); }
       else { fechaInicio=new Date(lunes); fechaInicio.setDate(lunes.getDate()-((semanas-1)*7)); }
       const domingo=new Date(hoy); domingo.setHours(23,59,59,999);
 
-      // ── acceso a datos — forge puede ser global o window.forge ─
-      const fd = window.forge || {};
-      const _getEx = typeof getEx==='function' ? getEx : ()=>null;
-      const _fmtTime = typeof fmtTimeStr==='function' ? fmtTimeStr : s=>s;
+      const ses=(forge.sessions||[]).filter(s=>new Date(s.date)>=fechaInicio&&new Date(s.date)<=domingo).sort((a,b)=>a.date-b.date);
+      const fmtDate=d=>new Date(d).toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+      const fmtDur=s=>{ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; return h>0?(h+'h '+m+'m'):(m+'m '+sec+'s'); };
+      const sep='-------------------------------';
+      const lines=[];
+      lines.push(sep);
+      const tituloRango=semanas===0?'HISTORIAL COMPLETO':('ULTIMAS '+semanas+' SEMANA'+(semanas>1?'S':''));
+      lines.push(tituloRango);
+      lines.push(fechaInicio.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'})+' - '+domingo.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'}));
+      lines.push(sep);
+      lines.push('');
 
-      const ses = (fd.sessions||[])
-        .filter(s=>{ const d=new Date(s.date); return d>=fechaInicio&&d<=domingo; })
-        .sort((a,b)=>a.date-b.date);
+      // Peso corporal
+      const pesos=(forge.bodyMetrics||[]).filter(m=>{ const d=new Date(m.date+'T12:00:00'); return d>=fechaInicio&&d<=domingo; }).sort((a,b)=>a.date>b.date?1:-1);
+      if(pesos.length){
+        lines.push('PESO CORPORAL');
+        pesos.forEach(m=>lines.push('  '+m.date+': '+m.peso+'kg'+(m.imc?' - IMC '+m.imc:'')));
+        lines.push('');
+      }
 
-      const pesos = (fd.bodyMetrics||[])
-        .filter(m=>{ const d=new Date(m.date+'T12:00:00'); return d>=fechaInicio&&d<=domingo; })
-        .sort((a,b)=>a.date.localeCompare(b.date));
+      if(!ses.length){
+        lines.push('Sin sesiones en este periodo.');
+      } else {
+        const semanaStr=d=>{ const x=new Date(d); const l=new Date(x); l.setDate(x.getDate()-(x.getDay()||7)+1); return l.toLocaleDateString('es-CL',{day:'numeric',month:'long'}); };
+        let semActual='';
+        lines.push('SESIONES ('+ses.length+' total)');
+        lines.push('');
+        ses.forEach(s=>{
+          const sw=semanaStr(s.date);
+          if(sw!==semActual){ semActual=sw; lines.push('> '); lines.push('> Semana del '+sw); }
+          lines.push('> '+fmtDate(s.date)+' - '+(s.routineName||'Sesion libre'));
+          if(s.elapsed) lines.push('> Duracion: '+fmtDur(s.elapsed));
+          if(s.fcMedia) lines.push('> FC media: '+s.fcMedia+'bpm');
+          if(s.kcal)    lines.push('> Calorias: '+s.kcal+'kcal');
+          (s.exercises||[]).forEach(ex=>{
+            const e=getEx(ex.exId); if(!e) return;
+            if(e.type==='warmup'||e.type==='stretch') return;
+            const sets=(ex.sets||[]).filter(st=>st.done); if(!sets.length) return;
+            if(e.type==='run'||e.type==='hiit'){
+              const dist=sets.reduce((a,st)=>a+(parseFloat(st.distance)||0),0);
+              const fc=sets.find(st=>st.fc);
+              lines.push('> '+e.name+': '+dist.toFixed(2)+'km'+(sets[0]&&sets[0].time?' - '+fmtTimeStr(sets[0].time):'')+(fc?' - FC '+fc.fc+'bpm':''));
+            } else {
+              lines.push('> '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
+            }
+          });
+          lines.push('');
+        });
+      }
 
-      // ── nutrición ────────────────────────────────────────────
-      const meta_     = typeof getAguaMeta==='function' ? getAguaMeta() : {vasos:10,mlPorVaso:250};
-      const targets_  = typeof NUTRITION_TARGETS!=='undefined'
-        ? NUTRITION_TARGETS
+      lines.push(sep);
+
+      // ═══════════════════════════════════════════════════════
+      // SECCIÓN NUTRICIÓN — añadida, no modifica nada anterior
+      // ═══════════════════════════════════════════════════════
+      const meta_    = typeof getAguaMeta==='function' ? getAguaMeta() : {vasos:10,mlPorVaso:250};
+      const targets_ = typeof NUTRITION_TARGETS!=='undefined' ? NUTRITION_TARGETS
         : {proteinas:12,cereales:3,frutas:2,lacteoProtein:2,lacteoDescremado:1,lipidos:0.5,aceites:1,verduras:2};
-      const comidas_  = typeof COMIDAS!=='undefined' ? COMIDAS : [];
-      const totalC_   = comidas_.length||7;
+      const comidas_ = typeof COMIDAS!=='undefined' ? COMIDAS : [];
+      const totalC_  = comidas_.length || 7;
 
-      const nutriDias = [];
-      let cur=new Date(fechaInicio);
+      // Iterar días del rango
+      const nutriDias=[];
+      function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+      let cur = semanas===0
+        ? new Date(pesos.length ? pesos[0].date+'T12:00:00' : ses.length ? new Date(ses[0].date) : lunes)
+        : new Date(fechaInicio);
       while(cur<=domingo){
         const key=isoDate(cur);
         let fdd=null;
@@ -2154,146 +2182,46 @@ document.addEventListener('DOMContentLoaded', function(){
         if(fdd){
           const vasos=fdd.aguaVasosHoy||fdd.agua||0;
           const comidasOk=Object.values(fdd.comidas||{}).filter(c=>c.completada).length;
-          let porciones={};
-          if(typeof calcPortionsConsumed==='function'){
-            porciones=calcPortionsConsumed(fdd);
-          } else {
-            comidas_.forEach(c=>{ if(fdd.comidas?.[c.id]?.completada&&c.portions) Object.entries(c.portions).forEach(([k,v])=>{ porciones[k]=(porciones[k]||0)+v; }); });
-            (fdd.extraFoods||[]).forEach(f=>Object.entries(f.portions||{}).forEach(([k,v])=>{ porciones[k]=(porciones[k]||0)+v; }));
+          let p={};
+          if(typeof calcPortionsConsumed==='function'){ p=calcPortionsConsumed(fdd); }
+          else {
+            comidas_.forEach(c=>{ if(fdd.comidas?.[c.id]?.completada&&c.portions) Object.entries(c.portions).forEach(([k,v])=>{ p[k]=(p[k]||0)+v; }); });
+            (fdd.extraFoods||[]).forEach(f=>Object.entries(f.portions||{}).forEach(([k,v])=>{ p[k]=(p[k]||0)+v; }));
           }
           const grupos=['proteinas','cereales','frutas','lacteoProtein','lacteoDescremado','lipidos','aceites','verduras'];
           let done=0,total=0;
-          grupos.forEach(g=>{ const t=targets_[g]||0; total+=t; done+=Math.min(t,porciones[g]||0); });
+          grupos.forEach(g=>{ const t=targets_[g]||0; total+=t; done+=Math.min(t,p[g]||0); });
           nutriDias.push({
-            fecha:key,
-            vasos, ml:vasos*meta_.mlPorVaso, metaOk:vasos>=meta_.vasos?'S':'N',
-            comidasOk,
-            prot:+(porciones.proteinas||0).toFixed(1),
-            cereal:+(porciones.cereales||0).toFixed(1),
-            fruta:+(porciones.frutas||0).toFixed(1),
-            lacteo:+((porciones.lacteoProtein||0)+(porciones.lacteoDescremado||0)).toFixed(1),
-            verd:+(porciones.verduras||0).toFixed(1),
-            lip:+(porciones.lipidos||0).toFixed(1),
-            aceit:+(porciones.aceites||0).toFixed(1),
+            fecha:key, vasos, ml:vasos*meta_.mlPorVaso,
+            metaOk:vasos>=meta_.vasos?'S':'N', comidasOk,
+            prot:+(p.proteinas||0).toFixed(1),
+            cereal:+(p.cereales||0).toFixed(1),
+            fruta:+(p.frutas||0).toFixed(1),
+            lacteo:+((p.lacteoProtein||0)+(p.lacteoDescremado||0)).toFixed(1),
+            verd:+(p.verduras||0).toFixed(1),
+            lip:+(p.lipidos||0).toFixed(1),
+            aceit:+(p.aceites||0).toFixed(1),
             adh:total>0?Math.round(done/total*100):0,
           });
         }
-        cur=addDays(cur,1);
+        cur=new Date(cur); cur.setDate(cur.getDate()+1);
       }
 
-      // ════════════════════════════════════════════════════════
-      const sep  = '-------------------------------';
-      const sep2 = '===============================';
-      const lines = [];
-
-      const tituloRango = semanas===0
-        ? 'HISTORIAL COMPLETO'
-        : 'ULTIMAS '+semanas+' SEMANA'+(semanas>1?'S':'');
-      lines.push(sep2);
-      lines.push('MELQART — EXPORTABLE');
-      lines.push(tituloRango);
-      lines.push(
-        fechaInicio.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'})
-        +' — '
-        +domingo.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'})
-      );
-      lines.push('Generado: '+new Date().toLocaleString('es-CL'));
-      lines.push(sep2);
-      lines.push('');
-
-      // ── SECCION 1: PESO ──────────────────────────────────────
-      lines.push('SECCION 1 — PESO CORPORAL');
-      lines.push(sep);
-      if(!pesos.length){
-        lines.push('Sin registros de peso en este periodo.');
-      } else {
-        pesos.forEach(m=>{
-          let linea = '  '+m.date+':  '+m.peso+' kg';
-          if(m.imc)      linea += '   IMC '+m.imc;
-          if(m.grasa)    linea += '   Grasa '+m.grasa+'%';
-          if(m.muscular) linea += '   Muscular '+m.muscular+'%';
-          lines.push(linea);
-        });
-        const p0=pesos[0].peso, pN=pesos[pesos.length-1].peso;
-        if(p0&&pN){
-          const delta=+(pN-p0).toFixed(1);
-          lines.push('');
-          lines.push('  Cambio: '+(delta>0?'+':'')+delta+' kg  ('+p0+' → '+pN+' kg)');
-          const po=fd.pesoObjetivo;
-          if(po?.objetivo) lines.push('  Objetivo: '+po.objetivo+' kg   Restante: '+Math.max(0,+(pN-po.objetivo).toFixed(1))+' kg');
-        }
-      }
-      lines.push('');
-
-      // ── SECCION 2: SESIONES ──────────────────────────────────
-      lines.push('SECCION 2 — SESIONES DE ENTRENAMIENTO');
-      lines.push(sep);
-      if(!ses.length){
-        lines.push('Sin sesiones en este periodo.');
-      } else {
-        // agrupar por semana
-        const semKey=d=>{ const x=new Date(d); const l=new Date(x); l.setDate(x.getDate()-(x.getDay()||7)+1); return l.toLocaleDateString('es-CL',{day:'numeric',month:'long'}); };
-        let semActual='';
-        lines.push('Total: '+ses.length+' sesiones');
+      if(nutriDias.length){
         lines.push('');
-        ses.forEach(s=>{
-          const sw=semKey(s.date);
-          if(sw!==semActual){
-            semActual=sw;
-            lines.push('>> Semana del '+sw);
-          }
-          lines.push('  > '+fmtDate(s.date)+'  -  '+(s.routineName||'Sesion libre'));
-          if(s.elapsed) lines.push('    Duracion: '+fmtDur(s.elapsed));
-          if(s.fcMedia) lines.push('    FC media: '+s.fcMedia+' bpm');
-          if(s.kcal)    lines.push('    Calorias: '+s.kcal+' kcal');
-          (s.exercises||[]).forEach(ex=>{
-            const e=_getEx(ex.exId); if(!e) return;
-            if(e.type==='warmup'||e.type==='stretch') return;
-            const sets=(ex.sets||[]).filter(st=>st.done); if(!sets.length) return;
-            if(e.type==='run'||e.type==='hiit'){
-              const dist=sets.reduce((a,st)=>a+(parseFloat(st.distance)||0),0);
-              const fc=sets.find(st=>st.fc);
-              lines.push('    '+e.name+': '+dist.toFixed(2)+'km'
-                +(sets[0]?.time?' - '+_fmtTime(sets[0].time):'')
-                +(fc?' - FC '+fc.fc+'bpm':''));
-            } else {
-              lines.push('    '+e.name+': '+sets.map(st=>{
-                const w=st.weight!=null?st.weight:'';
-                const r=st.reps!=null?st.reps:'';
-                return w&&r?(w+'kg x '+r):(w||r||'-');
-              }).join(' | '));
-            }
-          });
-          lines.push('');
-        });
-      }
-
-      // ── SECCION 3: NUTRICION ─────────────────────────────────
-      lines.push('SECCION 3 — NUTRICION');
-      lines.push(sep);
-      if(!nutriDias.length){
-        lines.push('Sin registros de nutricion en este periodo.');
-      } else {
-        // cabecera de tabla
+        lines.push('NUTRICION');
+        lines.push('');
+        // cabecera
         lines.push('Fecha       Agua ml  Vasos    MetaH2O  Comidas  Prot  Cere  Frut  Lact  Verd  Lip   Aceit  Adh%');
         lines.push('-'.repeat(95));
+        function c(v,w){ const s=String(v==null?'-':v); return s+' '.repeat(Math.max(1,w-s.length)); }
         nutriDias.forEach(d=>{
-          const c=(...vals)=>vals.map((v,i)=>{
-            const widths=[12,9,9,9,9,6,6,6,6,6,6,7,5];
-            const s=String(v==null?'-':v);
-            return s+(i<widths.length?' '.repeat(Math.max(1,widths[i]-s.length)):'');
-          }).join('');
-          // DD/MM/YYYY
-          const [y,m,d2]=d.fecha.split('-');
-          lines.push(c(
-            d2+'/'+m+'/'+y,
-            d.ml,
-            d.vasos+'/'+meta_.vasos,
-            d.metaOk,
-            d.comidasOk+'/'+totalC_,
-            d.prot, d.cereal, d.fruta, d.lacteo,
-            d.verd, d.lip, d.aceit, d.adh+'%'
-          ));
+          const [y,m,dd]=d.fecha.split('-');
+          lines.push(
+            c(dd+'/'+m+'/'+y,12)+c(d.ml,9)+c(d.vasos+'/'+meta_.vasos,9)+c(d.metaOk,9)
+            +c(d.comidasOk+'/'+totalC_,9)+c(d.prot,6)+c(d.cereal,6)+c(d.fruta,6)
+            +c(d.lacteo,6)+c(d.verd,6)+c(d.lip,6)+c(d.aceit,7)+c(d.adh+'%',5)
+          );
         });
         const n=nutriDias.length;
         const proV=Math.round(nutriDias.reduce((a,d)=>a+d.vasos,0)/n);
@@ -2302,29 +2230,26 @@ document.addEventListener('DOMContentLoaded', function(){
         const proA=Math.round(nutriDias.reduce((a,d)=>a+d.adh,0)/n);
         lines.push('');
         lines.push('Resumen ('+n+' dias con registro):');
-        lines.push('  Agua promedio/dia:         '+proV+'/'+meta_.vasos+' vasos — meta cumplida '+diasM+'/'+n+' dias ('+Math.round(diasM/n*100)+'%)');
+        lines.push('  Agua promedio/dia:         '+proV+'/'+meta_.vasos+' vasos - meta cumplida '+diasM+'/'+n+' dias ('+Math.round(diasM/n*100)+'%)');
         lines.push('  Comidas dias completos:    '+diasC+'/'+n+' dias ('+Math.round(diasC/n*100)+'%)');
         lines.push('  Adherencia pauta promedio: '+proA+'%');
+        lines.push('');
+        lines.push(sep);
       }
-      lines.push('');
-      lines.push(sep2);
-      lines.push('MELQART v157  |  '+new Date().toLocaleDateString('es-CL'));
 
-      // ── enviar ───────────────────────────────────────────────
+      lines.push('Generado por MELQART - '+new Date().toLocaleDateString('es-CL'));
+
+      // ═══════════════════════════════════════════════════════
+      // ENVÍO — idéntico a app.js original
+      // ═══════════════════════════════════════════════════════
       const txt=lines.join('\n');
       if(navigator.clipboard){
-        navigator.clipboard.writeText(txt)
-          .then(()=>showToast('Exportable copiado al portapapeles',3000,'ok'))
-          .catch(()=>_dl(txt));
-      } else { _dl(txt); }
-
-      function _dl(txt){
-        const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement('a');
-        a.href=url; a.download='melqart_'+isoDate(new Date())+'.txt';
-        document.body.appendChild(a); a.click();
-        document.body.removeChild(a); URL.revokeObjectURL(url);
+        navigator.clipboard.writeText(txt).then(()=>showToast('Historial copiado al portapapeles',3000,'ok'));
+      } else {
+        const modal=document.getElementById('modal-ejercicio');
+        modal.querySelector('.modal-title').textContent='Historial exportado';
+        modal.querySelector('.modal-body').innerHTML='<textarea style="width:100%;height:300px;font-family:monospace;font-size:11px;border:1px solid var(--border);border-radius:var(--r);padding:10px;resize:none" readonly>'+txt+'</textarea>';
+        openModal('modal-ejercicio');
       }
     };
   }
