@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=129">
 <link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=108">
 <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.svg?v=129">
-<title>MELQART v159</title>
+<title>MELQART v160</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1867,6 +1867,159 @@ document.addEventListener('DOMContentLoaded', function(){
   const _syncInterval = setInterval(_syncUserBtn, 500);
   setTimeout(()=> clearInterval(_syncInterval), 15000); // dejar de hacer polling tras 15s
 })();
+</script>
+
+<!-- v160 — SYNC NUTRICIÓN: incluye ff_* en Firebase -->
+<script>
+/* ================================================================
+   MELQART v160 — SYNC NUTRICIÓN
+   Parcha doGuardarNube y doCargarNube para incluir los datos ff_*
+   (nutrición diaria) que hasta ahora quedaban solo en localStorage.
+   También añade botón de sync rápido en el mobile-topbar.
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', function(){
+  function waitFor(check, fn){ if(check()) fn(); else setTimeout(()=>waitFor(check,fn),80); }
+
+  waitFor(
+    ()=> typeof doGuardarNube==='function' && typeof doCargarNube==='function' && typeof db!=='undefined',
+    patchSync
+  );
+
+  function patchSync(){
+
+    // ── helpers ff_* ─────────────────────────────────────────────
+    function recogerNutricion(){
+      const obj = {};
+      for(let i=0; i<localStorage.length; i++){
+        const k = localStorage.key(i);
+        if(k && k.startsWith('ff_')){
+          try{ obj[k] = JSON.parse(localStorage.getItem(k)); }catch{}
+        }
+      }
+      return obj;
+    }
+
+    function restaurarNutricion(obj){
+      if(!obj) return 0;
+      let count = 0;
+      Object.entries(obj).forEach(([k,v])=>{
+        if(!k.startsWith('ff_')) return;
+        const localRaw = localStorage.getItem(k);
+        let localObj = null;
+        try{ localObj = localRaw ? JSON.parse(localRaw) : null; }catch{}
+        const tsRemoto = v?._ts || 0;
+        const tsLocal  = localObj?._ts || 0;
+        if(!localObj || tsRemoto > tsLocal){
+          localStorage.setItem(k, JSON.stringify(v));
+          count++;
+        }
+      });
+      return count;
+    }
+
+    // ── Añadir timestamp a saveFD para poder hacer merge por fecha ─
+    const _origSaveFD = window.saveFD;
+    if(typeof _origSaveFD === 'function'){
+      window.saveFD = function(d){
+        if(d && typeof d === 'object') d._ts = Date.now();
+        _origSaveFD(d);
+        // Auto-subir nutrición 5s después de guardar (debounce)
+        clearTimeout(window._ffSyncTimer);
+        window._ffSyncTimer = setTimeout(()=>{ _subirNutricion().catch(()=>{}); }, 5000);
+      };
+    }
+
+    // ── Subir ff_* a Firebase ─────────────────────────────────────
+    async function _subirNutricion(){
+      if(!currentUser) return;
+      const nutriData = recogerNutricion();
+      if(!Object.keys(nutriData).length) return;
+      try{
+        await db.collection('users').doc(currentUser.uid)
+          .collection('forge').doc('nutricion').set(nutriData);
+      }catch(e){ console.warn('[v160] Error subiendo nutrición:', e.message); }
+    }
+
+    // ── Bajar ff_* desde Firebase ─────────────────────────────────
+    async function _bajarNutricion(){
+      if(!currentUser) return 0;
+      try{
+        const snap = await db.collection('users').doc(currentUser.uid)
+          .collection('forge').doc('nutricion').get();
+        if(!snap.exists) return 0;
+        return restaurarNutricion(snap.data());
+      }catch(e){ console.warn('[v160] Error bajando nutrición:', e.message); return 0; }
+    }
+
+    // ── Parchar doGuardarNube ─────────────────────────────────────
+    const _origGuardar = window.doGuardarNube;
+    window.doGuardarNube = async function(){
+      await _origGuardar();
+      await _subirNutricion();
+    };
+    window.syncCloud = window.doGuardarNube;
+
+    // ── Parchar doCargarNube ──────────────────────────────────────
+    const _origCargar = window.doCargarNube;
+    window.doCargarNube = async function(){
+      await _origCargar();
+      const n = await _bajarNutricion();
+      if(n > 0){
+        showToast('+ '+n+' días de nutrición sincronizados', 3000, 'ok');
+        if(typeof renderFood==='function') renderFood();
+        if(typeof renderHome==='function') renderHome();
+      }
+    };
+
+    // ── Bajar nutrición automáticamente al cargar la app ─────────
+    // Hookeamos el sync-dot: cuando pasa a verde por primera vez = auth completado
+    const _dotEl = document.getElementById('sync-dot');
+    let _autoSyncDone = false;
+    if(_dotEl){
+      const _obs = new MutationObserver(()=>{
+        if(_autoSyncDone) return;
+        const bg = _dotEl.style.background || '';
+        if(bg.includes('green') || bg.includes('var(--green)') || bg.includes('var(--ok)')){
+          _autoSyncDone = true;
+          _obs.disconnect();
+          setTimeout(()=>{
+            _bajarNutricion().then(n=>{
+              if(n>0){
+                showToast('Nutrición actualizada ('+n+' días)', 2500, 'ok');
+                if(typeof renderFood==='function') renderFood();
+                if(typeof renderHome==='function') renderHome();
+              }
+            });
+          }, 1500);
+        }
+      });
+      _obs.observe(_dotEl, {attributes:true, attributeFilter:['style']});
+    }
+
+    // ── Botón de sync rápido en mobile-topbar ─────────────────────
+    setTimeout(()=>{
+      const actions = document.querySelector('.mobile-topbar-actions');
+      if(actions && !document.getElementById('mt-sync-btn')){
+        const btn = document.createElement('button');
+        btn.id = 'mt-sync-btn';
+        btn.style.cssText = 'background:none;border:none;padding:4px;cursor:pointer;display:flex;align-items:center;color:var(--ink3);flex-shrink:0;-webkit-tap-highlight-color:transparent';
+        btn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>';
+        btn.onclick = async function(){
+          btn.style.opacity='0.3';
+          btn.style.pointerEvents='none';
+          try{ await window.doCargarNube(); }catch{}
+          btn.style.opacity='1';
+          btn.style.pointerEvents='';
+        };
+        const dotMobile = document.getElementById('sync-dot-mobile');
+        if(dotMobile) actions.insertBefore(btn, dotMobile);
+        else actions.appendChild(btn);
+      }
+    }, 500);
+
+    console.log('[MELQART v160] Sync nutrición activo');
+  }
+});
 </script>
 
 <!-- v157 — POST-SESION TROTE: campos separados con selects nativos iOS -->
