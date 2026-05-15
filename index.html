@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=129">
 <link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=108">
 <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.svg?v=129">
-<title>MELQART v160</title>
+<title>MELQART v162</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1450,125 +1450,7 @@ document.addEventListener('DOMContentLoaded', function(){
     console.log('[MELQART v155] renderMedModal instalado — selects nativos iOS');
   }
 });
-   Agrega cintura, cadera y bíceps a las mediciones corporales.
-   No toca app.js — parchamos las funciones que expone globalmente.
-   ================================================================ */
-(function(){
-  function patchContornos(){
-    if(typeof MED_METRICAS === 'undefined' || typeof saveMedValor === 'undefined'){
-      setTimeout(patchContornos, 80); return;
-    }
 
-    const CONTORNO_KEYS = ['cintura','cadera','biceps'];
-    const CONTORNO_DEF = [
-      { key:'cintura', label:'Contorno cintura', emoji:'📏', unit:'cm', step:'0.5', tipo:'number', placeholder:'85.0' },
-      { key:'cadera',  label:'Contorno cadera',  emoji:'📏', unit:'cm', step:'0.5', tipo:'number', placeholder:'100.0' },
-      { key:'biceps',  label:'Contorno bíceps',  emoji:'📏', unit:'cm', step:'0.5', tipo:'number', placeholder:'35.0' },
-    ];
-    CONTORNO_DEF.forEach(def => {
-      if(!MED_METRICAS.find(m => m.key === def.key)) MED_METRICAS.push(def);
-    });
-
-    function getContorno(m, key){ return m?.contornos?.[key] ?? null; }
-    function setContorno(m, key, val){
-      if(!m.contornos) m.contornos = {};
-      m.contornos[key] = val;
-    }
-
-    // Parchamos saveMedValor para guardar en m.contornos
-    const _origSave = window.saveMedValor;
-    window.saveMedValor = function(){
-      if(!CONTORNO_KEYS.includes(window.medKeyActual)) return _origSave.call(this);
-      const input = document.getElementById('med-val-input');
-      const raw = input?.value?.trim() || '';
-      const val = typeof normDec === 'function' ? normDec(raw) : raw.replace(',','.');
-      if(!val){ showToast('Ingresa un valor'); return; }
-      if(!forge.bodyMetrics) forge.bodyMetrics = [];
-      let m = forge.bodyMetrics.find(x => x.date === window.medFechaActual);
-      if(!m){
-        m = { date:window.medFechaActual, peso:null, imc:null, grasa:null, muscular:null, pliegues:{p6:null,p8:null}, contornos:{} };
-        forge.bodyMetrics.push(m);
-        forge.bodyMetrics.sort((a,b) => a.date.localeCompare(b.date));
-      }
-      setContorno(m, window.medKeyActual, parseFloat(val));
-      saveDB();
-      const def = CONTORNO_DEF.find(d => d.key === window.medKeyActual);
-      showToast('✓ ' + def.label + ' guardado', 2000, 'ok');
-      window.medPaso = 'selector';
-      document.getElementById('med-modal-title').textContent = 'Añadir medición';
-      renderMedModal();
-      renderProgCuerpo();
-    };
-
-    // Parchamos borrarMedValor
-    const _origBorrar = window.borrarMedValor;
-    window.borrarMedValor = function(){
-      if(!CONTORNO_KEYS.includes(window.medKeyActual)) return _origBorrar.call(this);
-      if(!confirm('¿Borrar este dato?')) return;
-      const m = (forge.bodyMetrics||[]).find(x => x.date === window.medFechaActual);
-      if(m) setContorno(m, window.medKeyActual, null);
-      saveDB();
-      window.medPaso = 'selector';
-      document.getElementById('med-modal-title').textContent = 'Añadir medición';
-      renderMedModal();
-      renderProgCuerpo();
-      showToast('Dato eliminado');
-    };
-
-    // Parchamos renderProgCuerpo para inyectar la card de contornos
-    const _origRenderCuerpo = window.renderProgCuerpo;
-    window.renderProgCuerpo = function(){
-      _origRenderCuerpo.call(this);
-      _injectContornosCard();
-    };
-
-    function _injectContornosCard(){
-      const mets = (forge.bodyMetrics||[]).slice().sort((a,b) => a.date.localeCompare(b.date));
-      const container = document.getElementById('cuerpo-charts');
-      if(!container) return;
-
-      const ultMet = [...mets].reverse().find(m => m.contornos && Object.values(m.contornos).some(v => v != null));
-      const existingCard = document.getElementById('contornos-acc-card');
-      if(!ultMet && !existingCard) return;
-
-      const cintura = ultMet?.contornos?.cintura ?? null;
-      const cadera  = ultMet?.contornos?.cadera  ?? null;
-      const biceps  = ultMet?.contornos?.biceps  ?? null;
-      const rcc = cintura && cadera ? (cintura/cadera).toFixed(2) : null;
-      const rccColor = rcc ? (parseFloat(rcc) <= 0.85 ? 'var(--ok)' : 'var(--warn)') : 'var(--ink3)';
-
-      const rows = [
-        cintura != null ? '<div class="body-med-row"><div class="body-med-lbl">📏 Cintura</div><div class="body-med-val" style="color:var(--teal)">'+cintura+' cm</div></div>' : '',
-        cadera  != null ? '<div class="body-med-row"><div class="body-med-lbl">📏 Cadera</div><div class="body-med-val" style="color:var(--teal)">'+cadera+' cm</div></div>' : '',
-        biceps  != null ? '<div class="body-med-row"><div class="body-med-lbl">📏 Bíceps</div><div class="body-med-val" style="color:var(--teal)">'+biceps+' cm</div></div>' : '',
-        rcc     != null ? '<div class="body-med-row"><div class="body-med-lbl" style="font-size:11px;color:var(--ink3)">Índice cintura/cadera</div><div style="font-size:13px;font-weight:700;color:'+rccColor+'">'+rcc+'</div></div>' : '',
-      ].filter(Boolean).join('');
-
-      const isOpen = window._bodyAccState?.['contornos'] || false;
-      const subStr = [
-        cintura != null ? 'Cintura '+cintura+'cm' : '',
-        cadera  != null ? 'Cadera '+cadera+'cm'  : '',
-        biceps  != null ? 'Bíceps '+biceps+'cm'  : '',
-      ].filter(Boolean).join(' · ') || 'Sin datos aún';
-
-      const html = '<div id="contornos-acc-card" class="body-acc-card">'
-        + '<div class="acc-head" onclick="window._bodyAccState=window._bodyAccState||{};window._bodyAccState[\'contornos\']=!window._bodyAccState[\'contornos\'];document.getElementById(\'contornos-acc-body\').style.display=window._bodyAccState[\'contornos\']?\'block\':\'none\';this.querySelector(\'.acc-chevron\').style.transform=window._bodyAccState[\'contornos\']?\'rotate(180deg)\':\'\';">'
-        + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--ink)">Contornos corporales</div>'
-        + '<div style="font-size:11px;color:var(--ink3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+subStr+'</div></div>'
-        + '<svg class="acc-chevron" viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0;transition:transform .2s;transform:'+(isOpen?'rotate(180deg)':'')+'"><polyline points="6 9 12 15 18 9"/></svg>'
-        + '</div>'
-        + '<div id="contornos-acc-body" class="acc-body" style="display:'+(isOpen?'block':'none')+'">'
-        + (rows || '<div style="color:var(--ink3);font-size:13px;padding:8px 0">Aún no hay registros de contornos. Toca "+ Añadir" para registrar.</div>')
-        + '</div></div>';
-
-      if(existingCard){ existingCard.outerHTML = html; }
-      else { container.insertAdjacentHTML('beforeend', html); }
-    }
-
-    console.log('[MELQART v148] Contornos activos — cintura, cadera, bíceps');
-  }
-  patchContornos();
-})();
 
 /* ================================================================
    MELQART v153 — FIX BILATERAL TIMER
@@ -1810,26 +1692,140 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 <script>
+/* ================================================================
+   MELQART v161 — FIXES
+   1. Botón Plan: sincroniza mobile slot correctamente con onclick
+   2. user-btn-mobile: onclick apunta a toggleUserMenu siempre
+   3. Contornos: garantiza que cintura/cadera/bíceps estén en
+      MED_METRICAS antes de que installMedModal los lea
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', function(){
+
+  // ── Fix 3: asegurar contornos en MED_METRICAS ANTES de v155 ──
+  // Se ejecuta en DOMContentLoaded junto con installMedModal;
+  // usamos microtask para correr antes del waitFor de v155
+  function ensureContornos(){
+    if(typeof MED_METRICAS === 'undefined'){ setTimeout(ensureContornos, 40); return; }
+    const CDEFS = [
+      { key:'cintura', label:'Contorno cintura', emoji:'📏', unit:'cm', placeholder:'85.0' },
+      { key:'cadera',  label:'Contorno cadera',  emoji:'📏', unit:'cm', placeholder:'100.0' },
+      { key:'biceps',  label:'Contorno bíceps',  emoji:'📏', unit:'cm', placeholder:'35.0' },
+    ];
+    CDEFS.forEach(def=>{ if(!MED_METRICAS.find(m=>m.key===def.key)) MED_METRICAS.push(def); });
+    console.log('[v161] Contornos en MED_METRICAS:', MED_METRICAS.map(m=>m.key).join(', '));
+  }
+  ensureContornos();
+
+  // ── Fix 2: user-btn-mobile onclick garantizado ─────────────────
+  // El onclick está en el HTML pero el polling de v152 lo puede perder
+  const ubm = document.getElementById('user-btn-mobile');
+  if(ubm && !ubm._v161fixed){
+    ubm._v161fixed = true;
+    ubm.onclick = function(e){ e.stopPropagation(); toggleUserMenu(); };
+    ubm.style.cursor = 'pointer';
+  }
+
+  // ── Fix 1: Botón Plan en mobile-topbar ─────────────────────────
+  function _syncPerfilSlot(){
+    const slot = document.getElementById('mobile-topbar-action');
+    if(!slot) return;
+    const btn  = document.getElementById('perfil-action-btn');
+    if(!btn) return;
+    const visible  = btn.style.display !== 'none' && btn.textContent.trim() !== '';
+    if(!visible){ slot.innerHTML = ''; return; }
+    const txt = btn.textContent.trim();
+    const existing = document.getElementById('perfil-action-btn-mobile');
+    if(existing && existing.textContent.trim() === txt) return;
+    slot.innerHTML = '<button id="perfil-action-btn-mobile" style="'
+      +'padding:5px 12px;border-radius:20px;background:var(--orange);color:#fff;'
+      +'border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--fb);'
+      +'letter-spacing:.3px;white-space:nowrap">'
+      +txt+'</button>';
+    document.getElementById('perfil-action-btn-mobile').onclick = function(){
+      // Llamar directamente — no btn.click() porque el btn está en topbar hidden
+      const wrap = document.getElementById('plan-inicio-wrap');
+      if(wrap && typeof renderDatePicker === 'function')
+        wrap.innerHTML = renderDatePicker('plan-inicio', typeof today === 'function' ? today() : new Date().toISOString().split('T')[0]);
+      openModal('modal-plan');
+    };
+  }
+
+  // ── Fix adicional: inyectar botón Plan dentro del tab content ───
+  // Así funciona aunque el topbar esté oculto en móvil
+  function patchRenderPerfilPlan(){
+    if(typeof renderPerfilPlan === 'undefined'){ setTimeout(patchRenderPerfilPlan, 80); return; }
+    const _origPlan = window.renderPerfilPlan;
+    window.renderPerfilPlan = function(){
+      _origPlan.call(this);
+      // Añadir botón flotante al final del tab si no hay botón visible
+      const el = document.getElementById('perfil-plan');
+      if(!el) return;
+      // Quitar botón anterior si existe
+      const old = document.getElementById('plan-tab-add-btn');
+      if(old) old.remove();
+      // Añadir siempre al final
+      const div = document.createElement('div');
+      div.id = 'plan-tab-add-btn';
+      div.style.cssText = 'padding:16px 0 8px';
+      div.innerHTML = '<button class="btn btn-p" style="width:100%" onclick="'
+        +'(function(){'
+        +'var w=document.getElementById(\'plan-inicio-wrap\');'
+        +'if(w&&typeof renderDatePicker===\'function\') w.innerHTML=renderDatePicker(\'plan-inicio\',typeof today===\'function\'?today():new Date().toISOString().split(\'T\')[0]);'
+        +'openModal(\'modal-plan\');'
+        +'})()">+ Crear / Actualizar plan</button>';
+      el.appendChild(div);
+    };
+  }
+  patchRenderPerfilPlan();
+
+  // Parchar renderPerfil y switchPerfilTab para sync del slot
+  function patchPerfilSlot(){
+    if(typeof renderPerfil === 'undefined'){ setTimeout(patchPerfilSlot, 80); return; }
+
+    const _origRP = window.renderPerfil;
+    window.renderPerfil = function(){
+      _origRP.call(this);
+      requestAnimationFrame(_syncPerfilSlot);
+    };
+
+    const _origSPT = window.switchPerfilTab;
+    if(typeof _origSPT === 'function'){
+      window.switchPerfilTab = function(tab, btn2){
+        _origSPT.call(this, tab, btn2);
+        requestAnimationFrame(_syncPerfilSlot);
+      };
+    }
+
+    // Parchar goTo para limpiar slot al salir de perfil
+    const _origGoTo = window.goTo;
+    if(typeof _origGoTo === 'function'){
+      window.goTo = function(id){
+        _origGoTo(id);
+        const slot = document.getElementById('mobile-topbar-action');
+        if(id !== 'perfil' && slot) slot.innerHTML = '';
+        if(id === 'perfil') setTimeout(_syncPerfilSlot, 80);
+      };
+    }
+  }
+  patchPerfilSlot();
+
+});
+</script>
+<script>
 /* v145 — mobile topbar sync */
 (function(){
   const sectionNames = {
     home:'Inicio', train:'Entrenar', progress:'Progreso',
     food:'Nutrición', perfil:'Perfil'
   };
-  // Patch goTo to update mobile topbar title
+  // Patch goTo to update mobile topbar section title only
+  // (slot management and perfil button handled by v161 patch above)
   const _orig = window.goTo;
   if(typeof _orig === 'function'){
     window.goTo = function(id){
       _orig(id);
       const el = document.getElementById('mobile-topbar-section');
       if(el) el.textContent = sectionNames[id] || id;
-      // Limpiar slot de acción al salir de perfil
-      if(id !== 'perfil'){
-        const slot = document.getElementById('mobile-topbar-action');
-        if(slot) slot.innerHTML = '';
-      } else {
-        setTimeout(() => { if(typeof renderPerfil === 'function') renderPerfil(); }, 60);
-      }
     };
   }
   // Mirror sync-dot color
