@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=129">
 <link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=108">
 <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.svg?v=129">
-<title>MELQART v154</title>
+<title>MELQART v157</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -560,37 +560,10 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-head">
-      <div class="modal-title">🏁 Sesión completada</div>
+      <div class="modal-title" id="post-ses-titulo">Sesion completada</div>
     </div>
-    <div class="modal-body">
-      <div id="post-ses-resumen"></div>
-      <div style="font-size:13px;color:var(--ink2);margin-bottom:14px">Agrega datos opcionales de tu monitor cardíaco:</div>
-      <div id="post-ses-duracion-wrap" style="display:none;margin-bottom:12px">
-        <div class="field">
-          <label>⏱ Duración real del trote (mm:ss)</label>
-          <input class="inp" id="post-ses-duracion" placeholder="ej: 42:55" inputmode="numeric">
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-        <div class="field">
-          <label>❤️ FC media (bpm)</label>
-          <input class="inp" type="number" id="post-ses-fc" placeholder="ej: 145" inputmode="numeric">
-        </div>
-        <div class="field">
-          <label>✦ Calorías (kcal)</label>
-          <input class="inp" type="number" id="post-ses-kcal" placeholder="ej: 380" inputmode="numeric">
-        </div>
-      </div>
-      <div class="field" style="margin-bottom:16px">
-        <label>📸 Foto del entrenamiento (opcional)</label>
-        <input type="file" id="post-ses-foto" accept="image/*" capture="environment" style="display:none" onchange="postSesPreviewFoto(this)">
-        <button class="btn btn-s" onclick="document.getElementById('post-ses-foto').click()" style="margin-bottom:8px">📷 Subir foto</button>
-        <div id="post-ses-foto-preview" style="display:none;border-radius:var(--r);overflow:hidden;max-height:180px">
-          <img id="post-ses-foto-img" style="width:100%;object-fit:cover;max-height:180px">
-        </div>
-      </div>
-      <button class="btn btn-p" onclick="guardarPostSesion()">✓ Guardar sesión</button>
-      <button class="btn btn-s" onclick="guardarPostSesion()" style="margin-top:8px;color:var(--ink3)">Omitir y guardar</button>
+    <div class="modal-body" id="post-ses-body">
+      <!-- Contenido dinámico según tipo de sesión (trote vs fuerza) -->
     </div>
   </div>
 </div>
@@ -1109,17 +1082,16 @@
 })();
 
 /* ================================================================
-   MELQART v151 — RENDERMEDMODAL DEFINITIVO
-   Un único reemplazo limpio instalado en DOMContentLoaded,
-   después de que app.js ya cargó y definió todas las funciones.
-   Incluye: wheel iOS para fecha y valor, contornos, músculo en %.
+   MELQART v155 — RENDERMEDMODAL: SELECTS NATIVOS ESTILO iOS
+   Selector de métrica primero, luego rueda nativa por valor.
+   Colores fenicios del design system. Sin wheel CSS custom.
    ================================================================ */
 document.addEventListener('DOMContentLoaded', function(){
 
-  function waitFor(check, fn, ms){ if(check()) fn(); else setTimeout(()=>waitFor(check,fn,ms), ms||60); }
+  function waitFor(check, fn){ if(check()) fn(); else setTimeout(()=>waitFor(check,fn), 80); }
 
   waitFor(
-    ()=> typeof MED_METRICAS!=='undefined' && typeof saveMedValor==='function' && typeof renderMedModal==='function',
+    ()=> typeof MED_METRICAS!=='undefined' && typeof saveMedValor==='function',
     installMedModal
   );
 
@@ -1128,25 +1100,20 @@ document.addEventListener('DOMContentLoaded', function(){
     // ── Constantes ──────────────────────────────────────────────
     const CONTORNO_KEYS = ['cintura','cadera','biceps'];
     const CONTORNO_DEF = [
-      { key:'cintura', label:'Contorno cintura', emoji:'📏', unit:'cm', placeholder:'85.0' },
-      { key:'cadera',  label:'Contorno cadera',  emoji:'📏', unit:'cm', placeholder:'100.0' },
-      { key:'biceps',  label:'Contorno bíceps',  emoji:'📏', unit:'cm', placeholder:'35.0' },
+      { key:'cintura', label:'Contorno cintura', emoji:'◈', unit:'cm', placeholder:'85.0' },
+      { key:'cadera',  label:'Contorno cadera',  emoji:'◈', unit:'cm', placeholder:'100.0' },
+      { key:'biceps',  label:'Contorno biceps',  emoji:'◈', unit:'cm', placeholder:'35.0' },
     ];
-
-    // Asegurar que contornos están en MED_METRICAS (puede haberlos agregado v148)
     CONTORNO_DEF.forEach(def=>{
       if(!MED_METRICAS.find(m=>m.key===def.key)) MED_METRICAS.push(def);
     });
-
-    // Masa muscular en %
     const mMuscular = MED_METRICAS.find(x=>x.key==='muscular');
-    if(mMuscular){ mMuscular.unit='%'; mMuscular.placeholder='45.0'; }
+    if(mMuscular){ mMuscular.unit='%'; }
 
-    // ── Helpers de contornos en forge ───────────────────────────
     function getContorno(m,key){ return m?.contornos?.[key]??null; }
     function setContorno(m,key,val){ if(!m.contornos)m.contornos={}; m.contornos[key]=val; }
 
-    // ── saveMedValor: extender para contornos ───────────────────
+    // ── Extender saveMedValor para contornos ─────────────────────
     const _origSave = window.saveMedValor;
     window.saveMedValor = function(){
       if(!CONTORNO_KEYS.includes(window.medKeyActual)) return _origSave.call(this);
@@ -1160,16 +1127,15 @@ document.addEventListener('DOMContentLoaded', function(){
       setContorno(m,window.medKeyActual,parseFloat(val));
       saveDB();
       const def=CONTORNO_DEF.find(d=>d.key===window.medKeyActual);
-      showToast('✓ '+def.label+' guardado',2000,'ok');
+      showToast('Guardado: '+def.label,2000,'ok');
       window.medPaso='selector'; document.getElementById('med-modal-title').textContent='Añadir medición';
       renderMedModal(); renderProgCuerpo();
     };
 
-    // ── borrarMedValor: extender para contornos ─────────────────
     const _origBorrar = window.borrarMedValor;
     window.borrarMedValor = function(){
       if(!CONTORNO_KEYS.includes(window.medKeyActual)) return _origBorrar.call(this);
-      if(!confirm('¿Borrar este dato?')) return;
+      if(!confirm('Borrar este dato?')) return;
       const m=(forge.bodyMetrics||[]).find(x=>x.date===window.medFechaActual);
       if(m) setContorno(m,window.medKeyActual,null);
       saveDB(); showToast('Dato eliminado');
@@ -1177,239 +1143,161 @@ document.addEventListener('DOMContentLoaded', function(){
       renderMedModal(); renderProgCuerpo();
     };
 
-    // ── CSS del wheel ────────────────────────────────────────────
-    if(!document.getElementById('mq-wheel-css')){
-      const st=document.createElement('style'); st.id='mq-wheel-css';
+    // ── CSS del modal ────────────────────────────────────────────
+    if(!document.getElementById('med-modal-v155-css')){
+      const st=document.createElement('style'); st.id='med-modal-v155-css';
       st.textContent=`
-        .mqw-wrap{display:flex;gap:4px;justify-content:center;align-items:flex-start;padding:8px 0 12px;user-select:none;-webkit-user-select:none}
-        .mqw-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0}
-        .mqw-lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:700}
-        .mqw{position:relative;height:162px;overflow:hidden;border-radius:12px;background:var(--bg3);border:1.5px solid var(--border2);touch-action:none}
-        .mqw-list{position:absolute;top:0;left:0;right:0;will-change:transform}
-        .mqw-item{height:36px;line-height:36px;text-align:center;font-size:17px;font-weight:500;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px}
-        .mqw-item.mqw-sel{color:var(--ink);font-size:20px;font-weight:800}
-        .mqw-fade-top{position:absolute;top:0;left:0;right:0;height:63px;background:linear-gradient(to bottom,var(--bg3) 10%,transparent);pointer-events:none;z-index:2}
-        .mqw-fade-bot{position:absolute;bottom:0;left:0;right:0;height:63px;background:linear-gradient(to top,var(--bg3) 10%,transparent);pointer-events:none;z-index:2}
-        .mqw-line{position:absolute;left:0;right:0;height:36px;top:63px;border-top:1.5px solid var(--orange);border-bottom:1.5px solid var(--orange);pointer-events:none;z-index:3}
-        .mqw-sep{font-size:22px;font-weight:700;color:var(--ink3);padding:0 1px;margin-top:46px;flex:0 0 auto}
-        .mqw-unit{font-size:13px;font-weight:700;color:var(--ink3);padding:0 2px;margin-top:50px;flex:0 0 auto}
-        .mqw-warn{color:var(--warn);font-size:11px;text-align:center;margin-top:4px;display:none}
+        .mv5-metric-btn{
+          display:flex;align-items:center;justify-content:space-between;
+          width:100%;padding:14px 16px;border-radius:var(--rl);margin-bottom:8px;
+          background:var(--bg3);border:1.5px solid var(--border2);
+          cursor:pointer;text-align:left;font-family:var(--fb);
+          transition:border-color .12s,background .12s;
+        }
+        .mv5-metric-btn:active{ background:var(--bg4); }
+        .mv5-metric-btn.has-val{ border-color:var(--green); }
+        .mv5-metric-btn.has-val .mv5-sub{ color:var(--green); font-weight:600; }
+        .mv5-metric-label{ font-size:15px;font-weight:700;color:var(--ink); }
+        .mv5-sub{ font-size:12px;color:var(--ink3);margin-top:2px; }
+        .mv5-chevron{ width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0; }
+
+        .mv5-sel-wrap{
+          display:flex;align-items:center;gap:8px;justify-content:center;
+          margin:4px 0 20px;
+        }
+        .mv5-sel-col{ display:flex;flex-direction:column;align-items:center;gap:6px;flex:1; }
+        .mv5-sel-lbl{ font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:700; }
+        .mv5-sel{
+          width:100%;border:1.5px solid var(--border2);border-radius:12px;
+          background:var(--bg3);color:var(--ink);
+          font-size:22px;font-weight:700;text-align:center;
+          padding:10px 4px;appearance:none;-webkit-appearance:none;
+          cursor:pointer;font-family:var(--fb);
+        }
+        .mv5-sel:focus{ outline:none;border-color:var(--orange); }
+        .mv5-sep{ font-size:28px;font-weight:700;color:var(--ink3);padding:0 2px;margin-top:22px; }
+        .mv5-unit{ font-size:15px;font-weight:700;color:var(--ink3);margin-top:26px;flex-shrink:0; }
+
+        .mv5-volver{
+          background:none;border:none;color:var(--orange);cursor:pointer;
+          font-size:13px;font-weight:700;display:flex;align-items:center;gap:4px;
+          margin-bottom:16px;padding:0;font-family:var(--fb);
+        }
+        .mv5-emoji{ font-size:32px;margin-bottom:6px; }
+        .mv5-valor-label{ font-size:18px;font-weight:800;color:var(--ink);margin-bottom:2px; }
+        .mv5-fecha-txt{ font-size:12px;color:var(--ink3); }
+        .mv5-borrar{
+          background:none;border:none;color:var(--red);cursor:pointer;
+          font-size:12px;width:100%;margin-top:12px;font-family:var(--fb);padding:4px;
+        }
+
+        .mv5-fecha-bar{
+          display:flex;align-items:center;gap:8px;margin-bottom:18px;
+          padding:10px 14px;border-radius:var(--rl);
+          background:var(--bg3);border:1.5px solid var(--border2);
+        }
+        .mv5-fecha-icon{ font-size:18px;flex-shrink:0; }
+        .mv5-fecha-txt2{ font-size:14px;font-weight:600;color:var(--ink);flex:1; }
+        .mv5-fecha-change{ background:none;border:none;color:var(--orange);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--fb); }
       `;
       document.head.appendChild(st);
     }
 
-    // ── Motor de wheel ───────────────────────────────────────────
-    const _wheels = {};
-
-    function createWheel(id, items, selIdx, circular){
-      const ITEM_H=36, VISIBLE=4; // 4 items visible center + 2 above/below within 162px
-      const CENTER=63; // top offset to center selected item
-
-      const wrap=document.getElementById('mqw-'+id);
-      const list=document.getElementById('mqwl-'+id);
-      if(!wrap||!list) return;
-
-      let cur=Math.max(0,Math.min(items.length-1,selIdx));
-      _wheels[id]={items,cur,circular};
-
-      function clamp(i){ return circular?((i%items.length)+items.length)%items.length:Math.max(0,Math.min(items.length-1,i)); }
-
-      function render(idx,animate){
-        cur=clamp(idx);
-        _wheels[id].cur=cur;
-        const y=CENTER-(cur*ITEM_H);
-        list.style.transition=animate?'transform .18s cubic-bezier(.25,.46,.45,.94)':'none';
-        list.style.transform='translateY('+y+'px)';
-        list.querySelectorAll('.mqw-item').forEach((el,i)=>el.classList.toggle('mqw-sel',i===cur));
-      }
-
-      // Padding so first/last items can be centered
-      list.style.paddingTop=(CENTER)+'px';
-      list.style.paddingBottom=(ITEM_H*2)+'px';
-      render(cur,false);
-
-      // Touch
-      let t0=0,y0=0,yLast=0,tLast=0,vel=0;
-      wrap.addEventListener('touchstart',e=>{
-        t0=Date.now(); y0=e.touches[0].clientY; yLast=y0; tLast=t0; vel=0;
-        list.style.transition='none';
-      },{passive:true});
-      wrap.addEventListener('touchmove',e=>{
-        const dy=e.touches[0].clientY-y0;
-        const now=Date.now();
-        vel=(e.touches[0].clientY-yLast)/(now-tLast+1);
-        yLast=e.touches[0].clientY; tLast=now;
-        render(Math.round((-dy+CENTER-(cur*ITEM_H-(cur*ITEM_H)))/ITEM_H)+selIdx,false);
-        // Simple drag: offset from drag start
-        const delta=Math.round(-dy/ITEM_H);
-        render(clamp(selIdx+delta),false);
-        e.preventDefault();
-      },{passive:false});
-      wrap.addEventListener('touchend',()=>{
-        selIdx=cur;
-        const flick=Math.round(-vel*5);
-        render(cur+flick,true);
-        selIdx=_wheels[id].cur; // update base after animation
-        // delayed update after transition
-        setTimeout(()=>{ selIdx=_wheels[id].cur; },200);
+    // ── Helpers de selects nativos ───────────────────────────────
+    function makeSelect(id, options, selVal, cls){
+      // options: array de {val, label} o strings
+      let html = '<select id="'+id+'" class="mv5-sel'+(cls?' '+cls:'')+'">';
+      options.forEach(o=>{
+        const v = typeof o==='object'?o.val:o;
+        const l = typeof o==='object'?o.label:o;
+        html += '<option value="'+v+'"'+(String(v)===String(selVal)?' selected':'')+'>'+l+'</option>';
       });
-
-      // Mouse
-      let mDown=false,my0=0,mBase=0;
-      wrap.addEventListener('mousedown',e=>{ mDown=true; my0=e.clientY; mBase=cur; list.style.transition='none'; });
-      document.addEventListener('mousemove',e=>{ if(!mDown)return; render(mBase+Math.round(-(e.clientY-my0)/ITEM_H),false); });
-      document.addEventListener('mouseup',()=>{ if(!mDown)return; mDown=false; selIdx=cur; list.style.transition=''; });
-
-      // Scroll wheel
-      wrap.addEventListener('wheel',e=>{ e.preventDefault(); render(cur+(e.deltaY>0?1:-1),true); selIdx=cur; },{passive:false});
+      html += '</select>';
+      return html;
     }
 
-    function wheelHtml(id, items, selIdx, label, extraClass=''){
-      return '<div class="mqw-col'+( extraClass?' '+extraClass:'')+'">'
-        +(label?'<div class="mqw-lbl">'+label+'</div>':'')
-        +'<div class="mqw" id="mqw-'+id+'">'
-        +'<div class="mqw-list" id="mqwl-'+id+'">'
-        +items.map((it,i)=>'<div class="mqw-item'+(i===selIdx?' mqw-sel':'')+'" data-i="'+i+'">'+it+'</div>').join('')
-        +'</div>'
-        +'<div class="mqw-fade-top"></div><div class="mqw-fade-bot"></div>'
-        +'<div class="mqw-line"></div>'
-        +'</div></div>';
+    function buildPesoSels(valActual){
+      const v=parseFloat(valActual)||99;
+      const kg=Math.floor(v), gr=Math.round((v%1)*10);
+      const kgOpts=[]; for(let i=40;i<=200;i++) kgOpts.push({val:i,label:i+' kg'});
+      const grOpts=[]; for(let i=0;i<=9;i++) grOpts.push({val:i,label:'.'+i});
+      return `<div class="mv5-sel-wrap">
+        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Kilos</div>${makeSelect('mv5-e',kgOpts,kg)}</div>
+        <div class="mv5-sep">.</div>
+        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Décimas</div>${makeSelect('mv5-d',grOpts,gr)}</div>
+        <div class="mv5-unit">kg</div>
+      </div>`;
     }
 
-    function getWheelVal(id){ const w=_wheels[id]; return w?w.items[w.cur]:null; }
-
-    // ── Wheel de FECHA ───────────────────────────────────────────
-    const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-    let _fw={}; // fecha wheel state
-
-    function renderFechaWheels(containerId, fechaStr){
-      const d=fechaStr?new Date(fechaStr+'T12:00:00'):new Date();
-      const maxY=new Date().getFullYear(), minY=2014;
-      const anios=Array.from({length:maxY-minY+1},(_,i)=>String(minY+i));
-      const dias=()=>Array.from({length:new Date(_fw.y,_fw.m+1,0).getDate()},(_,i)=>String(i+1).padStart(2,'0'));
-
-      _fw={d:d.getDate(), m:d.getMonth(), y:d.getFullYear()};
-      const dIdx=_fw.d-1, mIdx=_fw.m, yIdx=_fw.y-minY;
-      const diasArr=dias();
-
-      const container=document.getElementById(containerId);
-      if(!container) return;
-
-      container.innerHTML=
-        '<div class="mqw-wrap">'
-        +wheelHtml(containerId+'-d', diasArr, dIdx, 'Día')
-        +wheelHtml(containerId+'-m', MESES, mIdx, 'Mes')
-        +wheelHtml(containerId+'-y', anios, yIdx, 'Año')
-        +'</div>'
-        +'<div class="mqw-warn" id="'+containerId+'-fw-warn">⚠ No puedes registrar una fecha futura</div>';
-
-      createWheel(containerId+'-d', diasArr, dIdx, false);
-      createWheel(containerId+'-m', MESES, mIdx, true);
-      createWheel(containerId+'-y', anios, yIdx, false);
-
-      // Reconstruir días cuando cambia mes/año — check each 300ms
-      const check=setInterval(()=>{
-        const wm=_wheels[containerId+'-m'], wy=_wheels[containerId+'-y'];
-        if(!wm||!wy) return;
-        const newM=wm.cur, newY=parseInt(anios[wy.cur]);
-        if(newM!==_fw.m||newY!==_fw.y){
-          _fw.m=newM; _fw.y=newY;
-          // Rebuild days
-          const newDias=Array.from({length:new Date(newY,newM+1,0).getDate()},(_,i)=>String(i+1).padStart(2,'0'));
-          const wd=_wheels[containerId+'-d'];
-          if(wd){ wd.items=newDias; if(wd.cur>=newDias.length)wd.cur=newDias.length-1; }
-          const listEl=document.getElementById('mqwl-'+containerId+'-d');
-          if(listEl){ listEl.innerHTML=newDias.map((it,i)=>'<div class="mqw-item'+(i===wd?.cur?' mqw-sel':'')+'" data-i="'+i+'">'+it+'</div>').join(''); }
-        }
-        // Future check
-        if(wd&&wm&&wy){
-          const dval=parseInt(newDias?.[wd.cur]||'1'),mval=wm.cur,yval=parseInt(anios[wy.cur]);
-          const sel=new Date(yval,mval,dval);
-          const hoy=new Date(); hoy.setHours(23,59,59,999);
-          const warn=document.getElementById(containerId+'-fw-warn');
-          if(warn) warn.style.display=sel>hoy?'block':'none';
-        }
-      },300);
-      // Stop checking when modal closes
-      const mo=new MutationObserver(()=>{ if(!document.getElementById(containerId)){ clearInterval(check); mo.disconnect(); }});
-      const bg=document.getElementById('modal-med'); if(bg) mo.observe(bg,{childList:true,subtree:true});
+    function buildPorcSels(valActual, unit){
+      const v=parseFloat(valActual)||0;
+      const ent=Math.floor(v), dec=Math.round((v%1)*10);
+      const entOpts=[]; for(let i=0;i<=99;i++) entOpts.push({val:i,label:i});
+      const decOpts=[]; for(let i=0;i<=9;i++) decOpts.push({val:i,label:'.'+i});
+      return `<div class="mv5-sel-wrap">
+        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Entero</div>${makeSelect('mv5-e',entOpts,ent)}</div>
+        <div class="mv5-sep">.</div>
+        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Decimal</div>${makeSelect('mv5-d',decOpts,dec)}</div>
+        <div class="mv5-unit">${unit}</div>
+      </div>`;
     }
 
-    function getFechaFromWheels(cid){
-      const wd=_wheels[cid+'-d'], wm=_wheels[cid+'-m'], wy=_wheels[cid+'-y'];
-      if(!wd||!wm||!wy) return null;
-      const maxY=new Date().getFullYear(), minY=2014;
-      const anios=Array.from({length:maxY-minY+1},(_,i)=>String(minY+i));
-      const dval=parseInt(wd.items[wd.cur]),mval=wm.cur,yval=parseInt(anios[wy.cur]);
-      const sel=new Date(yval,mval,dval);
-      const hoy=new Date(); hoy.setHours(23,59,59,999);
-      if(sel>hoy) return null;
-      return yval+'-'+String(mval+1).padStart(2,'0')+'-'+String(dval).padStart(2,'0');
+    function buildContornoSels(valActual){
+      const v=parseFloat(valActual)||85;
+      const ent=Math.floor(v);
+      const decRaw=(v%1)>=0.5?5:0;
+      const entOpts=[]; for(let i=40;i<=200;i++) entOpts.push({val:i,label:i});
+      const decOpts=[{val:0,label:'.0'},{val:5,label:'.5'}];
+      return `<div class="mv5-sel-wrap">
+        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Entero</div>${makeSelect('mv5-e',entOpts,ent)}</div>
+        <div class="mv5-sep">.</div>
+        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Decimal</div>${makeSelect('mv5-d',decOpts,decRaw)}</div>
+        <div class="mv5-unit">cm</div>
+      </div>`;
     }
 
-    // ── Wheel de VALOR ───────────────────────────────────────────
-    function renderValorWheels(containerId, metKey, valActual){
-      const isPeso=metKey==='peso';
-      const isPorc=['grasa','muscular'].includes(metKey);
-      const isContorno=CONTORNO_KEYS.includes(metKey);
-      const isPliegue=metKey==='p6'||metKey==='p8';
-
-      let enteros=[], decs=null, eIdx=0, dIdx=0, unit='';
-
-      if(isPeso){
-        enteros=Array.from({length:161},(_,i)=>String(i+40));
-        decs=['0','1','2','3','4','5','6','7','8','9'];
-        unit='kg';
-        const v=parseFloat(valActual)||90;
-        eIdx=Math.max(0,enteros.indexOf(String(Math.floor(v))));
-        dIdx=Math.round((v%1)*10);
-      } else if(isPorc){
-        enteros=Array.from({length:100},(_,i)=>String(i));
-        decs=['0','1','2','3','4','5','6','7','8','9'];
-        unit='%';
-        const v=parseFloat(valActual)||(metKey==='grasa'?28:45);
-        eIdx=Math.max(0,enteros.indexOf(String(Math.floor(v))));
-        dIdx=Math.round((v%1)*10);
-      } else if(isContorno){
-        enteros=Array.from({length:121},(_,i)=>String(i+40));
-        decs=['0','5'];
-        unit='cm';
-        const v=parseFloat(valActual)||85;
-        eIdx=Math.max(0,enteros.indexOf(String(Math.floor(v))));
-        dIdx=(v%1)>=0.5?1:0;
-      } else if(isPliegue){
-        enteros=Array.from({length:251},(_,i)=>String(i+50));
-        unit='mm';
-        const v=parseFloat(valActual)||140;
-        eIdx=Math.max(0,enteros.indexOf(String(Math.floor(v))));
-      } else { // IMC
-        enteros=Array.from({length:51},(_,i)=>String(i+10));
-        decs=['0','1','2','3','4','5','6','7','8','9'];
-        unit='';
-        const v=parseFloat(valActual)||25;
-        eIdx=Math.max(0,enteros.indexOf(String(Math.floor(v))));
-        dIdx=Math.round((v%1)*10);
-      }
-
-      const container=document.getElementById(containerId);
-      if(!container) return;
-
-      container.innerHTML='<div class="mqw-wrap">'
-        +wheelHtml(containerId+'-e', enteros, eIdx, 'Entero')
-        +(decs?'<div class="mqw-sep">.</div>'+wheelHtml(containerId+'-d', decs, dIdx, 'Dec'):'')
-        +(unit?'<div class="mqw-unit">'+unit+'</div>':'')
-        +'</div>';
-
-      createWheel(containerId+'-e', enteros, eIdx, false);
-      if(decs) createWheel(containerId+'-d', decs, dIdx, false);
+    function buildPliegSels(valActual){
+      const v=parseFloat(valActual)||140;
+      const entOpts=[]; for(let i=50;i<=350;i++) entOpts.push({val:i,label:i});
+      return `<div class="mv5-sel-wrap">
+        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Milímetros</div>${makeSelect('mv5-e',entOpts,Math.round(v))}</div>
+        <div class="mv5-unit">mm</div>
+      </div>`;
     }
 
-    function getValorFromWheels(cid){
-      const we=_wheels[cid+'-e'], wd=_wheels[cid+'-d'];
-      if(!we) return null;
-      const ePart=we.items[we.cur];
-      if(wd){ return parseFloat(ePart+'.'+wd.items[wd.cur]); }
-      return parseFloat(ePart);
+    function buildImcSels(valActual){
+      const v=parseFloat(valActual)||25;
+      const ent=Math.floor(v), dec=Math.round((v%1)*10);
+      const entOpts=[]; for(let i=10;i<=60;i++) entOpts.push({val:i,label:i});
+      const decOpts=[]; for(let i=0;i<=9;i++) decOpts.push({val:i,label:'.'+i});
+      return `<div class="mv5-sel-wrap">
+        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Entero</div>${makeSelect('mv5-e',entOpts,ent)}</div>
+        <div class="mv5-sep">.</div>
+        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Decimal</div>${makeSelect('mv5-d',decOpts,dec)}</div>
+      </div>`;
+    }
+
+    function getValFromSels(){
+      const eEl=document.getElementById('mv5-e');
+      const dEl=document.getElementById('mv5-d');
+      if(!eEl) return null;
+      const e=parseFloat(eEl.value)||0;
+      const d=dEl?parseFloat(dEl.value)||0:null;
+      return d!==null ? parseFloat(e+'.'+d) : e;
+    }
+
+    function syncHiddenInput(){
+      const v=getValFromSels();
+      const inp=document.getElementById('med-val-input');
+      if(inp&&v!==null) inp.value=String(v);
+    }
+
+    // ── Formatear fecha legible ──────────────────────────────────
+    function fechaLegible(str){
+      if(!str) return '';
+      const [y,m,d]=str.split('-');
+      const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      return d+' de '+meses[parseInt(m)-1]+' '+y;
     }
 
     // ── renderMedModal DEFINITIVO ────────────────────────────────
@@ -1420,45 +1308,51 @@ document.addEventListener('DOMContentLoaded', function(){
       if(window.medPaso==='selector'){
         const existing=(forge.bodyMetrics||[]).find(m=>m.date===window.medFechaActual);
 
+        // Barra de fecha
+        const fechaBar=`<div class="mv5-fecha-bar">
+          <div class="mv5-fecha-icon">◈</div>
+          <div class="mv5-fecha-txt2">${fechaLegible(window.medFechaActual)}</div>
+          <button class="mv5-fecha-change" onclick="window._mv5CambiarFecha()">Cambiar</button>
+        </div>`;
+
         const metricasHtml=MED_METRICAS.map(m=>{
           let val;
           if(m.key==='p6'||m.key==='p8') val=existing?.pliegues?.[m.key];
           else if(CONTORNO_KEYS.includes(m.key)) val=existing?.contornos?.[m.key];
           else val=existing?.[m.key];
-          const valStr=val!=null?String(val)+(m.unit?' '+m.unit:''):null;
-          return '<button onclick="window._medAbrirValor(''+m.key+'')" style="'
-            +'display:flex;align-items:center;justify-content:space-between;'
-            +'width:100%;padding:13px 14px;border-radius:var(--r);margin-bottom:6px;'
-            +'background:var(--bg3);border:1.5px solid '+(valStr?'var(--green)':'var(--border2)')+';'
-            +'cursor:pointer;text-align:left;font-family:var(--fb);'
-            +'transition:border-color .15s">'
-            +'<div style="display:flex;align-items:center;gap:12px">'
-            +'<span style="font-size:20px">'+m.emoji+'</span>'
-            +'<div>'
-            +'<div style="font-size:14px;font-weight:600;color:var(--ink)">'+m.label+'</div>'
-            +(valStr
-              ?'<div style="font-size:12px;color:var(--green);font-weight:600">✓ '+valStr+'</div>'
-              :'<div style="font-size:11px;color:var(--ink3)">Sin dato para esta fecha</div>')
-            +'</div></div>'
-            +'<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>'
+          const hasVal=val!=null;
+          const valStr=hasVal?String(val)+(m.unit?' '+m.unit:''):null;
+          return '<button class="mv5-metric-btn'+(hasVal?' has-val':'')+'" onclick="window._mv5AbrirValor(''+m.key+'')">'
+            +'<div style="flex:1;min-width:0">'
+            +'<div class="mv5-metric-label">'+m.label+'</div>'
+            +'<div class="mv5-sub">'+(valStr?'Registrado: '+valStr:'Sin dato para esta fecha')+'</div>'
+            +'</div>'
+            +'<svg class="mv5-chevron" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>'
             +'</button>';
         }).join('');
 
-        body.innerHTML=
-          '<div style="margin-bottom:14px">'
-          +'<div style="font-size:11px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:6px">Fecha del registro</div>'
-          +'<div id="med-fecha-wheel"></div>'
-          +'<div class="mqw-warn" id="med-fecha-fw-warn" style="display:none">⚠ No puedes registrar una fecha futura</div>'
-          +'</div>'
-          +'<div style="font-size:11px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:8px">¿Qué quieres registrar?</div>'
+        body.innerHTML=fechaBar
+          +'<div style="font-size:11px;color:var(--ink3);letter-spacing:1.2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">Que quieres registrar</div>'
           +metricasHtml;
 
-        renderFechaWheels('med-fecha-wheel', window.medFechaActual);
+        window._mv5CambiarFecha=function(){
+          // Mostrar date picker nativo
+          const inp=document.createElement('input');
+          inp.type='date';
+          const hoy=window.medFechaActual||new Date().toISOString().split('T')[0];
+          inp.value=hoy;
+          inp.max=new Date().toISOString().split('T')[0];
+          inp.min='2014-01-01';
+          inp.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0';
+          document.body.appendChild(inp);
+          inp.addEventListener('change',()=>{
+            if(inp.value){ window.medFechaActual=inp.value; renderMedModal(); }
+            document.body.removeChild(inp);
+          });
+          inp.click(); inp.focus();
+        };
 
-        window._medAbrirValor=function(key){
-          const nueva=getFechaFromWheels('med-fecha-wheel');
-          if(!nueva){ showToast('⚠ Fecha no válida o en el futuro'); return; }
-          window.medFechaActual=nueva;
+        window._mv5AbrirValor=function(key){
           window.medKeyActual=key;
           window.medPaso='valor';
           const m=MED_METRICAS.find(x=>x.key===key);
@@ -1467,6 +1361,7 @@ document.addEventListener('DOMContentLoaded', function(){
         };
 
       } else {
+        // ── Pantalla de valor ──────────────────────────────────
         const m=MED_METRICAS.find(x=>x.key===window.medKeyActual);
         const existing=(forge.bodyMetrics||[]).find(x=>x.date===window.medFechaActual);
         let valActual;
@@ -1474,40 +1369,86 @@ document.addEventListener('DOMContentLoaded', function(){
         else if(CONTORNO_KEYS.includes(window.medKeyActual)) valActual=existing?.contornos?.[window.medKeyActual]||'';
         else valActual=existing?.[window.medKeyActual]||'';
 
+        const key=window.medKeyActual;
+        let selsHtml='';
+        if(key==='peso')                               selsHtml=buildPesoSels(valActual);
+        else if(key==='grasa'||key==='muscular')       selsHtml=buildPorcSels(valActual, m?.unit||'%');
+        else if(CONTORNO_KEYS.includes(key))           selsHtml=buildContornoSels(valActual);
+        else if(key==='p6'||key==='p8')                selsHtml=buildPliegSels(valActual);
+        else                                           selsHtml=buildImcSels(valActual);
+
+        const hasVal=valActual!==null&&valActual!=='';
+
         body.innerHTML=
-          '<button onclick="window.medPaso='selector';renderMedModal()" '
-          +'style="background:none;border:none;color:var(--orange);cursor:pointer;'
-          +'font-size:13px;font-weight:600;display:flex;align-items:center;gap:4px;margin-bottom:10px;padding:0">'
-          +'← Volver</button>'
-          +'<div style="text-align:center;margin-bottom:10px">'
-          +'<div style="font-size:30px;margin-bottom:4px">'+(m?m.emoji:'📏')+'</div>'
-          +'<div style="font-size:17px;font-weight:700;color:var(--ink)">'+(m?m.label:window.medKeyActual)+'</div>'
-          +'<div style="font-size:12px;color:var(--ink3);margin-top:2px">'+window.medFechaActual+'</div>'
+          '<button class="mv5-volver" onclick="window.medPaso='selector';renderMedModal()">← Volver</button>'
+          +'<div style="text-align:center;margin-bottom:16px">'
+          +'<div class="mv5-valor-label">'+(m?m.label:key)+'</div>'
+          +'<div class="mv5-fecha-txt">'+fechaLegible(window.medFechaActual)+'</div>'
           +'</div>'
-          +'<div id="med-valor-wheel"></div>'
-          +'<input type="hidden" id="med-val-input">'
-          +'<button class="btn btn-p" onclick="window._medGuardar()" style="margin-top:8px">✓ Guardar '+(m?m.label:'')+'</button>'
-          +(valActual!=null&&valActual!==''
-            ?'<button onclick="window._medBorrar()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;width:100%;margin-top:10px;font-family:var(--fb)">Borrar este dato</button>'
-            :'');
+          +selsHtml
+          +'<input type="hidden" id="med-val-input" value="'+(valActual||'')+'">'
+          +'<button class="btn btn-p" style="margin-top:4px" onclick="window._mv5Guardar()">Guardar '+(m?m.label:'')+'</button>'
+          +(hasVal?'<button class="mv5-borrar" onclick="window._mv5Borrar()">Borrar este dato</button>':'');
 
-        renderValorWheels('med-valor-wheel', window.medKeyActual, valActual);
+        // Sincronizar hidden input cuando cambian los selects
+        setTimeout(()=>{
+          ['mv5-e','mv5-d'].forEach(id=>{
+            const el=document.getElementById(id);
+            if(el) el.addEventListener('change',syncHiddenInput);
+          });
+          syncHiddenInput(); // valor inicial
+        },0);
 
-        window._medGuardar=function(){
-          const v=getValorFromWheels('med-valor-wheel');
-          if(v===null||isNaN(v)){ showToast('Selecciona un valor en la rueda'); return; }
-          document.getElementById('med-val-input').value=String(v);
+        window._mv5Guardar=function(){
+          syncHiddenInput();
           saveMedValor();
         };
-        window._medBorrar=function(){
+        window._mv5Borrar=function(){
           document.getElementById('med-val-input').value='';
           borrarMedValor();
         };
       }
     };
 
-    console.log('[MELQART v151] renderMedModal definitivo instalado');
-  } // end installMedModal
+    // ── renderProgCuerpo: card de contornos ──────────────────────
+    const _origRenderCuerpo=window.renderProgCuerpo;
+    window.renderProgCuerpo=function(){
+      _origRenderCuerpo.call(this);
+      _injectContornosCard();
+    };
+    function _injectContornosCard(){
+      const mets=(forge.bodyMetrics||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+      const container=document.getElementById('cuerpo-charts'); if(!container) return;
+      const ultMet=[...mets].reverse().find(m=>m.contornos&&Object.values(m.contornos).some(v=>v!=null));
+      const existingCard=document.getElementById('contornos-acc-card');
+      if(!ultMet&&!existingCard) return;
+      const cintura=ultMet?.contornos?.cintura??null;
+      const cadera=ultMet?.contornos?.cadera??null;
+      const biceps=ultMet?.contornos?.biceps??null;
+      const rcc=cintura&&cadera?(cintura/cadera).toFixed(2):null;
+      const rccColor=rcc?(parseFloat(rcc)<=0.85?'var(--ok)':'var(--warn)'):'var(--ink3)';
+      const rows=[
+        cintura!=null?'<div class="body-med-row"><div class="body-med-lbl">Cintura</div><div class="body-med-val" style="color:var(--teal)">'+cintura+' cm</div></div>':'',
+        cadera!=null?'<div class="body-med-row"><div class="body-med-lbl">Cadera</div><div class="body-med-val" style="color:var(--teal)">'+cadera+' cm</div></div>':'',
+        biceps!=null?'<div class="body-med-row"><div class="body-med-lbl">Biceps</div><div class="body-med-val" style="color:var(--teal)">'+biceps+' cm</div></div>':'',
+        rcc!=null?'<div class="body-med-row"><div class="body-med-lbl" style="font-size:11px;color:var(--ink3)">Indice cintura/cadera</div><div style="font-size:13px;font-weight:700;color:'+rccColor+'">'+rcc+'</div></div>':'',
+      ].filter(Boolean).join('');
+      const isOpen=window._bodyAccState?.['contornos']||false;
+      const subStr=[cintura!=null?'Cintura '+cintura+'cm':'',cadera!=null?'Cadera '+cadera+'cm':'',biceps!=null?'Biceps '+biceps+'cm':''].filter(Boolean).join(' · ')||'Sin datos';
+      const html='<div id="contornos-acc-card" class="body-acc-card">'
+        +'<div class="acc-head" onclick="window._bodyAccState=window._bodyAccState||{};window._bodyAccState['contornos']=!window._bodyAccState['contornos'];document.getElementById('contornos-acc-body').style.display=window._bodyAccState['contornos']?'block':'none';this.querySelector('.acc-chevron').style.transform=window._bodyAccState['contornos']?'rotate(180deg)':'';">'
+        +'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--ink)">Contornos corporales</div>'
+        +'<div style="font-size:11px;color:var(--ink3);margin-top:2px">'+subStr+'</div></div>'
+        +'<svg class="acc-chevron" viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0;transition:transform .2s;transform:'+(isOpen?'rotate(180deg)':'')+'"><polyline points="6 9 12 15 18 9"/></svg>'
+        +'</div>'
+        +'<div id="contornos-acc-body" class="acc-body" style="display:'+(isOpen?'block':'none')+'">'
+        +(rows||'<div style="color:var(--ink3);font-size:13px;padding:8px 0">Sin registros de contornos aun.</div>')
+        +'</div></div>';
+      if(existingCard){ existingCard.outerHTML=html; } else { container.insertAdjacentHTML('beforeend',html); }
+    }
+
+    console.log('[MELQART v155] renderMedModal instalado — selects nativos iOS');
+  }
 });
    Agrega cintura, cadera y bíceps a las mediciones corporales.
    No toca app.js — parchamos las funciones que expone globalmente.
@@ -1928,7 +1869,226 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 
-<!-- v154 — EXPORTAR: tres secciones limpias sin emojis -->
+<!-- v157 — POST-SESION TROTE: campos separados con selects nativos iOS -->
+<script>
+/* ================================================================
+   MELQART v157 — MODAL POST-SESION TROTE
+   Reemplaza abrirPostSesion para sesiones cardio: campos separados
+   por tipo (horas/min/seg, km/m, FC, kcal, pasos, fecha).
+   Para sesiones de fuerza mantiene el comportamiento original.
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', function(){
+  function waitFor(check, fn){ if(check()) fn(); else setTimeout(()=>waitFor(check,fn),80); }
+
+  waitFor(
+    ()=> typeof abrirPostSesion==='function' && typeof esSesSoloCardio==='function',
+    patchPostSesion
+  );
+
+  function patchPostSesion(){
+
+    function sel(id, opts, selVal){
+      let h='<select id="'+id+'" style="width:100%;border:1.5px solid var(--border2);border-radius:12px;background:var(--bg3);color:var(--ink);font-size:19px;font-weight:700;text-align:center;padding:10px 2px;appearance:none;-webkit-appearance:none;cursor:pointer;font-family:var(--fb)">';
+      opts.forEach(o=>{
+        const v=typeof o==='object'?o.v:o;
+        const l=typeof o==='object'?o.l:o;
+        h+='<option value="'+v+'"'+(String(v)===String(selVal)?' selected':'')+'>'+l+'</option>';
+      });
+      return h+'</select>';
+    }
+    function selCol(label, selHtml){
+      return '<div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex:1">'
+        +'<div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:700">'+label+'</div>'
+        +selHtml+'</div>';
+    }
+    function sepLabel(ch){
+      return '<div style="font-size:22px;font-weight:700;color:var(--ink3);margin-top:20px;flex-shrink:0">'+ch+'</div>';
+    }
+    function secLabel(txt){
+      return '<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:700;margin:16px 0 8px">'+txt+'</div>';
+    }
+
+    function durFromSecs(secs){
+      return { h:Math.floor(secs/3600), m:Math.floor((secs%3600)/60), s:secs%60 };
+    }
+
+    window.abrirPostSesion = function(){
+      if(!activeSession) return;
+      const esCardio = esSesSoloCardio(activeSession);
+
+      if(!esCardio){
+        // ── Fuerza: modal simple ───────────────────────────────
+        const dur=durFromSecs(activeSession.elapsed||0);
+        const vol=Math.round(activeSession.totalVolume||0);
+        const fmtDurStr=dur.h>0?(dur.h+'h '+String(dur.m).padStart(2,'0')+'m'):(String(dur.m).padStart(2,'0')+'m '+String(dur.s).padStart(2,'0')+'s');
+        document.getElementById('post-ses-titulo').textContent='Sesion completada';
+        document.getElementById('post-ses-body').innerHTML=
+          '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'
+          +'<div class="hm-item"><div class="hm-label">Duracion</div><div class="hm-val">'+fmtDurStr+'</div></div>'
+          +(vol>0?'<div class="hm-item"><div class="hm-label">Volumen</div><div class="hm-val">'+vol.toLocaleString('es-CL')+' kg</div></div>':'')
+          +'</div>'
+          +'<div style="font-size:13px;color:var(--ink2);margin-bottom:14px">Agrega datos de tu monitor cardíaco (opcional):</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">'
+          +'<div class="field"><label>FC media (bpm)</label><input class="inp" type="number" id="post-ses-fc" placeholder="145" inputmode="numeric"></div>'
+          +'<div class="field"><label>Calorias (kcal)</label><input class="inp" type="number" id="post-ses-kcal" placeholder="380" inputmode="numeric"></div>'
+          +'</div>'
+          +'<div class="field" style="margin-bottom:16px">'
+          +'<label>Foto (opcional)</label>'
+          +'<input type="file" id="post-ses-foto" accept="image/*" capture="environment" style="display:none" onchange="postSesPreviewFoto(this)">'
+          +'<button class="btn btn-s" onclick="document.getElementById(\'post-ses-foto\').click()" style="margin-bottom:8px">Subir foto</button>'
+          +'<div id="post-ses-foto-preview" style="display:none;border-radius:var(--r);overflow:hidden;max-height:180px">'
+          +'<img id="post-ses-foto-img" style="width:100%;object-fit:cover;max-height:180px"></div>'
+          +'</div>'
+          +'<button class="btn btn-p" onclick="window._psFuerza()">Guardar sesion</button>'
+          +'<button class="btn btn-s" onclick="window._psFuerza()" style="margin-top:8px;color:var(--ink3)">Omitir y guardar</button>';
+        openModal('modal-post-sesion');
+        return;
+      }
+
+      // ── Trote: modal completo ──────────────────────────────────
+      const dur = durFromSecs(activeSession.elapsed||0);
+      const hoy = new Date();
+      const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+      const hOpts  = Array.from({length:11},(_,i)=>({v:i,l:i+' h'}));
+      const mOpts  = Array.from({length:60},(_,i)=>({v:i,l:String(i).padStart(2,'0')+' m'}));
+      const sOpts  = Array.from({length:60},(_,i)=>({v:i,l:String(i).padStart(2,'0')+' s'}));
+      const kmOpts = Array.from({length:51},(_,i)=>({v:i,l:i+' km'}));
+      const mtOpts = [0,100,200,300,400,500,600,700,800,900].map(v=>({v,l:v+' m'}));
+      const dOpts  = Array.from({length:31},(_,i)=>({v:i+1,l:String(i+1).padStart(2,'0')}));
+      const mesOpts= MESES.map((l,i)=>({v:i,l}));
+      const maxAa  = hoy.getFullYear();
+      const aaOpts = Array.from({length:maxAa-2013},(_,i)=>({v:2014+i,l:String(2014+i)}));
+
+      // Estimar km desde el set del ejercicio cardio si ya hay distancia
+      let kmPre=5, mtPre=0;
+      activeSession.exercises.forEach(ex=>{
+        const e=typeof getEx==='function'?getEx(ex.exId):null;
+        if(e&&(e.type==='run'||e.type==='hiit')){
+          const dist=parseFloat((ex.sets||[])[0]?.distance)||0;
+          if(dist>0){ kmPre=Math.floor(dist); mtPre=Math.round((dist%1)*1000/100)*100; }
+        }
+      });
+
+      document.getElementById('post-ses-titulo').textContent='Trote completado';
+      document.getElementById('post-ses-body').innerHTML=
+
+        secLabel('Duracion del trote')
+        +'<div style="display:flex;align-items:flex-start;gap:5px">'
+        +selCol('Horas', sel('ps-hh',hOpts,dur.h))
+        +sepLabel(':')
+        +selCol('Min',   sel('ps-mm',mOpts,dur.m))
+        +sepLabel(':')
+        +selCol('Seg',   sel('ps-ss',sOpts,dur.s))
+        +'</div>'
+
+        +secLabel('Distancia')
+        +'<div style="display:flex;align-items:flex-start;gap:5px">'
+        +selCol('Kilómetros', sel('ps-km',kmOpts,kmPre))
+        +sepLabel('+')
+        +selCol('Metros',     sel('ps-mt',mtOpts,mtPre))
+        +'</div>'
+
+        +secLabel('Monitor cardíaco (opcional)')
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">'
+        +'<div class="field" style="margin:0"><label>FC bpm</label><input class="inp" type="number" id="ps-fc" placeholder="145" inputmode="numeric" style="text-align:center;font-size:18px;font-weight:700"></div>'
+        +'<div class="field" style="margin:0"><label>Kcal</label><input class="inp" type="number" id="ps-kcal" placeholder="380" inputmode="numeric" style="text-align:center;font-size:18px;font-weight:700"></div>'
+        +'<div class="field" style="margin:0"><label>Pasos</label><input class="inp" type="number" id="ps-pasos" placeholder="5800" inputmode="numeric" style="text-align:center;font-size:18px;font-weight:700"></div>'
+        +'</div>'
+
+        +secLabel('Fecha de la sesion')
+        +'<div style="display:flex;align-items:flex-start;gap:5px;margin-bottom:20px">'
+        +selCol('Día',  sel('ps-dd', dOpts, hoy.getDate()))
+        +selCol('Mes',  sel('ps-mes',mesOpts,hoy.getMonth()))
+        +selCol('Año',  sel('ps-aa', aaOpts, hoy.getFullYear()))
+        +'</div>'
+
+        +'<button class="btn btn-p" onclick="window._psTrote()" style="margin-bottom:8px">Guardar trote</button>';
+
+      openModal('modal-post-sesion');
+    };
+
+    // ── Guardar FUERZA ───────────────────────────────────────────
+    window._psFuerza = function(){
+      const fc   = parseInt(document.getElementById('post-ses-fc')?.value)||0;
+      const kcal = parseInt(document.getElementById('post-ses-kcal')?.value)||0;
+      const fotoImg = document.getElementById('post-ses-foto-img');
+      const fotoSrc = fotoImg?.src?.startsWith('data:') ? fotoImg.src : '';
+      if(fc>0)    activeSession.fcMedia = fc;
+      if(kcal>0)  activeSession.kcal   = kcal;
+      if(fotoSrc) activeSession.foto   = fotoSrc;
+      _psCommit();
+    };
+
+    // ── Guardar TROTE ────────────────────────────────────────────
+    window._psTrote = function(){
+      const hh   = parseInt(document.getElementById('ps-hh')?.value)||0;
+      const mm   = parseInt(document.getElementById('ps-mm')?.value)||0;
+      const ss   = parseInt(document.getElementById('ps-ss')?.value)||0;
+      const km   = parseInt(document.getElementById('ps-km')?.value)||0;
+      const mt   = parseInt(document.getElementById('ps-mt')?.value)||0;
+      const fc   = parseInt(document.getElementById('ps-fc')?.value)||0;
+      const kcal = parseInt(document.getElementById('ps-kcal')?.value)||0;
+      const pasos= parseInt(document.getElementById('ps-pasos')?.value)||0;
+      const dd   = parseInt(document.getElementById('ps-dd')?.value)||hoy.getDate();
+      const mes  = parseInt(document.getElementById('ps-mes')?.value);
+      const aa   = parseInt(document.getElementById('ps-aa')?.value)||new Date().getFullYear();
+
+      const durSecs = hh*3600 + mm*60 + ss;
+      const distKm  = +(km + mt/1000).toFixed(3);
+      const fechaTs = new Date(aa, isNaN(mes)?new Date().getMonth():mes, dd, 12,0,0).getTime();
+
+      if(durSecs>0) activeSession.elapsed = durSecs;
+      activeSession.date = fechaTs;
+      if(fc>0)    activeSession.fcMedia = fc;
+      if(kcal>0)  activeSession.kcal   = kcal;
+      if(pasos>0) activeSession.pasos  = pasos;
+
+      // Guardar distancia en el set del ejercicio cardio
+      activeSession.exercises.forEach(ex=>{
+        const e=typeof getEx==='function'?getEx(ex.exId):null;
+        if(!e) return;
+        if(e.type==='run'||e.type==='hiit'){
+          if(!ex.sets||!ex.sets.length) ex.sets=[{type:'run',done:false,distance:'',time:'',fc:'',pasos:'',weight:0,reps:0}];
+          ex.sets[0].done     = true;
+          ex.sets[0].distance = distKm;
+          ex.sets[0].time     = String(mm)+':'+String(ss).padStart(2,'0');
+          if(fc>0)    ex.sets[0].fc    = fc;
+          if(pasos>0) ex.sets[0].pasos = pasos;
+        }
+      });
+
+      _psCommit();
+    };
+
+    // ── Commit común ─────────────────────────────────────────────
+    function _psCommit(){
+      if(!forge.sessions) forge.sessions=[];
+      forge.sessions = forge.sessions.filter(s=>s.id!==activeSession.id);
+      forge.sessions.push({...activeSession});
+      forge.sessions.sort((a,b)=>a.date-b.date);
+      activeSession=null; sesSeconds=0;
+      saveDB();
+      setTimeout(()=>syncCloud(),500);
+      closeModal('modal-post-sesion');
+      if(typeof renderAll==='function') renderAll();
+      else { if(typeof renderHome==='function') renderHome(); if(typeof renderTrain==='function') renderTrain(); }
+      showToast('Sesion guardada',2500,'ok');
+    }
+
+    // Parchamos guardarPostSesion por si algo lo llama directamente
+    window.guardarPostSesion = function(){
+      if(document.getElementById('ps-km')) window._psTrote();
+      else if(document.getElementById('post-ses-fc')) window._psFuerza();
+      else _psCommit();
+    };
+
+    console.log('[MELQART v157] Post-sesion trote instalado');
+  }
+});
+</script>
+
+<!-- v156 — EXPORTAR: rollback al formato probado + tres secciones -->
 <script>
 (function(){
   function patchExport(){
@@ -1938,319 +2098,235 @@ document.addEventListener('DOMContentLoaded', function(){
 
       // ── helpers ──────────────────────────────────────────────
       function isoDate(d){
-        return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        return d.getFullYear()+'-'
+          +String(d.getMonth()+1).padStart(2,'0')+'-'
+          +String(d.getDate()).padStart(2,'0');
       }
       function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
-      function fmtFecha(str){
-        // YYYY-MM-DD -> DD/MM/YYYY
-        if(!str) return '';
-        const [y,m,d] = str.split('-');
-        return d+'/'+m+'/'+y;
+      function fmtDate(ts){
+        return new Date(ts).toLocaleDateString('es-CL',
+          {weekday:'long',day:'numeric',month:'long',year:'numeric'});
       }
       function fmtDur(s){
         if(!s) return '';
         const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
-        return h>0?(h+'h '+String(m).padStart(2,'0')+'m'):(String(m).padStart(2,'0')+'m '+String(sec).padStart(2,'0')+'s');
+        return h>0?(h+'h '+m+'m'):(m+'m '+sec+'s');
       }
-      function col(val, w){
-        const s = val===null||val===undefined ? '-' : String(val);
-        return s.length >= w ? s.slice(0,w-1)+' ' : s + ' '.repeat(w - s.length);
-      }
-      function row(...cols){ return cols.join(''); }
-      function line(char, w){ return char.repeat(w); }
-      function sep(){ return ''; }
 
-      // ── rango de fechas ──────────────────────────────────────
+      // ── rango ────────────────────────────────────────────────
       const semanas = parseInt(document.getElementById('export-semanas')?.value||'4');
       const hoy = new Date();
       const lunes = new Date(hoy);
-      lunes.setDate(hoy.getDate()-(hoy.getDay()||7)+1); lunes.setHours(0,0,0,0);
+      lunes.setDate(hoy.getDate()-(hoy.getDay()||7)+1);
+      lunes.setHours(0,0,0,0);
       let fechaInicio;
       if(semanas===0){ fechaInicio=new Date(2014,0,1); }
       else { fechaInicio=new Date(lunes); fechaInicio.setDate(lunes.getDate()-((semanas-1)*7)); }
-      const domingo = new Date(hoy); domingo.setHours(23,59,59,999);
+      const domingo=new Date(hoy); domingo.setHours(23,59,59,999);
 
-      const rango = semanas===0
-        ? 'Historial completo'
-        : 'Ultimas '+semanas+' semana'+(semanas>1?'s':'');
-      const rangoFechas = fmtFecha(isoDate(fechaInicio))+' a '+fmtFecha(isoDate(domingo));
+      // ── acceso a datos — forge puede ser global o window.forge ─
+      const fd = window.forge || {};
+      const _getEx = typeof getEx==='function' ? getEx : ()=>null;
+      const _fmtTime = typeof fmtTimeStr==='function' ? fmtTimeStr : s=>s;
 
-      // ── datos de forge ───────────────────────────────────────
-      const forge_    = window.forge || {};
-      const getEx_    = typeof getEx==='function' ? getEx : ()=>null;
-      const meta_     = typeof getAguaMeta==='function' ? getAguaMeta() : {vasos:10, mlPorVaso:250};
-      const targets_  = typeof NUTRITION_TARGETS!=='undefined' ? NUTRITION_TARGETS : {proteinas:12,cereales:3,frutas:2,lacteoProtein:2,lacteoDescremado:1,lipidos:0.5,aceites:1,verduras:2};
-      const comidas_  = typeof COMIDAS!=='undefined' ? COMIDAS : [];
-      const totalC_   = comidas_.length || 7;
-
-      const allMetrics = (forge_.bodyMetrics||[])
-        .filter(m=>{ const d=new Date(m.date+'T12:00:00'); return d>=fechaInicio&&d<=domingo; })
-        .sort((a,b)=>a.date.localeCompare(b.date));
-
-      const allSessions = (forge_.sessions||[])
+      const ses = (fd.sessions||[])
         .filter(s=>{ const d=new Date(s.date); return d>=fechaInicio&&d<=domingo; })
         .sort((a,b)=>a.date-b.date);
 
-      // ── recolectar días de nutrición ─────────────────────────
+      const pesos = (fd.bodyMetrics||[])
+        .filter(m=>{ const d=new Date(m.date+'T12:00:00'); return d>=fechaInicio&&d<=domingo; })
+        .sort((a,b)=>a.date.localeCompare(b.date));
+
+      // ── nutrición ────────────────────────────────────────────
+      const meta_     = typeof getAguaMeta==='function' ? getAguaMeta() : {vasos:10,mlPorVaso:250};
+      const targets_  = typeof NUTRITION_TARGETS!=='undefined'
+        ? NUTRITION_TARGETS
+        : {proteinas:12,cereales:3,frutas:2,lacteoProtein:2,lacteoDescremado:1,lipidos:0.5,aceites:1,verduras:2};
+      const comidas_  = typeof COMIDAS!=='undefined' ? COMIDAS : [];
+      const totalC_   = comidas_.length||7;
+
       const nutriDias = [];
-      let cur = new Date(fechaInicio);
-      while(cur <= domingo){
-        const key = isoDate(cur);
-        let fd = null;
-        try{ const raw=localStorage.getItem('ff_'+key); if(raw) fd=JSON.parse(raw); }catch{}
-        if(fd){
-          const vasos = fd.aguaVasosHoy || fd.agua || 0;
-          const ml    = vasos * meta_.mlPorVaso;
-          const metaOk = vasos >= meta_.vasos ? 'S' : 'N';
-          const comidasOk = Object.values(fd.comidas||{}).filter(c=>c.completada).length;
-
-          // porciones
-          let porciones = {};
+      let cur=new Date(fechaInicio);
+      while(cur<=domingo){
+        const key=isoDate(cur);
+        let fdd=null;
+        try{ const raw=localStorage.getItem('ff_'+key); if(raw) fdd=JSON.parse(raw); }catch{}
+        if(fdd){
+          const vasos=fdd.aguaVasosHoy||fdd.agua||0;
+          const comidasOk=Object.values(fdd.comidas||{}).filter(c=>c.completada).length;
+          let porciones={};
           if(typeof calcPortionsConsumed==='function'){
-            porciones = calcPortionsConsumed(fd);
+            porciones=calcPortionsConsumed(fdd);
           } else {
-            comidas_.forEach(c=>{ if(fd.comidas?.[c.id]?.completada&&c.portions) Object.entries(c.portions).forEach(([k,v])=>{ porciones[k]=(porciones[k]||0)+v; }); });
-            (fd.extraFoods||[]).forEach(f=>Object.entries(f.portions||{}).forEach(([k,v])=>{ porciones[k]=(porciones[k]||0)+v; }));
+            comidas_.forEach(c=>{ if(fdd.comidas?.[c.id]?.completada&&c.portions) Object.entries(c.portions).forEach(([k,v])=>{ porciones[k]=(porciones[k]||0)+v; }); });
+            (fdd.extraFoods||[]).forEach(f=>Object.entries(f.portions||{}).forEach(([k,v])=>{ porciones[k]=(porciones[k]||0)+v; }));
           }
-
-          // adherencia
-          const grupos = ['proteinas','cereales','frutas','lacteoProtein','lacteoDescremado','lipidos','aceites','verduras'];
-          let done=0, total=0;
+          const grupos=['proteinas','cereales','frutas','lacteoProtein','lacteoDescremado','lipidos','aceites','verduras'];
+          let done=0,total=0;
           grupos.forEach(g=>{ const t=targets_[g]||0; total+=t; done+=Math.min(t,porciones[g]||0); });
-          const adherencia = total>0 ? Math.round(done/total*100) : 0;
-
           nutriDias.push({
-            fecha:key, vasos, ml, metaOk, comidasOk, adherencia,
-            prot:  +(porciones.proteinas||0).toFixed(1),
+            fecha:key,
+            vasos, ml:vasos*meta_.mlPorVaso, metaOk:vasos>=meta_.vasos?'S':'N',
+            comidasOk,
+            prot:+(porciones.proteinas||0).toFixed(1),
             cereal:+(porciones.cereales||0).toFixed(1),
-            fruta: +(porciones.frutas||0).toFixed(1),
+            fruta:+(porciones.frutas||0).toFixed(1),
             lacteo:+((porciones.lacteoProtein||0)+(porciones.lacteoDescremado||0)).toFixed(1),
-            verd:  +(porciones.verduras||0).toFixed(1),
-            lip:   +(porciones.lipidos||0).toFixed(1),
-            aceit: +(porciones.aceites||0).toFixed(1),
+            verd:+(porciones.verduras||0).toFixed(1),
+            lip:+(porciones.lipidos||0).toFixed(1),
+            aceit:+(porciones.aceites||0).toFixed(1),
+            adh:total>0?Math.round(done/total*100):0,
           });
         }
-        cur = addDays(cur,1);
+        cur=addDays(cur,1);
       }
 
       // ════════════════════════════════════════════════════════
+      const sep  = '-------------------------------';
+      const sep2 = '===============================';
       const lines = [];
-      const W = 76; // ancho total
 
-      lines.push('MELQART — EXPORTABLE DE DATOS');
-      lines.push(rango+' ('+rangoFechas+')');
+      const tituloRango = semanas===0
+        ? 'HISTORIAL COMPLETO'
+        : 'ULTIMAS '+semanas+' SEMANA'+(semanas>1?'S':'');
+      lines.push(sep2);
+      lines.push('MELQART — EXPORTABLE');
+      lines.push(tituloRango);
+      lines.push(
+        fechaInicio.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'})
+        +' — '
+        +domingo.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'})
+      );
       lines.push('Generado: '+new Date().toLocaleString('es-CL'));
-      lines.push('='.repeat(W));
+      lines.push(sep2);
       lines.push('');
 
-      // ════════════════════════════════════════════════════════
-      //  SECCION 1 — PESO CORPORAL
-      // ════════════════════════════════════════════════════════
+      // ── SECCION 1: PESO ──────────────────────────────────────
       lines.push('SECCION 1 — PESO CORPORAL');
-      lines.push('-'.repeat(W));
-      if(!allMetrics.length){
-        lines.push('Sin registros en este periodo.');
+      lines.push(sep);
+      if(!pesos.length){
+        lines.push('Sin registros de peso en este periodo.');
       } else {
-        // cabecera
-        lines.push(row(col('Fecha',12), col('Peso kg',10), col('IMC',8), col('Grasa %',10), col('Muscular %',12), col('Notas',20)));
-        lines.push('-'.repeat(W));
-        allMetrics.forEach(m=>{
-          lines.push(row(
-            col(fmtFecha(m.date),12),
-            col(m.peso!=null?m.peso:'',10),
-            col(m.imc!=null?m.imc:'',8),
-            col(m.grasa!=null?m.grasa:'',10),
-            col(m.muscular!=null?m.muscular:'',12),
-            col(m.notas||'',20)
-          ));
+        pesos.forEach(m=>{
+          let linea = '  '+m.date+':  '+m.peso+' kg';
+          if(m.imc)      linea += '   IMC '+m.imc;
+          if(m.grasa)    linea += '   Grasa '+m.grasa+'%';
+          if(m.muscular) linea += '   Muscular '+m.muscular+'%';
+          lines.push(linea);
         });
-        // resumen
-        const pesoInicio = allMetrics[0].peso;
-        const pesoFin    = allMetrics[allMetrics.length-1].peso;
-        if(pesoInicio && pesoFin){
-          const delta = +(pesoFin - pesoInicio).toFixed(1);
+        const p0=pesos[0].peso, pN=pesos[pesos.length-1].peso;
+        if(p0&&pN){
+          const delta=+(pN-p0).toFixed(1);
           lines.push('');
-          lines.push('Cambio en el periodo: '+(delta>0?'+':'')+delta+' kg  ('+pesoInicio+' kg -> '+pesoFin+' kg)');
-          const po = forge_.pesoObjetivo;
-          if(po?.objetivo) lines.push('Objetivo: '+po.objetivo+' kg  |  Restante: '+Math.max(0,+(pesoFin-po.objetivo).toFixed(1))+' kg');
+          lines.push('  Cambio: '+(delta>0?'+':'')+delta+' kg  ('+p0+' → '+pN+' kg)');
+          const po=fd.pesoObjetivo;
+          if(po?.objetivo) lines.push('  Objetivo: '+po.objetivo+' kg   Restante: '+Math.max(0,+(pN-po.objetivo).toFixed(1))+' kg');
         }
       }
       lines.push('');
 
-      // ════════════════════════════════════════════════════════
-      //  SECCION 2 — SESIONES DE ENTRENAMIENTO
-      // ════════════════════════════════════════════════════════
+      // ── SECCION 2: SESIONES ──────────────────────────────────
       lines.push('SECCION 2 — SESIONES DE ENTRENAMIENTO');
-      lines.push('-'.repeat(W));
-      if(!allSessions.length){
+      lines.push(sep);
+      if(!ses.length){
         lines.push('Sin sesiones en este periodo.');
       } else {
-        // Agrupar por semana
-        const semMap = {};
-        allSessions.forEach(s=>{
-          const d = new Date(s.date);
-          const lun = new Date(d);
-          lun.setDate(d.getDate()-(d.getDay()||7)+1);
-          lun.setHours(0,0,0,0);
-          const semKey = isoDate(lun);
-          if(!semMap[semKey]) semMap[semKey]=[];
-          semMap[semKey].push(s);
-        });
-
-        Object.keys(semMap).sort().forEach(semKey=>{
-          const sesiones = semMap[semKey];
-          const lunDate = new Date(semKey+'T12:00:00');
-          const domDate = addDays(lunDate,6);
-          lines.push('');
-          lines.push('Semana '+fmtFecha(semKey)+' — '+fmtFecha(isoDate(domDate)));
-          lines.push('~ '.repeat(Math.floor(W/2)));
-
-          sesiones.forEach(s=>{
-            const d = new Date(s.date);
-            const fechaSes = isoDate(d);
-            const diaSemana = d.toLocaleDateString('es-CL',{weekday:'long'});
-            lines.push('');
-            lines.push('  '+diaSemana.charAt(0).toUpperCase()+diaSemana.slice(1)+' '+fmtFecha(fechaSes)+'  —  '+(s.routineName||'Sesion libre'));
-            if(s.elapsed) lines.push('  Duracion: '+fmtDur(s.elapsed)+(s.fcMedia?'  |  FC media: '+s.fcMedia+' bpm':'')+(s.kcal?'  |  Calorias: '+s.kcal+' kcal':''));
-
-            const exsConSets = (s.exercises||[]).filter(ex=>{
-              const e=getEx_(ex.exId);
-              if(!e) return false;
-              if(e.type==='warmup'||e.type==='stretch') return false;
-              return (ex.sets||[]).some(st=>st.done);
-            });
-
-            if(exsConSets.length){
-              lines.push('');
-              // cabecera de ejercicios
-              lines.push('  '+col('Ejercicio',28)+col('S1',12)+col('S2',12)+col('S3',12)+col('S4',12));
-              lines.push('  '+'-'.repeat(W-2));
-
-              exsConSets.forEach(ex=>{
-                const e=getEx_(ex.exId);
-                const nombre = e?e.name:(ex.exId||'Ejercicio');
-                const sets = (ex.sets||[]).filter(st=>st.done);
-                const isRun = e?.type==='run'||e?.type==='hiit';
-
-                let setsCols = [];
-                sets.slice(0,4).forEach(st=>{
-                  if(isRun){
-                    setsCols.push(col(st.distance?(st.distance+'km'):'', 12));
-                  } else {
-                    const w = st.weight!=null?st.weight:'';
-                    const r = st.reps!=null?st.reps:'';
-                    setsCols.push(col(w&&r?(w+'x'+r):(w||r||'-'), 12));
-                  }
-                });
-                // rellenar columnas vacías
-                while(setsCols.length<4) setsCols.push(col('',12));
-
-                lines.push('  '+col(nombre.slice(0,27),28)+setsCols.join(''));
-
-                // si tiene más de 4 series, mostrar el resto
-                if(sets.length>4){
-                  let extra = '  '+col('',28);
-                  sets.slice(4).forEach(st=>{
-                    const w=st.weight!=null?st.weight:'';
-                    const r=st.reps!=null?st.reps:'';
-                    extra += col(w&&r?(w+'x'+r):(w||r||'-'),12);
-                  });
-                  lines.push(extra);
-                }
-              });
+        // agrupar por semana
+        const semKey=d=>{ const x=new Date(d); const l=new Date(x); l.setDate(x.getDate()-(x.getDay()||7)+1); return l.toLocaleDateString('es-CL',{day:'numeric',month:'long'}); };
+        let semActual='';
+        lines.push('Total: '+ses.length+' sesiones');
+        lines.push('');
+        ses.forEach(s=>{
+          const sw=semKey(s.date);
+          if(sw!==semActual){
+            semActual=sw;
+            lines.push('>> Semana del '+sw);
+          }
+          lines.push('  > '+fmtDate(s.date)+'  -  '+(s.routineName||'Sesion libre'));
+          if(s.elapsed) lines.push('    Duracion: '+fmtDur(s.elapsed));
+          if(s.fcMedia) lines.push('    FC media: '+s.fcMedia+' bpm');
+          if(s.kcal)    lines.push('    Calorias: '+s.kcal+' kcal');
+          (s.exercises||[]).forEach(ex=>{
+            const e=_getEx(ex.exId); if(!e) return;
+            if(e.type==='warmup'||e.type==='stretch') return;
+            const sets=(ex.sets||[]).filter(st=>st.done); if(!sets.length) return;
+            if(e.type==='run'||e.type==='hiit'){
+              const dist=sets.reduce((a,st)=>a+(parseFloat(st.distance)||0),0);
+              const fc=sets.find(st=>st.fc);
+              lines.push('    '+e.name+': '+dist.toFixed(2)+'km'
+                +(sets[0]?.time?' - '+_fmtTime(sets[0].time):'')
+                +(fc?' - FC '+fc.fc+'bpm':''));
+            } else {
+              lines.push('    '+e.name+': '+sets.map(st=>{
+                const w=st.weight!=null?st.weight:'';
+                const r=st.reps!=null?st.reps:'';
+                return w&&r?(w+'kg x '+r):(w||r||'-');
+              }).join(' | '));
             }
           });
+          lines.push('');
         });
-
-        lines.push('');
-        lines.push('Total sesiones en el periodo: '+allSessions.length);
       }
-      lines.push('');
 
-      // ════════════════════════════════════════════════════════
-      //  SECCION 3 — NUTRICION
-      // ════════════════════════════════════════════════════════
+      // ── SECCION 3: NUTRICION ─────────────────────────────────
       lines.push('SECCION 3 — NUTRICION');
-      lines.push('-'.repeat(W));
+      lines.push(sep);
       if(!nutriDias.length){
         lines.push('Sin registros de nutricion en este periodo.');
       } else {
-        // Cabecera
-        const NH = row(
-          col('Fecha',12),
-          col('Agua ml',9),
-          col('Vasos',7),
-          col('MetaH2O',8),
-          col('Comidas',8),
-          col('Proteinas',10),
-          col('Cereales',9),
-          col('Frutas',7),
-          col('Lacteos',8),
-          col('Verduras',9),
-          col('Lipidos',8),
-          col('Aceites',8),
-          col('Adher%',7)
-        );
-        lines.push(NH);
-        lines.push('-'.repeat(W));
-
+        // cabecera de tabla
+        lines.push('Fecha       Agua ml  Vasos    MetaH2O  Comidas  Prot  Cere  Frut  Lact  Verd  Lip   Aceit  Adh%');
+        lines.push('-'.repeat(95));
         nutriDias.forEach(d=>{
-          lines.push(row(
-            col(fmtFecha(d.fecha),12),
-            col(d.ml,9),
-            col(d.vasos+'/'+meta_.vasos,7),
-            col(d.metaOk,8),
-            col(d.comidasOk+'/'+totalC_,8),
-            col(d.prot,10),
-            col(d.cereal,9),
-            col(d.fruta,7),
-            col(d.lacteo,8),
-            col(d.verd,9),
-            col(d.lip,8),
-            col(d.aceit,8),
-            col(d.adherencia+'%',7)
+          const c=(...vals)=>vals.map((v,i)=>{
+            const widths=[12,9,9,9,9,6,6,6,6,6,6,7,5];
+            const s=String(v==null?'-':v);
+            return s+(i<widths.length?' '.repeat(Math.max(1,widths[i]-s.length)):'');
+          }).join('');
+          // DD/MM/YYYY
+          const [y,m,d2]=d.fecha.split('-');
+          lines.push(c(
+            d2+'/'+m+'/'+y,
+            d.ml,
+            d.vasos+'/'+meta_.vasos,
+            d.metaOk,
+            d.comidasOk+'/'+totalC_,
+            d.prot, d.cereal, d.fruta, d.lacteo,
+            d.verd, d.lip, d.aceit, d.adh+'%'
           ));
         });
-
-        // Resumen
-        const n = nutriDias.length;
-        const proAgua   = Math.round(nutriDias.reduce((a,d)=>a+d.vasos,0)/n);
-        const diasMetaH = nutriDias.filter(d=>d.metaOk==='S').length;
-        const promAdh   = Math.round(nutriDias.reduce((a,d)=>a+d.adherencia,0)/n);
-        const diasCom   = nutriDias.filter(d=>d.comidasOk===totalC_).length;
+        const n=nutriDias.length;
+        const proV=Math.round(nutriDias.reduce((a,d)=>a+d.vasos,0)/n);
+        const diasM=nutriDias.filter(d=>d.metaOk==='S').length;
+        const diasC=nutriDias.filter(d=>d.comidasOk>=totalC_).length;
+        const proA=Math.round(nutriDias.reduce((a,d)=>a+d.adh,0)/n);
         lines.push('');
-        lines.push('Resumen nutricion ('+n+' dias con registro):');
-        lines.push('  Agua promedio/dia:         '+proAgua+'/'+meta_.vasos+' vasos  —  meta cumplida '+diasMetaH+'/'+n+' dias ('+Math.round(diasMetaH/n*100)+'%)');
-        lines.push('  Comidas dias completos:    '+diasCom+'/'+n+' dias ('+Math.round(diasCom/n*100)+'%)');
-        lines.push('  Adherencia pauta promedio: '+promAdh+'%');
+        lines.push('Resumen ('+n+' dias con registro):');
+        lines.push('  Agua promedio/dia:         '+proV+'/'+meta_.vasos+' vasos — meta cumplida '+diasM+'/'+n+' dias ('+Math.round(diasM/n*100)+'%)');
+        lines.push('  Comidas dias completos:    '+diasC+'/'+n+' dias ('+Math.round(diasC/n*100)+'%)');
+        lines.push('  Adherencia pauta promedio: '+proA+'%');
       }
       lines.push('');
-      lines.push('='.repeat(W));
-      lines.push('MELQART v154  |  '+new Date().toLocaleDateString('es-CL'));
+      lines.push(sep2);
+      lines.push('MELQART v157  |  '+new Date().toLocaleDateString('es-CL'));
 
-      // ── enviar al portapapeles ───────────────────────────────
-      const txt = lines.join('\n');
+      // ── enviar ───────────────────────────────────────────────
+      const txt=lines.join('\n');
       if(navigator.clipboard){
         navigator.clipboard.writeText(txt)
           .then(()=>showToast('Exportable copiado al portapapeles',3000,'ok'))
-          .catch(()=>_fallbackExport(txt));
-      } else {
-        _fallbackExport(txt);
-      }
+          .catch(()=>_dl(txt));
+      } else { _dl(txt); }
 
-      function _fallbackExport(txt){
-        // Descargar como .txt
-        const blob = new Blob([txt],{type:'text/plain;charset=utf-8'});
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href = url;
-        a.download = 'melqart_export_'+isoDate(new Date())+'.txt';
+      function _dl(txt){
+        const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');
+        a.href=url; a.download='melqart_'+isoDate(new Date())+'.txt';
         document.body.appendChild(a); a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        document.body.removeChild(a); URL.revokeObjectURL(url);
       }
-
-    }; // fin exportarSemana
+    };
   }
   patchExport();
 })();
