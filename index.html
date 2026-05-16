@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/brand/melqart_favicon_m.svg?v=129">
 <link rel="alternate icon" type="image/png" href="assets/brand/melqart_favicon_m.png?v=108">
 <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.svg?v=129">
-<title>MELQART v162</title>
+<title>MELQART v163</title>
 <meta name="description" content="MELQART · entrenamiento híbrido, fuerza, carrera y nutrición.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1082,13 +1082,12 @@
 })();
 
 /* ================================================================
-   MELQART v155 — RENDERMEDMODAL: SELECTS NATIVOS ESTILO iOS
-   Selector de métrica primero, luego rueda nativa por valor.
-   Colores fenicios del design system. Sin wheel CSS custom.
+   MELQART v163 — MEDIDAS CORPORALES REDISEÑADAS
+   Flujo 3 pasos: Resumen → Categoría → Métrica + Wheel pickers iOS
+   Estilo fenicio: colores var(--orange), var(--ink), var(--bg3)
    ================================================================ */
 document.addEventListener('DOMContentLoaded', function(){
-
-  function waitFor(check, fn){ if(check()) fn(); else setTimeout(()=>waitFor(check,fn), 80); }
+  function waitFor(check, fn){ if(check()) fn(); else setTimeout(()=>waitFor(check,fn),80); }
 
   waitFor(
     ()=> typeof MED_METRICAS!=='undefined' && typeof saveMedValor==='function',
@@ -1097,23 +1096,50 @@ document.addEventListener('DOMContentLoaded', function(){
 
   function installMedModal(){
 
-    // ── Constantes ──────────────────────────────────────────────
+    // ── Categorías y métricas ────────────────────────────────────
     const CONTORNO_KEYS = ['cintura','cadera','biceps'];
-    const CONTORNO_DEF = [
-      { key:'cintura', label:'Contorno cintura', emoji:'◈', unit:'cm', placeholder:'85.0' },
-      { key:'cadera',  label:'Contorno cadera',  emoji:'◈', unit:'cm', placeholder:'100.0' },
-      { key:'biceps',  label:'Contorno biceps',  emoji:'◈', unit:'cm', placeholder:'35.0' },
+    const CATEGORIAS = [
+      {
+        id: 'peso',
+        label: 'Peso',
+        icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a4 4 0 0 1 4 4H8a4 4 0 0 1 4-4z"/><rect x="2" y="7" width="20" height="14" rx="2"/></svg>',
+        metricas: ['peso']
+      },
+      {
+        id: 'composicion',
+        label: 'Composición corporal',
+        icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l5 3"/></svg>',
+        metricas: ['grasa','muscular','imc']
+      },
+      {
+        id: 'pliegues',
+        label: 'Pliegues',
+        icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-9"/></svg>',
+        metricas: ['p6','p8']
+      },
+      {
+        id: 'perimetros',
+        label: 'Perímetros',
+        icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg>',
+        metricas: ['cintura','cadera','biceps']
+      },
     ];
-    CONTORNO_DEF.forEach(def=>{
-      if(!MED_METRICAS.find(m=>m.key===def.key)) MED_METRICAS.push(def);
-    });
-    const mMuscular = MED_METRICAS.find(x=>x.key==='muscular');
-    if(mMuscular){ mMuscular.unit='%'; }
 
+    // Agregar contornos y muscular% a MED_METRICAS si no están
+    const EXTRA = [
+      { key:'cintura', label:'Cintura', emoji:'◈', unit:'cm', placeholder:'85.0' },
+      { key:'cadera',  label:'Cadera',  emoji:'◈', unit:'cm', placeholder:'100.0' },
+      { key:'biceps',  label:'Bíceps',  emoji:'◈', unit:'cm', placeholder:'35.0' },
+    ];
+    EXTRA.forEach(def=>{ if(!MED_METRICAS.find(m=>m.key===def.key)) MED_METRICAS.push(def); });
+    const mMusc = MED_METRICAS.find(x=>x.key==='muscular');
+    if(mMusc) mMusc.unit = '%';
+
+    // ── Helpers contornos ────────────────────────────────────────
     function getContorno(m,key){ return m?.contornos?.[key]??null; }
     function setContorno(m,key,val){ if(!m.contornos)m.contornos={}; m.contornos[key]=val; }
 
-    // ── Extender saveMedValor para contornos ─────────────────────
+    // ── saveMedValor extendido para contornos ────────────────────
     const _origSave = window.saveMedValor;
     window.saveMedValor = function(){
       if(!CONTORNO_KEYS.includes(window.medKeyActual)) return _origSave.call(this);
@@ -1126,296 +1152,384 @@ document.addEventListener('DOMContentLoaded', function(){
       if(!m){ m={date:window.medFechaActual,peso:null,imc:null,grasa:null,muscular:null,pliegues:{p6:null,p8:null},contornos:{}}; forge.bodyMetrics.push(m); forge.bodyMetrics.sort((a,b)=>a.date.localeCompare(b.date)); }
       setContorno(m,window.medKeyActual,parseFloat(val));
       saveDB();
-      const def=CONTORNO_DEF.find(d=>d.key===window.medKeyActual);
-      showToast('Guardado: '+def.label,2000,'ok');
-      window.medPaso='selector'; document.getElementById('med-modal-title').textContent='Añadir medición';
+      showToast('Guardado',2000,'ok');
+      window.medPaso='cat'; window.medCatActual=null;
+      document.getElementById('med-modal-title').textContent='Añadir medición';
       renderMedModal(); renderProgCuerpo();
     };
 
     const _origBorrar = window.borrarMedValor;
     window.borrarMedValor = function(){
       if(!CONTORNO_KEYS.includes(window.medKeyActual)) return _origBorrar.call(this);
-      if(!confirm('Borrar este dato?')) return;
+      if(!confirm('¿Borrar este dato?')) return;
       const m=(forge.bodyMetrics||[]).find(x=>x.date===window.medFechaActual);
       if(m) setContorno(m,window.medKeyActual,null);
-      saveDB(); showToast('Dato eliminado');
-      window.medPaso='selector'; document.getElementById('med-modal-title').textContent='Añadir medición';
+      saveDB();
+      showToast('Dato eliminado');
+      window.medPaso='cat'; window.medCatActual=null;
+      document.getElementById('med-modal-title').textContent='Añadir medición';
       renderMedModal(); renderProgCuerpo();
     };
 
-    // ── CSS del modal ────────────────────────────────────────────
-    if(!document.getElementById('med-modal-v155-css')){
-      const st=document.createElement('style'); st.id='med-modal-v155-css';
+    // ── CSS ──────────────────────────────────────────────────────
+    if(!document.getElementById('med-v163-css')){
+      const st=document.createElement('style'); st.id='med-v163-css';
       st.textContent=`
-        .mv5-metric-btn{
-          display:flex;align-items:center;justify-content:space-between;
-          width:100%;padding:14px 16px;border-radius:var(--rl);margin-bottom:8px;
+        /* Botón volver */
+        .mv3-back{display:flex;align-items:center;gap:6px;background:none;border:none;
+          color:var(--orange);font-size:13px;font-weight:700;cursor:pointer;
+          padding:0;margin-bottom:16px;font-family:var(--fb);-webkit-tap-highlight-color:transparent}
+
+        /* Card de categoría */
+        .mv3-cat{display:flex;align-items:center;justify-content:space-between;
+          padding:15px 16px;border-radius:var(--rl);margin-bottom:8px;
           background:var(--bg3);border:1.5px solid var(--border2);
-          cursor:pointer;text-align:left;font-family:var(--fb);
-          transition:border-color .12s,background .12s;
-        }
-        .mv5-metric-btn:active{ background:var(--bg4); }
-        .mv5-metric-btn.has-val{ border-color:var(--green); }
-        .mv5-metric-btn.has-val .mv5-sub{ color:var(--green); font-weight:600; }
-        .mv5-metric-label{ font-size:15px;font-weight:700;color:var(--ink); }
-        .mv5-sub{ font-size:12px;color:var(--ink3);margin-top:2px; }
-        .mv5-chevron{ width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0; }
+          cursor:pointer;transition:border-color .12s,background .12s;
+          -webkit-tap-highlight-color:transparent}
+        .mv3-cat:active{background:var(--bg4);}
+        .mv3-cat-left{display:flex;align-items:center;gap:14px}
+        .mv3-cat-icon{width:40px;height:40px;border-radius:12px;background:var(--bg2);
+          display:flex;align-items:center;justify-content:center;
+          color:var(--orange);flex-shrink:0}
+        .mv3-cat-label{font-size:15px;font-weight:700;color:var(--ink)}
+        .mv3-cat-sub{font-size:11px;color:var(--ink3);margin-top:2px}
+        .mv3-cat-chev{color:var(--ink3);flex-shrink:0}
 
-        .mv5-sel-wrap{
-          display:flex;align-items:center;gap:8px;justify-content:center;
-          margin:4px 0 20px;
-        }
-        .mv5-sel-col{ display:flex;flex-direction:column;align-items:center;gap:6px;flex:1; }
-        .mv5-sel-lbl{ font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:700; }
-        .mv5-sel{
-          width:100%;border:1.5px solid var(--border2);border-radius:12px;
-          background:var(--bg3);color:var(--ink);
-          font-size:22px;font-weight:700;text-align:center;
-          padding:10px 4px;appearance:none;-webkit-appearance:none;
-          cursor:pointer;font-family:var(--fb);
-        }
-        .mv5-sel:focus{ outline:none;border-color:var(--orange); }
-        .mv5-sep{ font-size:28px;font-weight:700;color:var(--ink3);padding:0 2px;margin-top:22px; }
-        .mv5-unit{ font-size:15px;font-weight:700;color:var(--ink3);margin-top:26px;flex-shrink:0; }
-
-        .mv5-volver{
-          background:none;border:none;color:var(--orange);cursor:pointer;
-          font-size:13px;font-weight:700;display:flex;align-items:center;gap:4px;
-          margin-bottom:16px;padding:0;font-family:var(--fb);
-        }
-        .mv5-emoji{ font-size:32px;margin-bottom:6px; }
-        .mv5-valor-label{ font-size:18px;font-weight:800;color:var(--ink);margin-bottom:2px; }
-        .mv5-fecha-txt{ font-size:12px;color:var(--ink3); }
-        .mv5-borrar{
-          background:none;border:none;color:var(--red);cursor:pointer;
-          font-size:12px;width:100%;margin-top:12px;font-family:var(--fb);padding:4px;
-        }
-
-        .mv5-fecha-bar{
-          display:flex;align-items:center;gap:8px;margin-bottom:18px;
-          padding:10px 14px;border-radius:var(--rl);
+        /* Card de métrica */
+        .mv3-met{display:flex;align-items:center;justify-content:space-between;
+          padding:13px 16px;border-radius:var(--rl);margin-bottom:7px;
           background:var(--bg3);border:1.5px solid var(--border2);
-        }
-        .mv5-fecha-icon{ font-size:18px;flex-shrink:0; }
-        .mv5-fecha-txt2{ font-size:14px;font-weight:600;color:var(--ink);flex:1; }
-        .mv5-fecha-change{ background:none;border:none;color:var(--orange);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--fb); }
+          cursor:pointer;transition:border-color .12s;
+          -webkit-tap-highlight-color:transparent}
+        .mv3-met:active{background:var(--bg4);}
+        .mv3-met.has-val{border-color:var(--green);}
+        .mv3-met-name{font-size:14px;font-weight:700;color:var(--ink)}
+        .mv3-met-val{font-size:12px;margin-top:2px;font-weight:600}
+        .mv3-met-val.ok{color:var(--green)}
+        .mv3-met-val.empty{color:var(--ink3)}
+
+        /* Selects iOS */
+        .mv3-sel-row{display:flex;align-items:flex-start;gap:6px;margin:8px 0 20px}
+        .mv3-sel-col{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1}
+        .mv3-sel-lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
+          color:var(--ink3);font-weight:700}
+        .mv3-sel{width:100%;border:1.5px solid var(--border2);border-radius:12px;
+          background:var(--bg3);color:var(--ink);font-size:20px;font-weight:700;
+          text-align:center;padding:10px 2px;appearance:none;-webkit-appearance:none;
+          cursor:pointer;font-family:var(--fb)}
+        .mv3-sel:focus{outline:none;border-color:var(--orange)}
+        .mv3-sep{font-size:24px;font-weight:700;color:var(--ink3);margin-top:20px;flex-shrink:0}
+        .mv3-unit{font-size:14px;font-weight:700;color:var(--ink3);margin-top:24px;flex-shrink:0}
+
+        /* Cabecera de valor */
+        .mv3-val-head{text-align:center;margin-bottom:16px}
+        .mv3-val-title{font-size:18px;font-weight:800;color:var(--ink)}
+        .mv3-val-date{font-size:12px;color:var(--ink3);margin-top:3px}
+
+        /* Fecha bar */
+        .mv3-fecha{display:flex;align-items:center;gap:10px;padding:11px 14px;
+          border-radius:var(--rl);background:var(--bg3);border:1.5px solid var(--border2);
+          margin-bottom:16px}
+        .mv3-fecha-txt{font-size:14px;font-weight:600;color:var(--ink);flex:1}
+        .mv3-fecha-btn{background:none;border:none;color:var(--orange);font-size:12px;
+          font-weight:700;cursor:pointer;font-family:var(--fb)}
+
+        /* Borrar */
+        .mv3-borrar{background:none;border:none;color:var(--red);cursor:pointer;
+          font-size:12px;width:100%;margin-top:12px;font-family:var(--fb);padding:4px}
       `;
       document.head.appendChild(st);
     }
 
-    // ── Helpers de selects nativos ───────────────────────────────
-    function makeSelect(id, options, selVal, cls){
-      // options: array de {val, label} o strings
-      let html = '<select id="'+id+'" class="mv5-sel'+(cls?' '+cls:'')+'">';
-      options.forEach(o=>{
-        const v = typeof o==='object'?o.val:o;
-        const l = typeof o==='object'?o.label:o;
-        html += '<option value="'+v+'"'+(String(v)===String(selVal)?' selected':'')+'>'+l+'</option>';
+    // ── Helper: select nativo ────────────────────────────────────
+    function selHtml(id, opts, selVal, cls){
+      let h='<select id="'+id+'" class="mv3-sel'+(cls?' '+cls:'')+'">';
+      opts.forEach(o=>{
+        const v=typeof o==='object'?o.v:o;
+        const l=typeof o==='object'?o.l:o;
+        h+='<option value="'+v+'"'+(String(v)===String(selVal)?' selected':'')+'>'+l+'</option>';
       });
-      html += '</select>';
+      return h+'</select>';
+    }
+    function selCol(label,html){ return '<div class="mv3-sel-col"><div class="mv3-sel-lbl">'+label+'</div>'+html+'</div>'; }
+
+    // ── Builds de wheels por tipo ────────────────────────────────
+    function buildWheels(metKey, valActual){
+      const isPeso=metKey==='peso';
+      const isPorc=['grasa','muscular'].includes(metKey);
+      const isPerim=CONTORNO_KEYS.includes(metKey);
+      const isPliegue=metKey==='p6'||metKey==='p8';
+
+      let html='<div class="mv3-sel-row">';
+      if(isPeso){
+        const v=parseFloat(valActual)||99;
+        const kg=Math.floor(v); const dec=Math.round((v%1)*10);
+        const kgOpts=Array.from({length:161},(_,i)=>({v:i+40,l:(i+40)+' kg'}));
+        const dOpts=Array.from({length:10},(_,i)=>({v:i,l:'.'+i}));
+        html+=selCol('Kilos',selHtml('mv3-e',kgOpts,kg));
+        html+='<div class="mv3-sep">,</div>';
+        html+=selCol('Décimas',selHtml('mv3-d',dOpts,dec));
+        html+='<div class="mv3-unit">kg</div>';
+      } else if(isPorc){
+        const v=parseFloat(valActual)||(metKey==='grasa'?28:45);
+        const ent=Math.floor(v); const dec=Math.round((v%1)*10);
+        const eOpts=Array.from({length:100},(_,i)=>({v:i,l:String(i)}));
+        const dOpts=Array.from({length:10},(_,i)=>({v:i,l:'.'+i}));
+        html+=selCol('Entero',selHtml('mv3-e',eOpts,ent));
+        html+='<div class="mv3-sep">,</div>';
+        html+=selCol('Decimal',selHtml('mv3-d',dOpts,dec));
+        html+='<div class="mv3-unit">%</div>';
+      } else if(isPerim){
+        const v=parseFloat(valActual)||85;
+        const ent=Math.floor(v); const dec=(v%1)>=0.5?5:0;
+        const eOpts=Array.from({length:121},(_,i)=>({v:i+40,l:(i+40)+' cm'}));
+        const dOpts=[{v:0,l:'.0'},{v:5,l:'.5'}];
+        html+=selCol('Entero',selHtml('mv3-e',eOpts,ent));
+        html+='<div class="mv3-sep">,</div>';
+        html+=selCol('Decimal',selHtml('mv3-d',dOpts,dec));
+        html+='<div class="mv3-unit">cm</div>';
+      } else if(isPliegue){
+        const v=parseFloat(valActual)||140;
+        const eOpts=Array.from({length:251},(_,i)=>({v:i+50,l:(i+50)+' mm'}));
+        html+=selCol('Milímetros',selHtml('mv3-e',eOpts,Math.round(v)));
+        html+='<div class="mv3-unit">mm</div>';
+      } else { // IMC
+        const v=parseFloat(valActual)||25;
+        const ent=Math.floor(v); const dec=Math.round((v%1)*10);
+        const eOpts=Array.from({length:51},(_,i)=>({v:i+10,l:String(i+10)}));
+        const dOpts=Array.from({length:10},(_,i)=>({v:i,l:'.'+i}));
+        html+=selCol('Entero',selHtml('mv3-e',eOpts,ent));
+        html+='<div class="mv3-sep">,</div>';
+        html+=selCol('Decimal',selHtml('mv3-d',dOpts,dec));
+      }
+      html+='</div>';
       return html;
     }
 
-    function buildPesoSels(valActual){
-      const v=parseFloat(valActual)||99;
-      const kg=Math.floor(v), gr=Math.round((v%1)*10);
-      const kgOpts=[]; for(let i=40;i<=200;i++) kgOpts.push({val:i,label:i+' kg'});
-      const grOpts=[]; for(let i=0;i<=9;i++) grOpts.push({val:i,label:'.'+i});
-      return `<div class="mv5-sel-wrap">
-        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Kilos</div>${makeSelect('mv5-e',kgOpts,kg)}</div>
-        <div class="mv5-sep">.</div>
-        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Décimas</div>${makeSelect('mv5-d',grOpts,gr)}</div>
-        <div class="mv5-unit">kg</div>
-      </div>`;
-    }
-
-    function buildPorcSels(valActual, unit){
-      const v=parseFloat(valActual)||0;
-      const ent=Math.floor(v), dec=Math.round((v%1)*10);
-      const entOpts=[]; for(let i=0;i<=99;i++) entOpts.push({val:i,label:i});
-      const decOpts=[]; for(let i=0;i<=9;i++) decOpts.push({val:i,label:'.'+i});
-      return `<div class="mv5-sel-wrap">
-        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Entero</div>${makeSelect('mv5-e',entOpts,ent)}</div>
-        <div class="mv5-sep">.</div>
-        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Decimal</div>${makeSelect('mv5-d',decOpts,dec)}</div>
-        <div class="mv5-unit">${unit}</div>
-      </div>`;
-    }
-
-    function buildContornoSels(valActual){
-      const v=parseFloat(valActual)||85;
-      const ent=Math.floor(v);
-      const decRaw=(v%1)>=0.5?5:0;
-      const entOpts=[]; for(let i=40;i<=200;i++) entOpts.push({val:i,label:i});
-      const decOpts=[{val:0,label:'.0'},{val:5,label:'.5'}];
-      return `<div class="mv5-sel-wrap">
-        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Entero</div>${makeSelect('mv5-e',entOpts,ent)}</div>
-        <div class="mv5-sep">.</div>
-        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Decimal</div>${makeSelect('mv5-d',decOpts,decRaw)}</div>
-        <div class="mv5-unit">cm</div>
-      </div>`;
-    }
-
-    function buildPliegSels(valActual){
-      const v=parseFloat(valActual)||140;
-      const entOpts=[]; for(let i=50;i<=350;i++) entOpts.push({val:i,label:i});
-      return `<div class="mv5-sel-wrap">
-        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Milímetros</div>${makeSelect('mv5-e',entOpts,Math.round(v))}</div>
-        <div class="mv5-unit">mm</div>
-      </div>`;
-    }
-
-    function buildImcSels(valActual){
-      const v=parseFloat(valActual)||25;
-      const ent=Math.floor(v), dec=Math.round((v%1)*10);
-      const entOpts=[]; for(let i=10;i<=60;i++) entOpts.push({val:i,label:i});
-      const decOpts=[]; for(let i=0;i<=9;i++) decOpts.push({val:i,label:'.'+i});
-      return `<div class="mv5-sel-wrap">
-        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Entero</div>${makeSelect('mv5-e',entOpts,ent)}</div>
-        <div class="mv5-sep">.</div>
-        <div class="mv5-sel-col"><div class="mv5-sel-lbl">Decimal</div>${makeSelect('mv5-d',decOpts,dec)}</div>
-      </div>`;
-    }
-
-    function getValFromSels(){
-      const eEl=document.getElementById('mv5-e');
-      const dEl=document.getElementById('mv5-d');
+    function getValFromWheels(){
+      const eEl=document.getElementById('mv3-e');
+      const dEl=document.getElementById('mv3-d');
       if(!eEl) return null;
       const e=parseFloat(eEl.value)||0;
       const d=dEl?parseFloat(dEl.value)||0:null;
-      return d!==null ? parseFloat(e+'.'+d) : e;
+      return d!==null?parseFloat(e+'.'+d):e;
     }
 
-    function syncHiddenInput(){
-      const v=getValFromSels();
-      const inp=document.getElementById('med-val-input');
-      if(inp&&v!==null) inp.value=String(v);
-    }
-
-    // ── Formatear fecha legible ──────────────────────────────────
+    // ── Fecha legible ────────────────────────────────────────────
+    const MESES_L=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     function fechaLegible(str){
       if(!str) return '';
       const [y,m,d]=str.split('-');
-      const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-      return d+' de '+meses[parseInt(m)-1]+' '+y;
+      return d+' de '+MESES_L[parseInt(m)-1]+' de '+y;
     }
 
-    // ── renderMedModal DEFINITIVO ────────────────────────────────
+    // ── Último valor de una métrica ──────────────────────────────
+    function getLastVal(key){
+      const mets=(forge.bodyMetrics||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+      for(const m of mets){
+        let v;
+        if(key==='p6'||key==='p8') v=m.pliegues?.[key];
+        else if(CONTORNO_KEYS.includes(key)) v=m.contornos?.[key];
+        else v=m[key];
+        if(v!=null) return {val:v,fecha:m.date};
+      }
+      return null;
+    }
+
+    function getValForDate(key, fecha){
+      const m=(forge.bodyMetrics||[]).find(x=>x.date===fecha);
+      if(!m) return null;
+      if(key==='p6'||key==='p8') return m.pliegues?.[key]??null;
+      if(CONTORNO_KEYS.includes(key)) return m.contornos?.[key]??null;
+      return m[key]??null;
+    }
+
+    // ── Chevron SVG ──────────────────────────────────────────────
+    const CHEV='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="mv3-cat-chev"><polyline points="9 18 15 12 9 6"/></svg>';
+
+    // ══════════════════════════════════════════════════════════════
+    //  renderMedModal DEFINITIVO — 3 pasos
+    // ══════════════════════════════════════════════════════════════
     window.renderMedModal = function(){
-      const body=document.getElementById('med-modal-body');
+      const body = document.getElementById('med-modal-body');
       if(!body) return;
 
-      if(window.medPaso==='selector'){
-        const existing=(forge.bodyMetrics||[]).find(m=>m.date===window.medFechaActual);
+      // Inicializar estado si no existe
+      if(!window.medPaso || window.medPaso==='selector') window.medPaso='cat';
 
-        // Barra de fecha
-        const fechaBar=`<div class="mv5-fecha-bar">
-          <div class="mv5-fecha-icon">◈</div>
-          <div class="mv5-fecha-txt2">${fechaLegible(window.medFechaActual)}</div>
-          <button class="mv5-fecha-change" onclick="window._mv5CambiarFecha()">Cambiar</button>
-        </div>`;
+      // ── PASO 1: Selección de categoría ──────────────────────────
+      if(window.medPaso==='cat'){
+        document.getElementById('med-modal-title').textContent='Añadir medición';
 
-        const metricasHtml=MED_METRICAS.map(m=>{
-          let val;
-          if(m.key==='p6'||m.key==='p8') val=existing?.pliegues?.[m.key];
-          else if(CONTORNO_KEYS.includes(m.key)) val=existing?.contornos?.[m.key];
-          else val=existing?.[m.key];
-          const hasVal=val!=null;
-          const valStr=hasVal?String(val)+(m.unit?' '+m.unit:''):null;
-          return '<button class="mv5-metric-btn'+(hasVal?' has-val':'')+'" onclick="window._mv5AbrirValor(''+m.key+'')">'
-            +'<div style="flex:1;min-width:0">'
-            +'<div class="mv5-metric-label">'+m.label+'</div>'
-            +'<div class="mv5-sub">'+(valStr?'Registrado: '+valStr:'Sin dato para esta fecha')+'</div>'
-            +'</div>'
-            +'<svg class="mv5-chevron" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>'
-            +'</button>';
+        // Fecha bar
+        const fechaBar='<div class="mv3-fecha">'
+          +'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--ink3)" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
+          +'<span class="mv3-fecha-txt">'+fechaLegible(window.medFechaActual)+'</span>'
+          +'<button class="mv3-fecha-btn" onclick="window._mv3CambiarFecha()">Cambiar</button>'
+          +'</div>';
+
+        // Cards de categoría
+        const cats = CATEGORIAS.map(cat=>{
+          // Contar métricas con dato en la fecha actual
+          const metricas = cat.metricas;
+          const conDato = metricas.filter(k=> getValForDate(k, window.medFechaActual)!=null).length;
+          const sub = conDato>0 ? conDato+'/'+metricas.length+' registradas' : 'Sin datos para hoy';
+          return '<button class="mv3-cat" onclick="window._mv3Cat(''+cat.id+')">'
+            +'<div class="mv3-cat-left">'
+            +'<div class="mv3-cat-icon">'+cat.icon+'</div>'
+            +'<div><div class="mv3-cat-label">'+cat.label+'</div>'
+            +'<div class="mv3-cat-sub">'+sub+'</div></div>'
+            +'</div>'+CHEV+'</button>';
         }).join('');
 
         body.innerHTML=fechaBar
-          +'<div style="font-size:11px;color:var(--ink3);letter-spacing:1.2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">Que quieres registrar</div>'
-          +metricasHtml;
+          +'<div style="font-size:10px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:10px">Elige la categoría</div>'
+          +cats;
 
-        window._mv5CambiarFecha=function(){
-          // Mostrar date picker nativo
-          const inp=document.createElement('input');
-          inp.type='date';
-          const hoy=window.medFechaActual||new Date().toISOString().split('T')[0];
-          inp.value=hoy;
-          inp.max=new Date().toISOString().split('T')[0];
-          inp.min='2014-01-01';
+        window._mv3CambiarFecha=function(){
+          const inp=document.createElement('input'); inp.type='date';
+          inp.value=window.medFechaActual||new Date().toISOString().split('T')[0];
+          inp.max=new Date().toISOString().split('T')[0]; inp.min='2014-01-01';
           inp.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0';
           document.body.appendChild(inp);
           inp.addEventListener('change',()=>{
-            if(inp.value){ window.medFechaActual=inp.value; renderMedModal(); }
+            if(inp.value) window.medFechaActual=inp.value;
             document.body.removeChild(inp);
+            renderMedModal();
           });
           inp.click(); inp.focus();
         };
-
-        window._mv5AbrirValor=function(key){
-          window.medKeyActual=key;
-          window.medPaso='valor';
-          const m=MED_METRICAS.find(x=>x.key===key);
-          document.getElementById('med-modal-title').textContent=m?m.label:key;
+        window._mv3Cat=function(catId){
+          window.medCatActual=catId;
+          window.medPaso='met';
           renderMedModal();
         };
+      }
 
-      } else {
-        // ── Pantalla de valor ──────────────────────────────────
-        const m=MED_METRICAS.find(x=>x.key===window.medKeyActual);
-        const existing=(forge.bodyMetrics||[]).find(x=>x.date===window.medFechaActual);
-        let valActual;
-        if(window.medKeyActual==='p6'||window.medKeyActual==='p8') valActual=existing?.pliegues?.[window.medKeyActual]||'';
-        else if(CONTORNO_KEYS.includes(window.medKeyActual)) valActual=existing?.contornos?.[window.medKeyActual]||'';
-        else valActual=existing?.[window.medKeyActual]||'';
+      // ── PASO 2: Selección de métrica dentro de la categoría ─────
+      else if(window.medPaso==='met'){
+        const cat = CATEGORIAS.find(c=>c.id===window.medCatActual);
+        if(!cat){ window.medPaso='cat'; return renderMedModal(); }
+        document.getElementById('med-modal-title').textContent=cat.label;
 
-        const key=window.medKeyActual;
-        let selsHtml='';
-        if(key==='peso')                               selsHtml=buildPesoSels(valActual);
-        else if(key==='grasa'||key==='muscular')       selsHtml=buildPorcSels(valActual, m?.unit||'%');
-        else if(CONTORNO_KEYS.includes(key))           selsHtml=buildContornoSels(valActual);
-        else if(key==='p6'||key==='p8')                selsHtml=buildPliegSels(valActual);
-        else                                           selsHtml=buildImcSels(valActual);
+        const back='<button class="mv3-back" onclick="window.medPaso='cat';renderMedModal()">'
+          +'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>'
+          +' Categorías</button>';
 
-        const hasVal=valActual!==null&&valActual!=='';
+        const mets=cat.metricas.map(key=>{
+          const mDef=MED_METRICAS.find(x=>x.key===key);
+          if(!mDef) return '';
+          const last=getLastVal(key);
+          const forDate=getValForDate(key,window.medFechaActual);
+          let subTxt, hasVal=false;
+          if(forDate!=null){
+            subTxt='Hoy: '+forDate+(mDef.unit?' '+mDef.unit:'');
+            hasVal=true;
+          } else if(last){
+            subTxt='Último: '+last.val+(mDef.unit?' '+mDef.unit:'')+' ('+fechaLegible(last.fecha)+')';
+          } else {
+            subTxt='Sin registros';
+          }
+          return '<button class="mv3-met'+(hasVal?' has-val':'')+'" onclick="window._mv3Metric(''+key+')">'
+            +'<div style="flex:1;min-width:0">'
+            +'<div class="mv3-met-name">'+mDef.label+'</div>'
+            +'<div class="mv3-met-val '+(hasVal?'ok':'empty')+'">'+subTxt+'</div>'
+            +'</div>'+CHEV+'</button>';
+        }).join('');
 
-        body.innerHTML=
-          '<button class="mv5-volver" onclick="window.medPaso='selector';renderMedModal()">← Volver</button>'
-          +'<div style="text-align:center;margin-bottom:16px">'
-          +'<div class="mv5-valor-label">'+(m?m.label:key)+'</div>'
-          +'<div class="mv5-fecha-txt">'+fechaLegible(window.medFechaActual)+'</div>'
-          +'</div>'
-          +selsHtml
-          +'<input type="hidden" id="med-val-input" value="'+(valActual||'')+'">'
-          +'<button class="btn btn-p" style="margin-top:4px" onclick="window._mv5Guardar()">Guardar '+(m?m.label:'')+'</button>'
-          +(hasVal?'<button class="mv5-borrar" onclick="window._mv5Borrar()">Borrar este dato</button>':'');
+        body.innerHTML=back
+          +'<div style="font-size:10px;color:var(--ink3);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:10px">Elige la métrica</div>'
+          +mets;
 
-        // Sincronizar hidden input cuando cambian los selects
+        window._mv3Metric=function(key){
+          window.medKeyActual=key;
+          window.medPaso='val';
+          renderMedModal();
+        };
+      }
+
+      // ── PASO 3: Ingreso de dato con wheel pickers ───────────────
+      else if(window.medPaso==='val'){
+        const cat=CATEGORIAS.find(c=>c.id===window.medCatActual);
+        const mDef=MED_METRICAS.find(x=>x.key===window.medKeyActual);
+        if(!mDef){ window.medPaso='cat'; return renderMedModal(); }
+
+        const catLabel=cat?cat.label:'';
+        const valActual=getValForDate(window.medKeyActual,window.medFechaActual);
+        const hasVal=valActual!=null;
+
+        const back='<button class="mv3-back" onclick="window.medPaso='met';renderMedModal()">'
+          +'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>'
+          +' '+catLabel+'</button>';
+
+        const head='<div class="mv3-val-head">'
+          +'<div class="mv3-val-title">'+mDef.label+'</div>'
+          +'<div class="mv3-val-date">'+fechaLegible(window.medFechaActual)+'</div>'
+          +'</div>';
+
+        const wheels=buildWheels(window.medKeyActual, hasVal?valActual:'');
+        const hidden='<input type="hidden" id="med-val-input" value="'+(hasVal?valActual:'')+'">';
+
+        const borrar=hasVal
+          ?'<button class="mv3-borrar" onclick="window._mv3Borrar()">Borrar este dato</button>'
+          :'';
+
+        body.innerHTML=back+head+wheels+hidden
+          +'<button class="btn btn-p" style="margin-top:4px" onclick="window._mv3Guardar()">Guardar '+mDef.label+'</button>'
+          +borrar;
+
+        // Sync hidden input al cambiar selects
         setTimeout(()=>{
-          ['mv5-e','mv5-d'].forEach(id=>{
+          ['mv3-e','mv3-d'].forEach(id=>{
             const el=document.getElementById(id);
-            if(el) el.addEventListener('change',syncHiddenInput);
+            if(el) el.addEventListener('change',()=>{
+              const v=getValFromWheels();
+              const inp=document.getElementById('med-val-input');
+              if(inp&&v!==null) inp.value=String(v);
+            });
           });
-          syncHiddenInput(); // valor inicial
+          // Valor inicial
+          const v=getValFromWheels();
+          const inp=document.getElementById('med-val-input');
+          if(inp&&v!==null) inp.value=String(v);
         },0);
 
-        window._mv5Guardar=function(){
-          syncHiddenInput();
+        window._mv3Guardar=function(){
+          const v=getValFromWheels();
+          if(v===null||isNaN(v)){ showToast('Selecciona un valor'); return; }
+          document.getElementById('med-val-input').value=String(v);
           saveMedValor();
+          // Volver al paso de métricas
+          window.medPaso='met';
+          renderMedModal();
         };
-        window._mv5Borrar=function(){
+        window._mv3Borrar=function(){
           document.getElementById('med-val-input').value='';
           borrarMedValor();
+          window.medPaso='met';
+          renderMedModal();
         };
       }
     };
 
+    // Al abrir el modal, resetear al paso 1
+    const _origOpenMed=window.openMedModal;
+    if(typeof _origOpenMed==='function'){
+      window.openMedModal=function(){
+        window.medPaso='cat';
+        window.medCatActual=null;
+        _origOpenMed();
+      };
+    }
+
     // ── renderProgCuerpo: card de contornos ──────────────────────
     const _origRenderCuerpo=window.renderProgCuerpo;
-    window.renderProgCuerpo=function(){
-      _origRenderCuerpo.call(this);
-      _injectContornosCard();
-    };
+    if(typeof _origRenderCuerpo==='function'){
+      window.renderProgCuerpo=function(){
+        _origRenderCuerpo.call(this);
+        _injectContornosCard();
+      };
+    }
     function _injectContornosCard(){
       const mets=(forge.bodyMetrics||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
       const container=document.getElementById('cuerpo-charts'); if(!container) return;
@@ -1430,24 +1544,24 @@ document.addEventListener('DOMContentLoaded', function(){
       const rows=[
         cintura!=null?'<div class="body-med-row"><div class="body-med-lbl">Cintura</div><div class="body-med-val" style="color:var(--teal)">'+cintura+' cm</div></div>':'',
         cadera!=null?'<div class="body-med-row"><div class="body-med-lbl">Cadera</div><div class="body-med-val" style="color:var(--teal)">'+cadera+' cm</div></div>':'',
-        biceps!=null?'<div class="body-med-row"><div class="body-med-lbl">Biceps</div><div class="body-med-val" style="color:var(--teal)">'+biceps+' cm</div></div>':'',
-        rcc!=null?'<div class="body-med-row"><div class="body-med-lbl" style="font-size:11px;color:var(--ink3)">Indice cintura/cadera</div><div style="font-size:13px;font-weight:700;color:'+rccColor+'">'+rcc+'</div></div>':'',
+        biceps!=null?'<div class="body-med-row"><div class="body-med-lbl">Bíceps</div><div class="body-med-val" style="color:var(--teal)">'+biceps+' cm</div></div>':'',
+        rcc!=null?'<div class="body-med-row"><div class="body-med-lbl" style="font-size:11px;color:var(--ink3)">Cintura/cadera</div><div style="font-size:13px;font-weight:700;color:'+rccColor+'">'+rcc+'</div></div>':'',
       ].filter(Boolean).join('');
       const isOpen=window._bodyAccState?.['contornos']||false;
-      const subStr=[cintura!=null?'Cintura '+cintura+'cm':'',cadera!=null?'Cadera '+cadera+'cm':'',biceps!=null?'Biceps '+biceps+'cm':''].filter(Boolean).join(' · ')||'Sin datos';
+      const subStr=[cintura!=null?'Cintura '+cintura:'',cadera!=null?'Cadera '+cadera:'',biceps!=null?'Bíceps '+biceps:''].filter(Boolean).join(' · ')||'Sin datos';
       const html='<div id="contornos-acc-card" class="body-acc-card">'
         +'<div class="acc-head" onclick="window._bodyAccState=window._bodyAccState||{};window._bodyAccState['contornos']=!window._bodyAccState['contornos'];document.getElementById('contornos-acc-body').style.display=window._bodyAccState['contornos']?'block':'none';this.querySelector('.acc-chevron').style.transform=window._bodyAccState['contornos']?'rotate(180deg)':'';">'
-        +'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--ink)">Contornos corporales</div>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--ink)">Perímetros</div>'
         +'<div style="font-size:11px;color:var(--ink3);margin-top:2px">'+subStr+'</div></div>'
         +'<svg class="acc-chevron" viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0;transition:transform .2s;transform:'+(isOpen?'rotate(180deg)':'')+'"><polyline points="6 9 12 15 18 9"/></svg>'
         +'</div>'
         +'<div id="contornos-acc-body" class="acc-body" style="display:'+(isOpen?'block':'none')+'">'
-        +(rows||'<div style="color:var(--ink3);font-size:13px;padding:8px 0">Sin registros de contornos aun.</div>')
+        +(rows||'<div style="color:var(--ink3);font-size:13px;padding:8px 0">Sin registros de perímetros aún.</div>')
         +'</div></div>';
       if(existingCard){ existingCard.outerHTML=html; } else { container.insertAdjacentHTML('beforeend',html); }
     }
 
-    console.log('[MELQART v155] renderMedModal instalado — selects nativos iOS');
+    console.log('[MELQART v163] Medidas corporales rediseñadas — 3 pasos, wheels iOS');
   }
 });
 
@@ -2237,7 +2351,7 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 
-<!-- v159 — EXPORTAR: formato original de app.js + sección nutrición al final -->
+<!-- v163 — EXPORTAR: + contexto (objetivo peso, plan vigente, pauta nutricional) -->
 <script>
 (function(){
   function patchExport(){
@@ -2245,9 +2359,6 @@ document.addEventListener('DOMContentLoaded', function(){
 
     window.exportarSemana = function(){
 
-      // ═══════════════════════════════════════════════════════
-      // BLOQUE ORIGINAL — idéntico a app.js, sin cambios
-      // ═══════════════════════════════════════════════════════
       const semanas=parseInt(document.getElementById('export-semanas')?.value||'4');
       const hoy=new Date();
       const lunes=new Date(hoy);
@@ -2262,14 +2373,92 @@ document.addEventListener('DOMContentLoaded', function(){
       const fmtDur=s=>{ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; return h>0?(h+'h '+m+'m'):(m+'m '+sec+'s'); };
       const sep='-------------------------------';
       const lines=[];
+
+      // ══════════════════════════════════════════════════════
+      // BLOQUE 0: CONTEXTO DE REFERENCIA (nuevo)
+      // ══════════════════════════════════════════════════════
       lines.push(sep);
+      lines.push('CONTEXTO DE REFERENCIA');
+      lines.push(sep);
+
+      // Objetivo de peso
+      const po = forge.pesoObjetivo || {};
+      const pesoActual = (forge.bodyMetrics||[]).slice().sort((a,b)=>b.date.localeCompare(a.date))[0]?.peso;
+      if(po.objetivo || pesoActual){
+        lines.push('');
+        lines.push('OBJETIVO DE PESO');
+        if(pesoActual)  lines.push('  Peso actual:    '+pesoActual+' kg');
+        if(po.inicio)   lines.push('  Peso de inicio: '+po.inicio+' kg');
+        if(po.objetivo) lines.push('  Meta:           '+po.objetivo+' kg');
+        if(pesoActual && po.objetivo){
+          const resta = +(pesoActual - po.objetivo).toFixed(1);
+          lines.push('  Restante:       '+(resta>0?'+':'')+resta+' kg');
+        }
+      }
+
+      // Plan vigente
+      const plan = forge.plan;
+      if(plan){
+        lines.push('');
+        lines.push('PLAN VIGENTE');
+        lines.push('  Nombre: '+( plan.nombre||'—'));
+        if(plan.fechaInicio){
+          const fi = new Date(plan.fechaInicio+'T12:00:00');
+          lines.push('  Inicio: '+fi.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'}));
+        }
+        // Semana actual
+        if(plan.fechaInicio){
+          const msDesde = Date.now() - new Date(plan.fechaInicio+'T00:00:00').getTime();
+          const semActual = Math.max(1, Math.ceil(msDesde / (7*24*3600*1000)));
+          const totalSem = plan.semanas || 16;
+          lines.push('  Semana: '+semActual+' de '+totalSem);
+        }
+        // Metas del plan
+        if(plan.sentMeta)  lines.push('  Meta sentadilla:   '+plan.sentMeta+' kg');
+        if(plan.bancaMeta) lines.push('  Meta press banca:  '+plan.bancaMeta+' kg');
+        if(plan['10kMeta'])lines.push('  Meta 10K:          '+plan['10kMeta']+' min');
+      }
+
+      // Pauta nutricional
+      const targets = typeof NUTRITION_TARGETS!=='undefined' ? NUTRITION_TARGETS : null;
+      const porciones = typeof PORCIONES!=='undefined' ? PORCIONES : null;
+      if(targets || porciones){
+        lines.push('');
+        lines.push('PAUTA NUTRICIONAL DIARIA');
+        if(porciones){
+          // Usar PORCIONES que tiene los nombres legibles
+          porciones.forEach(p=>{
+            lines.push('  '+p.nombre+': '+p.meta+' porciones');
+          });
+        } else if(targets){
+          const nombres = {
+            proteinas:'Proteinas',cereales:'Cereales',frutas:'Frutas',
+            lacteoProtein:'Lacteo protein',lacteoDescremado:'Lacteo desc.',
+            lipidos:'Lipidos',aceites:'Aceites',verduras:'Verduras'
+          };
+          Object.entries(nombres).forEach(([k,l])=>{
+            if(targets[k]!=null) lines.push('  '+l+': '+targets[k]+' porciones');
+          });
+        }
+        if(targets){
+          const meta_ = typeof getAguaMeta==='function' ? getAguaMeta() : {vasos:10,mlPorVaso:250};
+          lines.push('  Agua: '+meta_.vasos+' vasos ('+meta_.vasos*meta_.mlPorVaso+' ml)');
+        }
+      }
+
+      lines.push('');
+      lines.push(sep);
+
+      // ══════════════════════════════════════════════════════
+      // BLOQUE ORIGINAL — sin cambios
+      // ══════════════════════════════════════════════════════
       const tituloRango=semanas===0?'HISTORIAL COMPLETO':('ULTIMAS '+semanas+' SEMANA'+(semanas>1?'S':''));
+      lines.push(sep);
       lines.push(tituloRango);
       lines.push(fechaInicio.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'})+' - '+domingo.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'}));
       lines.push(sep);
       lines.push('');
 
-      // Peso corporal
       const pesos=(forge.bodyMetrics||[]).filter(m=>{ const d=new Date(m.date+'T12:00:00'); return d>=fechaInicio&&d<=domingo; }).sort((a,b)=>a.date>b.date?1:-1);
       if(pesos.length){
         lines.push('PESO CORPORAL');
@@ -2281,16 +2470,17 @@ document.addEventListener('DOMContentLoaded', function(){
         lines.push('Sin sesiones en este periodo.');
       } else {
         const semanaStr=d=>{ const x=new Date(d); const l=new Date(x); l.setDate(x.getDate()-(x.getDay()||7)+1); return l.toLocaleDateString('es-CL',{day:'numeric',month:'long'}); };
-        let semActual='';
+        let semActual2='';
         lines.push('SESIONES ('+ses.length+' total)');
         lines.push('');
         ses.forEach(s=>{
           const sw=semanaStr(s.date);
-          if(sw!==semActual){ semActual=sw; lines.push('> '); lines.push('> Semana del '+sw); }
+          if(sw!==semActual2){ semActual2=sw; lines.push('> '); lines.push('> Semana del '+sw); }
           lines.push('> '+fmtDate(s.date)+' - '+(s.routineName||'Sesion libre'));
           if(s.elapsed) lines.push('> Duracion: '+fmtDur(s.elapsed));
           if(s.fcMedia) lines.push('> FC media: '+s.fcMedia+'bpm');
           if(s.kcal)    lines.push('> Calorias: '+s.kcal+'kcal');
+          if(s.pasos)   lines.push('> Pasos: '+s.pasos);
           (s.exercises||[]).forEach(ex=>{
             const e=getEx(ex.exId); if(!e) return;
             if(e.type==='warmup'||e.type==='stretch') return;
@@ -2309,16 +2499,14 @@ document.addEventListener('DOMContentLoaded', function(){
 
       lines.push(sep);
 
-      // ═══════════════════════════════════════════════════════
-      // SECCIÓN NUTRICIÓN — añadida, no modifica nada anterior
-      // ═══════════════════════════════════════════════════════
+      // ══════════════════════════════════════════════════════
+      // SECCIÓN NUTRICIÓN
+      // ══════════════════════════════════════════════════════
       const meta_    = typeof getAguaMeta==='function' ? getAguaMeta() : {vasos:10,mlPorVaso:250};
       const targets_ = typeof NUTRITION_TARGETS!=='undefined' ? NUTRITION_TARGETS
         : {proteinas:12,cereales:3,frutas:2,lacteoProtein:2,lacteoDescremado:1,lipidos:0.5,aceites:1,verduras:2};
       const comidas_ = typeof COMIDAS!=='undefined' ? COMIDAS : [];
       const totalC_  = comidas_.length || 7;
-
-      // Iterar días del rango
       const nutriDias=[];
       function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
       let cur = semanas===0
@@ -2340,18 +2528,11 @@ document.addEventListener('DOMContentLoaded', function(){
           const grupos=['proteinas','cereales','frutas','lacteoProtein','lacteoDescremado','lipidos','aceites','verduras'];
           let done=0,total=0;
           grupos.forEach(g=>{ const t=targets_[g]||0; total+=t; done+=Math.min(t,p[g]||0); });
-          nutriDias.push({
-            fecha:key, vasos, ml:vasos*meta_.mlPorVaso,
-            metaOk:vasos>=meta_.vasos?'S':'N', comidasOk,
-            prot:+(p.proteinas||0).toFixed(1),
-            cereal:+(p.cereales||0).toFixed(1),
-            fruta:+(p.frutas||0).toFixed(1),
-            lacteo:+((p.lacteoProtein||0)+(p.lacteoDescremado||0)).toFixed(1),
-            verd:+(p.verduras||0).toFixed(1),
-            lip:+(p.lipidos||0).toFixed(1),
-            aceit:+(p.aceites||0).toFixed(1),
-            adh:total>0?Math.round(done/total*100):0,
-          });
+          nutriDias.push({fecha:key,vasos,ml:vasos*meta_.mlPorVaso,metaOk:vasos>=meta_.vasos?'S':'N',comidasOk,
+            prot:+(p.proteinas||0).toFixed(1),cereal:+(p.cereales||0).toFixed(1),fruta:+(p.frutas||0).toFixed(1),
+            lacteo:+((p.lacteoProtein||0)+(p.lacteoDescremado||0)).toFixed(1),verd:+(p.verduras||0).toFixed(1),
+            lip:+(p.lipidos||0).toFixed(1),aceit:+(p.aceites||0).toFixed(1),
+            adh:total>0?Math.round(done/total*100):0});
         }
         cur=new Date(cur); cur.setDate(cur.getDate()+1);
       }
@@ -2360,17 +2541,14 @@ document.addEventListener('DOMContentLoaded', function(){
         lines.push('');
         lines.push('NUTRICION');
         lines.push('');
-        // cabecera
         lines.push('Fecha       Agua ml  Vasos    MetaH2O  Comidas  Prot  Cere  Frut  Lact  Verd  Lip   Aceit  Adh%');
         lines.push('-'.repeat(95));
         function c(v,w){ const s=String(v==null?'-':v); return s+' '.repeat(Math.max(1,w-s.length)); }
         nutriDias.forEach(d=>{
           const [y,m,dd]=d.fecha.split('-');
-          lines.push(
-            c(dd+'/'+m+'/'+y,12)+c(d.ml,9)+c(d.vasos+'/'+meta_.vasos,9)+c(d.metaOk,9)
+          lines.push(c(dd+'/'+m+'/'+y,12)+c(d.ml,9)+c(d.vasos+'/'+meta_.vasos,9)+c(d.metaOk,9)
             +c(d.comidasOk+'/'+totalC_,9)+c(d.prot,6)+c(d.cereal,6)+c(d.fruta,6)
-            +c(d.lacteo,6)+c(d.verd,6)+c(d.lip,6)+c(d.aceit,7)+c(d.adh+'%',5)
-          );
+            +c(d.lacteo,6)+c(d.verd,6)+c(d.lip,6)+c(d.aceit,7)+c(d.adh+'%',5));
         });
         const n=nutriDias.length;
         const proV=Math.round(nutriDias.reduce((a,d)=>a+d.vasos,0)/n);
@@ -2388,9 +2566,6 @@ document.addEventListener('DOMContentLoaded', function(){
 
       lines.push('Generado por MELQART - '+new Date().toLocaleDateString('es-CL'));
 
-      // ═══════════════════════════════════════════════════════
-      // ENVÍO — idéntico a app.js original
-      // ═══════════════════════════════════════════════════════
       const txt=lines.join('\n');
       if(navigator.clipboard){
         navigator.clipboard.writeText(txt).then(()=>showToast('Historial copiado al portapapeles',3000,'ok'));
