@@ -2419,3 +2419,14 @@ td, th {
 /* ── VERSIÓN ─────────────────────────────────────────── */
 /* v145: responsive shell improvements */
 
+
+
+/* MELQART v164 — nutrición últimos 3 días */
+.food-recent-days{margin-bottom:12px}
+.food-recent-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:700;margin-bottom:8px}
+.food-recent-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.food-day-chip{border:1px solid var(--border);background:var(--bg2);border-radius:14px;padding:9px 8px;text-align:left;color:var(--ink);font-family:var(--fb);cursor:pointer;min-width:0;box-shadow:0 1px 0 rgba(24,27,29,.025)}
+.food-day-chip.on{border-color:var(--orange);background:rgba(164,113,58,.08)}
+.food-day-chip-title{display:block;font-size:12px;font-weight:800;color:var(--ink);line-height:1.1;margin-bottom:4px}
+.food-day-chip-sub{display:block;font-size:10px;font-weight:600;color:var(--ink3);line-height:1.25;white-space:normal}
+@media(max-width:360px){.food-recent-row{grid-template-columns:1fr}.food-day-chip{display:flex;justify-content:space-between;gap:10px;align-items:center}.food-day-chip-sub{text-align:right}}

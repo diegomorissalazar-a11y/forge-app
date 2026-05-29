@@ -189,6 +189,7 @@
   </div>
   <!-- Registro -->
   <div id="food-registro" class="tab-panel on" style="padding:16px">
+    <div id="food-recent-days" class="food-recent-days" style="margin-bottom:12px"></div>
     <div id="food-stats-row" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px"></div>
     <!-- Agua -->
     <div class="card" style="margin-bottom:12px">
@@ -1633,6 +1634,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
   waitForBilateral();
 });
+/* ================================================================
    Parcha beep() y startRest() para sonar en TODOS los escenarios:
    - Con música de fondo (AudioContext suspendido)
    - Sin música
@@ -2580,5 +2582,99 @@ document.addEventListener('DOMContentLoaded', function(){
   patchExport();
 })();
 </script>
+
+<script>
+/* ================================================================
+   MELQART v164 — FIX AUDIO + UNILATERAL REST
+   Alcance: solo descanso/beep y botón L/R unilateral.
+   ================================================================ */
+(function(){
+  function v164Wait(){
+    if(typeof startRest !== 'function' || typeof renderSexBlock !== 'function'){
+      setTimeout(v164Wait,80); return;
+    }
+
+    // HTMLAudio fallback para iOS/Safari y contexto suspendido.
+    const beepEnd=document.getElementById('beep-end');
+    const beepShort=document.getElementById('beep-short');
+    const beepUrgent=document.getElementById('beep-urgent');
+    let unlocked=false;
+    function unlockAudio(){
+      if(unlocked) return;
+      [beepEnd,beepShort,beepUrgent].forEach(el=>{
+        if(!el) return;
+        try{
+          el.volume=0.01;
+          const p=el.play();
+          if(p&&p.then) p.then(()=>{el.pause();el.currentTime=0;el.volume=1;}).catch(()=>{el.volume=1;});
+          else { el.pause(); el.currentTime=0; el.volume=1; }
+        }catch(e){}
+      });
+      unlocked=true;
+      if(typeof getAudioCtx==='function'){
+        const ctx=getAudioCtx();
+        if(ctx&&ctx.state==='suspended') ctx.resume().catch(()=>{});
+      }
+    }
+    document.addEventListener('touchstart',unlockAudio,{passive:true});
+    document.addEventListener('click',unlockAudio,{passive:true});
+
+    function playHtml(el){
+      if(!el) return false;
+      try{ el.currentTime=0; const p=el.play(); if(p&&p.catch) p.catch(()=>{}); return true; }catch(e){ return false; }
+    }
+    window.beep=function(freq=880,dur=0.08,vol=0.3){
+      let htmlEl=freq>=1100?beepUrgent:(freq<=700?beepEnd:beepShort);
+      let htmlFallback=setTimeout(()=>playHtml(htmlEl),120);
+      try{
+        const ctx=typeof getAudioCtx==='function'?getAudioCtx():null;
+        if(!ctx){ clearTimeout(htmlFallback); playHtml(htmlEl); return; }
+        const doWeb=()=>{
+          try{
+            clearTimeout(htmlFallback);
+            const osc=ctx.createOscillator(), gain=ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.value=freq; osc.type='sine';
+            gain.gain.setValueAtTime(vol,ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
+            osc.start(ctx.currentTime); osc.stop(ctx.currentTime+dur);
+          }catch(e){ clearTimeout(htmlFallback); playHtml(htmlEl); }
+        };
+        if(ctx.state==='suspended') ctx.resume().then(doWeb).catch(()=>{clearTimeout(htmlFallback);playHtml(htmlEl);});
+        else doWeb();
+      }catch(e){ clearTimeout(htmlFallback); playHtml(htmlEl); }
+    };
+
+    // L y D/R deben iniciar descanso de forma independiente.
+    window.toggleLado=function(ei,si,lado){
+      if(!window.activeSession && typeof activeSession==='undefined') return;
+      const ses=window.activeSession||activeSession;
+      if(!ses) return;
+      const exObj=ses.exercises?.[ei]; if(!exObj) return;
+      const set=exObj.sets?.[si]; if(!set) return;
+      const field=lado==='L'?'_ladoL':'_ladoR';
+      const wasOn=!!set[field];
+      set[field]=!set[field];
+      const isOn=!!set[field];
+      const ambos=!!(set._ladoL&&set._ladoR);
+      set.done=ambos;
+
+      const container=document.getElementById('session-exs');
+      if(container) container.innerHTML=ses.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
+
+      // Solo al marcar ON se dispara descanso; al desmarcar no.
+      if(isOn && !wasOn){
+        const eDef=typeof getEx==='function'?getEx(exObj.exId):null;
+        const restSec=exObj._restSec || eDef?.restSec || ses.restSec || 120;
+        try{ startRest(restSec,ei,si); }catch(err){ console.error('[v164] startRest falló:',err); }
+      }
+    };
+    console.log('[MELQART v164] audio robusto + descanso unilateral L/D activo');
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',v164Wait);
+  else v164Wait();
+})();
+</script>
+
 </body>
 </html>

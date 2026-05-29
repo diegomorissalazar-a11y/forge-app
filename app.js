@@ -2428,24 +2428,25 @@ function toggleLado(ei,si,lado){
   if(!set) return;
   const eDef=getEx(exObj.exId);
   const field = lado==='L' ? '_ladoL' : '_ladoR';
-  // Toggle el lado
+  const wasOn = !!set[field];
+
+  // Toggle del lado seleccionado
   set[field] = !set[field];
-  const ambos = set._ladoL && set._ladoR;
-  // Si L marcado pero R no — arrancar timer parcial opcional (no arranca descanso)
-  // Si ambos completos — marcar done y arrancar descanso
-  if(ambos && !set.done){
-    set.done=true;
-    // Re-renderizar primero para mostrar el estado verde
-    const container=document.getElementById('session-exs');
-    container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
-    // Luego arrancar descanso
+  const isOn = !!set[field];
+  const ambos = !!(set._ladoL && set._ladoR);
+
+  // La serie queda completada solo cuando ambos lados están listos.
+  set.done = ambos;
+
+  // Re-render para mostrar estado L/R actualizado antes del descanso.
+  const container=document.getElementById('session-exs');
+  if(container) container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
+
+  // En unilateral, L y D/R deben disparar descanso de forma independiente.
+  // Al desmarcar un lado no se dispara descanso.
+  if(isOn && !wasOn){
     const restSec=eDef?.restSec||activeSession.restSec||120;
     startRest(restSec, ei, si);
-  } else {
-    if(!ambos) set.done=false;
-    // Re-renderizar para mostrar estado L/R actualizado
-    const container=document.getElementById('session-exs');
-    container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
   }
 }
 
@@ -3356,21 +3357,39 @@ function _unlockAudio(){
 document.addEventListener('touchstart', _unlockAudio, {passive:true});
 document.addEventListener('click',      _unlockAudio, {passive:true});
 
+function _playBeepAudioFallback(freq){
+  let el=null;
+  if(freq>=1100) el=document.getElementById('beep-urgent');
+  else if(freq<=700) el=document.getElementById('beep-end')||document.getElementById('beep-short');
+  else el=document.getElementById('beep-short');
+  if(!el) return false;
+  try{
+    el.currentTime=0;
+    const p=el.play();
+    if(p&&p.catch) p.catch(()=>{});
+    return true;
+  }catch(e){ return false; }
+}
 function beep(freq=880, dur=0.08, vol=0.3){
-  const ctx=getAudioCtx(); if(!ctx) return;
-  // Siempre intentar resume — iOS puede suspender el ctx entre toques
+  const ctx=getAudioCtx();
+  let fallbackTimer=null;
+  if(typeof document!=='undefined'){
+    fallbackTimer=setTimeout(()=>_playBeepAudioFallback(freq),140);
+  }
+  if(!ctx){ if(fallbackTimer) clearTimeout(fallbackTimer); _playBeepAudioFallback(freq); return; }
   const doBeep=()=>{
     try{
+      if(fallbackTimer) clearTimeout(fallbackTimer);
       const osc=ctx.createOscillator(), gain=ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
       osc.frequency.value=freq; osc.type='sine';
       gain.gain.setValueAtTime(vol,ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
       osc.start(ctx.currentTime); osc.stop(ctx.currentTime+dur);
-    }catch(e){}
+    }catch(e){ if(fallbackTimer) clearTimeout(fallbackTimer); _playBeepAudioFallback(freq); }
   };
   if(ctx.state==='suspended'){
-    ctx.resume().then(doBeep).catch(()=>{});
+    ctx.resume().then(doBeep).catch(()=>{ if(fallbackTimer) clearTimeout(fallbackTimer); _playBeepAudioFallback(freq); });
   } else {
     doBeep();
   }
@@ -5923,6 +5942,40 @@ function switchFoodTab(tab,btn){
   if(tab==='ideas') renderIdeas();
   if(tab==='pauta') renderPauta();
 }
+function formatFoodRecentLabel(f){
+  const d=new Date(f+'T12:00:00');
+  const hoy=today();
+  const ayerDate=new Date(); ayerDate.setDate(ayerDate.getDate()-1);
+  const ayer=localDateStr(ayerDate);
+  const dias=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  if(f===hoy) return 'Hoy';
+  if(f===ayer) return 'Ayer';
+  return dias[d.getDay()]+' '+String(d.getDate()).padStart(2,'0');
+}
+function setFoodFecha(f){
+  foodFecha=f;
+  foodOpenId=null;
+  renderFood();
+}
+function renderFoodRecentDays(){
+  const el=document.getElementById('food-recent-days');
+  if(!el) return;
+  const days=[];
+  for(let i=0;i<3;i++){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const f=localDateStr(d);
+    const fd=getFD(f);
+    const completadas=Object.values(fd.comidas||{}).filter(c=>c.completada).length;
+    const aguaMl=fd.aguaMl || Math.round((fd.agua||0)*(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos));
+    const active=f===foodFecha;
+    days.push(`<button class="food-day-chip ${active?'on':''}" onclick="setFoodFecha('${f}')">
+      <span class="food-day-chip-title">${formatFoodRecentLabel(f)}</span>
+      <span class="food-day-chip-sub">${completadas}/${COMIDAS.length} comidas · ${(aguaMl/1000).toFixed(1).replace('.',',')} L</span>
+    </button>`);
+  }
+  el.innerHTML=`<div class="food-recent-title">Últimos 3 días</div><div class="food-recent-row">${days.join('')}</div>`;
+}
+
 function renderFood(){
   const fd=getFD(foodFecha);
   const dias=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -5930,6 +5983,7 @@ function renderFood(){
   const d=new Date(foodFecha+'T12:00:00');
   const esHoy=foodFecha===today();
   document.getElementById('food-fecha-lbl').textContent=`${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}${esHoy?' · Hoy':''}`;
+  renderFoodRecentDays();
   const completadas=Object.values(fd.comidas).filter(c=>c.completada).length;
   const pct=Math.round((completadas/COMIDAS.length)*100);
   const meta=getAguaMeta();
