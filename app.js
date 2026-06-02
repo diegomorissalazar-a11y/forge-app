@@ -5785,20 +5785,32 @@ function guardarSueno(){
   renderFoodIfVisible();
   showToast('Sueño noche anterior guardado',1800,'ok');
 }
+function renderSuenoLunas(total){
+  const horas=Math.max(0, Math.min(9, Math.floor((parseInt(total||0,10)||0)/60)));
+  let h='<div class="mq-sueno-moons" aria-label="'+horas+' de 9 horas dormidas">';
+  for(let i=0;i<9;i++){
+    h+='<span class="mq-sueno-moon '+(i<horas?'on':'off')+'">☾</span>';
+  }
+  h+='</div>';
+  return h;
+}
 function renderSuenoCard(){
   const el=document.getElementById('home-sueno'); if(!el) return;
   const sleepDate=getSuenoNocheAnteriorDate(today());
   const fd=fdGet(sleepDate);
   const total=parseInt(fd.sueno?.totalMinutos||0,10);
   const prom=calcPromedioSueno7d(sleepDate);
-  el.innerHTML='<div class="mq-home-card mq-sueno-card">'
-    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:8px">'
+  const hasSleep=total>0;
+  el.innerHTML='<div class="mq-home-card mq-sueno-card mq-sueno-card--compact">'
+    +'<div class="mq-hrow mq-hrow-sb mq-sueno-head">'
       +'<div class="mq-hrow" style="gap:8px;color:#5A2D82"><span class="mq-sueno-icon">☾</span><span class="mq-kicker">Sueño</span></div>'
-      +'<button class="mq-btn-pill" onclick="openSuenoModal()">'+(total>0?'Editar':'Registrar')+'</button>'
+      +'<button class="mq-btn-pill mq-sueno-action" onclick="openSuenoModal()">'+(hasSleep?'Editar':'Registrar')+'</button>'
     +'</div>'
-    +'<div class="mq-hrow mq-hrow-sb" style="align-items:flex-end">'
-      +'<div><div class="mq-kpi-big" style="font-size:28px">'+fmtSleepMinutes(total)+'</div><div class="mq-stat-lbl">Noche anterior · '+fmtDateDDMMYYYYStr(sleepDate)+'</div></div>'
-      +'<div style="text-align:right"><div class="mq-stat-val" style="color:#5A2D82">'+fmtSleepMinutes(prom.promedio)+'</div><div class="mq-stat-lbl">Promedio 7 días'+(prom.dias?` · ${prom.dias}/7`: '')+'</div></div>'
+    +renderSuenoLunas(total)
+    +'<div class="mq-sueno-meta">'
+      +'<div class="mq-sueno-primary">'+(hasSleep?fmtSleepMinutes(total)+' dormidas':'Sin registro')+'</div>'
+      +'<div class="mq-stat-lbl">Noche anterior · '+fmtDateDDMMYYYYStr(sleepDate)+'</div>'
+      +'<div class="mq-stat-lbl mq-sueno-prom">Promedio 7 días: '+fmtSleepMinutes(prom.promedio)+(prom.dias?` · ${prom.dias}/7`: '')+'</div>'
     +'</div>'
     +'</div>';
 }

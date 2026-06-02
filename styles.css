@@ -2534,3 +2534,65 @@ td, th {
   .mq-creatina-card--compact .mq-kicker{font-size:8px;letter-spacing:1.8px;}
   .mq-creatina-status{font-size:11px;}
 }
+
+/* MELQART v169 — Sueño compacto con lunas */
+.mq-sueno-card--compact{
+  padding:12px 16px!important;
+  min-height:auto!important;
+}
+.mq-sueno-card--compact .mq-sueno-head{
+  margin-bottom:8px!important;
+}
+.mq-sueno-card--compact .mq-sueno-action{
+  padding:8px 16px;
+  font-size:12px;
+  min-width:auto;
+}
+.mq-sueno-moons{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  margin:8px 0 7px;
+  flex-wrap:nowrap;
+}
+.mq-sueno-moon{
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  line-height:1;
+  border:1px solid rgba(90,45,130,.20);
+  font-family:var(--fb);
+}
+.mq-sueno-moon.on{
+  color:#5A2D82;
+  background:rgba(90,45,130,.10);
+  border-color:rgba(90,45,130,.30);
+}
+.mq-sueno-moon.off{
+  color:rgba(140,132,120,.30);
+  background:rgba(248,245,239,.65);
+  border-color:rgba(216,201,178,.45);
+}
+.mq-sueno-meta{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.mq-sueno-primary{
+  font-size:13px;
+  font-weight:800;
+  color:#5A2D82;
+  line-height:1.15;
+}
+.mq-sueno-prom{
+  margin-top:2px;
+}
+@media(max-width:380px){
+  .mq-sueno-card--compact{padding:11px 12px!important;}
+  .mq-sueno-moons{gap:5px;}
+  .mq-sueno-moon{width:21px;height:21px;font-size:16px;}
+}

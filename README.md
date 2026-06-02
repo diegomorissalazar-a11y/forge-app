@@ -1,20 +1,17 @@
-# MELQART v168 — Home Agua + Creatina compacta y Sueño noche anterior
+# MELQART v169 — Sueño compacto con lunas
 
-## Cambios
-- Home: Nutrición queda arriba; debajo se muestra una fila compacta Agua (75%) + Creatina (25%).
-- Agua mantiene 10 vasos visibles y clickeables.
-- Creatina queda compacta con ícono + estado corto y KPI semanal.
-- Sueño queda debajo de Agua + Creatina.
-- Sueño desde Home registra siempre la noche anterior: si se registra hoy, se guarda en la fecha de ayer.
-- El promedio de sueño de 7 días usa la fecha real del sueño.
-- El exportador mantiene el dato de sueño asociado a la fecha real guardada.
+Cambios:
+- Compacta la tarjeta Sueño en Home.
+- Reemplaza los KPIs gigantes por 9 lunas visuales.
+- Cada luna representa una hora dormida del último registro de noche anterior.
+- Las lunas no son editables; el registro sigue desde Registrar/Editar.
+- Mantiene promedio de 7 días en texto pequeño.
 
-## Validación
-- `node --check app.js` ejecutado correctamente.
-- No se modificó Entrenar, beep, unilaterales, Peso, Progreso, Login, Firebase/Auth, Exportar, logo, colores globales ni tipografías.
+No se tocó:
+- Entrenar, beep, unilaterales.
+- Agua, Creatina, Nutrición lógica.
+- Peso, Progreso, Login, Firebase/Auth, exportador.
+- Logo, colores globales, tipografías globales.
 
-## Archivos
-- index.html
-- styles.css
-- app.js
-- assets/
+Validación:
+- `node --check app.js`
