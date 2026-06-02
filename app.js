@@ -1133,9 +1133,9 @@ function renderHome(){
   renderHomePlanBanner();
   renderPesoBanner();
   renderHomeNutritionCard();
+  renderHomeWaterCard();
   renderCreatinaCard();
   renderSuenoCard();
-  renderHomeWaterCard();
 
   const ses    = forge.sessions||[];
   const statsEl=document.getElementById('home-stats');
@@ -5690,6 +5690,11 @@ function ensureDailyFields(fd){
   if(!fd.sueno) fd.sueno={horas:null,minutos:null,totalMinutos:null};
   return fd;
 }
+function getSuenoNocheAnteriorDate(baseDateStr){
+  const d=new Date((baseDateStr||today())+'T12:00:00');
+  d.setDate(d.getDate()-1);
+  return localDateStr(d.getTime());
+}
 function fdGet(f){ return ensureDailyFields(getFD(f||today())); }
 function fmtSleepMinutes(total){
   const n=parseInt(total||0,10);
@@ -5738,50 +5743,61 @@ function renderCreatinaCard(){
   const fd=fdGet(today());
   const sem=calcCreatinaSemana(today());
   const tomada=!!fd.creatina;
-  el.innerHTML='<div class="mq-home-card mq-creatina-card">'
-    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:8px">'
-      +'<div class="mq-hrow" style="gap:8px;color:#5A2D82">'+renderCreatinaIcon(tomada)+'<span class="mq-kicker">Creatina</span></div>'
-      +'<div style="text-align:right"><div style="font-size:11px;font-weight:800;color:'+(tomada?'var(--ok)':'var(--ink3)')+'">'+(tomada?'Tomada':'Pendiente')+'</div><div style="font-size:9px;color:var(--ink3)">'+sem.ok+'/7 semana</div></div>'
+  el.innerHTML='<div class="mq-home-card mq-creatina-card mq-creatina-card--compact">'
+    +'<div class="mq-creatina-compact-head">'
+      +'<div class="mq-creatina-icon-wrap">'+renderCreatinaIcon(tomada)+'</div>'
+      +'<div class="mq-kicker">Creatina</div>'
     +'</div>'
-    +'<button class="mq-creatina-toggle '+(tomada?'on':'')+'" onclick="toggleCreatina()">'
-      +'<span>'+renderCreatinaIcon(tomada)+'</span><span>'+(tomada?'Creatina tomada':'Marcar creatina')+'</span>'
+    +'<button class="mq-creatina-compact-toggle '+(tomada?'on':'')+'" onclick="toggleCreatina()" aria-label="Marcar creatina">'
+      +'<span class="mq-creatina-status">'+(tomada?'Tomada':'Pendiente')+'</span>'
+      +'<span class="mq-creatina-week">'+sem.ok+'/7 semana</span>'
     +'</button>'
     +'</div>';
 }
 function openSuenoModal(){
-  const fd=fdGet(today());
+  const sleepDate=getSuenoNocheAnteriorDate(today());
+  const fd=fdGet(sleepDate);
   const h=fd.sueno?.horas??'';
   const m=fd.sueno?.minutos??'';
   const ih=document.getElementById('sueno-horas');
   const im=document.getElementById('sueno-minutos');
+  const note=document.getElementById('sueno-fecha-nota');
   if(ih) ih.value=h;
   if(im) im.value=m;
+  if(note) note.textContent='Se guardará como sueño del '+fmtDateDDMMYYYYStr(sleepDate)+'.';
   openModal('modal-sueno');
+}
+function fmtDateDDMMYYYYStr(dateStr){
+  if(!dateStr) return '';
+  const [y,m,d]=dateStr.split('-');
+  return `${d}-${m}-${y}`;
 }
 function guardarSueno(){
   const h=Math.max(0,parseInt(document.getElementById('sueno-horas')?.value||'0',10)||0);
   let m=Math.max(0,parseInt(document.getElementById('sueno-minutos')?.value||'0',10)||0);
   if(m>59) m=59;
-  const fd=fdGet(today());
-  fd.sueno={horas:h,minutos:m,totalMinutos:h*60+m};
+  const sleepDate=getSuenoNocheAnteriorDate(today());
+  const fd=fdGet(sleepDate);
+  fd.sueno={horas:h,minutos:m,totalMinutos:h*60+m, registradoEl:today(), tipo:'noche_anterior'};
   saveFD(fd);
   closeModal('modal-sueno');
   renderSuenoCard();
   renderFoodIfVisible();
-  showToast('Sueño guardado',1800,'ok');
+  showToast('Sueño noche anterior guardado',1800,'ok');
 }
 function renderSuenoCard(){
   const el=document.getElementById('home-sueno'); if(!el) return;
-  const fd=fdGet(today());
+  const sleepDate=getSuenoNocheAnteriorDate(today());
+  const fd=fdGet(sleepDate);
   const total=parseInt(fd.sueno?.totalMinutos||0,10);
-  const prom=calcPromedioSueno7d(today());
+  const prom=calcPromedioSueno7d(sleepDate);
   el.innerHTML='<div class="mq-home-card mq-sueno-card">'
     +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:8px">'
       +'<div class="mq-hrow" style="gap:8px;color:#5A2D82"><span class="mq-sueno-icon">☾</span><span class="mq-kicker">Sueño</span></div>'
       +'<button class="mq-btn-pill" onclick="openSuenoModal()">'+(total>0?'Editar':'Registrar')+'</button>'
     +'</div>'
     +'<div class="mq-hrow mq-hrow-sb" style="align-items:flex-end">'
-      +'<div><div class="mq-kpi-big" style="font-size:28px">'+fmtSleepMinutes(total)+'</div><div class="mq-stat-lbl">Sueño registrado hoy</div></div>'
+      +'<div><div class="mq-kpi-big" style="font-size:28px">'+fmtSleepMinutes(total)+'</div><div class="mq-stat-lbl">Noche anterior · '+fmtDateDDMMYYYYStr(sleepDate)+'</div></div>'
       +'<div style="text-align:right"><div class="mq-stat-val" style="color:#5A2D82">'+fmtSleepMinutes(prom.promedio)+'</div><div class="mq-stat-lbl">Promedio 7 días'+(prom.dias?` · ${prom.dias}/7`: '')+'</div></div>'
     +'</div>'
     +'</div>';

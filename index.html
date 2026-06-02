@@ -73,9 +73,11 @@
     <div id="home-streak-banner" style="margin-bottom:16px"></div>
     <div id="home-peso-banner" style="margin-bottom:16px"></div>
     <div id="home-food-today" style="margin-bottom:12px"></div>
-    <div id="home-creatina" style="margin-bottom:12px"></div>
+    <div class="mq-water-creatine-row" style="margin-bottom:12px">
+      <div id="home-water-today"></div>
+      <div id="home-creatina"></div>
+    </div>
     <div id="home-sueno" style="margin-bottom:12px"></div>
-    <div id="home-water-today" style="margin-bottom:16px"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div class="section-label" style="margin-bottom:0">Últimos entrenamientos</div>
       <div class="export-row">
@@ -745,7 +747,7 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-head">
-      <div class="modal-title">Sueño</div>
+      <div class="modal-title">Sueño noche anterior</div>
       <button class="bicon" onclick="closeModal('modal-sueno')">
         <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
@@ -757,9 +759,9 @@
           <input class="inp" type="number" id="sueno-horas" min="0" max="24" inputmode="numeric" placeholder="Horas">
           <input class="inp" type="number" id="sueno-minutos" min="0" max="59" inputmode="numeric" placeholder="Minutos">
         </div>
-        <div style="font-size:11px;color:var(--ink3);margin-top:6px">Registro manual simple para generar historial exportable.</div>
+        <div id="sueno-fecha-nota" style="font-size:11px;color:var(--ink3);margin-top:6px">Guarda el sueño de la noche anterior.</div>
       </div>
-      <button class="btn btn-p" onclick="guardarSueno()">✓ Guardar sueño</button>
+      <button class="btn btn-p" onclick="guardarSueno()">✓ Guardar sueño noche anterior</button>
     </div>
   </div>
 </div>

@@ -2449,3 +2449,88 @@ td, th {
   background:rgba(90,45,130,.08);border:1px solid rgba(90,45,130,.22);color:#5A2D82;font-size:18px;font-weight:800;
 }
 .mq-sueno-card .mq-kpi-big{line-height:1.05}
+
+/* MELQART v168 — Home compacta Agua + Creatina y Sueño noche anterior */
+.mq-water-creatine-row{
+  display:grid;
+  grid-template-columns:minmax(0,3fr) minmax(92px,1fr);
+  gap:10px;
+  align-items:stretch;
+}
+.mq-water-creatine-row > #home-water-today,
+.mq-water-creatine-row > #home-creatina{min-width:0;display:flex;}
+.mq-water-creatine-row .mq-home-card{width:100%;height:100%;margin:0;}
+#home-water-today .mq-home-card{
+  padding:12px 14px;
+  min-height:auto;
+}
+#home-water-today .mq-home-card .mq-hrow{margin-bottom:6px!important;}
+#home-water-today .mq-home-card button svg{width:18px;height:22px;}
+#home-water-today .mq-home-card button{padding:1px!important;}
+#home-water-today .mq-home-card .mq-stat-lbl{
+  font-size:9px;
+  letter-spacing:1.8px;
+  line-height:1.25;
+}
+#home-water-today .agua-proximo{display:none;}
+.mq-creatina-card--compact{
+  padding:12px 10px!important;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:space-between;
+  text-align:center;
+  min-height:118px;
+}
+.mq-creatina-compact-head{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:5px;
+  width:100%;
+}
+.mq-creatina-card--compact .mq-kicker{
+  font-size:9px;
+  letter-spacing:2.2px;
+  line-height:1.1;
+}
+.mq-creatina-icon-wrap svg{
+  width:30px!important;
+  height:30px!important;
+  display:block;
+}
+.mq-creatina-compact-toggle{
+  width:100%;
+  border:1px solid rgba(90,45,130,.22);
+  background:var(--bg3);
+  color:var(--ink2);
+  border-radius:13px;
+  padding:8px 6px;
+  font-family:var(--fb);
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:1px;
+}
+.mq-creatina-compact-toggle.on{
+  background:rgba(90,45,130,.08);
+  border-color:rgba(90,45,130,.35);
+  color:#5A2D82;
+}
+.mq-creatina-status{font-size:12px;font-weight:800;line-height:1.1;}
+.mq-creatina-week{font-size:9px;color:var(--ink3);font-weight:600;line-height:1.1;}
+.mq-sueno-icon{
+  width:28px!important;
+  height:28px!important;
+  font-size:17px!important;
+  flex:0 0 28px;
+}
+@media(max-width:380px){
+  .mq-water-creatine-row{grid-template-columns:minmax(0,2.7fr) minmax(86px,1fr);gap:8px;}
+  #home-water-today .mq-home-card{padding:11px 10px;}
+  #home-water-today .mq-home-card button svg{width:16px;height:20px;}
+  .mq-creatina-card--compact{padding:11px 8px!important;}
+  .mq-creatina-card--compact .mq-kicker{font-size:8px;letter-spacing:1.8px;}
+  .mq-creatina-status{font-size:11px;}
+}
