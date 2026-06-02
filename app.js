@@ -3416,23 +3416,28 @@ function beep(freq=880, dur=0.08, vol=0.3){
   // Fallback rápido: ayuda cuando iOS suspende WebAudio o hay música de fondo.
   setTimeout(()=>{ if(!ok) playHTMLBeep(kind); }, 70);
 }
+function vibrateRestAlert(sec){
+  // Respaldo táctil para cuando iOS/YouTube prioriza otro audio.
+  if(sec<=0) return vibrar([180,70,180,70,420]);
+  if(sec<=3) return vibrar([70,35,70]);
+  return vibrar([55]);
+}
 function playRestCountdownBeep(sec){
   if(sec<=0) return playRestFinalBeep();
   if(sec<=3){
     beep(1250 + (3-sec)*120, 0.09, 0.55);
     setTimeout(()=>beep(1250 + (3-sec)*120, 0.09, 0.50), 115);
-    vibrar([35,25,35]);
   } else {
     beep(880, 0.12, 0.45);
-    vibrar([35]);
   }
+  vibrateRestAlert(sec);
 }
 function playRestFinalBeep(){
   playHTMLBeep('final');
   beep(660,0.12,0.50);
   setTimeout(()=>beep(880,0.12,0.50), 170);
   setTimeout(()=>beep(1150,0.16,0.55), 340);
-  vibrar([120,50,120,50,260]);
+  vibrateRestAlert(0);
 }
 function testBeep(){
   unlockMelqartAudio();
@@ -3471,7 +3476,8 @@ function startRest(secs, ei, si){
     if(nextTxt) break;
   }
   document.getElementById('rest-next').textContent=nextTxt?`Siguiente: ${nextTxt}`:'';
-  document.getElementById('rest-ov').classList.add('on');
+  const restOv=document.getElementById('rest-ov');
+  if(restOv){ restOv.classList.remove('urgent','final-alert'); restOv.classList.add('on'); }
   updateRestUI();
   clearInterval(restTimer);
   let _lastBeepSec=-1;
@@ -3498,15 +3504,21 @@ function updateRestUI(){
   const el=document.getElementById('rest-secs'); if(!el) return;
   el.textContent=restLeft;
   el.style.color=restLeft<=5?'var(--red)':restLeft<=10?'var(--orange)':'#fff';
+  const ov=document.getElementById('rest-ov');
+  if(ov){
+    ov.classList.toggle('urgent', restLeft>0 && restLeft<=5);
+    ov.classList.toggle('final-alert', restLeft===0);
+  }
   const fill=document.getElementById('rc-fill'); if(!fill) return;
-  fill.style.stroke=restLeft<=10?'var(--red)':'var(--green)';
+  fill.style.stroke=restLeft<=5?'var(--red)':restLeft<=10?'var(--red)':'var(--green)';
   const pct=restTotal>0?restLeft/restTotal:0;
   fill.style.strokeDashoffset=201*(1-pct);
 }
 function skipRest(){
   clearInterval(restTimer);
   _restEndTs=null;
-  document.getElementById('rest-ov').classList.remove('on');
+  const ov=document.getElementById('rest-ov');
+  if(ov) ov.classList.remove('on','urgent','final-alert');
 }
 function addRestTime(s){
   if(!_restEndTs) return;

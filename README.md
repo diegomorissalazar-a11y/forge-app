@@ -1,17 +1,13 @@
-# MELQART v169 — Sueño compacto con lunas
+# MELQART v170 · Alerta visual y vibración en descanso
 
 Cambios:
-- Compacta la tarjeta Sueño en Home.
-- Reemplaza los KPIs gigantes por 9 lunas visuales.
-- Cada luna representa una hora dormida del último registro de noche anterior.
-- Las lunas no son editables; el registro sigue desde Registrar/Editar.
-- Mantiene promedio de 7 días en texto pequeño.
+- Agrega vibración fuerte en los últimos 5 segundos del descanso.
+- Agrega pulso visual del overlay de descanso cuando quedan 5 segundos o menos.
+- Mantiene beep existente, pero suma respaldo táctil/visual para casos con YouTube o música activa.
+- No cambia lógica de guardado de entrenamiento ni otros módulos.
 
-No se tocó:
-- Entrenar, beep, unilaterales.
-- Agua, Creatina, Nutrición lógica.
-- Peso, Progreso, Login, Firebase/Auth, exportador.
-- Logo, colores globales, tipografías globales.
+Validación técnica:
+- `node --check app.js` OK.
 
-Validación:
-- `node --check app.js`
+No tocado:
+- Home, Nutrición, Peso, Progreso, Login, Firebase/Auth, Exportar, gráficos, logo, colores globales y tipografías.

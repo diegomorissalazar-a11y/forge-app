@@ -2596,3 +2596,33 @@ td, th {
   .mq-sueno-moons{gap:5px;}
   .mq-sueno-moon{width:21px;height:21px;font-size:16px;}
 }
+
+
+/* v170 · alerta visual de descanso cuando el audio externo bloquea el beep */
+.rest-ov.urgent{
+  border-color:var(--red);
+  box-shadow:0 0 0 3px rgba(154,101,82,.12), 0 12px 36px rgba(154,101,82,.32);
+  animation:melqartRestPulse .72s ease-in-out infinite;
+}
+.rest-ov.urgent .rest-circle{
+  animation:melqartRestCirclePulse .72s ease-in-out infinite;
+}
+.rest-ov.urgent .rest-title,
+.rest-ov.urgent .rest-secs{
+  color:var(--red)!important;
+}
+.rest-ov.final-alert{
+  border-color:var(--green);
+  box-shadow:0 0 0 4px rgba(126,141,97,.16), 0 14px 42px rgba(126,141,97,.35);
+}
+@keyframes melqartRestPulse{
+  0%,100%{transform:translateX(-50%) scale(1)}
+  50%{transform:translateX(-50%) scale(1.025)}
+}
+@keyframes melqartRestCirclePulse{
+  0%,100%{filter:drop-shadow(0 0 0 rgba(154,101,82,0));transform:scale(1)}
+  50%{filter:drop-shadow(0 0 10px rgba(154,101,82,.55));transform:scale(1.08)}
+}
+@media (prefers-reduced-motion: reduce){
+  .rest-ov.urgent,.rest-ov.urgent .rest-circle{animation:none}
+}
