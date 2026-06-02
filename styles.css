@@ -2421,12 +2421,31 @@ td, th {
 
 
 
-/* MELQART v164 — nutrición últimos 3 días */
-.food-recent-days{margin-bottom:12px}
-.food-recent-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:700;margin-bottom:8px}
-.food-recent-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.food-day-chip{border:1px solid var(--border);background:var(--bg2);border-radius:14px;padding:9px 8px;text-align:left;color:var(--ink);font-family:var(--fb);cursor:pointer;min-width:0;box-shadow:0 1px 0 rgba(24,27,29,.025)}
-.food-day-chip.on{border-color:var(--orange);background:rgba(164,113,58,.08)}
-.food-day-chip-title{display:block;font-size:12px;font-weight:800;color:var(--ink);line-height:1.1;margin-bottom:4px}
-.food-day-chip-sub{display:block;font-size:10px;font-weight:600;color:var(--ink3);line-height:1.25;white-space:normal}
-@media(max-width:360px){.food-recent-row{grid-template-columns:1fr}.food-day-chip{display:flex;justify-content:space-between;gap:10px;align-items:center}.food-day-chip-sub{text-align:right}}
+/* v166 — navegación lineal de comidas pendientes */
+.mq-pending-meal-card .mq-pending-actions .mq-btn-pill,
+.mq-pending-meal-card .mq-pending-actions .mq-btn-sec{
+  flex:0 0 auto;
+}
+@media(max-width:380px){
+  .mq-pending-meal-card .mq-pending-actions{gap:6px}
+  .mq-pending-meal-card .mq-pending-actions .mq-btn-pill,
+  .mq-pending-meal-card .mq-pending-actions .mq-btn-sec{
+    padding-left:10px;
+    padding-right:10px;
+    font-size:11px;
+  }
+}
+
+
+/* MELQART v167 — Creatina + Sueño base */
+.mq-creatina-toggle{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
+  border:1px solid rgba(90,45,130,.22);background:var(--bg3);color:var(--ink);
+  border-radius:14px;padding:10px 12px;font-family:var(--fb);font-size:13px;font-weight:800;cursor:pointer;
+}
+.mq-creatina-toggle.on{background:rgba(90,45,130,.08);border-color:rgba(90,45,130,.35);color:#5A2D82}
+.mq-sueno-icon{
+  display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;
+  background:rgba(90,45,130,.08);border:1px solid rgba(90,45,130,.22);color:#5A2D82;font-size:18px;font-weight:800;
+}
+.mq-sueno-card .mq-kpi-big{line-height:1.05}

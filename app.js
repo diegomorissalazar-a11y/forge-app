@@ -1133,6 +1133,8 @@ function renderHome(){
   renderHomePlanBanner();
   renderPesoBanner();
   renderHomeNutritionCard();
+  renderCreatinaCard();
+  renderSuenoCard();
   renderHomeWaterCard();
 
   const ses    = forge.sessions||[];
@@ -2420,33 +2422,41 @@ function updateSet(ei,si,field,val){
   const v=normDec(val);
   activeSession.exercises[ei].sets[si][field]=field==='weight'||field==='reps'?parseFloat(v)||0:v;
 }
+function getRestSecondsForExercise(exObj){
+  const eDef = getEx(exObj?.exId);
+  const restSec = Number(exObj?._restSec ?? eDef?.restSec ?? activeSession?.restSec ?? 0) || 0;
+  return restSec > 0 ? restSec : 0;
+}
+function rerenderActiveSessionExercises(){
+  const container=document.getElementById('session-exs');
+  if(container && activeSession){
+    container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
+  }
+}
+function maybeStartRestForSet(exObj, ei, si){
+  const restSec=getRestSecondsForExercise(exObj);
+  if(restSec>0) startRest(restSec, ei, si);
+}
 function toggleLado(ei,si,lado){
   if(!activeSession) return;
   const exObj=activeSession.exercises[ei];
   if(!exObj) return;
   const set=exObj.sets[si];
   if(!set) return;
-  const eDef=getEx(exObj.exId);
+
   const field = lado==='L' ? '_ladoL' : '_ladoR';
   const wasOn = !!set[field];
+  set[field] = !wasOn;
 
-  // Toggle del lado seleccionado
-  set[field] = !set[field];
-  const isOn = !!set[field];
   const ambos = !!(set._ladoL && set._ladoR);
-
-  // La serie queda completada solo cuando ambos lados están listos.
   set.done = ambos;
 
-  // Re-render para mostrar estado L/R actualizado antes del descanso.
-  const container=document.getElementById('session-exs');
-  if(container) container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
+  rerenderActiveSessionExercises();
 
-  // En unilateral, L y D/R deben disparar descanso de forma independiente.
-  // Al desmarcar un lado no se dispara descanso.
-  if(isOn && !wasOn){
-    const restSec=eDef?.restSec||activeSession.restSec||120;
-    startRest(restSec, ei, si);
+  // Regla v165: cada lado marcado inicia descanso si el ejercicio tiene restSec.
+  // Desmarcar no inicia descanso. La serie solo queda completa con L + D/R.
+  if(!wasOn && set[field]){
+    maybeStartRestForSet(exObj, ei, si);
   }
 }
 
@@ -2460,19 +2470,17 @@ function toggleSet(ei,si){
   const baseE=EJERCICIOS_BASE.find(b=>b.id===ex.exId);
   const isRun=e?.type==='run'||e?.type==='hiit';
   const isBilateral= e?.bilateral===true || ex.bilateral===true || baseE?.bilateral===true;
-  const isPlyo=e?.type==='plyo';
-  // Bilateral: no tocar desde toggleSet, lo maneja toggleLado
+  // Unilaterales: no tocar desde toggleSet, lo maneja toggleLado.
   if(isBilateral) return;
-  // Para cardio: leer selectores de tiempo antes de marcar done
+  // Para cardio: leer selectores de tiempo antes de marcar done.
   if(isRun) updateTimeFromSel(ei,si);
+  const wasDone=!!set.done;
   set.done=!set.done;
-  // Re-renderizar el bloque completo para reflejar el cambio
-  const container=document.getElementById('session-exs');
-  container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
-  // Timer de descanso solo para ejercicios de fuerza
-  if(set.done&&!isRun&&!isPlyo){
-    const restSec=activeSession.exercises[ei]._restSec || getEx(ex.exId)?.restSec || activeSession.restSec||90;
-    startRest(restSec, ei, si);
+  rerenderActiveSessionExercises();
+  // Regla v165: cualquier ejercicio con restSec > 0 inicia descanso al marcarse,
+  // incluyendo plyo/Saltos al Cajón. Desmarcar no inicia descanso.
+  if(set.done && !wasDone){
+    maybeStartRestForSet(ex, ei, si);
   }
 }
 function removeSetFromEx(ei,si){
@@ -3336,69 +3344,105 @@ function saveEjercicio(){
 // ── TIMER DE DESCANSO ────────────────────────────────────────────
 // ── Audio: desbloquear AudioContext en iOS con el primer toque ─
 let _audioCtx=null;
+let _melqartAudioUnlocked=false;
 function getAudioCtx(){
-  // Re-crear si fue cerrado (pasa cuando el sistema libera recursos)
   if(_audioCtx&&_audioCtx.state==='closed') _audioCtx=null;
   if(!_audioCtx){
     try{ _audioCtx=new(window.AudioContext||window.webkitAudioContext)(); }catch(e){}
   }
-  // iOS: siempre intentar resume — el contexto se suspende con música de fondo
   if(_audioCtx&&_audioCtx.state==='suspended'){
     _audioCtx.resume().catch(()=>{});
   }
   return _audioCtx;
 }
-
-// Desbloquear en touchstart Y click — iOS necesita gesto del usuario
-function _unlockAudio(){
-  const ctx=getAudioCtx();
-  if(ctx&&ctx.state==='suspended') ctx.resume().catch(()=>{});
+function getBeepAudioEl(kind='short'){
+  if(kind==='final') return document.getElementById('beep-end') || document.getElementById('beep-urgent') || document.getElementById('beep-short');
+  if(kind==='urgent') return document.getElementById('beep-urgent') || document.getElementById('beep-short') || document.getElementById('beep-end');
+  return document.getElementById('beep-short') || document.getElementById('beep-urgent') || document.getElementById('beep-end');
 }
-document.addEventListener('touchstart', _unlockAudio, {passive:true});
-document.addEventListener('click',      _unlockAudio, {passive:true});
-
-function _playBeepAudioFallback(freq){
-  let el=null;
-  if(freq>=1100) el=document.getElementById('beep-urgent');
-  else if(freq<=700) el=document.getElementById('beep-end')||document.getElementById('beep-short');
-  else el=document.getElementById('beep-short');
-  if(!el) return false;
+function playHTMLBeep(kind='short'){
+  const el=getBeepAudioEl(kind);
+  if(!el) return;
   try{
-    el.currentTime=0;
+    el.pause(); el.currentTime=0;
     const p=el.play();
     if(p&&p.catch) p.catch(()=>{});
-    return true;
-  }catch(e){ return false; }
+  }catch(e){}
 }
-function beep(freq=880, dur=0.08, vol=0.3){
+function unlockMelqartAudio(){
   const ctx=getAudioCtx();
-  let fallbackTimer=null;
-  if(typeof document!=='undefined'){
-    fallbackTimer=setTimeout(()=>_playBeepAudioFallback(freq),140);
+  if(ctx&&ctx.state==='suspended') ctx.resume().catch(()=>{});
+  if(!_melqartAudioUnlocked){
+    ['short','urgent','final'].forEach(kind=>{
+      const el=getBeepAudioEl(kind);
+      if(!el) return;
+      try{
+        el.muted=true;
+        const p=el.play();
+        const done=()=>{ try{ el.pause(); el.currentTime=0; el.muted=false; }catch(e){} };
+        if(p&&p.then) p.then(done).catch(()=>{ try{ el.muted=false; }catch(e){} });
+        else done();
+      }catch(e){ try{ el.muted=false; }catch(_){} }
+    });
+    _melqartAudioUnlocked=true;
   }
-  if(!ctx){ if(fallbackTimer) clearTimeout(fallbackTimer); _playBeepAudioFallback(freq); return; }
+}
+document.addEventListener('touchstart', unlockMelqartAudio, {passive:true});
+document.addEventListener('click',      unlockMelqartAudio, {passive:true});
+function playWebBeep(freq=880, dur=0.08, vol=0.3){
+  const ctx=getAudioCtx();
+  if(!ctx) return false;
   const doBeep=()=>{
     try{
-      if(fallbackTimer) clearTimeout(fallbackTimer);
       const osc=ctx.createOscillator(), gain=ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
       osc.frequency.value=freq; osc.type='sine';
-      gain.gain.setValueAtTime(vol,ctx.currentTime);
+      gain.gain.setValueAtTime(Math.max(0.001,vol),ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
       osc.start(ctx.currentTime); osc.stop(ctx.currentTime+dur);
-    }catch(e){ if(fallbackTimer) clearTimeout(fallbackTimer); _playBeepAudioFallback(freq); }
+      return true;
+    }catch(e){ return false; }
   };
   if(ctx.state==='suspended'){
-    ctx.resume().then(doBeep).catch(()=>{ if(fallbackTimer) clearTimeout(fallbackTimer); _playBeepAudioFallback(freq); });
+    ctx.resume().then(doBeep).catch(()=>{});
+    return true;
+  }
+  return doBeep();
+}
+function beep(freq=880, dur=0.08, vol=0.3){
+  unlockMelqartAudio();
+  const kind=freq>=1100?'urgent':'short';
+  const ok=playWebBeep(freq,dur,vol);
+  // Fallback rápido: ayuda cuando iOS suspende WebAudio o hay música de fondo.
+  setTimeout(()=>{ if(!ok) playHTMLBeep(kind); }, 70);
+}
+function playRestCountdownBeep(sec){
+  if(sec<=0) return playRestFinalBeep();
+  if(sec<=3){
+    beep(1250 + (3-sec)*120, 0.09, 0.55);
+    setTimeout(()=>beep(1250 + (3-sec)*120, 0.09, 0.50), 115);
+    vibrar([35,25,35]);
   } else {
-    doBeep();
+    beep(880, 0.12, 0.45);
+    vibrar([35]);
   }
 }
+function playRestFinalBeep(){
+  playHTMLBeep('final');
+  beep(660,0.12,0.50);
+  setTimeout(()=>beep(880,0.12,0.50), 170);
+  setTimeout(()=>beep(1150,0.16,0.55), 340);
+  vibrar([120,50,120,50,260]);
+}
+function testBeep(){
+  unlockMelqartAudio();
+  beep(880,0.12,0.45);
+  setTimeout(()=>beep(1200,0.10,0.55), 180);
+  setTimeout(()=>playRestFinalBeep(), 420);
+  showToast('Beep de descanso probado', 1600, 'ok');
+}
 function vibrar(pattern=[50]){
-  try{
-    // iOS: vibrate no existe en Safari — silenciar el error
-    if(navigator.vibrate) navigator.vibrate(pattern);
-  }catch(e){}
+  try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
 }
 
 function _iniciarTimerSesion(){
@@ -3436,7 +3480,7 @@ function startRest(secs, ei, si){
     if(left<=0){
       restLeft=0; updateRestUI();
       clearInterval(restTimer); _restEndTs=null;
-      skipRest(); beep(660,0.15,0.4); vibrar([100,50,100,50,200]); return;
+      skipRest(); playRestFinalBeep(); return;
     }
     if(left!==restLeft){
       restLeft=left;
@@ -3444,15 +3488,7 @@ function startRest(secs, ei, si){
       // Beep solo 1 vez por segundo aunque el interval corra más seguido
       if(restLeft<=5 && restLeft!==_lastBeepSec){
         _lastBeepSec=restLeft;
-        if(restLeft<=3){
-          // Doble pitido urgente en los últimos 3s
-          beep(1200, 0.1, 0.5);
-          setTimeout(()=>beep(1200, 0.1, 0.5), 120);
-        } else {
-          // Pitido simple en 4s y 5s
-          beep(880, 0.12, 0.45);
-        }
-        vibrar([40]);
+        playRestCountdownBeep(restLeft);
       }
     }
   },250); // 250ms — preciso y no pierde segundos al volver del bg
@@ -5534,22 +5570,223 @@ function getCurrentMeal(fd){
   const next=(COMIDAS||[]).slice(idx+1).find(c=>!fd.comidas?.[c.id]?.completada)||null;
   return {current:pending,next,allDone:false};
 }
-function completeCurrentMealFromHome(){
-  const fd=getFD(today());
-  const cur=getCurrentMeal(fd).current;
+
+function getPendingMeals(fd){
+  const data=fd||getFD(today());
+  return (COMIDAS||[]).filter(c=>!data.comidas?.[c.id]?.completada);
+}
+function getSelectedPendingMeal(fd){
+  const data=fd||getFD(today());
+  const pending=getPendingMeals(data);
+  if(!pending.length) return {meal:null,pending,index:-1,hasPrev:false,hasNext:false};
+  let id=data.selectedPendingMealId;
+  let idx=pending.findIndex(c=>c.id===id);
+  if(idx<0) idx=0;
+  const meal=pending[idx];
+  return {meal,pending,index:idx,hasPrev:idx>0,hasNext:idx<pending.length-1};
+}
+function setSelectedPendingMeal(fecha,mealId){
+  const f=fecha||today();
+  const fd=getFD(f);
+  const pending=getPendingMeals(fd);
+  if(mealId && pending.some(c=>c.id===mealId)) fd.selectedPendingMealId=mealId;
+  else if(pending.length) fd.selectedPendingMealId=pending[0].id;
+  else delete fd.selectedPendingMealId;
+  saveFD(fd);
+}
+function navPendingMeal(fecha,delta){
+  const f=fecha||today();
+  const fd=getFD(f);
+  const sel=getSelectedPendingMeal(fd);
+  if(!sel.meal) return;
+  const nextIdx=sel.index+delta;
+  if(nextIdx<0||nextIdx>=sel.pending.length) return;
+  fd.selectedPendingMealId=sel.pending[nextIdx].id;
+  saveFD(fd);
+  renderHomeNutritionCard();
+  renderFoodIfVisible();
+}
+function prevPendingMeal(fecha){ navPendingMeal(fecha,-1); }
+function nextPendingMeal(fecha){ navPendingMeal(fecha,1); }
+function completePendingMeal(fecha,mealId){
+  const f=fecha||today();
+  const fd=getFD(f);
+  const id=mealId || getSelectedPendingMeal(fd).meal?.id;
+  const cur=COMIDAS.find(c=>c.id===id);
   if(!cur){ showToast('Alimentación completa',1800,'ok'); return; }
   if(!fd.comidas[cur.id]) fd.comidas[cur.id]={completada:false,texto:''};
   fd.comidas[cur.id].completada=true;
   if(!fd.comidas[cur.id].texto) fd.comidas[cur.id].texto=cur.ejemplo||cur.detail||'';
-  saveFD(fd); showToast('Comida ingresada',1700,'ok');
-  renderHomeNutritionCard(); renderFoodIfVisible();
+
+  const remaining=getPendingMeals(fd);
+  if(remaining.length){
+    const currentPlanIndex=COMIDAS.findIndex(c=>c.id===cur.id);
+    const nextByPlan=remaining.find(c=>COMIDAS.findIndex(x=>x.id===c.id)>currentPlanIndex) || remaining[0];
+    fd.selectedPendingMealId=nextByPlan.id;
+    fd.allDone=false;
+  } else {
+    delete fd.selectedPendingMealId;
+    fd.allDone=true;
+  }
+  saveFD(fd);
+  showToast(fd.allDone?'🎯 ¡Plan nutricional completo!':'Comida ingresada', fd.allDone?3000:1700, 'ok');
+  renderHomeNutritionCard();
+  renderFoodIfVisible();
+}
+function editSelectedPendingMeal(fecha){
+  const f=fecha||today();
+  const fd=getFD(f);
+  const cur=getSelectedPendingMeal(fd).meal;
+  foodFecha=f;
+  if(cur) foodOpenId=cur.id;
+  goTo('food');
+  setTimeout(()=>{ const el=document.getElementById('food-comidas-list'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); },80);
+}
+function renderPendingMealNavCard(fecha, opts={}){
+  const f=fecha||today();
+  const fd=getFD(f);
+  const sel=getSelectedPendingMeal(fd);
+  const cur=sel.meal;
+  if(!cur){
+    return '<div class="mq-stat-lbl" style="margin-top:8px;color:var(--ok)">Día alimentario completo</div>';
+  }
+  const idxPlan=COMIDAS.findIndex(c=>c.id===cur.id);
+  const nextPlan=(COMIDAS||[]).slice(idxPlan+1).find(c=>!fd.comidas?.[c.id]?.completada)||null;
+  const compact=!!opts.compact;
+  const wrapStyle=compact?'margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:10px':'margin-bottom:12px;padding:12px 14px;background:var(--bg3);border-radius:var(--rl);border:1px solid var(--border)';
+  const navBtns=(sel.hasPrev?`<button class="mq-btn-sec" onclick="prevPendingMeal('${f}')">← Anterior</button>`:'')
+    +`<button class="mq-btn-pill" onclick="completePendingMeal('${f}','${cur.id}')">Completar</button>`
+    +(sel.hasNext?`<button class="mq-btn-sec" onclick="nextPendingMeal('${f}')">Siguiente →</button>`:'');
+  return '<div class="mq-pending-meal-card" style="'+wrapStyle+'">'
+    +'<div class="mq-stat-lbl">Pendiente</div>'
+    +'<div style="font-size:14px;font-weight:700;color:var(--ink);margin:2px 0">'+cur.nombre+'</div>'
+    +'<div style="font-size:11px;color:var(--ink3)">'+(cur.ejemplo||cur.detail||cur.grupos||'')+'</div>'
+    +'<div class="mq-pending-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+navBtns+'</div>'
+    +'<div class="mq-hrow" style="gap:8px;margin-top:8px"><button class="mq-btn-sec" onclick="editSelectedPendingMeal(\''+f+'\')">Editar</button></div>'
+    +(nextPlan?'<div class="mq-stat-lbl" style="margin-top:6px">Próxima: '+nextPlan.hora+' — '+nextPlan.nombre+'</div>':'')
+    +'</div>';
+}
+
+function completeCurrentMealFromHome(){
+  completePendingMeal(today());
 }
 function editCurrentMealFromHome(){
-  const fd=getFD(today()); const cur=getCurrentMeal(fd).current;
-  if(cur){ foodFecha=today(); foodOpenId=cur.id; goTo('food'); setTimeout(()=>{ const el=document.getElementById('food-comidas-list'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); },80); }
-  else goTo('food');
+  editSelectedPendingMeal(today());
 }
 function renderFoodIfVisible(){ if(currentScreen==='food') renderFood(); }
+
+function getLastNDates(n, endDateStr){
+  const arr=[];
+  const d=new Date((endDateStr||today())+'T12:00:00');
+  for(let i=0;i<n;i++){
+    const x=new Date(d); x.setDate(d.getDate()-i);
+    arr.push(localDateStr(x));
+  }
+  return arr;
+}
+function ensureDailyFields(fd){
+  if(!fd) return fd;
+  if(typeof fd.creatina==='undefined') fd.creatina=false;
+  if(!fd.sueno) fd.sueno={horas:null,minutos:null,totalMinutos:null};
+  return fd;
+}
+function fdGet(f){ return ensureDailyFields(getFD(f||today())); }
+function fmtSleepMinutes(total){
+  const n=parseInt(total||0,10);
+  if(!n || n<0) return 'Sin registro';
+  const h=Math.floor(n/60), m=n%60;
+  return h+'h '+String(m).padStart(2,'0')+'m';
+}
+function calcCreatinaSemana(fecha){
+  const dias=getLastNDates(7, fecha||today());
+  let ok=0;
+  dias.forEach(f=>{ const fd=fdGet(f); if(!!fd.creatina) ok++; });
+  return {ok,total:7,dias};
+}
+function calcPromedioSueno7d(fecha){
+  const dias=getLastNDates(7, fecha||today());
+  const vals=[];
+  dias.forEach(f=>{
+    const fd=fdGet(f);
+    const total=parseInt(fd.sueno?.totalMinutos||0,10);
+    if(total>0) vals.push(total);
+  });
+  if(!vals.length) return {promedio:0,dias:0};
+  const promedio=Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+  return {promedio,dias:vals.length};
+}
+function toggleCreatina(fecha){
+  const f=fecha||today();
+  const fd=fdGet(f);
+  fd.creatina=!fd.creatina;
+  saveFD(fd);
+  renderCreatinaCard();
+  renderFoodIfVisible();
+  showToast(fd.creatina?'Creatina marcada':'Creatina desmarcada',1800,fd.creatina?'ok':'');
+}
+function renderCreatinaIcon(on){
+  return '<svg viewBox="0 0 42 42" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    +'<rect x="14" y="5" width="14" height="6" rx="2" fill="'+(on?'#F8F5EF':'#FCFAF6')+'" stroke="#5A2D82" stroke-width="1.8"/>'
+    +'<path d="M13 11h16l2 22a4 4 0 0 1-4 4H15a4 4 0 0 1-4-4l2-22Z" fill="'+(on?'#FFFDF7':'#F8F5EF')+'" stroke="#5A2D82" stroke-width="1.8"/>'
+    +'<path d="M16 20h10" stroke="#CDA349" stroke-width="1.8"/>'
+    +'<path d="M17 26h8" stroke="#CDA349" stroke-width="1.8"/>'
+    +(on?'<circle cx="30" cy="12" r="6" fill="#7E8D61" stroke="#fff" stroke-width="1.5"/><path d="M27.5 12l1.8 1.8 3.6-4" stroke="#fff" stroke-width="1.8"/>':'')
+    +'</svg>';
+}
+function renderCreatinaCard(){
+  const el=document.getElementById('home-creatina'); if(!el) return;
+  const fd=fdGet(today());
+  const sem=calcCreatinaSemana(today());
+  const tomada=!!fd.creatina;
+  el.innerHTML='<div class="mq-home-card mq-creatina-card">'
+    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:8px">'
+      +'<div class="mq-hrow" style="gap:8px;color:#5A2D82">'+renderCreatinaIcon(tomada)+'<span class="mq-kicker">Creatina</span></div>'
+      +'<div style="text-align:right"><div style="font-size:11px;font-weight:800;color:'+(tomada?'var(--ok)':'var(--ink3)')+'">'+(tomada?'Tomada':'Pendiente')+'</div><div style="font-size:9px;color:var(--ink3)">'+sem.ok+'/7 semana</div></div>'
+    +'</div>'
+    +'<button class="mq-creatina-toggle '+(tomada?'on':'')+'" onclick="toggleCreatina()">'
+      +'<span>'+renderCreatinaIcon(tomada)+'</span><span>'+(tomada?'Creatina tomada':'Marcar creatina')+'</span>'
+    +'</button>'
+    +'</div>';
+}
+function openSuenoModal(){
+  const fd=fdGet(today());
+  const h=fd.sueno?.horas??'';
+  const m=fd.sueno?.minutos??'';
+  const ih=document.getElementById('sueno-horas');
+  const im=document.getElementById('sueno-minutos');
+  if(ih) ih.value=h;
+  if(im) im.value=m;
+  openModal('modal-sueno');
+}
+function guardarSueno(){
+  const h=Math.max(0,parseInt(document.getElementById('sueno-horas')?.value||'0',10)||0);
+  let m=Math.max(0,parseInt(document.getElementById('sueno-minutos')?.value||'0',10)||0);
+  if(m>59) m=59;
+  const fd=fdGet(today());
+  fd.sueno={horas:h,minutos:m,totalMinutos:h*60+m};
+  saveFD(fd);
+  closeModal('modal-sueno');
+  renderSuenoCard();
+  renderFoodIfVisible();
+  showToast('Sueño guardado',1800,'ok');
+}
+function renderSuenoCard(){
+  const el=document.getElementById('home-sueno'); if(!el) return;
+  const fd=fdGet(today());
+  const total=parseInt(fd.sueno?.totalMinutos||0,10);
+  const prom=calcPromedioSueno7d(today());
+  el.innerHTML='<div class="mq-home-card mq-sueno-card">'
+    +'<div class="mq-hrow mq-hrow-sb" style="margin-bottom:8px">'
+      +'<div class="mq-hrow" style="gap:8px;color:#5A2D82"><span class="mq-sueno-icon">☾</span><span class="mq-kicker">Sueño</span></div>'
+      +'<button class="mq-btn-pill" onclick="openSuenoModal()">'+(total>0?'Editar':'Registrar')+'</button>'
+    +'</div>'
+    +'<div class="mq-hrow mq-hrow-sb" style="align-items:flex-end">'
+      +'<div><div class="mq-kpi-big" style="font-size:28px">'+fmtSleepMinutes(total)+'</div><div class="mq-stat-lbl">Sueño registrado hoy</div></div>'
+      +'<div style="text-align:right"><div class="mq-stat-val" style="color:#5A2D82">'+fmtSleepMinutes(prom.promedio)+'</div><div class="mq-stat-lbl">Promedio 7 días'+(prom.dias?` · ${prom.dias}/7`: '')+'</div></div>'
+    +'</div>'
+    +'</div>';
+}
+
 /** Retorna objeto con todas las claves de porciones inicializadas a 0 */
 function newPorciones(){
   return {proteinas:0,lacteoProtein:0,lacteoDescremado:0,cereales:0,frutas:0,lipidos:0,aceites:0,verduras:0};
@@ -5599,20 +5836,8 @@ function renderHomeNutritionCard(){
     +'</div>'
     // Platos tracker
     +mqPlatos(activas, total)
-    // Siguiente comida
-    +(cur
-      ?('<div style="margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:10px">'
-        +'<div class="mq-stat-lbl">Pendiente</div>'
-        +'<div style="font-size:14px;font-weight:700;color:var(--ink);margin:2px 0">'+cur.nombre+'</div>'
-        +'<div style="font-size:11px;color:var(--ink3)">'+( cur.ejemplo||cur.detail||cur.grupos||'')+'</div>'
-        +'<div class="mq-hrow" style="gap:8px;margin-top:8px">'
-          +'<button class="mq-btn-pill" onclick="completeCurrentMealFromHome()">Completar</button>'
-          +'<button class="mq-btn-sec" onclick="editCurrentMealFromHome()">Editar</button>'
-        +'</div>'
-        +(next?'<div class="mq-stat-lbl" style="margin-top:6px">Próxima: '+next.hora+' — '+next.nombre+'</div>':'')
-        +'</div>')
-      :'<div class="mq-stat-lbl" style="margin-top:8px;color:var(--ok)">Día alimentario completo</div>'
-    )
+    // Comida pendiente navegable — solo pendientes, en orden de pauta
+    +renderPendingMealNavCard(today(), {compact:true})
     +'</div>';
 }
 function setHomeWaterCups(n){
@@ -5942,40 +6167,6 @@ function switchFoodTab(tab,btn){
   if(tab==='ideas') renderIdeas();
   if(tab==='pauta') renderPauta();
 }
-function formatFoodRecentLabel(f){
-  const d=new Date(f+'T12:00:00');
-  const hoy=today();
-  const ayerDate=new Date(); ayerDate.setDate(ayerDate.getDate()-1);
-  const ayer=localDateStr(ayerDate);
-  const dias=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  if(f===hoy) return 'Hoy';
-  if(f===ayer) return 'Ayer';
-  return dias[d.getDay()]+' '+String(d.getDate()).padStart(2,'0');
-}
-function setFoodFecha(f){
-  foodFecha=f;
-  foodOpenId=null;
-  renderFood();
-}
-function renderFoodRecentDays(){
-  const el=document.getElementById('food-recent-days');
-  if(!el) return;
-  const days=[];
-  for(let i=0;i<3;i++){
-    const d=new Date(); d.setDate(d.getDate()-i);
-    const f=localDateStr(d);
-    const fd=getFD(f);
-    const completadas=Object.values(fd.comidas||{}).filter(c=>c.completada).length;
-    const aguaMl=fd.aguaMl || Math.round((fd.agua||0)*(NUTRITION_TARGETS.aguaMl/NUTRITION_TARGETS.aguaVasos));
-    const active=f===foodFecha;
-    days.push(`<button class="food-day-chip ${active?'on':''}" onclick="setFoodFecha('${f}')">
-      <span class="food-day-chip-title">${formatFoodRecentLabel(f)}</span>
-      <span class="food-day-chip-sub">${completadas}/${COMIDAS.length} comidas · ${(aguaMl/1000).toFixed(1).replace('.',',')} L</span>
-    </button>`);
-  }
-  el.innerHTML=`<div class="food-recent-title">Últimos 3 días</div><div class="food-recent-row">${days.join('')}</div>`;
-}
-
 function renderFood(){
   const fd=getFD(foodFecha);
   const dias=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -5983,7 +6174,6 @@ function renderFood(){
   const d=new Date(foodFecha+'T12:00:00');
   const esHoy=foodFecha===today();
   document.getElementById('food-fecha-lbl').textContent=`${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}${esHoy?' · Hoy':''}`;
-  renderFoodRecentDays();
   const completadas=Object.values(fd.comidas).filter(c=>c.completada).length;
   const pct=Math.round((completadas/COMIDAS.length)*100);
   const meta=getAguaMeta();
@@ -6002,7 +6192,7 @@ function renderFood(){
     <div style="font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">▦ Menú sugerido · ${menu.r}</div>
     <div style="font-size:12px;color:var(--ink2);line-height:1.7"><strong style="color:var(--orange)">D:</strong> ${menu.d}<br><strong style="color:var(--orange)">A:</strong> ${menu.a}<br><strong style="color:var(--orange)">C:</strong> ${menu.c}</div>
   </div>`:'';
-  document.getElementById('food-comidas-list').innerHTML=nutritionDash+sug+COMIDAS.map(c=>{
+  document.getElementById('food-comidas-list').innerHTML=nutritionDash+sug+renderPendingMealNavCard(foodFecha,{compact:false})+COMIDAS.map(c=>{
     const est=fd.comidas[c.id]||{completada:false,texto:''};
     const ab=foodOpenId===c.id;
     return `<div class="comida-card">
@@ -6032,10 +6222,20 @@ function renderFood(){
 function toggleComida(id){ foodOpenId=foodOpenId===id?null:id; renderFood(); }
 function toggleComidaCheck(id){
   const fd=getFD(foodFecha); if(!fd.comidas[id]) fd.comidas[id]={completada:false,texto:''};
-  fd.comidas[id].completada=!fd.comidas[id].completada;
-  // Persistir allDone si todas las comidas están completadas
-  const completadasCount=Object.values(fd.comidas).filter(c=>c.completada).length;
-  fd.allDone = completadasCount===COMIDAS.length;
+  const wasDone=!!fd.comidas[id].completada;
+  fd.comidas[id].completada=!wasDone;
+  const pending=getPendingMeals(fd);
+  if(pending.length){
+    if(!fd.selectedPendingMealId || !pending.some(c=>c.id===fd.selectedPendingMealId)){
+      const idx=COMIDAS.findIndex(c=>c.id===id);
+      const nextByPlan=pending.find(c=>COMIDAS.findIndex(x=>x.id===c.id)>idx) || pending[0];
+      fd.selectedPendingMealId=nextByPlan.id;
+    }
+    fd.allDone=false;
+  } else {
+    delete fd.selectedPendingMealId;
+    fd.allDone=true;
+  }
   saveFD(fd);
   if(fd.allDone) showToast('🎯 ¡Plan nutricional completo!',3000,'ok');
   renderFood(); renderHomeNutritionCard();

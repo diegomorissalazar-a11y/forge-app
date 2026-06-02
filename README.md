@@ -1,16 +1,17 @@
-# MELQART v164 — audio, unilateral y nutrición 3 días
+# MELQART v167 — Creatina + Sueño base
 
-Cambios:
-- Corrige beep de descanso con fallback WebAudio + HTMLAudio.
-- En ejercicios unilaterales, L y D/R disparan descanso de forma independiente al marcar cada lado.
-- La serie unilateral queda completada solo cuando ambos lados están marcados.
-- En Nutrición > Registro se agrega selector de últimos 3 días para editar comidas/agua recientes.
+Cambios incluidos:
+- Tarjeta Creatina en Home debajo de Nutrición.
+- Check diario tomada/no tomada.
+- KPI semanal de creatina: días con creatina / 7.
+- Tarjeta Sueño en Home.
+- Registro manual simple de horas y minutos.
+- Promedio de sueño de últimos 7 días.
+- Creatina y sueño agregados al exportador del Home.
 
-No se toca:
-- Firebase/Auth/localStorage/sync.
-- Home, Progreso, Peso, Exportar y registro de sesiones fuera del fix unilateral.
-- Paleta, logo y layout global.
+No se modificó:
+- Entrenar, beep ni unilaterales.
+- Peso, Progreso, Login, Firebase/Auth, logo, colores, tipografías ni navegación general.
 
-Validación:
-- node --check app.js.
-- Se verificó que index.html no mantiene el comentario roto antes del patch de audio.
+Validación técnica:
+- node --check app.js
