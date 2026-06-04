@@ -631,7 +631,7 @@ const TIPO_LABEL = {
 const RUTINAS_BASE = [
   {id:'r_lunes',   name:'Lunes — Tren Inferior A',  emoji:'◉', exercises:['ex_cal_inf','ex_sentadilla','ex_peso_muerto','ex_saltos_cajon','ex_curl_femoral','ex_est_inf'],        restSec:180},
   {id:'r_martes',  name:'Martes — Tren Superior A', emoji:'◈', exercises:['ex_cal_sup','ex_press_banca','ex_remo_barra','ex_press_hombros','ex_elev_lateral','ex_est_sup'],      restSec:180},
-  {id:'r_mierco',  name:'Miércoles — Tren Inferior B', emoji:'✶', exercises:['ex_cal_inf','ex_sent_bulgara','ex_peso_muerto_rum','ex_hip_thrust','ex_crunch','ex_est_inf'], restSec:90},
+  {id:'r_mierco',  name:'Miércoles — Tren Inferior B', emoji:'✶', exercises:['ex_cal_inf','ex_sent_bulgara','ex_curl_fem_tumbado','ex_hip_thrust','ex_crunch','ex_est_inf'], restSec:90},
   {id:'r_jueves',  name:'Jueves — Tren Superior B', emoji:'✦', exercises:['ex_cal_sup','ex_press_inclinado','ex_jalon_pecho','ex_press_homb_manc','ex_crunch','ex_est_sup'],restSec:90},
   {id:'r_jueves_noche', name:'Jueves Noche — Trote', emoji:'☾', exercises:['ex_cal_trote','ex_correr','ex_est_trote'], restSec:0},
   {id:'r_cardio',  name:'Domingo — Cardio',          emoji:'↝', exercises:['ex_correr','ex_est_trote'], restSec:0},
@@ -785,12 +785,82 @@ function initRutinas(){
   const rIds=new Set(forge.routines.map(r=>r.id));
   RUTINAS_BASE.forEach(r=>{ if(!rIds.has(r.id)) forge.routines.push({...r}); });
 
+  // v172 — Cambio de plan: solo Miércoles / Tren Inferior B
+  // Reemplaza Peso Muerto Rumano por Curl Femoral Tumbado en la rutina del miércoles.
+  // La rutina del lunes se mantiene intacta con Peso Muerto (Barra).
+  (forge.routines||[]).forEach(r=>{
+    const id=String(r.id||'').toLowerCase();
+    const name=String(r.name||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    const esMiercoles = id==='r_mierco' || (name.includes('miercoles') && name.includes('tren inferior')) || name.includes('tren inferior b');
+    if(!esMiercoles || !Array.isArray(r.exercises)) return;
+    r.exercises = r.exercises.map(exId => exId === 'ex_peso_muerto_rum' ? 'ex_curl_fem_tumbado' : exId);
+  });
+
   saveDB();
 }
 
 // ---------------------------------------------------------------
 //  SCREEN: INICIO
 // ---------------------------------------------------------------
+
+function exportNutritionLines(fechaInicio, fechaFin){
+  const out=[];
+  const dates=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k && k.startsWith('ff_')){
+      const f=k.slice(3);
+      const d=new Date(f+'T12:00:00');
+      if(d>=fechaInicio && d<=fechaFin) dates.push(f);
+    }
+  }
+  dates.sort();
+  if(!dates.length) return out;
+  out.push('NUTRICION');
+  out.push('');
+  out.push('Fecha       Agua ml  Vasos    MetaH2O  Comidas  Proteina        Cere  Frut  LactProt LactDesc Verd  Adh%');
+  out.push('------------------------------------------------------------------------------------------------');
+  let totalProt=0, totalProtDays=0, completeDays=0, waterOk=0, waterSum=0;
+  dates.forEach(f=>{
+    const fd=getFD(f);
+    const meta=getAguaMeta();
+    const vasos=fd.aguaVasosHoy ?? fd.agua ?? 0;
+    const aguaMl=fd.aguaMl ?? Math.round(vasos*(meta.mlPorVaso||250));
+    const metaMl=(meta.vasos||10)*(meta.mlPorVaso||250);
+    const meals=getMealProgress(fd);
+    const calc=calcNutritionDayDetail(fd);
+    const p=calc.portions;
+    const prot=nRound(p.proteinas||0,2);
+    const protPct=NUTRITION_TARGETS.proteinas?Math.round(prot/NUTRITION_TARGETS.proteinas*100):0;
+    const groups=['proteinas','lacteoProtein','lacteoDescremado','cereales','frutas','lipidos','aceites','verduras'];
+    let done=0,total=0;
+    groups.forEach(g=>{ const t=NUTRITION_TARGETS[g]||0; total+=t; done+=Math.min(t,p[g]||0); });
+    const adh=total?Math.round(done/total*100):0;
+    if(aguaMl>=metaMl) waterOk++;
+    waterSum+=vasos;
+    if(meals.done===meals.total) completeDays++;
+    if(prot>0){ totalProt+=prot; totalProtDays++; }
+    const fmt=f.split('-').reverse().join('/');
+    out.push(`${fmt.padEnd(10)}  ${String(aguaMl).padEnd(7)}  ${String(vasos+'/'+(meta.vasos||10)).padEnd(7)}  ${(aguaMl>=metaMl?'S':'N').padEnd(7)}  ${String(meals.done+'/'+meals.total).padEnd(7)}  ${String(prot+' / 12 ('+protPct+'%)').padEnd(15)} ${String(nRound(p.cereales||0,2)).padEnd(5)} ${String(nRound(p.frutas||0,2)).padEnd(5)} ${String(nRound(p.lacteoProtein||0,2)).padEnd(8)} ${String(nRound(p.lacteoDescremado||0,2)).padEnd(8)} ${String(nRound(p.verduras||0,2)).padEnd(5)} ${adh}%`);
+    const detailLines=[];
+    calc.details.forEach(d=>{
+      (d.details||[]).forEach(x=>detailLines.push(`    - ${d.name}: ${x}`));
+    });
+    if(detailLines.length){
+      out.push('    Detalle cálculo:');
+      out.push(...detailLines.slice(0,10));
+      if(detailLines.length>10) out.push(`    ... ${detailLines.length-10} líneas más`);
+    }
+  });
+  out.push('');
+  out.push(`Resumen (${dates.length} dias con registro):`);
+  out.push(`  Agua promedio/dia:         ${dates.length?Math.round(waterSum/dates.length):0}/10 vasos - meta cumplida ${waterOk}/${dates.length} dias (${dates.length?Math.round(waterOk/dates.length*100):0}%)`);
+  out.push(`  Comidas dias completos:    ${completeDays}/${dates.length} dias (${dates.length?Math.round(completeDays/dates.length*100):0}%)`);
+  out.push(`  Proteina promedio:         ${totalProtDays?nRound(totalProt/totalProtDays,1):0}/12 porciones`);
+  out.push('');
+  return out;
+}
+
 function exportarSemana(){
   const semanas=parseInt(document.getElementById('export-semanas')?.value||'4');
   const hoy=new Date();
@@ -822,6 +892,12 @@ function exportarSemana(){
     lines.push('PESO CORPORAL');
     pesos.forEach(m=>lines.push('  '+m.date+': '+m.peso+'kg'+(m.imc?' - IMC '+m.imc:'')));
     lines.push('');
+  }
+
+  // v171: exportar antropometría completa si existe
+  if(typeof exportAnthropometryLines === 'function'){
+    const anthroLines = exportAnthropometryLines(fechaInicio, domingo);
+    if(anthroLines.length) lines.push(...anthroLines);
   }
 
   if(!ses.length){
@@ -858,6 +934,14 @@ function exportarSemana(){
       lines.push('');
     });
   }
+  if(typeof exportNutritionLines === 'function') {
+    const nutritionLines = exportNutritionLines(fechaInicio, domingo);
+    if(nutritionLines.length){
+      lines.push(sep);
+      lines.push(...nutritionLines);
+    }
+  }
+
   lines.push(sep);
   lines.push('Generado por MELQART - '+new Date().toLocaleDateString('es-CL'));
   const txt=lines.join('\n');
@@ -5526,12 +5610,98 @@ const PORTION_LABELS = {
   cereales:'Cereales', frutas:'Frutas', proteinas:'Proteínas', lacteoProtein:'Lácteo protein',
   lacteoDescremado:'Lácteo descremado', lipidos:'Lípidos', aceites:'Aceites', verduras:'Verduras'
 };
+
+// v173 — Equivalencias oficiales de la pauta nutricional
+// Base única para calcular porciones desde cantidad registrada.
+const NUTRITION_EQUIVALENCES = {
+  targets:{ proteinas:12, lacteoProtein:2, lacteoDescremado:1 },
+  proteinas:{
+    pollo:50, pechuga:50, pavo:50, vacuno:50, carne:50, cerdo:50,
+    atun:60, atún:60, jurel:60,
+    merluza:80, tilapia:80, reineta:80, congrio:80, cojinova:80, salmon:80, salmón:80,
+    camaron:120, camarón:120, camarones:120
+  },
+  huevoPorciones:1.5,
+  scoopPorciones:2,
+  lecheDescremadaMl:200,
+  yogurtProteinPorciones:1
+};
+function nRound(v,dec=2){ const m=Math.pow(10,dec); return Math.round((parseFloat(v)||0)*m)/m; }
+function normFoodText(txt){ return String(txt||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function addP(base,k,v){ base[k]=(base[k]||0)+(parseFloat(v)||0); return base; }
+function officialProteinPortions(food,grams){
+  const key=normFoodText(food).trim();
+  const gramsPer=NUTRITION_EQUIVALENCES.proteinas[key];
+  if(!gramsPer || !grams) return 0;
+  return nRound(grams/gramsPer,2);
+}
+function parseNutritionTextToPortions(txt){
+  const text=normFoodText(txt);
+  const portions=clonePortionZero();
+  const details=[];
+  if(!text.trim()) return {portions,details,hasAny:false};
+
+  // Proteínas por gramos: 200g pollo / pollo 200 g
+  Object.keys(NUTRITION_EQUIVALENCES.proteinas).forEach(food=>{
+    const f=normFoodText(food);
+    const re1=new RegExp('(\\d+(?:[\\.,]\\d+)?)\\s*g(?:r|rs|ramos)?\\s+(?:de\\s+)?'+f+'\\b','gi');
+    const re2=new RegExp('\\b'+f+'\\s*(?:de\\s*)?(\\d+(?:[\\.,]\\d+)?)\\s*g(?:r|rs|ramos)?','gi');
+    let m;
+    while((m=re1.exec(text))){ const g=parseFloat(m[1].replace(',','.')); const val=officialProteinPortions(f,g); if(val){ addP(portions,'proteinas',val); details.push(`${food} ${g} g → ${val} proteína`); } }
+    while((m=re2.exec(text))){ const g=parseFloat(m[1].replace(',','.')); const val=officialProteinPortions(f,g); if(val){ addP(portions,'proteinas',val); details.push(`${food} ${g} g → ${val} proteína`); } }
+  });
+
+  // Huevos: 2 huevos / 4 huevos duros
+  const eh=text.match(/(\\d+(?:[\\.,]\\d+)?)\\s*huevos?/);
+  if(eh){ const n=parseFloat(eh[1].replace(',','.')); const val=nRound(n*NUTRITION_EQUIVALENCES.huevoPorciones,2); addP(portions,'proteinas',val); details.push(`${n} huevo(s) → ${val} proteína`); }
+
+  // Scoop proteína
+  const scoop=text.match(/(\\d+(?:[\\.,]\\d+)?)?\\s*scoops?\\s*(?:de\\s*)?(?:proteina|proteína)?/);
+  if(scoop && text.includes('scoop')){ const n=scoop[1]?parseFloat(scoop[1].replace(',','.')):1; const val=nRound(n*NUTRITION_EQUIVALENCES.scoopPorciones,2); addP(portions,'proteinas',val); details.push(`${n} scoop proteína → ${val} proteína`); }
+
+  // Lácteos separados: no suman proteína
+  if(text.includes('leche descremada')){ addP(portions,'lacteoDescremado',1); details.push('Leche descremada → 1 lácteo descremado'); }
+  if(text.includes('yogur protein')||text.includes('yogurt protein')||text.includes('leche protein')){ addP(portions,'lacteoProtein',1); details.push('Lácteo protein → 1 lácteo semidescremado protein'); }
+
+  // Cereales simples interpretables
+  const papas=text.match(/(\\d+(?:[\\.,]\\d+)?)\\s*papas?/);
+  if(papas){ const n=parseFloat(papas[1].replace(',','.')); addP(portions,'cereales',n); details.push(`${n} papa(s) → ${n} cereal`); }
+  if(text.includes('arroz')){ addP(portions,'cereales',1); details.push('Arroz → 1 cereal'); }
+  if(text.includes('fideos')||text.includes('pasta')){ addP(portions,'cereales',1); details.push('Fideos → 1 cereal'); }
+  if(text.includes('pan molde')||text.includes('pan integral')){ addP(portions,'cereales',0.5); details.push('Pan molde/integral → 0.5 cereal'); }
+  if(text.includes('platano')||text.includes('manzana')||text.includes('fruta')){ addP(portions,'frutas',1); details.push('Fruta → 1 fruta'); }
+  if(text.includes('palta')||text.includes('mani')||text.includes('maní')){ addP(portions,'lipidos',0.5); details.push('Palta/maní → 0.5 lípidos'); }
+  if(text.includes('verdura')||text.includes('lechuga')||text.includes('tomate')||text.includes('zanahoria')||text.includes('espinaca')||text.includes('zapallo')){ addP(portions,'verduras',1); details.push('Verduras → 1 verdura'); }
+
+  Object.keys(portions).forEach(k=>portions[k]=nRound(portions[k],2));
+  return {portions,details,hasAny:details.length>0};
+}
+function portionsForMeal(c,fd){
+  const txt=fd?.comidas?.[c.id]?.texto || '';
+  const parsed=parseNutritionTextToPortions(txt);
+  if(parsed.hasAny) return {portions:parsed.portions, source:'detalle', details:parsed.details};
+  return {portions:c.portions||MEAL_PORTIONS[c.id]||{}, source:'plantilla', details:[`${c.nombre} → plantilla pauta`]};
+}
+function makeQuickMeal(prot, carb){
+  const protMap={pollo:'pollo', vacuno:'vacuno', tilapia:'tilapia', merluza:'merluza', reineta:'reineta', cojinova:'cojinova', salmon:'salmón', atun:'atún'};
+  const nameProt=protMap[prot]||prot;
+  const proteinas=officialProteinPortions(prot,200);
+  const portions={proteinas, cereales:2};
+  return {id:`qm_${prot}_${carb}`, name:`${nameProt.charAt(0).toUpperCase()+nameProt.slice(1)} + ${carb}`, quickMeal:true, detail:`${nameProt} 200 g + ${carb} 2 porciones`, portions, calcDetail:[`${nameProt} 200 g → ${proteinas} proteína`, `${carb} → 2 cereales`]};
+}
+const QUICK_MEALS = (()=>{
+  const proteins=['pollo','vacuno','tilapia','merluza','reineta','cojinova','salmon','atun'];
+  const carbs=['arroz','papas','fideos'];
+  return proteins.flatMap(p=>carbs.map(c=>makeQuickMeal(p,c)));
+})();
+
 const MEAL_PORTIONS = {
   desayuno:{proteinas:2, frutas:1, cereales:0.5, lipidos:0.5},
   fruta_1000:{frutas:1},
   almuerzo_post:{cereales:2, proteinas:2.5, verduras:1},
   leche_protein_1700:{lacteoProtein:1},
-  huevos_1800:{proteinas:2},
+  // v173: 1 huevo = 1.5 porciones; 2 huevos = 3 porciones
+  huevos_1800:{proteinas:3},
   leche_descremada_casa:{lacteoDescremado:1},
   cena:{proteinas:3, verduras:1}
 };
@@ -5559,11 +5729,25 @@ function clonePortionZero(){
   return Object.keys(NUTRITION_TARGETS).filter(k=>!['aguaMl','aguaVasos'].includes(k)).reduce((o,k)=>{o[k]=0;return o;},{});
 }
 function sumPortionsInto(base, add){ Object.entries(add||{}).forEach(([k,v])=>{base[k]=(base[k]||0)+(parseFloat(v)||0);}); return base; }
-function calcPortionsConsumed(fd){
+function calcNutritionDayDetail(fd){
   const total=clonePortionZero();
-  (COMIDAS||[]).forEach(c=>{ if(fd.comidas?.[c.id]?.completada) sumPortionsInto(total, c.portions||MEAL_PORTIONS[c.id]||{}); });
-  (fd.extraFoods||[]).forEach(f=>sumPortionsInto(total, f.portions||{}));
-  return total;
+  const details=[];
+  (COMIDAS||[]).forEach(c=>{
+    if(fd.comidas?.[c.id]?.completada){
+      const res=portionsForMeal(c,fd);
+      sumPortionsInto(total,res.portions||{});
+      details.push({type:'comida', name:c.nombre, source:res.source, portions:res.portions, details:res.details||[]});
+    }
+  });
+  (fd.extraFoods||[]).forEach(f=>{
+    sumPortionsInto(total, f.portions||{});
+    details.push({type:f.quickMeal?'comida_rapida':'alimento_rapido', name:f.name, source:f.quickMeal?'comida rápida':'registro rápido', portions:f.portions||{}, details:f.calcDetail||f.details||[]});
+  });
+  Object.keys(total).forEach(k=>total[k]=nRound(total[k],2));
+  return {portions:total, details};
+}
+function calcPortionsConsumed(fd){
+  return calcNutritionDayDetail(fd).portions;
 }
 function calcPortionsRemaining(consumed){
   const rem=clonePortionZero();
@@ -5834,18 +6018,7 @@ function newPorciones(){
 
 /** Suma todas las porciones registradas hoy (comidas + alimentos rápidos) */
 function getPorcionesHoy(fd){
-  const totales=newPorciones();
-  // Porciones de comidas completadas
-  COMIDAS.forEach(c=>{
-    if(fd.comidas?.[c.id]?.completada && c.portions){
-      Object.entries(c.portions).forEach(([k,v])=>{ totales[k]=(totales[k]||0)+v; });
-    }
-  });
-  // Porciones de alimentos rápidos registrados hoy
-  (fd.extraFoods||[]).forEach(f=>{
-    if(f.portions){ Object.entries(f.portions).forEach(([k,v])=>{ totales[k]=(totales[k]||0)+v; }); }
-  });
-  return totales;
+  return calcPortionsConsumed(fd);
 }
 
 function renderHomeNutritionCard(){
@@ -5979,10 +6152,10 @@ function toggleVasoHoy(idx){
   renderFoodIfVisible();
 }
 function addFrequentFood(foodId){
-  const food=FREQUENT_FOODS.find(f=>f.id===foodId); if(!food) return;
+  const food=[...FREQUENT_FOODS,...QUICK_MEALS].find(f=>f.id===foodId); if(!food) return;
   const fd=getFD(foodFecha); if(!fd.extraFoods) fd.extraFoods=[];
-  fd.extraFoods.push({id:food.id,name:food.name,portions:food.portions,ts:Date.now()});
-  saveFD(fd); showToast('Alimento registrado',1400,'ok'); renderFood(); renderHomeNutritionCard();
+  fd.extraFoods.push({id:food.id,name:food.name,detail:food.detail||'',portions:food.portions,quickMeal:!!food.quickMeal,calcDetail:food.calcDetail||[],ts:Date.now()});
+  saveFD(fd); showToast(food.quickMeal?'Comida rápida registrada':'Alimento registrado',1400,'ok'); renderFood(); renderHomeNutritionCard();
 }
 function renderNutritionPortionDashboard(fd){
   const consumed=calcPortionsConsumed(fd), remaining=calcPortionsRemaining(consumed);
@@ -5993,7 +6166,13 @@ function renderNutritionPortionDashboard(fd){
   </div>`;
 }
 function renderFrequentFoods(){
-  return `<div class="mq-card" style="margin-bottom:12px"><div class="mq-card-head"><div><div class="mq-kicker">Alimentos frecuentes</div><div class="mq-card-title">Registro rápido</div></div></div><div class="mq-food-buttons">${FREQUENT_FOODS.map(f=>`<button onclick="addFrequentFood('${f.id}')">${f.name}</button>`).join('')}</div></div>`;
+  return `<div class="mq-card" style="margin-bottom:12px">
+    <div class="mq-card-head"><div><div class="mq-kicker">Registro rápido</div><div class="mq-card-title">Alimentos y comidas rápidas</div></div></div>
+    <div class="mq-kicker" style="margin:2px 0 6px">Alimentos frecuentes</div>
+    <div class="mq-food-buttons">${FREQUENT_FOODS.map(f=>`<button onclick="addFrequentFood('${f.id}')">${f.name}</button>`).join('')}</div>
+    <div class="mq-kicker" style="margin:12px 0 6px">Comidas rápidas · 200 g proteína + 2 cereales</div>
+    <div class="mq-food-buttons mq-quick-meal-buttons">${QUICK_MEALS.map(f=>`<button onclick="addFrequentFood('${f.id}')" title="${f.detail}">${f.name}</button>`).join('')}</div>
+  </div>`;
 }
 
 // ---------------------------------------------------------------
@@ -7768,3 +7947,265 @@ function buildCuerpoChartHtml(pts, metricKey, unit, color, filtroSel) {
 // =============================================================
 //  FIN SISTEMA DE GRÁFICOS MELQART v123
 // =============================================================
+
+/* =============================================================
+   MELQART v171 — Antropometría completa
+   Lee bodyMetrics/anthropometry, deduplica por fecha, grafica
+   composición, pliegues, perímetros y somatotipo. No toca Home.
+============================================================= */
+(function(){
+  const ANTRO_METRICS = {
+    composicion: [
+      { key:'peso', label:'Peso', unit:'kg', color:'var(--p)', path:'peso' },
+      { key:'grasaPct', label:'Grasa corporal', unit:'%', color:'var(--warn)', paths:['grasaPct','grasa'] },
+      { key:'grasaKg', label:'Masa grasa', unit:'kg', color:'var(--warn)', path:'grasaKg' },
+      { key:'muscularPct', label:'Masa muscular %', unit:'%', color:'var(--teal)', path:'muscularPct' },
+      { key:'muscularKg', label:'Masa muscular kg', unit:'kg', color:'var(--teal)', paths:['muscularKg','muscular'] },
+      { key:'imc', label:'IMC', unit:'', color:'var(--gold)', path:'imc' },
+      { key:'ratioCinturaCadera', label:'Ratio cintura-cadera', unit:'', color:'var(--orange)', path:'ratioCinturaCadera' }
+    ],
+    pliegues: [
+      { key:'suma6Pliegues', label:'Suma 6 pliegues', unit:'mm', color:'var(--p)', paths:['suma6Pliegues','pliegues.p6'] },
+      { key:'suma8Pliegues', label:'Suma 8 pliegues', unit:'mm', color:'var(--p)', paths:['suma8Pliegues','pliegues.p8'] },
+      { key:'triceps', label:'Tríceps', unit:'mm', color:'var(--p)', path:'pliegues.triceps' },
+      { key:'subescapular', label:'Subescapular', unit:'mm', color:'var(--p)', path:'pliegues.subescapular' },
+      { key:'supraespinal', label:'Supraespinal', unit:'mm', color:'var(--p)', path:'pliegues.supraespinal' },
+      { key:'abdominal', label:'Abdominal', unit:'mm', color:'var(--p)', path:'pliegues.abdominal' },
+      { key:'muslo', label:'Muslo', unit:'mm', color:'var(--p)', path:'pliegues.muslo' },
+      { key:'pantorrilla', label:'Pantorrilla', unit:'mm', color:'var(--p)', path:'pliegues.pantorrilla' },
+      { key:'biceps', label:'Bíceps', unit:'mm', color:'var(--p)', path:'pliegues.biceps' },
+      { key:'crestaIliaca', label:'Cresta ilíaca', unit:'mm', color:'var(--p)', path:'pliegues.crestaIliaca' }
+    ],
+    perimetros: [
+      { key:'brazoRelajado', label:'Brazo relajado', unit:'cm', color:'var(--teal)', path:'perimetros.brazoRelajado' },
+      { key:'brazoFlexTension', label:'Brazo flex tensión', unit:'cm', color:'var(--teal)', path:'perimetros.brazoFlexTension' },
+      { key:'cinturaMinima', label:'Cintura mínima', unit:'cm', color:'var(--teal)', path:'perimetros.cinturaMinima' },
+      { key:'caderaMaxima', label:'Cadera máxima', unit:'cm', color:'var(--teal)', path:'perimetros.caderaMaxima' },
+      { key:'musloMedial', label:'Muslo medial', unit:'cm', color:'var(--teal)', path:'perimetros.musloMedial' },
+      { key:'pantorrillaMaxima', label:'Pantorrilla máxima', unit:'cm', color:'var(--teal)', path:'perimetros.pantorrillaMaxima' }
+    ],
+    somatotipo: [
+      { key:'endo', label:'Endomorfía', unit:'', color:'var(--warn)', path:'somatotipo.endo' },
+      { key:'meso', label:'Mesomorfía', unit:'', color:'var(--teal)', path:'somatotipo.meso' },
+      { key:'ecto', label:'Ectomorfía', unit:'', color:'var(--gold)', path:'somatotipo.ecto' }
+    ]
+  };
+  window.ANTRO_METRICS = ANTRO_METRICS;
+
+  function numOrNull(v){
+    if(v===null || v===undefined || v==='') return null;
+    const n = parseFloat(String(v).replace(',', '.'));
+    return Number.isFinite(n) ? n : null;
+  }
+  function getPath(obj, path){
+    if(!obj || !path) return null;
+    return String(path).split('.').reduce((acc,k)=>acc && acc[k]!==undefined ? acc[k] : null, obj);
+  }
+  function metricVal(m, cfg){
+    const paths = cfg.paths || [cfg.path || cfg.key];
+    for(const p of paths){
+      const v = numOrNull(getPath(m,p));
+      if(v!==null) return v;
+    }
+    return null;
+  }
+  function round1(v){ return Math.round(v*10)/10; }
+  function mergeDeepMissing(target, src){
+    if(!src || typeof src!=='object') return target;
+    Object.keys(src).forEach(k=>{
+      const sv=src[k];
+      if(sv && typeof sv==='object' && !Array.isArray(sv)){
+        if(!target[k] || typeof target[k]!=='object') target[k]={};
+        mergeDeepMissing(target[k], sv);
+      }else if((target[k]===undefined || target[k]===null || target[k]==='') && sv!==undefined && sv!==null && sv!==''){
+        target[k]=sv;
+      }
+    });
+    return target;
+  }
+  function normalizeAnthroRecord(m){
+    const r = JSON.parse(JSON.stringify(m||{}));
+    if(!r.date && r.fecha) r.date = r.fecha;
+    if(!r.date) return null;
+    if(!r.pliegues) r.pliegues={};
+    if(!r.perimetros) r.perimetros={};
+    if(!r.somatotipo) r.somatotipo={};
+
+    if(r.suma6Pliegues==null && r.pliegues.p6!=null) r.suma6Pliegues = r.pliegues.p6;
+    if(r.suma8Pliegues==null && r.pliegues.p8!=null) r.suma8Pliegues = r.pliegues.p8;
+    if(r.pliegues.p6==null && r.suma6Pliegues!=null) r.pliegues.p6 = r.suma6Pliegues;
+    if(r.pliegues.p8==null && r.suma8Pliegues!=null) r.pliegues.p8 = r.suma8Pliegues;
+
+    if(r.grasaPct==null && r.grasa!=null) r.grasaPct = r.grasa;
+    if(r.grasa==null && r.grasaPct!=null) r.grasa = r.grasaPct;
+    if(r.muscularKg==null && r.muscular!=null) r.muscularKg = r.muscular;
+    if(r.muscular==null && r.muscularKg!=null) r.muscular = r.muscularKg;
+
+    ['peso','estatura','grasa','grasaPct','grasaKg','muscular','muscularPct','muscularKg','imc','ratioCinturaCadera','suma6Pliegues','suma8Pliegues'].forEach(k=>{
+      const n = numOrNull(r[k]); if(n!==null) r[k]=n;
+    });
+    ['p6','p8','triceps','subescapular','supraespinal','abdominal','muslo','pantorrilla','biceps','crestaIliaca'].forEach(k=>{
+      const n = numOrNull(r.pliegues[k]); if(n!==null) r.pliegues[k]=n;
+    });
+    ['brazoRelajado','brazoFlexTension','cinturaMinima','caderaMaxima','musloMedial','pantorrillaMaxima'].forEach(k=>{
+      const n = numOrNull(r.perimetros[k]); if(n!==null) r.perimetros[k]=n;
+    });
+    ['endo','meso','ecto'].forEach(k=>{
+      const n = numOrNull(r.somatotipo[k]); if(n!==null) r.somatotipo[k]=n;
+    });
+    if(!r.source) r.source='antropometria';
+    return r;
+  }
+
+  window.normalizeAnthropometry = function(){
+    const src = [...(forge.bodyMetrics||[]), ...(forge.anthropometry||[])].map(normalizeAnthroRecord).filter(Boolean);
+    const byDate = new Map();
+    src.forEach(r=>{
+      if(!byDate.has(r.date)) byDate.set(r.date, r);
+      else byDate.set(r.date, mergeDeepMissing(byDate.get(r.date), r));
+    });
+    const arr = Array.from(byDate.values()).sort((a,b)=>a.date.localeCompare(b.date));
+    forge.bodyMetrics = arr;
+    forge.anthropometry = arr;
+    if(!forge.perfil) forge.perfil={};
+    const est = arr.slice().reverse().find(x=>x.estatura)?.estatura;
+    if(est && !forge.perfil.estatura) forge.perfil.estatura = est;
+    return arr;
+  };
+
+  window.importAnthropometryRecords = function(records){
+    if(!Array.isArray(records)) throw new Error('Debes pasar un array de registros antropométricos');
+    if(!forge.bodyMetrics) forge.bodyMetrics=[];
+    if(!forge.anthropometry) forge.anthropometry=[];
+    forge.bodyMetrics.push(...records);
+    forge.anthropometry.push(...records);
+    const arr = window.normalizeAnthropometry();
+    if(typeof saveDB==='function') saveDB();
+    if(typeof renderAll==='function') renderAll();
+    else if(typeof renderProgCuerpo==='function') renderProgCuerpo();
+    console.log(`✅ Antropometría importada: ${records.length} registros recibidos, ${arr.length} fechas únicas en Melqart`, arr);
+    return arr;
+  };
+
+  function metricPoints(cfg, mets){
+    return (mets||[]).map(m=>{
+      const v = metricVal(m,cfg);
+      if(v===null) return null;
+      return { date:m.date, label:m.date.slice(5).replace('-','/'), value:v, displayValue:`${v}${cfg.unit?' '+cfg.unit:''}` };
+    }).filter(Boolean);
+  }
+  function applyMetricFilter(pts, filtro){
+    const DIAS_FILTRO = { '1m':30, '2m':60, '4m':120, '8m':240, '12m':365 };
+    if(!DIAS_FILTRO[filtro]) return pts;
+    const corte = new Date(); corte.setDate(corte.getDate() - DIAS_FILTRO[filtro]);
+    const corteStr = typeof localDateStr==='function' ? localDateStr(corte) : corte.toISOString().slice(0,10);
+    return pts.filter(p=>p.date>=corteStr);
+  }
+  function buildMetricBody(metricKey, cfg, filtro, mets){
+    filtro = filtro || window._bodyAccFiltro[metricKey] || 'all';
+    const all = metricPoints(cfg, mets);
+    const FILTROS = [{id:'1m',label:'1M'},{id:'2m',label:'2M'},{id:'4m',label:'4M'},{id:'8m',label:'8M'},{id:'12m',label:'12M'},{id:'all',label:'Todo'}];
+    const filtrosHtml = `<div class="acc-filters">${FILTROS.map(f=>`<button class="acc-filter-btn${f.id===filtro?' on':''}" onclick="event.stopPropagation();setBodyAccFiltro('${metricKey}','${f.id}')">${f.label}</button>`).join('')}</div>`;
+    if(!all.length) return `<div class="mq-chart-empty" style="padding:24px 0"><div class="mq-chart-empty-text">Sin registros</div></div>`;
+    const pts = applyMetricFilter(all, filtro);
+    if(!pts.length) return filtrosHtml + `<div class="mq-chart-empty" style="padding:16px 0"><div class="mq-chart-empty-text">Sin mediciones en este período</div></div>`;
+    const vals=pts.map(p=>p.value), ult=vals[vals.length-1], pri=vals[0], delta=round1(ult-pri);
+    const menorMejor = ['peso','imc','grasaPct','grasaKg','ratioCinturaCadera','suma6Pliegues','suma8Pliegues','triceps','subescapular','supraespinal','abdominal','muslo','pantorrilla','biceps','crestaIliaca','cinturaMinima'].includes(metricKey);
+    const deltaColor = delta===0 ? 'var(--ink3)' : ((delta<0)===menorMejor ? 'var(--ok)' : 'var(--warn)');
+    const kpisHtml = `<div class="acc-kpis">
+      <div class="acc-kpi"><div class="acc-kpi-val">${ult} <span style="font-size:11px;color:var(--ink3)">${cfg.unit||''}</span></div><div class="acc-kpi-lbl">Actual</div></div>
+      <div class="acc-kpi"><div class="acc-kpi-val" style="color:${deltaColor}">${delta>0?'+':''}${delta} ${cfg.unit||''}</div><div class="acc-kpi-lbl">Variación período</div></div>
+      <div class="acc-kpi"><div class="acc-kpi-val">${pts.length}</div><div class="acc-kpi-lbl">Registros</div></div>
+    </div>`;
+    const chartHtml = (typeof renderMetricChart==='function') ? renderMetricChart({
+      id:`anthro_${metricKey}_${filtro}`,
+      type: cfg.unit==='%' ? 'percentage' : 'weight',
+      unit:cfg.unit||'', unitLabel:cfg.unit||'', data:pts,
+      yAxis:{forceZero:false,paddingRatio:0.12}, tooltip:{showDate:true}, height:180,
+      color:cfg.color||'var(--p)', activeFilter:'all'
+    }) : `<div style="padding:20px;color:var(--ink3)">Gráfico no disponible</div>`;
+    return kpisHtml + filtrosHtml + chartHtml;
+  }
+
+  window.buildBodyAccBody = function(metricKey, filtro, metsAll){
+    const allCfg = [...ANTRO_METRICS.composicion, ...ANTRO_METRICS.pliegues, ...ANTRO_METRICS.perimetros, ...ANTRO_METRICS.somatotipo];
+    const cfg = allCfg.find(x=>x.key===metricKey) || allCfg.find(x=>(x.paths||[]).includes(metricKey));
+    if(!cfg) return `<div class="mq-chart-empty" style="padding:24px 0"><div class="mq-chart-empty-text">Métrica no configurada</div></div>`;
+    return buildMetricBody(metricKey, cfg, filtro, metsAll||window._cuerpoMets||[]);
+  };
+
+  function metricCard(cfg, mets){
+    const pts = metricPoints(cfg, mets);
+    if(!pts.length) return '';
+    const isOpen = !!window._bodyAccState[cfg.key];
+    const filtro = window._bodyAccFiltro[cfg.key] || 'all';
+    const bodyHtml = isOpen ? buildMetricBody(cfg.key, cfg, filtro, mets) : '';
+    const ult = pts[pts.length-1];
+    return `<div class="acc-card${isOpen?' open':''}" id="acc-${cfg.key}" style="margin-bottom:8px">
+      <div class="acc-head" onclick="toggleBodyAcc('${cfg.key}');event.stopPropagation()">
+        <div class="acc-head-left"><div class="acc-ex-name">${cfg.label}</div><div class="acc-ex-sub">${pts.length} registros${cfg.unit?' · '+cfg.unit:''}</div></div>
+        <div class="acc-head-right"><div class="acc-pdr-val" style="color:${cfg.color||'var(--p)'}">${ult.value}${cfg.unit?' '+cfg.unit:''}</div></div>
+        <svg class="acc-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="acc-body" id="body-acc-body-${cfg.key}">${bodyHtml}</div>
+    </div>`;
+  }
+  function groupCards(configs, mets){
+    const html = configs.map(c=>metricCard(c,mets)).filter(Boolean).join('');
+    return html || `<div class="mq-chart-empty" style="padding:24px 0"><div class="mq-chart-empty-text">Sin datos para esta categoría</div></div>`;
+  }
+
+  window.renderProgCuerpo = function(){
+    const metsAll = window.normalizeAnthropometry();
+    window._cuerpoMets = metsAll;
+    if(!metsAll.length){
+      const k=document.getElementById('cuerpo-kpis'), c=document.getElementById('cuerpo-charts'), h=document.getElementById('cuerpo-historial');
+      if(k) k.innerHTML='';
+      if(c) c.innerHTML = `<div class="empty" style="padding:60px 0"><div class="empty-icon" style="font-size:32px;margin-bottom:12px">◬</div><div class="empty-text">Sin mediciones</div><div class="empty-sub">Carga antropometría por consola o toca "+ Añadir".</div></div>`;
+      if(h) h.innerHTML='';
+      return;
+    }
+    const ult=metsAll[metsAll.length-1];
+    const imc = metricVal(ult, ANTRO_METRICS.composicion.find(x=>x.key==='imc'));
+    const compSub = `${ult.peso?ult.peso+' kg':'—'} · IMC ${imc||'—'}`;
+    const plSub = [metricVal(ult, ANTRO_METRICS.pliegues[0])?`6 pliegues: ${metricVal(ult, ANTRO_METRICS.pliegues[0])} mm`:'', metricVal(ult, ANTRO_METRICS.pliegues[1])?`8 pliegues: ${metricVal(ult, ANTRO_METRICS.pliegues[1])} mm`:''].filter(Boolean).join(' · ') || 'Pliegues cutáneos';
+    const perSub = metricVal(ult, ANTRO_METRICS.perimetros[2]) ? `Cintura: ${metricVal(ult, ANTRO_METRICS.perimetros[2])} cm` : 'Perímetros corregidos';
+    const somSub = metricVal(ult, ANTRO_METRICS.somatotipo[0]) ? `Endo ${metricVal(ult,ANTRO_METRICS.somatotipo[0])} · Meso ${metricVal(ult,ANTRO_METRICS.somatotipo[1])} · Ecto ${metricVal(ult,ANTRO_METRICS.somatotipo[2])}` : 'Somatocarta';
+
+    const SECCIONES = [
+      {key:'composicion', label:'Composición corporal', sub:compSub, render:()=>groupCards(ANTRO_METRICS.composicion,metsAll)},
+      {key:'pliegues', label:'Pliegues', sub:plSub, render:()=>groupCards(ANTRO_METRICS.pliegues,metsAll)},
+      {key:'perimetros', label:'Perímetros', sub:perSub, render:()=>groupCards(ANTRO_METRICS.perimetros,metsAll)},
+      {key:'somatotipo', label:'Somatotipo', sub:somSub, render:()=>groupCards(ANTRO_METRICS.somatotipo,metsAll)}
+    ];
+    const k=document.getElementById('cuerpo-kpis'), c=document.getElementById('cuerpo-charts'), h=document.getElementById('cuerpo-historial');
+    if(k) k.innerHTML='';
+    if(c) c.innerHTML='';
+    if(h) h.innerHTML = SECCIONES.map(sec=>{
+      const isOpen=!!window._bodyAccState[sec.key];
+      return `<div class="body-acc-card${isOpen?' open':''}" id="body-acc-${sec.key}">
+        <div class="acc-head" onclick="toggleBodyAcc('${sec.key}')">
+          <div class="acc-head-left"><div class="acc-ex-name">${sec.label}</div><div class="acc-ex-sub">${sec.sub}</div></div>
+          <svg class="acc-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="acc-body" id="body-acc-body-${sec.key}">${isOpen?sec.render():''}</div>
+      </div>`;
+    }).join('');
+  };
+
+  window.exportAnthropometryLines = function(fechaInicio, fechaFin){
+    const mets = window.normalizeAnthropometry().filter(m=>{
+      const d=new Date(m.date+'T12:00:00'); return (!fechaInicio || d>=fechaInicio) && (!fechaFin || d<=fechaFin);
+    });
+    if(!mets.length) return [];
+    const lines=['ANTROPOMETRIA'];
+    mets.forEach(m=>{
+      lines.push(`  ${m.date}: peso ${m.peso??'—'} kg · grasa ${m.grasaPct??m.grasa??'—'}% (${m.grasaKg??'—'} kg) · músculo ${m.muscularPct??'—'}% (${m.muscularKg??m.muscular??'—'} kg) · IMC ${m.imc??'—'}`);
+      lines.push(`    Pliegues: 6=${m.suma6Pliegues??m.pliegues?.p6??'—'} mm · 8=${m.suma8Pliegues??m.pliegues?.p8??'—'} mm · tríceps=${m.pliegues?.triceps??'—'} · subesc=${m.pliegues?.subescapular??'—'} · supra=${m.pliegues?.supraespinal??'—'} · abd=${m.pliegues?.abdominal??'—'} · muslo=${m.pliegues?.muslo??'—'} · pant=${m.pliegues?.pantorrilla??'—'} · bíceps=${m.pliegues?.biceps??'—'} · cresta=${m.pliegues?.crestaIliaca??'—'}`);
+      lines.push(`    Perímetros: brazo rel=${m.perimetros?.brazoRelajado??'—'} · brazo flex=${m.perimetros?.brazoFlexTension??'—'} · cintura=${m.perimetros?.cinturaMinima??'—'} · cadera=${m.perimetros?.caderaMaxima??'—'} · muslo=${m.perimetros?.musloMedial??'—'} · pant=${m.perimetros?.pantorrillaMaxima??'—'}`);
+      lines.push(`    Somatotipo: endo=${m.somatotipo?.endo??'—'} · meso=${m.somatotipo?.meso??'—'} · ecto=${m.somatotipo?.ecto??'—'}`);
+    });
+    lines.push('');
+    return lines;
+  };
+})();

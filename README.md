@@ -1,68 +1,44 @@
-# MELQART v171 — Antropometría completa
+# MELQART v173 — Protein equivalences + quick meals + plan B update
 
-## Cambios
+## Cambios incluidos
 
-- Melqart ahora normaliza y lee `bodyMetrics` / `anthropometry` para datos antropométricos históricos.
-- Deduplica por fecha: una fecha = un registro.
-- Si la fecha existe, fusiona campos faltantes sin duplicar.
-- En `Progreso > Medidas corporales` agrega secciones:
-  - Composición corporal
-  - Pliegues
-  - Perímetros
-  - Somatotipo
-- Grafica:
-  - Peso
-  - Grasa %
-  - Masa grasa kg
-  - Masa muscular %
-  - Masa muscular kg
-  - IMC
-  - Ratio cintura-cadera
-  - Suma 6 pliegues
-  - Suma 8 pliegues
-  - Pliegues individuales
-  - Perímetros
-  - Endo / Meso / Ecto
-- El exportador del Home incluye bloque de antropometría cuando hay datos dentro del rango exportado.
+1. **Plan de entrenamiento**
+   - Miércoles / Tren Inferior B mantiene el reemplazo: `Peso Muerto Rumano` → `Curl Femoral Tumbado`.
+   - Lunes / Tren Inferior A queda intacto con `Peso Muerto (Barra)`.
 
-## Script de consola
+2. **Nutrición: equivalencias oficiales hacia adelante**
+   - Proteína se calcula desde cantidades registradas cuando existen gramos, huevos o scoop.
+   - Lácteos no suman proteína.
+   - Leche descremada cuenta como lácteo descremado.
+   - Yogurt/leche protein cuenta como lácteo semidescremado protein.
 
-Incluye archivo:
+3. **Registro rápido: comidas rápidas**
+   - Agrega combinaciones de pollo, vacuno, tilapia, merluza, reineta, cojinova, salmón y atún.
+   - Cada comida rápida registra 200 g de proteína + 2 porciones de cereales.
+   - Opciones disponibles con arroz, papas o fideos.
 
-`melqart_antropometria_console.js`
+4. **Exportador**
+   - Agrega bloque nutricional con proteína objetivo, proteína consumida y % cumplimiento.
+   - Agrega detalle del cálculo cuando existe información interpretable.
 
-Uso:
+## Equivalencias implementadas
 
-1. Subir esta versión a GitHub.
-2. Abrir Melqart.
-3. Abrir consola del navegador.
-4. Pegar el contenido completo de `melqart_antropometria_console.js`.
-5. Presionar Enter.
-6. Revisar `Progreso > Medidas corporales`.
-7. Si quieres subir a Firebase, usar sincronización normal de la app.
+- Pollo / vacuno / cerdo: 50 g = 1 porción proteína.
+- Atún / jurel: 60 g = 1 porción proteína.
+- Merluza / tilapia / reineta / congrio / cojinova / salmón: 80 g = 1 porción proteína.
+- Camarón: 120 g = 1 porción proteína.
+- 1 huevo = 1.5 porciones proteína.
+- 1 scoop proteína = 2 porciones proteína.
+- 200 ml leche descremada = 1 lácteo descremado.
+- Yogurt/leche protein = 1 lácteo semidescremado protein.
 
-## Registros históricos incluidos
+## No incluido en esta versión
 
-- 06-01-2024
-- 03-02-2024
-- 06-04-2024
-- 01-06-2024
-- 03-08-2024
-- 19-10-2024
-- 21-12-2024
-- 01-03-2025
+- Recalculo histórico legacy de días 7/7.
+- Corrección masiva histórica sin detalle de alimentos.
+- Cambios visuales globales.
+- Cambios en Home, sueño, creatina, agua, peso o progreso.
 
-## No se tocó
+## Validación realizada
 
-- Home
-- Entrenar
-- Beep
-- Nutrición diaria
-- Agua
-- Creatina
-- Sueño
-- Login
-- Firebase/Auth
-- Logo
-- Colores globales
-- Tipografías
+- `node --check app.js` aprobado.
