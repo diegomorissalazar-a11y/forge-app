@@ -4175,7 +4175,7 @@ function getRunPR(exId){
   return pr.dist>0?`${pr.dist.toFixed(2)}km · ${ritmoStr}`:'—';
 }
 
-// Gráfico de ritmo — eje Y invertido (menor = más rápido = mejor)
+// Gráfico de ritmo — v179: eje normal, mayor arriba y menor abajo
 function renderLineChartRitmo(puntos){
   function rl(v){ return `${Math.floor(v)}'${pad(Math.round((v%1)*60))}`; }
   const W=320,H=140,PL=44,PB=28,PT=10,PR=10;
@@ -4183,11 +4183,11 @@ function renderLineChartRitmo(puntos){
   const minV=Math.min(...vals), maxV=Math.max(...vals);
   const rng=maxV-minV||0.5;
   const xs=puntos.map((_,i)=>PL+(i/(puntos.length-1))*(W-PL-PR));
-  const ys=puntos.map(p=>PT+((p.val-minV)/rng)*(H-PT-PB)); // invertido
+  const ys=puntos.map(p=>PT+(1-((p.val-minV)/rng))*(H-PT-PB)); // v179: eje normal, mayor arriba
   const line=xs.map((x,i)=>`${i===0?'M':'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
   const area=line+` L${xs[xs.length-1].toFixed(1)},${(H-PB).toFixed(1)} L${xs[0].toFixed(1)},${(H-PB).toFixed(1)} Z`;
   const yLabs=[maxV, minV+rng/2, minV].map(v=>{
-    const y=PT+((v-minV)/rng)*(H-PT-PB);
+    const y=PT+(1-((v-minV)/rng))*(H-PT-PB);
     return `<text x="${PL-4}" y="${y.toFixed(1)}" class="chart-label" text-anchor="end" dominant-baseline="middle">${rl(v)}</text><line x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}" class="chart-grid"/>`;
   }).join('');
   const step=Math.max(1,Math.floor(puntos.length/5));
@@ -4196,7 +4196,7 @@ function renderLineChartRitmo(puntos){
     return `<text x="${xs[i].toFixed(1)}" y="${H}" class="chart-label" text-anchor="middle">${p.fecha.slice(5)}</text>`;
   }).join('');
   const dots=puntos.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4" style="fill:var(--blue)"><title>${p.fecha}: ${rl(p.val)}/km</title></circle>`).join('');
-  return `<div style="font-size:10px;color:var(--ink3);margin-bottom:4px">Ritmo (min/km) — flecha arriba = más rápido</div>
+  return `<div style="font-size:10px;color:var(--ink3);margin-bottom:4px">Ritmo (min/km)</div>
   <div class="chart-wrap"><svg class="chart-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
     <line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" class="chart-axis"/>
     <line x1="${PL}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" class="chart-axis"/>
@@ -4466,12 +4466,12 @@ function renderLineChartRitmoTall(puntos){
   const vals=puntos.map(p=>p.val);
   const minV=Math.min(...vals),maxV=Math.max(...vals),rng=maxV-minV||0.5;
   const xs=puntos.map((_,i)=>PL+(i/(puntos.length-1||1))*(W-PL-PR));
-  // Ritmo invertido: valor menor (más rápido) va ARRIBA, valor mayor (más lento) va ABAJO
-  const ys=puntos.map(p=>PT+((maxV-p.val)/rng)*(H-PT-PB));
+  // v179: eje normal, valor mayor arriba y menor abajo
+  const ys=puntos.map(p=>PT+(1-((p.val-minV)/rng))*(H-PT-PB));
   const line=xs.map((x,i)=>`${i===0?'M':'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
   const area=line+` L${xs[xs.length-1].toFixed(1)},${H-PB} L${xs[0].toFixed(1)},${H-PB} Z`;
   const yLabs=[minV,minV+rng/2,maxV].map(v=>{
-    const y=PT+((maxV-v)/rng)*(H-PT-PB);
+    const y=PT+(1-((v-minV)/rng))*(H-PT-PB);
     return `<text x="${PL-4}" y="${y.toFixed(1)}" class="chart-label" text-anchor="end" dominant-baseline="middle">${rl(v)}</text><line x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}" class="chart-grid"/>`;
   }).join('');
   const step=Math.max(1,Math.floor(puntos.length/8));
@@ -4481,7 +4481,7 @@ function renderLineChartRitmoTall(puntos){
   }).join('');
   const dots=puntos.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="3" style="fill:var(--blue)"><title>${p.fecha}: ${rl(p.val)}/km</title></circle>`).join('');
   return `
-    <div style="font-size:11px;color:var(--ink3);margin-bottom:6px;font-weight:600">Ritmo (min/km) — arriba = más rápido · abajo = más lento</div>
+    <div style="font-size:11px;color:var(--ink3);margin-bottom:6px;font-weight:600">Ritmo (min/km)</div>
     <div style="border-radius:var(--r);background:var(--bg2);border:1px solid var(--border);padding:12px 0 0">
       <svg width="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="display:block;height:${H}px">
         <line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" class="chart-axis"/>
@@ -7567,11 +7567,11 @@ function createPaceChart(runningSessions) {
   return {
     id: 'run_pace',
     title: 'Ritmo promedio',
-    subtitle: 'Evolución por sesión — arriba = más rápido',
+    subtitle: 'Evolución por sesión',
     unitLabel: 'min/km',
     type: 'pace', unit: 'min/km',
     data,
-    yAxis: { auto: true, forceZero: false, invertY: true }
+    yAxis: { auto: true, forceZero: false, invertY: false }
   };
 }
 
@@ -7713,7 +7713,7 @@ function renderMetricChart(config) {
   const W = Math.max(320, PL + PR + n * minPxPerPoint);
 
   const vals = data.map(p => p.value);
-  const invertY = type === 'pace' || yAxis.invertY;
+  const invertY = false; // v179: no invertir escalas; mayor arriba, menor abajo
   const [domMin, domMax] = calculateYAxisDomain(vals, yAxis);
 
   function toX(i) {
@@ -7897,11 +7897,11 @@ function buildExDetailCharts(puntos, isRun, exId, filtroSel) {
       html += renderMetricChart({
         id: `ex_ritmo_${exId}_${filtroSel}`,
         title: 'Ritmo promedio',
-        subtitle: 'Arriba = más rápido · Abajo = más lento',
+        subtitle: 'Evolución del ritmo',
         unitLabel: 'min/km',
         type: 'pace', unit: 'min/km',
         data: ritmoData,
-        yAxis: { invertY: true, forceZero: false },
+        yAxis: { invertY: false, forceZero: false },
         tooltip: { showDate: true },
         height: 180, color: 'var(--blue)'
       });
@@ -9029,3 +9029,224 @@ function renderProgRecuperacion(){
   ].map(k=>`<div class="lumen-stat mq-rec-kpi"><div class="lumen-num">${k.v}</div><div class="lumen-lbl">${k.t}</div><div class="lumen-sub">${k.s}</div></div>`).join('');
   el.innerHTML=`<div class="section-label" style="margin-bottom:10px">Recuperación semanal</div><div class="mq-rec-kpi-row">${kpis}</div>${mq178RenderRecoveryChart('sleep','Sueño promedio',data,d=>d.sleepAvg===null?null:Math.round(d.sleepAvg/60*100)/100,{target:7,format:(v,d)=>fmtHours(d.sleepAvg),meta:'Meta: 7h promedio',tooltip:d=>fmtHours(d.sleepAvg)})}${mq178RenderRecoveryChart('creatine','Creatina',data,d=>d.creatScore===null?null:d.creat,{target:7,format:(v,d)=>`${d.creat}/${d.creatDays||7}`,meta:'Meta: consumo diario',tooltip:d=>`${d.creat} de ${d.creatDays} días`})}${mq178RenderRecoveryChart('protein','Proteína',data,d=>d.protAvg,{target:100,format:v=>`${Math.round(v)}%`,meta:'Meta: 100% semanal',tooltip:d=>`${Math.round(d.protAvg)}% promedio`})}${mq178RenderRecoveryChart('water','Agua',data,d=>d.waterAvg,{target:10,format:v=>`${v.toFixed(1)}/10`,meta:'Meta: 10 vasos promedio',tooltip:d=>`${d.waterAvg.toFixed(1)} vasos promedio`})}${mq178RenderRecoveryChart('general','Cumplimiento general',data,d=>d.general,{target:100,format:v=>`${Math.round(v)}%`,meta:'Promedio simple: sueño, creatina, proteína y agua',tooltip:d=>`${d.general}% recuperación`})}`;
 }
+
+
+// ---------------------------------------------------------------
+//  MELQART v179 — Corrección proteína + ejes verticales Progreso
+// ---------------------------------------------------------------
+(function mq179NormalizeNutritionPlan(){
+  window.MQ179_MEAL_PORTIONS = {
+    // Regla cerrada: scoop proteína = 2 porciones; lácteos protein no suman carnes.
+    desayuno: { proteinas:2, cereales:0.5, frutas:0.5, lipidos:0.5 },
+    fruta_1000: { frutas:1 },
+    almuerzo_post: { proteinas:4, cereales:2 },
+    leche_protein_1700: { lacteoProtein:1 },
+    huevos_1800: { proteinas:3 },
+    leche_descremada_casa: { lacteoDescremado:1 },
+    cena: { proteinas:4, cereales:2, verduras:2 }
+  };
+  try{
+    Object.keys(window.MQ179_MEAL_PORTIONS).forEach(id=>{
+      if(typeof MEAL_PORTIONS !== 'undefined'){
+        if(!MEAL_PORTIONS[id]) MEAL_PORTIONS[id] = {};
+        Object.keys(MEAL_PORTIONS[id]).forEach(k=>delete MEAL_PORTIONS[id][k]);
+        Object.assign(MEAL_PORTIONS[id], window.MQ179_MEAL_PORTIONS[id]);
+      }
+      if(typeof COMIDAS !== 'undefined'){
+        const c = COMIDAS.find(x=>x.id===id);
+        if(c) c.portions = window.MQ179_MEAL_PORTIONS[id];
+      }
+    });
+    if(typeof COMIDAS !== 'undefined'){
+      const d=COMIDAS.find(x=>x.id==='desayuno');
+      if(d){ d.grupos='2 proteínas · 0.5 cereal · 0.5 fruta · 0.5 lípidos'; d.ejemplo='1 scoop proteína + 1/2 plátano + pan molde + mantequilla de maní medida'; }
+      const c=COMIDAS.find(x=>x.id==='cena');
+      if(c){ c.grupos='4 proteínas · 2 cereales · 2 verduras'; c.ejemplo='Proteína magra + arroz, papas o fideos + verduras de libre consumo'; }
+    }
+  }catch(e){ console.warn('v179 nutrition plan normalization skipped', e); }
+})();
+
+function mq179PortionZero(){
+  return (typeof clonePortionZero === 'function') ? clonePortionZero() : {proteinas:0,lacteoProtein:0,lacteoDescremado:0,cereales:0,frutas:0,lipidos:0,aceites:0,verduras:0};
+}
+function mq179MealIds(){ return (typeof COMIDAS !== 'undefined' ? COMIDAS : []).map(c=>c.id); }
+function mq179MealTotal(){ return mq179MealIds().length || 7; }
+function mq179IsDone(v){
+  if(v===true) return true;
+  if(v===false || v==null) return false;
+  if(typeof v==='number') return v>0;
+  if(typeof v==='string') return ['true','1','si','sí','done','ok','completa','completada'].includes(v.toLowerCase());
+  if(typeof v==='object') return !!(v.completada || v.completed || v.done || v.ok || v.checked || v.status==='done');
+  return false;
+}
+function mq179DirectMealCount(fd){
+  if(!fd) return 0;
+  const total=mq179MealTotal();
+  if(fd.allDone || fd.pautaManual) return total;
+  for(const k of ['comidasCompletadas','completedMeals','mealsDone','platosCompletados','mealCount','comidasDone','comidasCount']){
+    const n=parseInt(fd[k],10);
+    if(Number.isFinite(n) && n>=0) return Math.min(total,n);
+  }
+  if(fd.comidas && typeof fd.comidas==='object'){
+    const ids=mq179MealIds();
+    const n=ids.filter(id=>mq179IsDone(fd.comidas[id])).length;
+    if(n>0) return Math.min(total,n);
+  }
+  if(Array.isArray(fd.meals)){
+    const n=fd.meals.filter(m=>mq179IsDone(m)).length;
+    if(n>0) return Math.min(total,n);
+  }
+  return 0;
+}
+function mq177CompletedMealCount(fd){ return mq179DirectMealCount(fd); }
+function getMealProgress(fd){
+  const total=mq179MealTotal();
+  const done=mq179DirectMealCount(fd);
+  return { done, total, pct: total ? Math.round(done/total*100) : 0 };
+}
+function mq179PlatePortions(count){
+  const total=mq179PortionZero();
+  const meals=(typeof COMIDAS !== 'undefined' ? COMIDAS : []);
+  const n=Math.min(Math.max(parseInt(count||0,10)||0,0), meals.length||7);
+  for(let i=0;i<n;i++){
+    const meal=meals[i];
+    const p=(window.MQ179_MEAL_PORTIONS && window.MQ179_MEAL_PORTIONS[meal.id]) || (meal && meal.portions) || {};
+    if(typeof sumPortionsInto==='function') sumPortionsInto(total,p); else Object.keys(p).forEach(k=>total[k]=(total[k]||0)+(parseFloat(p[k])||0));
+  }
+  Object.keys(total).forEach(k=>total[k]=nRound(total[k],2));
+  return total;
+}
+function mq179TextPortions(fd){
+  const total=mq179PortionZero();
+  const details=[];
+  const meals=(typeof COMIDAS !== 'undefined' ? COMIDAS : []);
+  meals.forEach(meal=>{
+    const txt = (fd?.comidas?.[meal.id] && typeof fd.comidas[meal.id]==='object') ? String(fd.comidas[meal.id].texto||'').trim() : '';
+    if(!txt) return;
+    const parsed=parseNutritionTextToPortions(txt);
+    if(parsed && parsed.hasAny){
+      if(typeof sumPortionsInto==='function') sumPortionsInto(total, parsed.portions||{}); else Object.keys(parsed.portions||{}).forEach(k=>total[k]=(total[k]||0)+(parseFloat(parsed.portions[k])||0));
+      details.push({type:'detalle', name:meal.nombre, source:'detalle', portions:parsed.portions||{}, details:parsed.details||[]});
+    }
+  });
+  (fd?.extraFoods||[]).forEach(f=>{
+    if(typeof sumPortionsInto==='function') sumPortionsInto(total, f.portions||{}); else Object.keys(f.portions||{}).forEach(k=>total[k]=(total[k]||0)+(parseFloat(f.portions[k])||0));
+    details.push({type:f.quickMeal?'comida_rapida':'alimento_rapido', name:f.name, source:f.quickMeal?'comida rápida':'registro rápido', portions:f.portions||{}, details:f.calcDetail||f.details||[]});
+  });
+  Object.keys(total).forEach(k=>total[k]=nRound(total[k],2));
+  return {portions:total, details};
+}
+function mq179MaxPortions(a,b){
+  const out=mq179PortionZero();
+  const keys=Object.keys(out);
+  keys.forEach(k=>out[k]=nRound(Math.max(parseFloat(a?.[k]||0), parseFloat(b?.[k]||0)),2));
+  return out;
+}
+function calcNutritionDayDetail(fd){
+  const empty=mq179PortionZero();
+  if(!fd) return {portions:empty, details:[], mealCount:0, source:'sin_dato'};
+  const mealCount=mq179DirectMealCount(fd);
+  const platePortions=mq179PlatePortions(mealCount);
+  const detail=mq179TextPortions(fd);
+  // Regla cerrada v179: proteína/porciones finales = MAX(platos completados, detalle real).
+  // Evita que un resumen o texto parcial deje 7/7 con Prot 3.
+  const finalPortions=mq179MaxPortions(platePortions, detail.portions);
+  const details=[];
+  if(mealCount>0){
+    details.push({type:'platos', name:`${mealCount}/${mq179MealTotal()} comidas`, source:'árbol de decisión por platos', portions:platePortions, details:[`Proteína por platos = ${platePortions.proteinas||0}`]});
+  }
+  details.push(...(detail.details||[]));
+  return { portions:finalPortions, details, mealCount, source:details.length?'max_platos_detalle':'sin_dato', platePortions, detailPortions:detail.portions };
+}
+function calcPortionsConsumed(fd){ return calcNutritionDayDetail(fd).portions; }
+function getPorcionesHoy(fd){ return calcPortionsConsumed(fd); }
+function getFoodHasRecord(f){
+  try{
+    const raw=localStorage.getItem('ff_'+f);
+    if(!raw) return false;
+    const fd=JSON.parse(raw);
+    if(fd.pautaManual || fd.allDone) return true;
+    if(mq179DirectMealCount(fd)>0) return true;
+    if((fd.extraFoods||[]).length>0) return true;
+    if((fd.aguaVasosHoy||fd.agua||fd.aguaMl||0)>0) return true;
+    if(fd.sueno || typeof fd.creatinaTomada!=='undefined') return true;
+    return true;
+  }catch{ return false; }
+}
+function getProteinPortionsForDate(f){
+  const fd=(typeof getFoodRecordSafe==='function') ? getFoodRecordSafe(f) : null;
+  if(!fd || !getFoodHasRecord(f)) return null;
+  const calc=calcNutritionDayDetail(fd);
+  if(!calc.details.length && calc.mealCount===0) return null;
+  return nRound(calc.portions?.proteinas||0,2);
+}
+function getProteinPctForDate(f){
+  const prot=getProteinPortionsForDate(f);
+  if(prot===null) return null;
+  return NUTRITION_TARGETS.proteinas ? Math.round((prot/NUTRITION_TARGETS.proteinas)*100) : 0;
+}
+function isFoodComplete(f){
+  const fd=(typeof getFoodRecordSafe==='function') ? getFoodRecordSafe(f) : null;
+  if(!fd || !getFoodHasRecord(f)) return false;
+  const p=getMealProgress(fd);
+  return !!(fd.allDone || fd.pautaManual || p.done>=p.total);
+}
+
+function mq179FormatAxis(v,opts={}){
+  if(opts.axisFormat) return opts.axisFormat(v);
+  if(opts.valueSuffix==='%') return `${Math.round(v)}%`;
+  if(opts.unit==='h') return `${Math.round(v*10)/10}h`;
+  if(opts.unit==='vasos') return `${Math.round(v*10)/10}`;
+  return String(Math.round(v*10)/10);
+}
+function mq178RenderRecoveryChart(key,title,data,getVal,opts={}){
+  const filtered=mq178FilterWeeks(data,key).filter(d=>getVal(d)!==null && typeof getVal(d)!=='undefined' && !isNaN(getVal(d)));
+  if(filtered.length<2){
+    return `<div class="mq-recovery-chart card"><div class="mq-recovery-chart-head"><div><strong>${title}</strong></div></div>${mq178Seg(key)}<div class="mq-empty-small">Sin datos suficientes</div></div>`;
+  }
+  const W=340,H=158,PL=44,PR=12,PT=18,PB=28;
+  const vals=filtered.map(getVal);
+  const target=opts.target||0;
+  const allVals=target?vals.concat([target]):vals;
+  const minRaw=Math.min(...allVals), maxRaw=Math.max(...allVals);
+  const span=Math.max(maxRaw-minRaw,1);
+  const minV=Math.max(0, minRaw-span*.18), maxV=maxRaw+span*.18;
+  const xs=filtered.map((_,i)=>PL+(i/(Math.max(filtered.length-1,1)))*(W-PL-PR));
+  const y=v=>PT+(1-((v-minV)/(maxV-minV)))*(H-PT-PB);
+  const line=filtered.map((d,i)=>`${i===0?'M':'L'}${xs[i].toFixed(1)},${y(getVal(d)).toFixed(1)}`).join(' ');
+  const ticks=[maxV, minV+(maxV-minV)/2, minV];
+  const yAxis=ticks.map(v=>`<text x="${PL-5}" y="${y(v).toFixed(1)}" text-anchor="end" dominant-baseline="middle" font-size="9" fill="var(--ink3)">${mq179FormatAxis(v,opts)}</text><line x1="${PL}" y1="${y(v).toFixed(1)}" x2="${W-PR}" y2="${y(v).toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>`).join('');
+  const dots=filtered.map((d,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${y(getVal(d)).toFixed(1)}" r="3.8" fill="var(--p)"><title>${mq178WeekLabel(d.start)} · ${opts.tooltip?opts.tooltip(d):getVal(d)}</title></circle>`).join('');
+  const labels=filtered.map((d,i)=> i%Math.ceil(filtered.length/5)===0 || i===filtered.length-1 ? `<text x="${xs[i].toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="9" fill="var(--ink3)">${mq178WeekLabel(d.start)}</text>` : '').join('');
+  const last=filtered[filtered.length-1], lastVal=getVal(last);
+  const display=opts.format?opts.format(lastVal,last):lastVal;
+  const pctMeta=target?Math.min(100,Math.round(lastVal/target*100)):Math.min(100,Math.round(lastVal));
+  return `<div class="mq-recovery-chart card"><div class="mq-recovery-chart-head"><div><strong>${title}</strong></div><div class="mq-recovery-chart-val">${display}</div></div><div class="mq-recovery-chart-meta">${opts.meta||''}</div>${mq178Seg(key)}<svg viewBox="0 0 ${W} ${H}" class="mq-recovery-svg">${yAxis}<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" stroke="var(--border)"/><line x1="${PL}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" stroke="var(--border)"/>${target?`<line x1="${PL}" y1="${y(target).toFixed(1)}" x2="${W-PR}" y2="${y(target).toFixed(1)}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="4,3" opacity=".55"/>`:''}<path d="${line}" fill="none" stroke="var(--p)" stroke-width="2.6"/>${dots}${labels}</svg><div class="mq-recovery-progress"><div style="width:${pctMeta}%"></div></div></div>`;
+}
+function renderProgRecuperacion(){
+  const el=document.getElementById('prog-recuperacion-content'); if(!el) return;
+  const data=weeklyRecoveryData(new Date().getFullYear());
+  const lastWith=k=>[...data].reverse().find(d=>d[k]!==null && typeof d[k]!=='undefined');
+  const lSleep=lastWith('sleepAvg'), lCreat=lastWith('creatScore'), lProt=lastWith('protAvg'), lWater=lastWith('waterAvg'), lGen=lastWith('general');
+  const kpis=[
+    {t:'Sueño',v:lSleep?fmtHours(lSleep.sleepAvg):'Sin datos',s:'promedio semanal'},
+    {t:'Creatina',v:lCreat?`${lCreat.creat}/${lCreat.creatDays||7}`:'Sin datos',s:'días semana'},
+    {t:'Proteína',v:lProt?`${Math.round(lProt.protAvg)}%`:'Sin datos',s:'cumplimiento'},
+    {t:'Agua',v:lWater?`${(lWater.waterAvg||0).toFixed(1)}/10`:'Sin datos',s:'vasos promedio'},
+    {t:'Cumplimiento',v:lGen?`${lGen.general}%`:'Sin datos',s:'promedio recuperación'}
+  ].map(k=>`<div class="lumen-stat mq-rec-kpi"><div class="lumen-num">${k.v}</div><div class="lumen-lbl">${k.t}</div><div class="lumen-sub">${k.s}</div></div>`).join('');
+  el.innerHTML=`<div class="section-label" style="margin-bottom:10px">Recuperación semanal</div><div class="mq-rec-kpi-row">${kpis}</div>${mq178RenderRecoveryChart('sleep','Sueño promedio',data,d=>d.sleepAvg===null?null:Math.round(d.sleepAvg/60*100)/100,{target:7,unit:'h',axisFormat:v=>`${Math.round(v*10)/10}h`,format:(v,d)=>fmtHours(d.sleepAvg),meta:'Meta: 7h promedio',tooltip:d=>fmtHours(d.sleepAvg)})}${mq178RenderRecoveryChart('creatine','Creatina',data,d=>d.creatScore===null?null:d.creat,{target:7,axisFormat:v=>`${Math.round(v)}`,format:(v,d)=>`${d.creat}/${d.creatDays||7}`,meta:'Meta: consumo diario',tooltip:d=>`${d.creat} de ${d.creatDays} días`})}${mq178RenderRecoveryChart('protein','Proteína',data,d=>d.protAvg,{target:100,valueSuffix:'%',format:v=>`${Math.round(v)}%`,meta:'Meta: 100% semanal',tooltip:d=>`${Math.round(d.protAvg)}% promedio`})}${mq178RenderRecoveryChart('water','Agua',data,d=>d.waterAvg,{target:10,unit:'vasos',axisFormat:v=>`${Math.round(v*10)/10}`,format:v=>`${v.toFixed(1)}/10`,meta:'Meta: 10 vasos promedio',tooltip:d=>`${d.waterAvg.toFixed(1)} vasos promedio`})}${mq178RenderRecoveryChart('general','Cumplimiento general',data,d=>d.general,{target:100,valueSuffix:'%',format:v=>`${Math.round(v)}%`,meta:'Promedio simple: sueño, creatina, proteína y agua',tooltip:d=>`${d.general}% recuperación`})}`;
+}
+
+// v179: todos los gráficos de Progreso deben usar eje normal; ningún ritmo se invierte.
+try{
+  if(typeof createPaceChart==='function'){
+    const _mqOldCreatePaceChart=createPaceChart;
+    createPaceChart=function(runningSessions){
+      const cfg=_mqOldCreatePaceChart(runningSessions);
+      cfg.subtitle='Evolución por sesión';
+      cfg.yAxis=Object.assign({},cfg.yAxis||{},{invertY:false});
+      return cfg;
+    };
+  }
+}catch(e){ console.warn('v179 pace chart override skipped', e); }

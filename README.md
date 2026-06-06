@@ -1,51 +1,33 @@
-# MELQART v176 — Heatmaps + Recuperación
+# MELQART v179 — Fix proteína + ejes gráficos Progreso
 
 ## Cambios aplicados
 
-- Corrige heatmaps para el año 2026:
-  - Días entrenados: blanco sin entrenamiento, morado suave con 1 entrenamiento, morado intenso con 2+ entrenamientos.
-  - Pauta alimenticia: marca solo días con pauta completa.
-  - Proteína: marca días con meta diaria de proteína cumplida.
-  - Agua: marca días con 10 vasos / meta diaria cumplida.
-  - Creatina: agrega heatmap con consumo completo desde 12-12-2024, excepto 07-03-2026, 08-03-2026, 09-05-2026 y 10-05-2026.
-- Ajusta el ancho visual de los heatmaps para que no queden comprimidos.
-- Agrega tab `Recuperación` dentro de Progreso.
-- Agrega 5 KPIs superiores:
-  - Sueño
-  - Creatina
-  - Proteína
-  - Agua
-  - Cumplimiento general
-- Agrega gráficos semanales estilo plan:
-  - Sueño promedio semanal
-  - Creatina días / 7
-  - Proteína % cumplimiento semanal
-  - Agua vasos promedio / 10
-  - Cumplimiento general semanal
+- Corrige cálculo de proteína con regla final: `MAX(proteína por platos completados, proteína por detalle real)`.
+- Evita que días `7/7` queden con `Prot 3`; con la pauta cerrada deben quedar en al menos `13 / 12`.
+- Mantiene equivalencias cerradas:
+  - Scoop proteína = 2 porciones.
+  - Leche/yogurt protein = lácteo protein, no suma carnes.
+  - Leche descremada = lácteo descremado, no suma carnes.
+  - 2 huevos duros = 3 porciones.
+  - Almuerzo = 4 porciones.
+  - Cena = 4 porciones.
+- Corrige heatmap de proteína para usar la proteína final calculada.
+- Agrega eje vertical a gráficos de Recuperación.
+- Revisa lógica general de gráficos de Progreso para que el mayor valor quede arriba y el menor abajo.
+- Corrige ritmo para no invertir escala visual.
 
-## Reglas de cálculo
+## Validaciones
 
-- Heatmaps: diarios.
-- Recuperación: semanal.
-- Cumplimiento general: promedio simple de sueño, creatina, proteína y agua; cada uno pondera 25%.
-- Sueño objetivo: 7 horas promedio.
-- Creatina objetivo: 7/7 días.
-- Proteína objetivo: 100% de la meta diaria.
-- Agua objetivo: 10 vasos promedio.
+- `node --check app.js` OK.
 
-## No modificado
+## No tocado
 
-- Home
-- Entrenar
-- Nutrición registro
-- Peso semanal
-- Antropometría
-- Login
-- Firebase/Auth
-- Logo
-- Colores globales
-- Tipografías
-
-## Validación
-
-- `node --check app.js` OK
+- Home.
+- Entrenar.
+- Peso.
+- Antropometría.
+- Login.
+- Firebase/Auth.
+- Logo.
+- Colores globales.
+- Tipografías.
