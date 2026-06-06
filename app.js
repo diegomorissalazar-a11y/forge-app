@@ -9989,3 +9989,162 @@ try{
   if(typeof doGuardarNube==='function'&&!window._mq1812GuardarHooked){const oldG=doGuardarNube; window._mq1812GuardarHooked=true; doGuardarNube=function(){migrate('guardarNube'); return oldG.apply(this,arguments)}}
 })();
 
+
+
+
+// ---------------------------------------------------------------
+//  MELQART v181.3 — sets Hevy exactos + nutrición/adherencia final
+// ---------------------------------------------------------------
+(function mq1813(){
+  const LOG='MELQART v181.3';
+  function dt(date,time='12:00'){ return new Date(`${date}T${time}:00`).getTime(); }
+  function dayOf(ts){ try{return typeof localDateStr==='function'?localDateStr(ts):new Date(ts).toISOString().slice(0,10)}catch{return new Date(ts).toISOString().slice(0,10)} }
+  function W(weight,reps){ return {type:'weight',done:true,weight:parseFloat(weight)||0,reps:parseInt(reps)||0,distance:'',time:'',fc:'',pasos:''}; }
+  function R(distance,time,fc='',pasos=''){ return {type:'run',done:true,weight:0,reps:0,distance:String(distance||''),time:String(time||''),fc:String(fc||''),pasos:String(pasos||'')}; }
+  function E(exId,sets){ return {exId,sets}; }
+  function n(v,d=2){ try{return typeof nRound==='function'?nRound(v,d):Math.round(v*Math.pow(10,d))/Math.pow(10,d)}catch{return Math.round(v*Math.pow(10,d))/Math.pow(10,d)} }
+  function clone(x){ return JSON.parse(JSON.stringify(x)); }
+
+  // Tabla cerrada por platos: proteína final no puede ser menor a esto.
+  const PLATE_STEPS=[
+    {proteinas:2,cereales:.5,frutas:1,lipidos:.5},    // 1 desayuno
+    {frutas:1},                                      // 2 fruta
+    {proteinas:4,cereales:2},                        // 3 almuerzo
+    {lacteoProtein:1},                               // 4 leche/yogurt protein
+    {proteinas:3},                                   // 5 2 huevos
+    {lacteoDescremado:1},                            // 6 leche descremada
+    {proteinas:4,cereales:2,verduras:2}              // 7 cena
+  ];
+  function zero(){ return {proteinas:0,cereales:0,frutas:0,lacteoProtein:0,lacteoDescremado:0,lipidos:0,aceites:0,verduras:0}; }
+  function addInto(total,p){ Object.keys(p||{}).forEach(k=>{ total[k]=(parseFloat(total[k])||0)+(parseFloat(p[k])||0); }); return total; }
+  function mealCount(fd){ try{return typeof mq179DirectMealCount==='function'?mq179DirectMealCount(fd):(typeof getMealProgress==='function'?getMealProgress(fd).done:0)}catch{return 0} }
+  function mealTotal(){ try{return typeof mq179MealTotal==='function'?mq179MealTotal():7}catch{return 7} }
+  function portionsByPlates(count){
+    const total=zero();
+    const c=Math.max(0,Math.min(parseInt(count||0,10)||0,7));
+    for(let i=0;i<c;i++) addInto(total,PLATE_STEPS[i]);
+    Object.keys(total).forEach(k=>total[k]=n(total[k],2));
+    return total;
+  }
+  function maxPortions(a,b){ const out=zero(); Object.keys(out).forEach(k=>out[k]=n(Math.max(parseFloat(a?.[k]||0),parseFloat(b?.[k]||0)),2)); return out; }
+
+  // Reaplicar árbol nutricional: final = MAX(platos, detalle). Aceite no castiga; 7/7 = 100%.
+  if(typeof calcNutritionDayDetail==='function'){
+    calcNutritionDayDetail=function(fd){
+      const empty=zero();
+      if(!fd) return {portions:empty,details:[],mealCount:0,source:'sin_dato'};
+      const mc=mealCount(fd);
+      const plate=portionsByPlates(mc);
+      let detail={portions:zero(),details:[]};
+      try{ if(typeof mq179TextPortions==='function') detail=mq179TextPortions(fd)||detail; }catch(e){}
+      const final=maxPortions(plate,detail.portions);
+      const details=[];
+      if(mc>0) details.push({type:'platos',name:`${mc}/${mealTotal()} comidas`,source:'árbol fijo v181.3',portions:plate,details:[`Proteína por platos = ${plate.proteinas||0}`]});
+      details.push(...(detail.details||[]));
+      return {portions:final,details,mealCount:mc,source:details.length?'max_platos_detalle_v181_3':'sin_dato',platePortions:plate,detailPortions:detail.portions};
+    };
+    window.calcNutritionDayDetail=calcNutritionDayDetail;
+  }
+  if(typeof calcPortionsConsumed==='function') calcPortionsConsumed=function(fd){ return calcNutritionDayDetail(fd).portions; };
+  if(typeof getPorcionesHoy==='function') getPorcionesHoy=function(fd){ return calcNutritionDayDetail(fd).portions; };
+
+  window.mq1813Adherence=function(fd,portions){
+    const mc=mealCount(fd); const mt=mealTotal();
+    if(mt && mc===mt) return 100;
+    const p=portions||calcNutritionDayDetail(fd).portions||zero();
+    // Aceites excluidos del denominador por definición del usuario.
+    const targets=(typeof NUTRITION_TARGETS!=='undefined')?NUTRITION_TARGETS:{proteinas:12,cereales:3,frutas:2,lacteoProtein:2,lacteoDescremado:1,lipidos:.5,verduras:2};
+    const groups=['proteinas','cereales','frutas','lacteoProtein','lacteoDescremado','lipidos','verduras'];
+    let done=0,total=0;
+    groups.forEach(g=>{ const t=parseFloat(targets[g]||0); total+=t; done+=Math.min(t,parseFloat(p[g]||0)); });
+    return total?Math.round(done/total*100):0;
+  };
+
+  // Export nutrición final: mantiene columnas antiguas pero con proteína/adherencia corregida.
+  if(typeof exportNutritionLines==='function'){
+    exportNutritionLines=function(fechaInicio,fechaFin){
+      const out=[],dates=[];
+      for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith('ff_')){ const f=k.slice(3); const d=new Date(f+'T12:00:00'); if(d>=fechaInicio&&d<=fechaFin) dates.push(f); } }
+      dates.sort(); if(!dates.length) return out;
+      out.push('NUTRICION'); out.push('');
+      out.push('Fecha       Agua ml  Vasos    MetaH2O  Comidas  Prot  Cere  Frut  Lact  Verd  Lip   Aceit  Adh%');
+      out.push('-----------------------------------------------------------------------------------------------');
+      let complete=0, waterOk=0, waterSum=0, adhSum=0;
+      dates.forEach(f=>{
+        const fd=getFD(f); const meta=getAguaMeta();
+        const vasos=fd.aguaVasosHoy ?? fd.agua ?? 0;
+        const aguaMl=fd.aguaMl ?? Math.round(vasos*(meta.mlPorVaso||250));
+        const metaMl=(meta.vasos||10)*(meta.mlPorVaso||250);
+        const meals=getMealProgress(fd); const calc=calcNutritionDayDetail(fd); const p=calc.portions||{};
+        const adh=window.mq1813Adherence(fd,p); adhSum+=adh;
+        if(aguaMl>=metaMl) waterOk++; waterSum+=parseFloat(vasos)||0; if(meals.done===meals.total) complete++;
+        const fmt=f.split('-').reverse().join('/');
+        out.push(`${fmt.padEnd(10)}  ${String(aguaMl).padEnd(7)}  ${String(vasos+'/'+(meta.vasos||10)).padEnd(7)}  ${(aguaMl>=metaMl?'S':'N').padEnd(7)}  ${String(meals.done+'/'+meals.total).padEnd(7)}  ${String(n(p.proteinas||0,2)).padEnd(5)} ${String(n(p.cereales||0,2)).padEnd(5)} ${String(n(p.frutas||0,2)).padEnd(5)} ${String(n((p.lacteoProtein||0)+(p.lacteoDescremado||0),2)).padEnd(5)} ${String(n(p.verduras||0,2)).padEnd(5)} ${String(n(p.lipidos||0,2)).padEnd(5)} ${String(n(p.aceites||0,2)).padEnd(6)} ${String(adh+'%').padEnd(5)}`);
+      });
+      out.push(''); out.push(`Resumen (${dates.length} dias con registro):`);
+      out.push(`  Agua promedio/dia:         ${dates.length?Math.round(waterSum/dates.length):0}/10 vasos - meta cumplida ${waterOk}/${dates.length} dias (${dates.length?Math.round(waterOk/dates.length*100):0}%)`);
+      out.push(`  Comidas dias completos:    ${complete}/${dates.length} dias (${dates.length?Math.round(complete/dates.length*100):0}%)`);
+      out.push(`  Adherencia pauta promedio: ${dates.length?Math.round(adhSum/dates.length):0}%`);
+      return out;
+    };
+    window.exportNutritionLines=exportNutritionLines;
+  }
+
+  // Set exacto para Hevy: NO deduplicar series iguales de fuerza; sí corregir trotes duplicados.
+  function exactSessions(){return [
+    {date:'2026-01-08',kind:'inferior',routineName:'Tren inferior',elapsed:31,ex:[E('ex_step_manc',[W(14,12),W(14,12),W(10,14)]),E('ex_sent_bulgara',[W(14,7),W(14,7),W(14,5),W(14,5)])]},
+    {date:'2026-01-11',kind:'trote',routineName:'Trote',elapsed:45,ex:[E('ex_correr',[R(6.42,'45:08','133',6742)])]},
+    {date:'2026-01-13',kind:'trote',routineName:'Trote',elapsed:34,ex:[E('ex_correr',[R(3.36,'21:09','124',3109)])]},
+    {date:'2026-01-18',kind:'trote',routineName:'Trote',elapsed:46,ex:[E('ex_correr',[R(6.7,'45:21','',6835)])]},
+    {date:'2026-01-25',kind:'trote',routineName:'Trote',elapsed:21,ex:[E('ex_correr',[R(3.52,'21:26','',3110)])]},
+    {date:'2026-01-27',kind:'superior',routineName:'Tren superior',elapsed:37,ex:[E('ex_press_banca',[W(40,10),W(40,11),W(40,9)]),E('ex_press_hombros',[W(30,9),W(30,8),W(30,7)]),E('ex_dominadas',[W(0,10),W(0,7),W(0,7)])]},
+    {date:'2026-01-27',kind:'trote',routineName:'Trote',elapsed:12,ex:[E('ex_correr',[R(2.03,'12:05')])]},
+    {date:'2026-01-29',kind:'inferior',routineName:'Tren inferior',elapsed:46,ex:[E('ex_sentadilla',[W(40,10),W(50,10),W(55,10),W(60,10)]),E('ex_peso_muerto_manc',[W(40,8),W(40,8)]),E('ex_hip_thrust',[W(42.7,9),W(62.7,9),W(62.7,10)]),E('ex_crunch',[W(0,30),W(0,30),W(0,20)])]},
+    {date:'2026-02-03',kind:'trote',routineName:'Trote',elapsed:20,ex:[E('ex_correr',[R(1.21,'7:18','81',1057)])]},
+    {date:'2026-02-05',kind:'inferior',routineName:'Tren inferior',elapsed:43,ex:[E('ex_sentadilla',[W(60,10),W(60,9),W(60,8)]),E('ex_peso_muerto_manc',[W(40,8),W(40,8)]),E('ex_hip_thrust',[W(62.7,10),W(62.7,9),W(62.7,8)]),E('ex_crunch',[W(0,30),W(0,30),W(0,30)])]},
+    {date:'2026-02-08',kind:'trote',routineName:'Trote',elapsed:53,ex:[E('ex_correr',[R(7.74,'53:19','171',8072)])]},
+    {date:'2026-02-10',kind:'superior',routineName:'Tren superior',elapsed:49,ex:[E('ex_press_banca',[W(60,9),W(60,8),W(60,7)]),E('ex_press_homb_maq',[W(30,6),W(30,7),W(30,6)])]},
+    {date:'2026-02-10',kind:'trote',routineName:'Trote',elapsed:10,ex:[E('ex_correr',[R(1.15,'9:52')])]},
+    {date:'2026-02-12',kind:'inferior',routineName:'Tren inferior',elapsed:40,ex:[E('ex_sentadilla',[W(60,10),W(60,9),W(60,9)]),E('ex_peso_muerto_manc',[W(40,8),W(40,8)]),E('ex_hip_thrust_maq',[W(67.5,7),W(62.7,9),W(62.7,9)])]},
+    {date:'2026-02-16',kind:'inferior',routineName:'Tren inferior',elapsed:56,ex:[E('ex_sentadilla',[W(60,9),W(60,8),W(60,9)]),E('ex_peso_muerto_manc',[W(44,8),W(44,9)]),E('ex_hip_thrust_maq',[W(67.5,9),W(62.7,10),W(62.7,9)]),E('ex_crunch',[W(0,30),W(0,30),W(0,30)])]},
+    {date:'2026-02-19',kind:'superior',routineName:'Tren superior',elapsed:35,ex:[E('ex_press_banca',[W(60,8),W(60,8),W(60,7)]),E('ex_press_hombros',[W(35,8),W(35,8),W(35,7)]),E('ex_curl_barra_z',[W(30,6),W(30,5)])]},
+    {date:'2026-03-09',kind:'inferior',routineName:'Tren inferior',elapsed:42,ex:[E('ex_sentadilla',[W(60.9,9),W(60.9,8),W(60.9,8)]),E('ex_peso_muerto_manc',[W(44,8),W(44,9)]),E('ex_hip_thrust_maq',[W(70.9,10),W(70.9,10),W(70.9,10)]),E('ex_crunch',[W(0,30),W(0,30),W(0,30)])]},
+    {date:'2026-03-10',kind:'superior',routineName:'Tren superior',elapsed:47,ex:[E('ex_press_banca',[W(60,8),W(60,8),W(60,6)]),E('ex_press_hombros',[W(35,9),W(35,9),W(35,8)]),E('ex_curl_barra_z',[W(30,7),W(30,6),W(30,7)])]},
+    {date:'2026-03-16',kind:'inferior',routineName:'Tren inferior',elapsed:48,ex:[E('ex_sentadilla',[W(70,10),W(70,9),W(70,9)]),E('ex_peso_muerto_manc',[W(50,8),W(60,10)])]},
+    {date:'2026-03-17',kind:'superior',routineName:'Tren superior',elapsed:38,ex:[E('ex_press_banca',[W(65,8),W(65,8),W(65,5)]),E('ex_press_homb_maq',[W(30,7),W(30,8),W(30,8)]),E('ex_curl_barra_z',[W(30,7),W(30,7),W(30,6)])]}
+  ];}
+  function findSession(date,kind){
+    const rn=kind==='trote'?'trote':kind==='superior'?'tren superior':'tren inferior';
+    return (forge.sessions||[]).find(s=>dayOf(s.date)===date && String(s.routineName||'').toLowerCase().includes(rn));
+  }
+  function totalVolume(sess){return (sess.exercises||[]).reduce((sum,ex)=> ex.exId==='ex_correr'?sum:sum+(ex.sets||[]).reduce((a,s)=>a+(parseFloat(s.weight)||0)*(parseInt(s.reps)||0),0),0);}
+  function applyExactHevy(reason='auto'){
+    if(!window.forge && typeof forge==='undefined') return;
+    let fixed=0, added=0;
+    exactSessions().forEach(x=>{
+      let s=findSession(x.date,x.kind);
+      if(!s){ s={id:`mq1813_hevy_${x.date}_${x.kind}`,routineId:null,routineName:x.routineName,date:dt(x.date),elapsed:Math.round(x.elapsed*60),exercises:[],source:'hevy_v181_3',tipoHevy:x.kind}; forge.sessions.push(s); added++; }
+      s.routineName=x.routineName; s.elapsed=Math.max(s.elapsed||0,Math.round(x.elapsed*60)); s.source=s.source||'hevy_v181_3'; s.tipoHevy=s.tipoHevy||x.kind;
+      x.ex.forEach(ix=>{
+        let ex=s.exercises.find(e=>e.exId===ix.exId);
+        if(!ex){ ex={exId:ix.exId,sets:[]}; s.exercises.push(ex); }
+        // Set exacto para Hevy: reemplaza los sets de ese ejercicio por la serie original completa.
+        ex.sets=clone(ix.sets);
+        fixed++;
+      });
+      s.totalVolume=totalVolume(s);
+    });
+    // Corrección específica: trotes con sets duplicados por migraciones anteriores -> dejar solo el set real Hevy cuando hay fecha exacta.
+    exactSessions().filter(x=>x.kind==='trote').forEach(x=>{
+      const s=findSession(x.date,'trote'); const ex=s&&(s.exercises||[]).find(e=>e.exId==='ex_correr'); if(ex) ex.sets=clone(x.ex[0].sets);
+    });
+    forge.sessions.sort((a,b)=>(a.date||0)-(b.date||0));
+    try{localStorage.setItem('melqart_v181_3_status',JSON.stringify({at:new Date().toISOString(),reason,added,fixed,total:forge.sessions.length}));}catch(e){}
+    try{if(typeof saveDB==='function') saveDB();}catch(e){}
+    console.info(`${LOG}: ${reason} · sesiones agregadas ${added} · ejercicios restaurados ${fixed}`);
+  }
+  window.melqartFix1813=function(){ applyExactHevy('manual'); try{renderAll()}catch(e){} return JSON.parse(localStorage.getItem('melqart_v181_3_status')||'{}'); };
+  [250,1200,3000,6000,10000].forEach(ms=>setTimeout(()=>{applyExactHevy('t+'+ms); try{renderAll()}catch(e){}},ms));
+  if(typeof renderAll==='function' && !window._mq1813RenderAllHooked){ const old=renderAll; window._mq1813RenderAllHooked=true; renderAll=function(){ applyExactHevy('renderAll'); return old.apply(this,arguments); }; }
+})();
+
