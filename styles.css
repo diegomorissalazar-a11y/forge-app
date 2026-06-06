@@ -2656,3 +2656,16 @@ td, th {
 .mq-heat-card-v177 .mq-hm-cell.fut{background:rgba(255,255,255,.38);border-color:rgba(207,190,164,.18)}
 #prog-recuperacion.on{display:block}.mq-rec-kpi-row{margin-bottom:14px}.mq-recovery-chart{overflow:hidden}.mq-recovery-svg{min-height:128px}
 @media(max-width:520px){.mq-heat-head{flex-direction:column;gap:6px}.mq-heat-legend-top{align-self:flex-start}.mq-heat-with-days{grid-template-columns:18px 1fr}.mq-heat-days-axis{font-size:8px}.mq-rec-kpi-row{grid-template-columns:repeat(2,1fr)}}
+
+/* MELQART v178 — limpieza visual heatmaps y recuperación */
+.mq-heat-legend,
+.mq-heat-legend-top,
+.lumen-legend { display:none !important; }
+.mq-heat-card-v178 .mq-heat-head { align-items:flex-start; }
+.mq-heat-days-axis-lite span { min-height: var(--hm-size); line-height: var(--hm-size); font-size:10px; color:var(--ink3); font-weight:700; }
+.mq-heat-days-axis-lite span:empty { opacity:0; }
+.mq-rec-seg{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0 6px}
+.mq-rec-seg button{border:1px solid var(--border);background:var(--card);border-radius:999px;padding:3px 9px;font-size:11px;color:var(--ink2);font-weight:700}
+.mq-rec-seg button.on{background:var(--p);border-color:var(--p);color:white}
+.mq-empty-small{padding:22px 10px;text-align:center;color:var(--ink3);font-weight:700;font-size:13px}
+.mq-recovery-svg text{font-family:"Montserrat",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}

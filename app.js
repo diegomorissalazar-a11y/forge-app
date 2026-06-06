@@ -8734,3 +8734,298 @@ function renderProgRecuperacion(){
     ${renderMqYearHeatmap({title:'◈ Agua',subtitle:'Meta diaria de agua',year,valueFn:f=>getWaterOkForDate(f)?1:0,tooltipFn:f=>`${f} · ${getWaterVasosForDate(f)??0}/10 vasos`})}
     ${renderMqYearHeatmap({title:'◈ Creatina',subtitle:'Consumo diario',year,valueFn:f=>getCreatinaTomadaOficial(f)?1:0,tooltipFn:f=>`${f} · ${getCreatinaTomadaOficial(f)?'tomada':'no tomada'}`})}`;
 }
+
+// ---------------------------------------------------------------
+//  MELQART v178 — Árbol de decisión proteína + limpieza heatmaps/recuperación
+// ---------------------------------------------------------------
+(function(){
+  // Plantillas cerradas por tabla de equivalencias y definición del plan diario.
+  window.MQ178_MEAL_PORTIONS = {
+    desayuno: { proteinas:2, cereales:0.5, frutas:0.5, lipidos:0.5 },
+    fruta_1000: { frutas:1 },
+    almuerzo_post: { proteinas:4, cereales:2 },
+    leche_protein_1700: { lacteoProtein:1 },
+    huevos_1800: { proteinas:3 },
+    leche_descremada_casa: { lacteoDescremado:1 },
+    cena: { proteinas:4, cereales:2, verduras:2 }
+  };
+  try{
+    Object.keys(window.MQ178_MEAL_PORTIONS).forEach(id=>{
+      if(typeof MEAL_PORTIONS!=='undefined' && MEAL_PORTIONS[id]){
+        Object.keys(MEAL_PORTIONS[id]).forEach(k=>delete MEAL_PORTIONS[id][k]);
+        Object.assign(MEAL_PORTIONS[id], window.MQ178_MEAL_PORTIONS[id]);
+      }
+      if(typeof COMIDAS!=='undefined'){
+        const c=COMIDAS.find(x=>x.id===id);
+        if(c) c.portions=window.MQ178_MEAL_PORTIONS[id];
+      }
+    });
+    if(typeof COMIDAS!=='undefined'){
+      const d=COMIDAS.find(x=>x.id==='desayuno'); if(d) d.grupos='2 proteínas · 0.5 cereal · 0.5 fruta · 0.5 lípidos';
+      const c=COMIDAS.find(x=>x.id==='cena'); if(c) c.grupos='4 proteínas · 2 cereales · 2 verduras';
+    }
+  }catch(e){ console.warn('v178 meal portion normalization skipped', e); }
+})();
+
+function mq178MealIds(){ return (typeof COMIDAS!=='undefined' ? COMIDAS : []).map(c=>c.id); }
+function mq178MealTotal(){ return mq178MealIds().length || 7; }
+function mq178IsDone(v){
+  if(v===true) return true;
+  if(v===false || v==null) return false;
+  if(typeof v==='number') return v>0;
+  if(typeof v==='string') return ['true','1','si','sí','done','ok','completa','completada'].includes(v.toLowerCase());
+  if(typeof v==='object') return !!(v.completada || v.completed || v.done || v.ok || v.checked || v.status==='done');
+  return false;
+}
+function mq178ParseIntSafe(v){ const n=parseInt(v,10); return Number.isFinite(n) && n>=0 ? n : null; }
+function mq177CompletedMealCount(fd){
+  if(!fd) return 0;
+  const total=mq178MealTotal();
+  if(fd.allDone || fd.pautaManual) return total;
+  const keys=['comidasCompletadas','completedMeals','mealsDone','platosCompletados','mealCount','comidasDone','comidasCount'];
+  for(const k of keys){ const n=mq178ParseIntSafe(fd[k]); if(n!==null) return Math.min(total,n); }
+  if(Array.isArray(fd.meals)){
+    const n=fd.meals.filter(m=>mq178IsDone(m)).length;
+    if(n>0) return Math.min(total,n);
+  }
+  if(fd.comidas && typeof fd.comidas==='object'){
+    const n=Object.values(fd.comidas).filter(mq178IsDone).length;
+    if(n>0) return Math.min(total,n);
+  }
+  return 0;
+}
+function mq178MealText(fd, meal){
+  const cur=fd?.comidas?.[meal.id];
+  if(cur && typeof cur==='object' && String(cur.texto||'').trim()) return String(cur.texto).trim();
+  if(Array.isArray(fd?.meals)){
+    const m=fd.meals.find(x=>x && (x.id===meal.id || x.key===meal.id || normFoodText(x.nombre||x.name||'')===normFoodText(meal.nombre||'')));
+    if(m) return String(m.texto||m.text||m.detail||m.detalle||m.descripcion||'').trim();
+  }
+  return '';
+}
+function mq178CompletedMealIds(fd){
+  const ids=mq178MealIds();
+  const out=new Set();
+  const count=mq177CompletedMealCount(fd);
+  // Regla histórica cerrada: X/7 significa primeros X platos completados en orden.
+  ids.slice(0,count).forEach(id=>out.add(id));
+  // Mantener compatibilidad con registros explícitos no secuenciales de la app nueva.
+  if(fd?.comidas && typeof fd.comidas==='object'){
+    ids.forEach(id=>{ if(mq178IsDone(fd.comidas[id])) out.add(id); });
+  }
+  if(Array.isArray(fd?.meals)){
+    fd.meals.forEach(m=>{
+      if(!mq178IsDone(m)) return;
+      const idx=ids.findIndex(id=>id===m.id || id===m.key);
+      if(idx>=0) out.add(ids[idx]);
+    });
+  }
+  return out;
+}
+function getMealProgress(fd){
+  const total=mq178MealTotal();
+  const done=mq177CompletedMealCount(fd);
+  return {done,total,pct: total?Math.round(done/total*100):0};
+}
+function mq178MealPortionsFor(meal, fd){
+  const txt=mq178MealText(fd, meal);
+  if(txt){
+    const parsed=parseNutritionTextToPortions(txt);
+    if(parsed.hasAny) return {portions:parsed.portions, source:'detalle', details:parsed.details};
+  }
+  const portions=(window.MQ178_MEAL_PORTIONS && window.MQ178_MEAL_PORTIONS[meal.id]) || meal.portions || {};
+  return {portions, source:'platos', details:[`${meal.nombre} → plantilla por plato completado`]};
+}
+function calcNutritionDayDetail(fd){
+  const total=clonePortionZero();
+  const details=[];
+  if(!fd) return {portions:total, details, mealCount:0, source:'sin_dato'};
+  const completedIds=mq178CompletedMealIds(fd);
+  (COMIDAS||[]).forEach(meal=>{
+    if(!completedIds.has(meal.id)) return;
+    const res=mq178MealPortionsFor(meal,fd);
+    sumPortionsInto(total,res.portions||{});
+    details.push({type:'comida', name:meal.nombre, source:res.source, portions:res.portions||{}, details:res.details||[]});
+  });
+  (fd.extraFoods||[]).forEach(f=>{
+    sumPortionsInto(total, f.portions||{});
+    details.push({type:f.quickMeal?'comida_rapida':'alimento_rapido', name:f.name, source:f.quickMeal?'comida rápida':'registro rápido', portions:f.portions||{}, details:f.calcDetail||f.details||[]});
+  });
+  Object.keys(total).forEach(k=>total[k]=nRound(total[k],2));
+  return {portions:total, details, mealCount:completedIds.size, source:details.length?'calculado':'sin_dato'};
+}
+function calcPortionsConsumed(fd){ return calcNutritionDayDetail(fd).portions; }
+function getPorcionesHoy(fd){ return calcPortionsConsumed(fd); }
+function getFoodHasRecord(f){
+  try{
+    const raw=localStorage.getItem('ff_'+f);
+    if(!raw) return false;
+    const fd=JSON.parse(raw);
+    if(fd.pautaManual || fd.allDone) return true;
+    if(mq177CompletedMealCount(fd)>0) return true;
+    if((fd.extraFoods||[]).length>0) return true;
+    if((fd.aguaVasosHoy||fd.agua||fd.aguaMl||0)>0) return true;
+    if(fd.sueno || typeof fd.creatinaTomada!=='undefined') return true;
+    return true;
+  }catch{ return false; }
+}
+function getProteinPortionsForDate(f){
+  const fd=getFoodRecordSafe(f);
+  if(!fd || !getFoodHasRecord(f)) return null;
+  const calc=calcNutritionDayDetail(fd);
+  if(!calc.details.length && calc.mealCount===0) return null;
+  return nRound(calc.portions?.proteinas||0,2);
+}
+function getProteinPctForDate(f){
+  const prot=getProteinPortionsForDate(f);
+  if(prot===null) return null;
+  return NUTRITION_TARGETS.proteinas ? Math.round((prot/NUTRITION_TARGETS.proteinas)*100) : 0;
+}
+function isFoodComplete(f){
+  const fd=getFoodRecordSafe(f); if(!fd || !getFoodHasRecord(f)) return false;
+  const p=getMealProgress(fd);
+  return !!(fd.allDone || fd.pautaManual || p.done>=p.total);
+}
+
+function mq178ElapsedDays(year){
+  const todayStr=today();
+  const end=todayStr.startsWith(String(year)) ? todayStr : `${year}-12-31`;
+  return getYearDays(year).filter(f=>f<=end).length;
+}
+function renderMqYearHeatmap(opts){
+  const year=opts.year||new Date().getFullYear();
+  const todayStr=today();
+  const start=new Date(year,0,1,12);
+  const dow0=(start.getDay()+6)%7;
+  const gridStart=new Date(year,0,1,12); gridStart.setDate(1-dow0);
+  const gridEnd=new Date(year,11,31,12);
+  const months=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const monthStarts=[];
+  for(let m=0;m<12;m++){
+    const md=new Date(year,m,1,12);
+    const diff=Math.floor((md-gridStart)/86400000);
+    monthStarts.push({m, col:Math.floor(diff/7)});
+  }
+  let cells='', ok=0, valid=0, activeDays=0;
+  for(let d=new Date(gridStart); d<=gridEnd; d.setDate(d.getDate()+1)){
+    const f=localDateStr(d);
+    const isOther=d.getFullYear()!==year, isFuture=f>todayStr;
+    let level=-1, title=f;
+    if(!isOther && !isFuture){
+      const v=opts.valueFn(f);
+      level=(v===null || typeof v==='undefined') ? -1 : v;
+      if(level!==-1) valid++;
+      if(level>0) activeDays++;
+      if(level>=1) ok++;
+      title=opts.tooltipFn ? opts.tooltipFn(f,level) : f;
+    }
+    let cls='mq-hm-cell';
+    if(isOther || isFuture) cls+=' fut';
+    else if(level>=2) cls+=' lvl2';
+    else if(level>=1) cls+=' lvl1';
+    else cls+=' empty';
+    cells += `<div class="${cls}" title="${String(title).replace(/"/g,'&quot;')}"></div>`;
+  }
+  const elapsed=mq178ElapsedDays(year);
+  const label=opts.labelFn ? opts.labelFn(ok,elapsed,valid,activeDays) : `${ok} de ${elapsed} días (${pct(ok,elapsed)}%)`;
+  const monthHtml=monthStarts.map(x=>`<span style="grid-column:${x.col+1}">${months[x.m]}</span>`).join('');
+  const dayRows=['L','','X','','V','','D'].map(x=>`<span>${x}</span>`).join('');
+  return `<div class="mq-heat-card mq-heat-card-v178">
+    <div class="mq-heat-head"><div><div class="mq-heat-title">${opts.title}</div><div class="mq-heat-sub">${opts.subtitle} · <strong>${label}</strong></div></div></div>
+    <div class="mq-heat-scroll"><div class="mq-heat-with-days"><div class="mq-heat-days-axis mq-heat-days-axis-lite"><span></span>${dayRows}</div><div><div class="mq-heat-months" style="grid-template-columns:repeat(53, var(--hm-size))">${monthHtml}</div><div class="mq-heat-grid">${cells}</div></div></div></div>
+  </div>`;
+}
+function renderLumenHabitoGrid(titulo,subtitulo,year,todayStr,valFn,tipo=''){
+  const start=new Date(year,0,1,12);
+  const dow0=(start.getDay()+6)%7;
+  const gridStart=new Date(year,0,1,12); gridStart.setDate(1-dow0);
+  const gridEnd=new Date(year,11,31,12);
+  const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  let cells='', cumplidos=0,totalDias=0;
+  for(let d=new Date(gridStart);d<=gridEnd;d.setDate(d.getDate()+1)){
+    const f=localDateStr(d); const isOther=d.getFullYear()!==year, isFuture=f>todayStr;
+    let cls='lc'; const clickable=tipo==='alcohol'&&!isOther&&!isFuture;
+    if(isOther||isFuture){ cls+=' fut'; }
+    else{
+      const v=valFn(f); totalDias++;
+      if(v>=1){ cls+=' l4'; cumplidos++; }
+      else if(v>=0.5) cls+=' l3';
+      else if(v>=0.25) cls+=' l2';
+      else if(v===0) cls+=' l1';
+    }
+    cells+=clickable ? `<div class="${cls}" onclick="toggleAlcohol('${f}')" style="cursor:pointer" title="${f}"></div>` : `<div class="${cls}" title="${f}"></div>`;
+  }
+  const monthsHtml='<div class="lumen-months">'+meses.map(m=>`<div class="lumen-month" style="min-width:28px">${m}</div>`).join('')+'</div>';
+  const etiqueta=tipo==='alcohol' ? `<strong style="color:var(--green)">${cumplidos}</strong> de ${totalDias} días sin alcohol` : `<strong style="color:var(--orange)">${cumplidos}</strong> de ${totalDias} días`;
+  return `<div class="lumen-block"><div class="lumen-block-title">${titulo}</div><div class="lumen-block-sub">${subtitulo} · ${etiqueta}</div><div class="lumen-grid-wrap">${monthsHtml}<div class="lgrid">${cells}</div></div></div>`;
+}
+
+function mq178WeekLabel(start){ return String(start||'').slice(8,10)+'/'+String(start||'').slice(5,7); }
+function mq178FilterWeeks(data,key){
+  const filter=localStorage.getItem('mq_rec_filter_'+key)||'3m';
+  if(filter==='all') return data;
+  const months={m1:1,m3:3,m6:6,m12:12}[filter]||3;
+  const cutoff=new Date(today()+'T12:00:00'); cutoff.setMonth(cutoff.getMonth()-months);
+  return data.filter(d=>new Date(d.start+'T12:00:00')>=cutoff);
+}
+function mq178Seg(key){
+  const cur=localStorage.getItem('mq_rec_filter_'+key)||'3m';
+  const opts=[['m1','1 mes'],['m3','3 meses'],['m6','6 meses'],['m12','12 meses'],['all','Todo']];
+  return `<div class="mq-rec-seg">${opts.map(o=>`<button class="${cur===o[0]?'on':''}" onclick="localStorage.setItem('mq_rec_filter_${key}','${o[0]}');renderProgRecuperacion();">${o[1]}</button>`).join('')}</div>`;
+}
+function weeklyRecoveryData(year=new Date().getFullYear()){
+  const todayStr=today();
+  return getWeekRangesForYear(year).map(w=>{
+    const days=datesBetween(w.start,w.end).filter(f=>f<=todayStr && f.startsWith(String(year)));
+    const sleepVals=days.map(getSleepMinutesForDate).filter(v=>v!==null);
+    const sleepAvg=sleepVals.length ? sleepVals.reduce((a,b)=>a+b,0)/sleepVals.length : null;
+    const creatDays=days.filter(f=>f>=CREATINA_INICIO_OFICIAL);
+    const creat=creatDays.filter(getCreatinaTomadaOficial).length;
+    const creatScore=creatDays.length ? Math.min(100,Math.round(creat/creatDays.length*100)) : null;
+    const protVals=days.map(getProteinPctForDate).filter(v=>v!==null).map(v=>Math.min(100,v));
+    const protAvg=protVals.length ? Math.round(protVals.reduce((a,b)=>a+b,0)/protVals.length) : null;
+    const waterVals=days.map(getWaterVasosForDate).filter(v=>v!==null);
+    const waterAvg=waterVals.length ? waterVals.reduce((a,b)=>a+b,0)/waterVals.length : null;
+    const sleepScore=sleepAvg!==null ? Math.min(100,Math.round(sleepAvg/420*100)) : null;
+    const waterScore=waterAvg!==null ? Math.min(100,Math.round(waterAvg/(getAguaMeta().vasos||10)*100)) : null;
+    const scores=[sleepScore,creatScore,protAvg,waterScore];
+    const general=scores.every(v=>v!==null) ? Math.round(scores.reduce((a,b)=>a+b,0)/4) : null;
+    return {...w, days:days.length, sleepAvg, sleepScore, creat, creatDays:creatDays.length, creatScore, protAvg, protScore:protAvg, waterAvg, waterScore, general};
+  }).filter(w=>w.days>0);
+}
+function mq178RenderRecoveryChart(key,title,data,getVal,opts={}){
+  const filtered=mq178FilterWeeks(data,key).filter(d=>getVal(d)!==null && typeof getVal(d)!=='undefined' && !isNaN(getVal(d)));
+  if(filtered.length<2){
+    return `<div class="mq-recovery-chart card"><div class="mq-recovery-chart-head"><div><strong>${title}</strong></div></div>${mq178Seg(key)}<div class="mq-empty-small">Sin datos suficientes</div></div>`;
+  }
+  const W=320,H=144,pad=22;
+  const vals=filtered.map(getVal);
+  const target=opts.target||0;
+  const allVals=target?vals.concat([target]):vals;
+  const minRaw=Math.min(...allVals), maxRaw=Math.max(...allVals);
+  const span=Math.max(maxRaw-minRaw,1);
+  const minV=Math.max(0,minRaw-span*.2), maxV=maxRaw+span*.2;
+  const xs=filtered.map((_,i)=>pad+(i/(Math.max(filtered.length-1,1)))*(W-pad*2));
+  const y=v=>H-pad-18-((v-minV)/(maxV-minV))*(H-pad*2-18);
+  const line=filtered.map((d,i)=>`${i===0?'M':'L'}${xs[i].toFixed(1)},${y(getVal(d)).toFixed(1)}`).join(' ');
+  const dots=filtered.map((d,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${y(getVal(d)).toFixed(1)}" r="3.8" fill="var(--p)"><title>${mq178WeekLabel(d.start)} · ${opts.tooltip?opts.tooltip(d):getVal(d)}</title></circle>`).join('');
+  const labels=filtered.map((d,i)=> i%Math.ceil(filtered.length/5)===0 || i===filtered.length-1 ? `<text x="${xs[i].toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="9" fill="var(--ink3)">${mq178WeekLabel(d.start)}</text>` : '').join('');
+  const last=filtered[filtered.length-1], lastVal=getVal(last);
+  const display=opts.format?opts.format(lastVal,last):lastVal;
+  const pctMeta=target?Math.min(100,Math.round(lastVal/target*100)):Math.min(100,Math.round(lastVal));
+  return `<div class="mq-recovery-chart card"><div class="mq-recovery-chart-head"><div><strong>${title}</strong></div><div class="mq-recovery-chart-val">${display}</div></div><div class="mq-recovery-chart-meta">${opts.meta||''}</div>${mq178Seg(key)}<svg viewBox="0 0 ${W} ${H}" class="mq-recovery-svg">${target?`<line x1="${pad}" y1="${y(target).toFixed(1)}" x2="${W-pad}" y2="${y(target).toFixed(1)}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="4,3" opacity=".55"/>`:''}<path d="${line}" fill="none" stroke="var(--p)" stroke-width="2.6"/>${dots}${labels}</svg><div class="mq-recovery-progress"><div style="width:${pctMeta}%"></div></div></div>`;
+}
+function renderProgRecuperacion(){
+  const el=document.getElementById('prog-recuperacion-content'); if(!el) return;
+  const data=weeklyRecoveryData(new Date().getFullYear());
+  const lastWith=k=>[...data].reverse().find(d=>d[k]!==null && typeof d[k]!=='undefined');
+  const lSleep=lastWith('sleepAvg'), lCreat=lastWith('creatScore'), lProt=lastWith('protAvg'), lWater=lastWith('waterAvg'), lGen=lastWith('general');
+  const kpis=[
+    {t:'Sueño',v:lSleep?fmtHours(lSleep.sleepAvg):'Sin datos',s:'promedio semanal'},
+    {t:'Creatina',v:lCreat?`${lCreat.creat}/${lCreat.creatDays||7}`:'Sin datos',s:'días semana'},
+    {t:'Proteína',v:lProt?`${Math.round(lProt.protAvg)}%`:'Sin datos',s:'cumplimiento'},
+    {t:'Agua',v:lWater?`${(lWater.waterAvg||0).toFixed(1)}/10`:'Sin datos',s:'vasos promedio'},
+    {t:'Cumplimiento',v:lGen?`${lGen.general}%`:'Sin datos',s:'promedio recuperación'}
+  ].map(k=>`<div class="lumen-stat mq-rec-kpi"><div class="lumen-num">${k.v}</div><div class="lumen-lbl">${k.t}</div><div class="lumen-sub">${k.s}</div></div>`).join('');
+  el.innerHTML=`<div class="section-label" style="margin-bottom:10px">Recuperación semanal</div><div class="mq-rec-kpi-row">${kpis}</div>${mq178RenderRecoveryChart('sleep','Sueño promedio',data,d=>d.sleepAvg===null?null:Math.round(d.sleepAvg/60*100)/100,{target:7,format:(v,d)=>fmtHours(d.sleepAvg),meta:'Meta: 7h promedio',tooltip:d=>fmtHours(d.sleepAvg)})}${mq178RenderRecoveryChart('creatine','Creatina',data,d=>d.creatScore===null?null:d.creat,{target:7,format:(v,d)=>`${d.creat}/${d.creatDays||7}`,meta:'Meta: consumo diario',tooltip:d=>`${d.creat} de ${d.creatDays} días`})}${mq178RenderRecoveryChart('protein','Proteína',data,d=>d.protAvg,{target:100,format:v=>`${Math.round(v)}%`,meta:'Meta: 100% semanal',tooltip:d=>`${Math.round(d.protAvg)}% promedio`})}${mq178RenderRecoveryChart('water','Agua',data,d=>d.waterAvg,{target:10,format:v=>`${v.toFixed(1)}/10`,meta:'Meta: 10 vasos promedio',tooltip:d=>`${d.waterAvg.toFixed(1)} vasos promedio`})}${mq178RenderRecoveryChart('general','Cumplimiento general',data,d=>d.general,{target:100,format:v=>`${Math.round(v)}%`,meta:'Promedio simple: sueño, creatina, proteína y agua',tooltip:d=>`${d.general}% recuperación`})}`;
+}
