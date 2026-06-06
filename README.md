@@ -1,26 +1,56 @@
-# MELQART v174 — Legacy nutrition plate recalculation
+# MELQART v175 — Antropometría completa histórica + exportador
 
 ## Cambios aplicados
 
-- Ajusta el cálculo histórico de nutrición cuando los días tienen platos/comidas marcadas.
-- Cada plato completado ahora abona porciones según la pauta definida para Melqart.
-- Mantiene la jerarquía de cálculo:
-  1. Si existe detalle interpretable de alimentos/cantidades, se calcula por equivalencias oficiales.
-  2. Si no existe detalle, se usa la plantilla del plato completado.
-- Corrige el subconteo de proteína en días completos.
-- Mantiene el fix de v173: equivalencias oficiales hacia adelante, comidas rápidas y cambio de Tren Inferior B.
+- Se agrega migración interna con la serie oficial de informes antropométricos.
+- Se cargan/fusionan 8 fechas antropométricas únicas:
+  - 2024-01-06
+  - 2024-02-03
+  - 2024-04-06
+  - 2024-06-01
+  - 2024-08-03
+  - 2024-10-19
+  - 2024-12-21
+  - 2025-03-01
+- No se duplican fechas: si una fecha ya existe, se completa/corrige con los campos oficiales.
+- Progreso > Medidas corporales ahora debe graficar:
+  - composición corporal;
+  - pliegues y sumatorias 6/8;
+  - perímetros;
+  - somatotipo.
+- Exportador histórico incluye antropometría completa.
+- Se incluye `melqart_antropometria_console.js` como respaldo para forzar la carga desde consola si alguna caché/sync deja datos antiguos.
 
-## Plantillas por plato
-
-1. Desayuno: 3 proteínas + 1 lácteo protein + 1 fruta + 0.5 cereal + 0.5 lípidos.
-2. Fruta: 1 fruta.
-3. Almuerzo: 4 proteínas + 2 cereales.
-4. Leche protein: 1 lácteo protein.
-5. Huevos duros: 3 proteínas, usando 1 huevo = 1.5 porciones.
-6. Leche descremada: 1 lácteo descremado.
-7. Cena: 3 proteínas + 2 cereales + 2 verduras.
-
-## Validaciones
+## Validación técnica
 
 - `node --check app.js` ejecutado correctamente.
-- No se modificaron módulos de Entrenar, Peso, Progreso, Agua, Creatina, Sueño, Login, Firebase/Auth, logo, colores globales ni tipografías.
+- `node --check melqart_antropometria_console.js` ejecutado correctamente.
+
+## Qué NO se tocó
+
+- Home
+- Entrenar
+- Nutrición
+- Agua
+- Creatina
+- Sueño
+- Peso semanal
+- Login
+- Firebase/Auth
+- Colores globales
+- Tipografías
+- Logo
+
+## Instrucciones de prueba
+
+1. Subir el ZIP a GitHub Pages.
+2. Abrir con URL cache-busting, por ejemplo `?v=175`.
+3. Entrar a Progreso > Medidas corporales.
+4. Revisar que las secciones tengan datos:
+   - Composición corporal
+   - Pliegues
+   - Perímetros
+   - Somatotipo
+5. Exportar historial completo y validar que aparezca la sección ANTROPOMETRÍA.
+
+Si no aparecen los 8 registros por caché o sincronización, pegar el contenido de `melqart_antropometria_console.js` en consola con la app abierta y recargar.
