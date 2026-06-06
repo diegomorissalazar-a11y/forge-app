@@ -9921,3 +9921,71 @@ try{
 
 })();
 
+
+
+
+// ---------------------------------------------------------------
+// MELQART v181.2 — ID canónico real para Hevy y ejercicios duplicados
+// ---------------------------------------------------------------
+(function mq1812(){
+  const LOG='MELQART v181.2';
+  function N(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()}
+  function ts(d,t='12:00'){return new Date(`${d}T${t}:00`).getTime()}
+  function day(x){try{return typeof localDateStr==='function'?localDateStr(x):new Date(x).toISOString().slice(0,10)}catch(e){return new Date(x).toISOString().slice(0,10)}}
+  function W(w,r){return {type:'weight',done:true,weight:parseFloat(w)||0,reps:parseInt(r)||0,distance:'',time:'',fc:'',pasos:''}}
+  function R(d,t,fc='',pasos=''){return {type:'run',done:true,weight:0,reps:0,distance:String(d||''),time:String(t||''),fc:String(fc||''),pasos:String(pasos||'')}}
+  function E(id,sets){return {exId:id,sets}}
+  function a(k){if(!forge[k])forge[k]=[];return forge[k]}
+  const C={
+    ex_hip_thrust_maq:['Hip Thrust (Máquina)','machine','gluteos','Glúteos',['hiptrust maquina','hiptrust máquina','hip thrust maquina','hip thrust máquina','hip thrust (maquina)','hip thrust (máquina)','empuje de cadera maquina','empuje de cadera máquina','empuje de caderas maquina','empuje de caderas máquina']],
+    ex_hip_thrust:['Hip Thrust (Barra)','barbell','gluteos','Glúteos',['hip thrust barra','hip thrust (barra)','empuje de cadera barra','empuje de caderas barra']],
+    ex_sentadilla:['Sentadilla (Barra)','barbell','cuadriceps','Cuádriceps',['sentadilla','sentadilla barra','sentadilla (barra)']],
+    ex_peso_muerto_manc:['Peso Muerto (Mancuerna)','dumbbell','isquios','Isquiotibiales',['peso muerto mancuerna','peso muerto (mancuerna)']],
+    ex_peso_muerto:['Peso Muerto (Barra)','barbell','isquios','Isquiotibiales',['peso muerto barra','peso muerto (barra)']],
+    ex_step_manc:['Step con Mancuerna','dumbbell','piernas','Piernas',['step con mancuerna','step mancuerna']],
+    ex_sent_bulgara:['Sentadilla Búlgara','dumbbell','gluteos','Glúteos',['sentadilla bulgara','sentadilla búlgara']],
+    ex_crunch:['Abdominal Banco Inclinado','bodyweight','core','Core',['abdominal corto en banco inclinado','abdominal banco inclinado','abdominal en banco','crunch abdominal','crunch']],
+    ex_press_banca:['Press Banca (Barra)','barbell','pecho','Pecho',['press de banca barra','press banca barra','press banca (barra)']],
+    ex_press_inclinado:['Press Inclinado (Barra)','barbell','pecho','Pecho',['press de banca inclinado barra','press banca inclinado barra','press inclinado (barra)']],
+    ex_press_hombros:['Press Hombros (Barra)','barbell','hombros','Hombros',['press de hombros barra','press hombros barra','press hombros (barra)']],
+    ex_press_homb_manc:['Press Hombros (Mancuerna)','dumbbell','hombros','Hombros',['press hombros mancuerna','press de hombros mancuerna','press hombros (mancuerna)','press hombros (mancuernas)']],
+    ex_press_homb_maq:['Press Hombros (Máquina)','machine','hombros','Hombros',['press hombros maquina','press de hombros sentado maquina','press hombros sentado maquina','press hombros (maquina)','press hombros (máquina)']],
+    ex_curl_barra_z:['Curl con Barra Z','barbell','biceps','Bíceps',['curl con barra ez','curl barra ez','curl con barra z']],
+    ex_dominadas:['Dominadas (Peso Corporal)','bodyweight','espalda','Espalda',['dominada','dominadas']],
+    ex_jalon_pecho:['Jalón al Pecho (Cable)','cable','espalda','Espalda',['jalon al pecho cable','jalón al pecho cable','jalon al pecho (cable)','jalón al pecho (cable)']],
+    ex_correr:['Carrera / Trote','run','cardio','Cardio',['correr','carrera','trote','carrera / trote']]
+  };
+  const A={}; Object.entries(C).forEach(([id,v])=>{A[N(v[0])]=id;(v[4]||[]).forEach(x=>A[N(x)]=id)})
+  function ensure(id){const v=C[id]; if(!v)return; let ex=a('exercises').find(e=>e.id===id); if(!ex){ex={id};forge.exercises.push(ex)}; ex.name=v[0]; ex.type=v[1]; ex.muscle=v[2]; ex.grupo=v[3]; ex.restSec=ex.type==='run'?0:ex.restSec||120}
+  function kset(st){return st.type==='run'?`r:${st.distance}:${st.time}:${st.fc}:${st.pasos}`:`w:${st.weight}:${st.reps}`}
+  function normalize(){Object.keys(C).forEach(ensure); const map={}; (forge.exercises||[]).forEach(e=>{const id=A[N(e.name)]; if(id&&id!==e.id)map[e.id]=id}); (forge.sessions||[]).forEach(s=>{(s.exercises||[]).forEach(ex=>{const def=(forge.exercises||[]).find(e=>e.id===ex.exId); const id=map[ex.exId]||A[N(ex.name)]||A[N(def&&def.name)]; if(id){ex.exId=id; delete ex.name}}); const by={}; (s.exercises||[]).forEach(ex=>{if(!by[ex.exId])by[ex.exId]={exId:ex.exId,sets:[]}; const keys=new Set(by[ex.exId].sets.map(kset)); (ex.sets||[]).forEach(st=>{const k=kset(st); if(!keys.has(k)){by[ex.exId].sets.push(st); keys.add(k)}})}); s.exercises=Object.values(by)}); (forge.routines||[]).forEach(r=>{if(Array.isArray(r.exercises))r.exercises=r.exercises.map(id=>map[id]||id).filter((id,i,x)=>x.indexOf(id)===i)}); forge.exercises=(forge.exercises||[]).filter(e=>!map[e.id]); Object.keys(C).forEach(ensure); return Object.keys(map).length}
+  function vol(s){return (s.exercises||[]).reduce((z,ex)=>z+(ex.exId==='ex_correr'?0:(ex.sets||[]).reduce((a,st)=>a+(parseFloat(st.weight)||0)*(parseInt(st.reps)||0),0)),0)}
+  function mergeSets(t,i){if(!t.sets)t.sets=[]; const keys=new Set(t.sets.map(kset)); (i.sets||[]).forEach(st=>{const k=kset(st); if(!keys.has(k)){t.sets.push(st); keys.add(k)}})}
+  function S(d,time,kind,mins,exercises){return {id:`mq1812_hevy_${d}_${kind}`,routineId:null,routineName:kind==='trote'?'Trote':kind==='superior'?'Tren superior':'Tren inferior',date:ts(d,time),elapsed:Math.round(mins*60),exercises,source:'hevy_v181_2',tipoHevy:kind}}
+  function similar(a,b){if(day(a.date)!==day(b.date))return false; const br=String(b.routineName||'').toLowerCase(), ar=String(a.routineName||'').toLowerCase(); if(br.includes('trote'))return (a.exercises||[]).some(e=>e.exId==='ex_correr'); if(br.includes('superior'))return ar.includes('superior')||(a.exercises||[]).some(e=>['ex_press_banca','ex_press_inclinado','ex_press_hombros','ex_press_homb_manc','ex_press_homb_maq','ex_curl_barra_z','ex_jalon_pecho'].includes(e.exId)); if(br.includes('inferior'))return ar.includes('inferior')||(a.exercises||[]).some(e=>['ex_sentadilla','ex_peso_muerto','ex_peso_muerto_manc','ex_hip_thrust','ex_hip_thrust_maq','ex_sent_bulgara','ex_step_manc'].includes(e.exId)); return false}
+  function add(s){s.totalVolume=vol(s); let e=(forge.sessions||[]).find(x=>x.id===s.id)||(forge.sessions||[]).find(x=>similar(x,s)); if(e){if(!e.routineName||String(e.routineName).toLowerCase().includes('libre'))e.routineName=s.routineName; e.elapsed=Math.max(e.elapsed||0,s.elapsed||0); e.source=e.source||s.source; e.tipoHevy=e.tipoHevy||s.tipoHevy; if(!e.exercises)e.exercises=[]; (s.exercises||[]).forEach(ix=>{const tx=e.exercises.find(x=>x.exId===ix.exId); if(tx)mergeSets(tx,ix); else e.exercises.push(ix)}); e.totalVolume=vol(e); return 'merged'}; forge.sessions.push(s); return 'added'}
+  function data(){return [
+    S('2026-03-19','15:12','superior',37,[E('ex_press_inclinado',[W(60,6),W(60,5),W(50,8)]),E('ex_jalon_pecho',[W(50,10),W(50,10),W(50,10)]),E('ex_press_homb_manc',[W(28,10),W(28,10),W(28,10)])]),
+    S('2026-03-17','14:37','superior',38,[E('ex_press_banca',[W(65,8),W(65,8),W(65,5)]),E('ex_press_homb_maq',[W(30,7),W(30,8),W(30,8)]),E('ex_curl_barra_z',[W(30,7),W(30,7),W(30,6)])]),
+    S('2026-03-16','14:44','inferior',48,[E('ex_sentadilla',[W(70,10),W(70,9),W(70,9)]),E('ex_peso_muerto_manc',[W(50,8),W(60,10)])]),
+    S('2026-03-10','15:07','superior',47,[E('ex_press_banca',[W(60,8),W(60,8),W(60,6)]),E('ex_press_hombros',[W(35,9),W(35,9),W(35,8)]),E('ex_curl_barra_z',[W(30,7),W(30,6),W(30,7)])]),
+    S('2026-03-09','15:06','inferior',42,[E('ex_sentadilla',[W(60.9,9),W(60.9,8),W(60.9,8)]),E('ex_peso_muerto_manc',[W(44,8),W(44,9)]),E('ex_hip_thrust_maq',[W(70.9,10),W(70.9,10),W(70.9,10)]),E('ex_crunch',[W(0,30),W(0,30),W(0,30)])]),
+    S('2026-02-19','14:57','superior',35,[E('ex_press_banca',[W(60,8),W(60,8),W(60,7)]),E('ex_press_hombros',[W(35,8),W(35,8),W(35,7)]),E('ex_curl_barra_z',[W(30,6),W(30,5)])]),
+    S('2026-02-16','14:54','inferior',56,[E('ex_sentadilla',[W(60,9),W(60,8),W(60,9)]),E('ex_peso_muerto_manc',[W(44,8),W(44,9)]),E('ex_hip_thrust_maq',[W(67.5,9),W(62.7,10),W(62.7,9)]),E('ex_crunch',[W(0,30),W(0,30),W(0,30)])]),
+    S('2026-02-12','20:54','inferior',40,[E('ex_sentadilla',[W(60,10),W(60,9),W(60,9)]),E('ex_peso_muerto_manc',[W(40,8),W(40,8)]),E('ex_hip_thrust_maq',[W(67.5,7),W(62.7,9),W(62.7,9)])]),
+    S('2026-02-10','14:32','superior',49,[E('ex_press_banca',[W(60,9),W(60,8),W(60,7)]),E('ex_press_homb_maq',[W(30,6),W(30,7),W(30,6)])]), S('2026-02-10','14:32','trote',10,[E('ex_correr',[R(1.15,'9:52')])]),
+    S('2026-02-08','12:42','trote',53,[E('ex_correr',[R(7.74,'53:19','',8072)])]),
+    S('2026-02-05','14:40','inferior',43,[E('ex_sentadilla',[W(60,10),W(60,9),W(60,8)]),E('ex_peso_muerto_manc',[W(40,8),W(40,8)]),E('ex_hip_thrust',[W(62.7,10),W(62.7,9),W(62.7,8)]),E('ex_crunch',[W(0,30),W(0,30),W(0,30)])]),
+    S('2026-02-03','20:51','trote',20,[E('ex_correr',[R(1.21,'7:18','81',1057)])]),
+    S('2026-01-29','14:07','inferior',46,[E('ex_sentadilla',[W(40,10),W(50,10),W(55,10),W(60,10)]),E('ex_peso_muerto_manc',[W(40,8),W(40,8)]),E('ex_hip_thrust',[W(42.7,9),W(62.7,9),W(62.7,10)]),E('ex_crunch',[W(0,30),W(0,30),W(0,20)])]),
+    S('2026-01-27','20:56','superior',37,[E('ex_press_banca',[W(40,10),W(40,11),W(40,9)]),E('ex_press_hombros',[W(30,9),W(30,8),W(30,7)]),E('ex_dominadas',[W(0,10),W(0,7),W(0,7)])]), S('2026-01-27','20:56','trote',12,[E('ex_correr',[R(2.03,'12:05')])]),
+    S('2026-01-25','09:32','trote',21,[E('ex_correr',[R(3.52,'21:26','',3110)])]), S('2026-01-18','12:00','trote',46,[E('ex_correr',[R(6.7,'45:21','',6835)])]), S('2026-01-13','21:03','trote',34,[E('ex_correr',[R(3.36,'21:09','124',3109)])]), S('2026-01-11','10:22','trote',45,[E('ex_correr',[R(6.42,'45:08','133',6742)])]), S('2026-01-08','20:48','inferior',31,[E('ex_step_manc',[W(14,12),W(14,12),W(10,14)]),E('ex_sent_bulgara',[W(14,7),W(14,7),W(14,5),W(14,5)])])
+  ]}
+  function migrate(reason='auto'){a('sessions'); a('exercises'); a('routines'); let normalized=normalize(); let added=0,merged=0; data().forEach(s=>{const r=add(s); if(r==='added')added++; else merged++}); normalized+=normalize(); forge.sessions.sort((a,b)=>(a.date||0)-(b.date||0)); try{localStorage.setItem('melqart_v181_2_status',JSON.stringify({at:new Date().toISOString(),reason,added,merged,normalized,total:forge.sessions.length}))}catch(e){}; try{saveDB()}catch(e){}; console.info(`${LOG}: ${reason} · agregadas ${added} · fusionadas ${merged} · normalizadas ${normalized} · sesiones ${forge.sessions.length}`); return {added,merged,normalized,total:forge.sessions.length}}
+  window.melqartFix181=()=>{const r=migrate('manual'); try{renderAll()}catch(e){} return r};
+  window.melqartDiagnostico181=()=>({status:JSON.parse(localStorage.getItem('melqart_v181_2_status')||'null'),hipThrustExercises:(forge.exercises||[]).filter(e=>/hip\s*trust|hiptrust/i.test(e.name||'')).map(e=>({id:e.id,name:e.name})),sesionesEneMar:(forge.sessions||[]).filter(s=>day(s.date)>='2026-01-01'&&day(s.date)<='2026-03-31').map(s=>({date:day(s.date),routineName:s.routineName,ex:(s.exercises||[]).map(e=>e.exId)})),totalSessions:(forge.sessions||[]).length});
+  [200,1000,2500,5000,9000,14000].forEach(ms=>setTimeout(()=>{const r=migrate('t+'+ms); if(r&&(r.added||r.normalized))try{renderAll()}catch(e){}},ms));
+  if(typeof renderAll==='function'&&!window._mq1812RenderAllHooked){const old=renderAll; window._mq1812RenderAllHooked=true; renderAll=function(){migrate('renderAll'); return old.apply(this,arguments)}}
+  if(typeof doGuardarNube==='function'&&!window._mq1812GuardarHooked){const oldG=doGuardarNube; window._mq1812GuardarHooked=true; doGuardarNube=function(){migrate('guardarNube'); return oldG.apply(this,arguments)}}
+})();
+
