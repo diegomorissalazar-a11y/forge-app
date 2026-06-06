@@ -3696,6 +3696,7 @@ function renderProgress(){
   if(progTab==='ejercicios') renderProgEjercicios();
   else if(progTab==='cuerpo') renderProgCuerpo();
   else if(progTab==='plan') renderProgPlan();
+  else if(progTab==='recuperacion') renderProgRecuperacion();
   else renderProgFotos();
 }
 function switchProgTab(tab,btn){
@@ -8292,3 +8293,282 @@ function buildCuerpoChartHtml(pts, metricKey, unit, color, filtroSel) {
     return lines;
   };
 })();
+
+
+// ---------------------------------------------------------------
+//  MELQART v176 — Heatmaps corregidos + Progreso > Recuperación
+// ---------------------------------------------------------------
+const CREATINA_INICIO_OFICIAL = '2024-12-12';
+const CREATINA_DIAS_SIN_CONSUMO = new Set(['2026-03-07','2026-03-08','2026-05-09','2026-05-10']);
+
+function dateAddDaysStr(dateStr, days){
+  const d = new Date(dateStr+'T12:00:00');
+  d.setDate(d.getDate()+days);
+  return localDateStr(d);
+}
+function getYearDays(year){
+  const arr=[];
+  for(let d=new Date(year,0,1,12); d.getFullYear()===year; d.setDate(d.getDate()+1)) arr.push(localDateStr(d));
+  return arr;
+}
+function getTrainingCountByDate(){
+  const m={};
+  (forge.sessions||[]).forEach(s=>{
+    const f=localDateStr(s.date);
+    m[f]=(m[f]||0)+1;
+  });
+  return m;
+}
+function getFoodRecordSafe(f){
+  try{ return getFD(f); }catch{ return null; }
+}
+function getFoodHasRecord(f){
+  return !!localStorage.getItem('ff_'+f);
+}
+function isFoodComplete(f){
+  const fd=getFoodRecordSafe(f); if(!fd || !getFoodHasRecord(f)) return false;
+  const p=getMealProgress(fd);
+  return !!fd.allDone || p.done>=p.total;
+}
+function getProteinPctForDate(f){
+  const fd=getFoodRecordSafe(f); if(!fd || !getFoodHasRecord(f)) return null;
+  const calc=calcNutritionDayDetail(fd);
+  const prot=parseFloat(calc.portions?.proteinas||0);
+  return NUTRITION_TARGETS.proteinas ? Math.round((prot/NUTRITION_TARGETS.proteinas)*100) : 0;
+}
+function getWaterVasosForDate(f){
+  const fd=getFoodRecordSafe(f); if(!fd || !getFoodHasRecord(f)) return null;
+  const meta=getAguaMeta();
+  return fd.aguaVasosHoy ?? fd.agua ?? Math.round((fd.aguaMl||0)/(meta.mlPorVaso||250));
+}
+function getWaterOkForDate(f){
+  const fd=getFoodRecordSafe(f); if(!fd || !getFoodHasRecord(f)) return false;
+  const meta=getAguaMeta();
+  const vasos=fd.aguaVasosHoy ?? fd.agua ?? 0;
+  const ml=fd.aguaMl ?? Math.round(vasos*(meta.mlPorVaso||250));
+  return vasos >= (meta.vasos||10) || ml >= ((meta.vasos||10)*(meta.mlPorVaso||250));
+}
+function getCreatinaTomadaOficial(f){
+  if(f < CREATINA_INICIO_OFICIAL) return false;
+  if(f > today()) return false;
+  if(CREATINA_DIAS_SIN_CONSUMO.has(f)) return false;
+  // Si existe un registro explícito local, respeta un no tomado solo en los días definidos como excepción.
+  // Para la serie histórica indicada por el usuario, el consumo es completo salvo 4 días.
+  return true;
+}
+function getSleepMinutesForDate(f){
+  const fd=getFoodRecordSafe(f); if(!fd) return null;
+  const t=parseInt(fd.sueno?.totalMinutos||0,10);
+  return t>0?t:null;
+}
+function pct(n,d){ return d ? Math.round((n/d)*100) : 0; }
+
+function renderMqYearHeatmap(opts){
+  const year=opts.year||new Date().getFullYear();
+  const todayStr=today();
+  const start=new Date(year,0,1,12);
+  const dow0=(start.getDay()+6)%7; // lunes=0
+  const gridStart=new Date(year,0,1,12); gridStart.setDate(1-dow0);
+  const gridEnd=new Date(year,11,31,12);
+  const months=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const monthStarts=[];
+  for(let m=0;m<12;m++){
+    const md=new Date(year,m,1,12);
+    const diff=Math.floor((md-gridStart)/86400000);
+    monthStarts.push({m, col:Math.floor(diff/7)});
+  }
+  let cells='', ok=0, totalYear=getYearDays(year).length, activeDays=0;
+  for(let d=new Date(gridStart); d<=gridEnd; d.setDate(d.getDate()+1)){
+    const f=localDateStr(d);
+    const isOther=d.getFullYear()!==year, isFuture=f>todayStr;
+    let level=-1, title=f;
+    if(!isOther && !isFuture){
+      const v=opts.valueFn(f);
+      level = (v===null || typeof v==='undefined') ? -1 : v;
+      if(level>0) activeDays++;
+      if(level>=1) ok++;
+      title = opts.tooltipFn ? opts.tooltipFn(f,level) : f;
+    }
+    let cls='mq-hm-cell';
+    if(isOther || isFuture) cls+=' fut';
+    else if(level>=2) cls+=' lvl2';
+    else if(level>=1) cls+=' lvl1';
+    else cls+=' empty';
+    cells += `<div class="${cls}" title="${title.replace(/"/g,'&quot;')}"></div>`;
+  }
+  const label = opts.labelFn ? opts.labelFn(ok,totalYear,activeDays) : `${ok} de ${totalYear} días (${pct(ok,totalYear)}%)`;
+  const monthHtml = monthStarts.map(x=>`<span style="grid-column:${x.col+1}">${months[x.m]}</span>`).join('');
+  return `<div class="mq-heat-card">
+    <div class="mq-heat-title">${opts.title}</div>
+    <div class="mq-heat-sub">${opts.subtitle} · <strong>${label}</strong></div>
+    <div class="mq-heat-scroll">
+      <div class="mq-heat-months" style="grid-template-columns:repeat(53, var(--hm-size))">${monthHtml}</div>
+      <div class="mq-heat-grid">${cells}</div>
+    </div>
+    <div class="mq-heat-legend"><span>Menos</span><span class="mq-hm-leg empty"></span><span class="mq-hm-leg lvl1"></span><span class="mq-hm-leg lvl2"></span><span>Más</span></div>
+  </div>`;
+}
+
+// Reemplazo v176: heatmaps de hábitos corregidos.
+function renderHabitsLumen(){
+  const el=document.getElementById('perfil-habitos'); if(!el) return;
+  const year=new Date().getFullYear();
+  const todayStr=today();
+  const trainingByDate=getTrainingCountByDate();
+  const trainedDays=Object.keys(trainingByDate).filter(f=>f.startsWith(String(year))).length;
+  const streak=calcStreak(), maxStr=calcMaxStreak();
+  const habAlcohol = (forge.habitos||[]).find(x=>x.tipo==='alcohol');
+  const todayAlcohol = (habAlcohol?.registros||{})[todayStr];
+
+  el.innerHTML=`
+    <div class="lumen-stat-row">
+      <div class="lumen-stat"><div class="lumen-num">${streak}</div><div class="lumen-lbl">Racha actual</div><div class="lumen-sub">semanas seguidas</div></div>
+      <div class="lumen-stat"><div class="lumen-num">${maxStr}</div><div class="lumen-lbl">Mejor racha</div><div class="lumen-sub">histórico</div></div>
+      <div class="lumen-stat"><div class="lumen-num">${trainedDays}</div><div class="lumen-lbl">Días entrenados</div><div class="lumen-sub">año ${year}</div></div>
+    </div>
+    ${renderMqYearHeatmap({
+      title:'◈ Días entrenados', subtitle:'Cada día que completaste un entrenamiento', year,
+      valueFn:f=>trainingByDate[f]>=2?2:trainingByDate[f]===1?1:0,
+      labelFn:(ok,total)=>`${ok} de ${total} días (${pct(ok,total)}%)`,
+      tooltipFn:(f)=>`${f} · ${trainingByDate[f]||0} entrenamiento(s)`
+    })}
+    <div style="margin-bottom:10px">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:8px">Consumo de alcohol hoy</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="hab-alcohol-btn${todayAlcohol==='bebio'?' active':''}" onclick="toggleAlcohol('${todayStr}')">Marcar consumo de alcohol</button></div>
+    </div>
+    ${renderMqYearHeatmap({
+      title:'⊘ Días sin alcohol', subtitle:'Por defecto sin alcohol · Toca el botón de arriba para marcar si bebiste', year,
+      valueFn:f=>{ const h=(forge.habitos||[]).find(x=>x.tipo==='alcohol'); const r=(h?.registros||{})[f]; return r==='bebio'?0:1; },
+      labelFn:(ok,total)=>`${ok} de ${total} días sin alcohol (${pct(ok,total)}%)`,
+      tooltipFn:f=>`${f} · ${((forge.habitos||[]).find(x=>x.tipo==='alcohol')?.registros||{})[f]==='bebio'?'con alcohol':'sin alcohol'}`
+    })}
+    ${renderMqYearHeatmap({
+      title:'◈ Pauta nutricional', subtitle:'Días con pauta alimentaria completada', year,
+      valueFn:f=>isFoodComplete(f)?1:0,
+      labelFn:(ok,total)=>`${ok} de ${total} días (${pct(ok,total)}%)`,
+      tooltipFn:f=>`${f} · ${isFoodComplete(f)?'pauta completa':'pauta no completa'}`
+    })}
+    ${renderMqYearHeatmap({
+      title:'◈ Proteína diaria', subtitle:'Días con meta de proteína cumplida', year,
+      valueFn:f=>{ const p=getProteinPctForDate(f); if(p===null) return 0; return p>=100?1:0; },
+      labelFn:(ok,total)=>`${ok} de ${total} días (${pct(ok,total)}%)`,
+      tooltipFn:f=>{ const p=getProteinPctForDate(f); return `${f} · proteína ${p===null?'sin registro':p+'%'}`; }
+    })}
+    ${renderMqYearHeatmap({
+      title:'◈ Meta de agua', subtitle:'Días que alcanzaste 10 vasos / 2500 ml', year,
+      valueFn:f=>getWaterOkForDate(f)?1:0,
+      labelFn:(ok,total)=>`${ok} de ${total} días (${pct(ok,total)}%)`,
+      tooltipFn:f=>`${f} · ${getWaterVasosForDate(f)??0}/10 vasos`
+    })}
+    ${renderMqYearHeatmap({
+      title:'◈ Creatina', subtitle:'Días con creatina tomada', year,
+      valueFn:f=>getCreatinaTomadaOficial(f)?1:0,
+      labelFn:(ok,total)=>`${ok} de ${total} días (${pct(ok,total)}%)`,
+      tooltipFn:f=>`${f} · ${getCreatinaTomadaOficial(f)?'tomada':'no tomada'}`
+    })}`;
+}
+
+function weekMondayStr(dateStr){
+  const d=new Date(dateStr+'T12:00:00');
+  const day=d.getDay()||7;
+  d.setDate(d.getDate()-day+1);
+  return localDateStr(d);
+}
+function getWeekRangesForYear(year){
+  const todayStr=today();
+  const first=new Date(year,0,1,12);
+  const firstMon=new Date(first); const day=firstMon.getDay()||7; firstMon.setDate(firstMon.getDate()-day+1);
+  const weeks=[];
+  for(let mon=new Date(firstMon); mon.getFullYear()<=year || (mon.getFullYear()===year-1 && weeks.length===0); mon.setDate(mon.getDate()+7)){
+    const start=localDateStr(mon);
+    const end=dateAddDaysStr(start,6);
+    if(end < `${year}-01-01`) continue;
+    if(start > todayStr) break;
+    weeks.push({start,end,label:start.slice(5).replace('-', '/')});
+    if(end >= `${year}-12-31`) break;
+  }
+  return weeks;
+}
+function datesBetween(start,end){
+  const arr=[];
+  for(let d=new Date(start+'T12:00:00'); localDateStr(d)<=end; d.setDate(d.getDate()+1)) arr.push(localDateStr(d));
+  return arr;
+}
+function weeklyRecoveryData(year=new Date().getFullYear()){
+  const todayStr=today();
+  return getWeekRangesForYear(year).map(w=>{
+    const days=datesBetween(w.start,w.end).filter(f=>f<=todayStr && f.startsWith(String(year)));
+    const sleepVals=days.map(getSleepMinutesForDate).filter(v=>v!==null);
+    const sleepAvg=sleepVals.length ? sleepVals.reduce((a,b)=>a+b,0)/sleepVals.length : 0;
+    const creat=days.filter(getCreatinaTomadaOficial).length;
+    const protPcts=days.map(getProteinPctForDate).map(v=>v===null?0:Math.min(100,v));
+    const protAvg=protPcts.length ? protPcts.reduce((a,b)=>a+b,0)/protPcts.length : 0;
+    const waterVals=days.map(getWaterVasosForDate).map(v=>v===null?0:v);
+    const waterAvg=waterVals.length ? waterVals.reduce((a,b)=>a+b,0)/waterVals.length : 0;
+    const sleepScore=Math.min(100, Math.round((sleepAvg/420)*100));
+    const creatScore=Math.min(100, Math.round((creat/Math.max(days.length||7,1))*100));
+    const protScore=Math.round(protAvg);
+    const waterScore=Math.min(100, Math.round((waterAvg/(getAguaMeta().vasos||10))*100));
+    const general=Math.round((sleepScore+creatScore+protScore+waterScore)/4);
+    return { ...w, days:days.length, sleepAvg, sleepScore, creat, creatScore, protAvg, protScore, waterAvg, waterScore, general };
+  });
+}
+function fmtHours(min){
+  if(!min) return '0h 00m';
+  const h=Math.floor(min/60), m=Math.round(min%60);
+  return `${h}h ${String(m).padStart(2,'0')}m`;
+}
+function renderRecoveryChart(title, data, getVal, opts={}){
+  const W=320,H=128,pad=20;
+  const vals=data.map(getVal).filter(v=>v!==null && !isNaN(v));
+  const target=opts.target||0;
+  const allVals=target?vals.concat([target]):vals;
+  const minRaw=Math.min(...allVals,0), maxRaw=Math.max(...allVals, target||1);
+  const span=Math.max(maxRaw-minRaw,1);
+  const minV=Math.max(0, minRaw-span*.2), maxV=maxRaw+span*.2;
+  const xs=data.map((_,i)=>pad+(i/(Math.max(data.length-1,1)))*(W-pad*2));
+  const y=v=>H-pad-((v-minV)/(maxV-minV))*(H-pad*2);
+  const line=data.map((d,i)=>`${i===0?'M':'L'}${xs[i].toFixed(1)},${y(getVal(d)).toFixed(1)}`).join(' ');
+  const dots=data.map((d,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${y(getVal(d)).toFixed(1)}" r="3.8" fill="var(--p)"><title>${d.start} · ${opts.tooltip?opts.tooltip(d):getVal(d)}</title></circle>`).join('');
+  const last=data[data.length-1];
+  const lastVal=last?getVal(last):0;
+  const pctMeta=target?Math.min(100,Math.round((lastVal/target)*100)):Math.min(100,Math.round(lastVal));
+  const display=opts.format?opts.format(lastVal,last):lastVal;
+  return `<div class="mq-recovery-chart card">
+    <div class="mq-recovery-chart-head"><div><strong>${title}</strong></div><div class="mq-recovery-chart-val">${display}</div></div>
+    <div class="mq-recovery-chart-meta">${opts.meta||''}</div>
+    <svg viewBox="0 0 ${W} ${H}" class="mq-recovery-svg">
+      ${target?`<line x1="${pad}" y1="${y(target).toFixed(1)}" x2="${W-pad}" y2="${y(target).toFixed(1)}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="4,3" opacity=".55"/>`:''}
+      <path d="${line}" fill="none" stroke="var(--p)" stroke-width="2.6"/>
+      ${dots}
+    </svg>
+    <div class="mq-recovery-progress"><div style="width:${pctMeta}%"></div></div>
+  </div>`;
+}
+function renderProgRecuperacion(){
+  const el=document.getElementById('prog-recuperacion-content'); if(!el) return;
+  const year=new Date().getFullYear();
+  const data=weeklyRecoveryData(year);
+  const last=data[data.length-1]||{};
+  const kpis=[
+    {t:'Sueño',v:fmtHours(last.sleepAvg||0),s:'promedio semanal'},
+    {t:'Creatina',v:`${last.creat||0}/${last.days||7}`,s:'días semana'},
+    {t:'Proteína',v:`${Math.round(last.protAvg||0)}%`,s:'cumplimiento'},
+    {t:'Agua',v:`${(last.waterAvg||0).toFixed(1)}/10`,s:'vasos promedio'},
+    {t:'Cumplimiento',v:`${last.general||0}%`,s:'promedio recuperación'}
+  ].map(k=>`<div class="lumen-stat mq-rec-kpi"><div class="lumen-num">${k.v}</div><div class="lumen-lbl">${k.t}</div><div class="lumen-sub">${k.s}</div></div>`).join('');
+  el.innerHTML=`
+    <div class="section-label" style="margin-bottom:10px">Recuperación semanal</div>
+    <div class="mq-rec-kpi-row">${kpis}</div>
+    ${renderRecoveryChart('Sueño promedio',data,d=>Math.round((d.sleepAvg||0)/60*100)/100,{target:7,format:(v,d)=>fmtHours((d.sleepAvg||0)),meta:'Meta: 7h promedio',tooltip:d=>fmtHours(d.sleepAvg||0)})}
+    ${renderRecoveryChart('Creatina',data,d=>d.creat||0,{target:7,format:(v,d)=>`${d.creat||0}/7`,meta:'Meta: 7/7 días',tooltip:d=>`${d.creat||0} días con creatina`})}
+    ${renderRecoveryChart('Proteína',data,d=>Math.round(d.protAvg||0),{target:100,format:v=>`${Math.round(v)}%`,meta:'Meta: 100% semanal',tooltip:d=>`${Math.round(d.protAvg||0)}% promedio`})}
+    ${renderRecoveryChart('Agua',data,d=>Math.round((d.waterAvg||0)*10)/10,{target:10,format:v=>`${v.toFixed(1)}/10`,meta:'Meta: 10 vasos promedio',tooltip:d=>`${(d.waterAvg||0).toFixed(1)} vasos promedio`})}
+    ${renderRecoveryChart('Cumplimiento general',data,d=>d.general||0,{target:100,format:v=>`${Math.round(v)}%`,meta:'Promedio simple: sueño, creatina, proteína y agua',tooltip:d=>`${d.general||0}% recuperación`})}
+    <div class="section-label" style="margin:18px 0 10px">Heatmaps ${year}</div>
+    ${renderMqYearHeatmap({title:'◈ Días entrenados',subtitle:'Entrenamientos diarios',year,valueFn:f=>{const n=getTrainingCountByDate()[f]||0; return n>=2?2:n===1?1:0;},tooltipFn:f=>`${f} · ${(getTrainingCountByDate()[f]||0)} entrenamiento(s)`})}
+    ${renderMqYearHeatmap({title:'◈ Pauta alimenticia',subtitle:'Días con pauta completa',year,valueFn:f=>isFoodComplete(f)?1:0,tooltipFn:f=>`${f} · ${isFoodComplete(f)?'pauta completa':'pauta no completa'}`})}
+    ${renderMqYearHeatmap({title:'◈ Proteína',subtitle:'Meta diaria de proteína',year,valueFn:f=>{const p=getProteinPctForDate(f); return p!==null&&p>=100?1:0;},tooltipFn:f=>`${f} · ${getProteinPctForDate(f)??0}% proteína`})}
+    ${renderMqYearHeatmap({title:'◈ Agua',subtitle:'Meta diaria de agua',year,valueFn:f=>getWaterOkForDate(f)?1:0,tooltipFn:f=>`${f} · ${getWaterVasosForDate(f)??0}/10 vasos`})}
+    ${renderMqYearHeatmap({title:'◈ Creatina',subtitle:'Consumo diario',year,valueFn:f=>getCreatinaTomadaOficial(f)?1:0,tooltipFn:f=>`${f} · ${getCreatinaTomadaOficial(f)?'tomada':'no tomada'}`})}`;
+}

@@ -1,56 +1,51 @@
-# MELQART v175 — Antropometría completa histórica + exportador
+# MELQART v176 — Heatmaps + Recuperación
 
 ## Cambios aplicados
 
-- Se agrega migración interna con la serie oficial de informes antropométricos.
-- Se cargan/fusionan 8 fechas antropométricas únicas:
-  - 2024-01-06
-  - 2024-02-03
-  - 2024-04-06
-  - 2024-06-01
-  - 2024-08-03
-  - 2024-10-19
-  - 2024-12-21
-  - 2025-03-01
-- No se duplican fechas: si una fecha ya existe, se completa/corrige con los campos oficiales.
-- Progreso > Medidas corporales ahora debe graficar:
-  - composición corporal;
-  - pliegues y sumatorias 6/8;
-  - perímetros;
-  - somatotipo.
-- Exportador histórico incluye antropometría completa.
-- Se incluye `melqart_antropometria_console.js` como respaldo para forzar la carga desde consola si alguna caché/sync deja datos antiguos.
+- Corrige heatmaps para el año 2026:
+  - Días entrenados: blanco sin entrenamiento, morado suave con 1 entrenamiento, morado intenso con 2+ entrenamientos.
+  - Pauta alimenticia: marca solo días con pauta completa.
+  - Proteína: marca días con meta diaria de proteína cumplida.
+  - Agua: marca días con 10 vasos / meta diaria cumplida.
+  - Creatina: agrega heatmap con consumo completo desde 12-12-2024, excepto 07-03-2026, 08-03-2026, 09-05-2026 y 10-05-2026.
+- Ajusta el ancho visual de los heatmaps para que no queden comprimidos.
+- Agrega tab `Recuperación` dentro de Progreso.
+- Agrega 5 KPIs superiores:
+  - Sueño
+  - Creatina
+  - Proteína
+  - Agua
+  - Cumplimiento general
+- Agrega gráficos semanales estilo plan:
+  - Sueño promedio semanal
+  - Creatina días / 7
+  - Proteína % cumplimiento semanal
+  - Agua vasos promedio / 10
+  - Cumplimiento general semanal
 
-## Validación técnica
+## Reglas de cálculo
 
-- `node --check app.js` ejecutado correctamente.
-- `node --check melqart_antropometria_console.js` ejecutado correctamente.
+- Heatmaps: diarios.
+- Recuperación: semanal.
+- Cumplimiento general: promedio simple de sueño, creatina, proteína y agua; cada uno pondera 25%.
+- Sueño objetivo: 7 horas promedio.
+- Creatina objetivo: 7/7 días.
+- Proteína objetivo: 100% de la meta diaria.
+- Agua objetivo: 10 vasos promedio.
 
-## Qué NO se tocó
+## No modificado
 
 - Home
 - Entrenar
-- Nutrición
-- Agua
-- Creatina
-- Sueño
+- Nutrición registro
 - Peso semanal
+- Antropometría
 - Login
 - Firebase/Auth
+- Logo
 - Colores globales
 - Tipografías
-- Logo
 
-## Instrucciones de prueba
+## Validación
 
-1. Subir el ZIP a GitHub Pages.
-2. Abrir con URL cache-busting, por ejemplo `?v=175`.
-3. Entrar a Progreso > Medidas corporales.
-4. Revisar que las secciones tengan datos:
-   - Composición corporal
-   - Pliegues
-   - Perímetros
-   - Somatotipo
-5. Exportar historial completo y validar que aparezca la sección ANTROPOMETRÍA.
-
-Si no aparecen los 8 registros por caché o sincronización, pegar el contenido de `melqart_antropometria_console.js` en consola con la app abierta y recargar.
+- `node --check app.js` OK
