@@ -2669,3 +2669,12 @@ td, th {
 .mq-rec-seg button.on{background:var(--p);border-color:var(--p);color:white}
 .mq-empty-small{padding:22px 10px;text-align:center;color:var(--ink3);font-weight:700;font-size:13px}
 .mq-recovery-svg text{font-family:"Montserrat",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+
+
+
+/* MELQART v180 — ajustes de gráficos */
+.mq-chart-card-v180 .mq-chart-svg-wrap svg{ min-height: 190px; }
+.mq-chart-card-v180 .mq-chart-filters{ margin-top: 8px; }
+.mq-recovery-chart .mq-recovery-svg{ min-height: 160px; }
+.mq-chart-tooltip{ z-index: 99999; }
+

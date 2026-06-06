@@ -9250,3 +9250,398 @@ try{
     };
   }
 }catch(e){ console.warn('v179 pace chart override skipped', e); }
+
+
+
+// ---------------------------------------------------------------
+//  MELQART v180 — Hevy history + unified charts + recovery cleanup
+// ---------------------------------------------------------------
+(function mq180Patch(){
+  const V180_KEY='melqart_v180_hevy_history_graphs_applied_v1';
+
+  function mq180Slug(s){
+    return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+  }
+  function mq180Date(date,time='12:00'){
+    return new Date(`${date}T${time}:00`).getTime();
+  }
+  function mq180SafeLocalDate(ts){
+    try{ return typeof localDateStr==='function' ? localDateStr(ts) : new Date(ts).toISOString().slice(0,10); }
+    catch(e){ return new Date(ts).toISOString().slice(0,10); }
+  }
+  function mq180EnsureExercise(id,name,type='barbell',muscle='',restSec=90,grupo=''){
+    if(!window.forge) return id;
+    if(!forge.exercises) forge.exercises=[];
+    let ex=forge.exercises.find(e=>e.id===id);
+    if(!ex){
+      ex={id,name,type,muscle,restSec,grupo};
+      forge.exercises.push(ex);
+    }else{
+      ex.name=name; ex.type=ex.type||type; ex.muscle=ex.muscle||muscle; ex.restSec=ex.restSec||restSec; ex.grupo=ex.grupo||grupo;
+    }
+    return id;
+  }
+  function mq180NormalizeHipThrustMachine(){
+    if(!window.forge) return;
+    if(!forge.exercises) forge.exercises=[];
+    const canonicalId='ex_hip_thrust_maq';
+    mq180EnsureExercise(canonicalId,'Hip Thrust (Máquina)','machine','gluteos',180,'Glúteos');
+    const aliases=[
+      'hiptrust máquina','hiptrust maquina','hip thrust máquina','hip thrust maquina',
+      'hip thrust (máquina)','hip thrust (maquina)','empuje de cadera máquina','empuje de caderas máquina'
+    ];
+    const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    const dupIds=forge.exercises
+      .filter(e=>e.id!==canonicalId && aliases.includes(norm(e.name)))
+      .map(e=>e.id);
+    (forge.sessions||[]).forEach(sess=>{
+      (sess.exercises||[]).forEach(ex=>{
+        if(dupIds.includes(ex.exId)) ex.exId=canonicalId;
+      });
+    });
+    (forge.routines||[]).forEach(r=>{
+      if(Array.isArray(r.exercises)){
+        r.exercises=r.exercises.map(id=>dupIds.includes(id)?canonicalId:id).filter((id,i,a)=>a.indexOf(id)===i);
+      }
+    });
+    forge.exercises = forge.exercises.filter(e=>!dupIds.includes(e.id));
+    const c=forge.exercises.find(e=>e.id===canonicalId);
+    if(c) c.name='Hip Thrust (Máquina)';
+  }
+  function mq180RegisterNewExercises(){
+    mq180EnsureExercise('ex_peso_muerto_manc','Peso Muerto (Mancuerna)','dumbbell','isquios',150,'Isquiotibiales');
+    mq180EnsureExercise('ex_step_manc','Step con Mancuerna','dumbbell','piernas',90,'Piernas');
+    mq180EnsureExercise('ex_curl_barra_z','Curl con Barra Z','barbell','biceps',90,'Bíceps');
+    mq180EnsureExercise('ex_press_homb_manc','Press Hombros (Mancuernas)','dumbbell','hombros',150,'Hombros');
+    mq180EnsureExercise('ex_press_homb_maq','Press Hombros (Máquina)','machine','hombros',150,'Hombros');
+    mq180EnsureExercise('ex_crunch','Abdominal Banco Inclinado','bodyweight','core',60,'Core');
+    mq180EnsureExercise('ex_dominadas','Dominadas (Peso Corporal)','bodyweight','espalda',150,'Espalda');
+    mq180EnsureExercise('ex_correr','Carrera / Trote','run','cardio',0,'Cardio');
+  }
+  function mq180W(weight,reps){ return {type:'weight',done:true,weight:parseFloat(weight)||0,reps:parseInt(reps)||0,distance:'',time:'',fc:'',pasos:''}; }
+  function mq180R(distance,time,fc='',pasos=''){ return {type:'run',done:true,weight:0,reps:0,distance:String(distance||''),time:String(time||''),fc:String(fc||''),pasos:String(pasos||'')}; }
+  function mq180Ex(exId,sets){ return {exId,sets}; }
+  function mq180Session(date,time,routineName,elapsedMin,exercises){
+    return {
+      id:`mq180_hevy_${date}_${mq180Slug(routineName)}`,
+      routineId:null,
+      routineName,
+      date:mq180Date(date,time),
+      elapsed:Math.round((elapsedMin||0)*60),
+      exercises,
+      source:'hevy_v180'
+    };
+  }
+  function mq180Volume(session){
+    return (session.exercises||[]).reduce((sum,ex)=>{
+      const def=(forge.exercises||[]).find(e=>e.id===ex.exId)||{};
+      if(def.type==='run'||def.type==='hiit') return sum;
+      return sum+(ex.sets||[]).reduce((a,s)=>a+(parseFloat(s.weight)||0)*(parseInt(s.reps)||0),0);
+    },0);
+  }
+  function mq180SetKey(set){
+    if(set.type==='run') return `run:${set.distance}:${set.time}`;
+    return `w:${set.weight}:${set.reps}`;
+  }
+  function mq180MergeExerciseSets(targetEx, incomingEx){
+    if(!targetEx.sets) targetEx.sets=[];
+    const keys=new Set(targetEx.sets.map(mq180SetKey));
+    (incomingEx.sets||[]).forEach(st=>{
+      const k=mq180SetKey(st);
+      if(!keys.has(k)){ targetEx.sets.push(st); keys.add(k); }
+    });
+  }
+  function mq180AddOrMergeSession(incoming){
+    if(!forge.sessions) forge.sessions=[];
+    incoming.totalVolume=mq180Volume(incoming);
+    const day=mq180SafeLocalDate(incoming.date);
+    let existing=forge.sessions.find(s=>s.id===incoming.id);
+    if(!existing){
+      // Si ya existe una sesión del mismo día con al menos un ejercicio coincidente, fusionar para no duplicar.
+      existing=forge.sessions.find(s=>mq180SafeLocalDate(s.date)===day && (s.exercises||[]).some(ex=>(incoming.exercises||[]).some(ix=>ix.exId===ex.exId)));
+    }
+    if(existing){
+      if(!existing.exercises) existing.exercises=[];
+      (incoming.exercises||[]).forEach(ix=>{
+        const tx=existing.exercises.find(e=>e.exId===ix.exId);
+        if(tx) mq180MergeExerciseSets(tx,ix);
+        else existing.exercises.push(ix);
+      });
+      existing.elapsed=Math.max(existing.elapsed||0,incoming.elapsed||0);
+      existing.totalVolume=mq180Volume(existing);
+      existing.source=existing.source||'hevy_v180';
+      return 'merged';
+    }
+    forge.sessions.push(incoming);
+    return 'added';
+  }
+  function mq180SeedHevyHistory(){
+    if(!window.forge) return;
+    mq180NormalizeHipThrustMachine();
+    mq180RegisterNewExercises();
+    const S=[
+      mq180Session('2026-03-19','15:12','Tren superior',37,[
+        mq180Ex('ex_press_inclinado',[mq180W(60,6),mq180W(60,5),mq180W(50,8)]),
+        mq180Ex('ex_jalon_pecho',[mq180W(50,10),mq180W(50,10),mq180W(50,10)]),
+        mq180Ex('ex_press_homb_manc',[mq180W(28,10),mq180W(28,10),mq180W(28,10)])
+      ]),
+      mq180Session('2026-03-17','14:37','Tren superior',38,[
+        mq180Ex('ex_press_banca',[mq180W(65,8),mq180W(65,8),mq180W(65,5)]),
+        mq180Ex('ex_press_homb_maq',[mq180W(30,7),mq180W(30,8),mq180W(30,8)]),
+        mq180Ex('ex_curl_barra_z',[mq180W(30,7),mq180W(30,7),mq180W(30,6)])
+      ]),
+      mq180Session('2026-03-16','14:44','Tren inferior',48,[
+        mq180Ex('ex_sentadilla',[mq180W(70,10),mq180W(70,9),mq180W(70,9)]),
+        mq180Ex('ex_peso_muerto_manc',[mq180W(50,8),mq180W(60,10)])
+      ]),
+      mq180Session('2026-03-10','15:07','Tren superior',47,[
+        mq180Ex('ex_press_banca',[mq180W(60,8),mq180W(60,8),mq180W(60,6)]),
+        mq180Ex('ex_press_hombros',[mq180W(35,9),mq180W(35,9),mq180W(35,8)]),
+        mq180Ex('ex_curl_barra_z',[mq180W(30,7),mq180W(30,6),mq180W(30,7)])
+      ]),
+      mq180Session('2026-03-09','15:06','Tren inferior',42,[
+        mq180Ex('ex_sentadilla',[mq180W(60.9,9),mq180W(60.9,8),mq180W(60.9,8)]),
+        mq180Ex('ex_peso_muerto_manc',[mq180W(44,8),mq180W(44,9)]),
+        mq180Ex('ex_hip_thrust_maq',[mq180W(70.9,10),mq180W(70.9,10),mq180W(70.9,10)]),
+        mq180Ex('ex_crunch',[mq180W(0,30),mq180W(0,30),mq180W(0,30)])
+      ]),
+      mq180Session('2026-02-19','14:57','Tren superior',35,[
+        mq180Ex('ex_press_banca',[mq180W(60,8),mq180W(60,8),mq180W(60,7)]),
+        mq180Ex('ex_press_hombros',[mq180W(35,8),mq180W(35,8),mq180W(35,7)]),
+        mq180Ex('ex_curl_barra_z',[mq180W(30,6),mq180W(30,5)])
+      ]),
+      mq180Session('2026-02-16','14:54','Tren inferior',56,[
+        mq180Ex('ex_sentadilla',[mq180W(60,9),mq180W(60,8),mq180W(60,9)]),
+        mq180Ex('ex_peso_muerto_manc',[mq180W(44,8),mq180W(44,9)]),
+        mq180Ex('ex_hip_thrust_maq',[mq180W(67.5,9),mq180W(62.7,10),mq180W(62.7,9)]),
+        mq180Ex('ex_crunch',[mq180W(0,30),mq180W(0,30),mq180W(0,30)])
+      ]),
+      mq180Session('2026-02-12','20:54','Tren inferior',40,[
+        mq180Ex('ex_sentadilla',[mq180W(60,10),mq180W(60,9),mq180W(60,9)]),
+        mq180Ex('ex_peso_muerto_manc',[mq180W(40,8),mq180W(40,8)]),
+        mq180Ex('ex_hip_thrust_maq',[mq180W(67.5,7),mq180W(62.7,9),mq180W(62.7,9)])
+      ]),
+      mq180Session('2026-02-10','14:32','Tren superior',49,[
+        mq180Ex('ex_press_banca',[mq180W(60,9),mq180W(60,8),mq180W(60,7)]),
+        mq180Ex('ex_press_homb_maq',[mq180W(30,6),mq180W(30,7),mq180W(30,6)]),
+        mq180Ex('ex_correr',[mq180R(1.15,'9:52')])
+      ]),
+      mq180Session('2026-02-08','12:42','Trote - Semanal',53,[
+        mq180Ex('ex_correr',[mq180R(7.74,'53:19','',8072)])
+      ]),
+      mq180Session('2026-02-05','14:40','Tren inferior',43,[
+        mq180Ex('ex_sentadilla',[mq180W(60,10),mq180W(60,9),mq180W(60,8)]),
+        mq180Ex('ex_peso_muerto_manc',[mq180W(40,8),mq180W(40,8)]),
+        mq180Ex('ex_hip_thrust',[mq180W(62.7,10),mq180W(62.7,9),mq180W(62.7,8)]),
+        mq180Ex('ex_crunch',[mq180W(0,30),mq180W(0,30),mq180W(0,30)])
+      ]),
+      mq180Session('2026-02-03','20:51','Tren superior',20,[
+        mq180Ex('ex_correr',[mq180R(1.21,'7:18','81',1057)])
+      ]),
+      mq180Session('2026-01-29','14:07','Tren inferior',46,[
+        mq180Ex('ex_sentadilla',[mq180W(40,10),mq180W(50,10),mq180W(55,10),mq180W(60,10)]),
+        mq180Ex('ex_peso_muerto_manc',[mq180W(40,8),mq180W(40,8)]),
+        mq180Ex('ex_hip_thrust',[mq180W(42.7,9),mq180W(62.7,9),mq180W(62.7,10)]),
+        mq180Ex('ex_crunch',[mq180W(0,30),mq180W(0,30),mq180W(0,20)])
+      ]),
+      mq180Session('2026-01-27','20:56','Trote - Semanal / Tren superior',49,[
+        mq180Ex('ex_press_banca',[mq180W(40,10),mq180W(40,11),mq180W(40,9)]),
+        mq180Ex('ex_press_hombros',[mq180W(30,9),mq180W(30,8),mq180W(30,7)]),
+        mq180Ex('ex_dominadas',[mq180W(0,10),mq180W(0,7),mq180W(0,7)]),
+        mq180Ex('ex_correr',[mq180R(2.03,'12:05')])
+      ]),
+      mq180Session('2026-01-25','09:32','Tren superior',61,[
+        mq180Ex('ex_correr',[mq180R(3.52,'21:26','',3110)])
+      ]),
+      mq180Session('2026-01-18','12:00','Trote - Semanal',46,[
+        mq180Ex('ex_correr',[mq180R(6.7,'45:21','',6835)])
+      ]),
+      mq180Session('2026-01-13','21:03','Trote - Semanal',34,[
+        mq180Ex('ex_correr',[mq180R(3.36,'21:09','124',3109)])
+      ]),
+      mq180Session('2026-01-11','10:22','Trote - Semanal',45,[
+        mq180Ex('ex_correr',[mq180R(6.42,'45:08','133',6742)])
+      ]),
+      mq180Session('2026-01-08','20:48','Tren inferior',31,[
+        mq180Ex('ex_step_manc',[mq180W(14,12),mq180W(14,12),mq180W(10,14)]),
+        mq180Ex('ex_sent_bulgara',[mq180W(14,7),mq180W(14,7),mq180W(14,5),mq180W(14,5)])
+      ])
+    ];
+    let added=0, merged=0;
+    S.forEach(sess=>{
+      const res=mq180AddOrMergeSession(sess);
+      if(res==='added') added++; else if(res==='merged') merged++;
+    });
+    forge.sessions.sort((a,b)=>(a.date||0)-(b.date||0));
+    if(typeof saveDB==='function') saveDB();
+    try{ localStorage.setItem(V180_KEY, JSON.stringify({at:new Date().toISOString(), added, merged})); }catch(e){}
+    console.info(`MELQART v180 Hevy history: ${added} nuevas, ${merged} fusionadas`);
+  }
+
+  // --- Nutrición: el aceite no castiga adherencia
+  window.mq180NutritionAdherencePct=function(portions){
+    const groups=['proteinas','lacteoProtein','lacteoDescremado','cereales','frutas','lipidos','verduras']; // aceites excluido
+    let done=0,total=0;
+    groups.forEach(g=>{
+      const t=(typeof NUTRITION_TARGETS!=='undefined' ? (NUTRITION_TARGETS[g]||0) : 0);
+      total+=t;
+      done+=Math.min(t, parseFloat(portions?.[g]||0));
+    });
+    return total?Math.round(done/total*100):0;
+  };
+
+  // Reescribir exportador nutricional para no castigar aceite y mantener trazabilidad de proteína.
+  if(typeof exportNutritionLines==='function'){
+    exportNutritionLines=function(fechaInicio,fechaFin){
+      const out=[], dates=[];
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(k&&k.startsWith('ff_')){
+          const f=k.slice(3), d=new Date(f+'T12:00:00');
+          if(d>=fechaInicio&&d<=fechaFin) dates.push(f);
+        }
+      }
+      dates.sort();
+      if(!dates.length) return out;
+      out.push('NUTRICION');
+      out.push('');
+      out.push('Fecha       Agua ml  Vasos    MetaH2O  Comidas  Prot  Cere  Frut  Lact  Verd  Lip   Aceit  Adh%');
+      out.push('-----------------------------------------------------------------------------------------------');
+      let completeDays=0, waterOk=0, waterSum=0;
+      dates.forEach(f=>{
+        const fd=(typeof getFD==='function')?getFD(f):JSON.parse(localStorage.getItem('ff_'+f)||'{}');
+        const meta=getAguaMeta();
+        const vasos=fd.aguaVasosHoy ?? fd.agua ?? 0;
+        const aguaMl=fd.aguaMl ?? Math.round(vasos*(meta.mlPorVaso||250));
+        const metaMl=(meta.vasos||10)*(meta.mlPorVaso||250);
+        const meals=getMealProgress(fd);
+        const calc=calcNutritionDayDetail(fd);
+        const p=calc.portions||{};
+        const adh=window.mq180NutritionAdherencePct(p);
+        if(aguaMl>=metaMl) waterOk++;
+        waterSum+=parseFloat(vasos)||0;
+        if(meals.done===meals.total) completeDays++;
+        const fmt=f.split('-').reverse().join('/');
+        out.push(`${fmt.padEnd(10)}  ${String(aguaMl).padEnd(7)}  ${String(vasos+'/'+(meta.vasos||10)).padEnd(7)}  ${(aguaMl>=metaMl?'S':'N').padEnd(7)}  ${String(meals.done+'/'+meals.total).padEnd(7)}  ${String(nRound(p.proteinas||0,2)).padEnd(5)} ${String(nRound(p.cereales||0,2)).padEnd(5)} ${String(nRound(p.frutas||0,2)).padEnd(5)} ${String(nRound((p.lacteoProtein||0)+(p.lacteoDescremado||0),2)).padEnd(5)} ${String(nRound(p.verduras||0,2)).padEnd(5)} ${String(nRound(p.lipidos||0,2)).padEnd(5)} ${String(nRound(p.aceites||0,2)).padEnd(6)} ${String(adh+'%').padEnd(5)}`);
+      });
+      out.push('');
+      out.push(`Resumen (${dates.length} dias con registro):`);
+      out.push(`  Agua promedio/dia:         ${Math.round(waterSum/Math.max(dates.length,1))}/10 vasos - meta cumplida ${waterOk}/${dates.length} dias (${Math.round(waterOk/Math.max(dates.length,1)*100)}%)`);
+      out.push(`  Comidas dias completos:    ${completeDays}/${dates.length} dias (${Math.round(completeDays/Math.max(dates.length,1)*100)}%)`);
+      out.push(`  Adherencia pauta promedio: calculada sin castigo por aceite`);
+      return out;
+    };
+  }
+
+  // --- Recuperación: creatina en %, semana en curso por días transcurridos y ejes Y claros.
+  if(typeof weeklyRecoveryData==='function'){
+    weeklyRecoveryData=function(year=new Date().getFullYear()){
+      const todayStr=today();
+      return getWeekRangesForYear(year).map(w=>{
+        const days=datesBetween(w.start,w.end).filter(f=>f<=todayStr && f.startsWith(String(year)));
+        const sleepVals=days.map(getSleepMinutesForDate).filter(v=>v!==null);
+        const sleepAvg=sleepVals.length ? sleepVals.reduce((a,b)=>a+b,0)/sleepVals.length : null;
+        const creat=days.filter(getCreatinaTomadaOficial).length;
+        const creatDays=days.length;
+        const creatPct=creatDays ? Math.round(creat/creatDays*100) : null;
+        const protValid=days.map(getProteinPctForDate).filter(v=>v!==null && !isNaN(v));
+        const protAvg=protValid.length ? protValid.map(v=>Math.min(100,v)).reduce((a,b)=>a+b,0)/protValid.length : null;
+        const waterValid=days.map(getWaterVasosForDate).filter(v=>v!==null && !isNaN(v));
+        const waterAvg=waterValid.length ? waterValid.reduce((a,b)=>a+b,0)/waterValid.length : null;
+        const sleepScore=sleepAvg===null?null:Math.min(100,Math.round((sleepAvg/420)*100));
+        const waterScore=waterAvg===null?null:Math.min(100,Math.round(waterAvg/(getAguaMeta().vasos||10)*100));
+        const parts=[sleepScore,creatPct,protAvg===null?null:Math.round(protAvg),waterScore].filter(v=>v!==null && !isNaN(v));
+        const general=parts.length===4 ? Math.round(parts.reduce((a,b)=>a+b,0)/4) : null;
+        return {...w,days:creatDays,sleepAvg,sleepScore,creat,creatDays,creatPct,creatScore:creatPct,protAvg,protScore:protAvg===null?null:Math.round(protAvg),waterAvg,waterScore,general};
+      });
+    };
+  }
+  if(typeof renderProgRecuperacion==='function'){
+    renderProgRecuperacion=function(){
+      const el=document.getElementById('prog-recuperacion-content'); if(!el) return;
+      const data=weeklyRecoveryData(new Date().getFullYear());
+      const lastWith=k=>[...data].reverse().find(d=>d[k]!==null && typeof d[k]!=='undefined' && !isNaN(d[k]));
+      const lSleep=lastWith('sleepAvg'), lCreat=lastWith('creatPct'), lProt=lastWith('protAvg'), lWater=lastWith('waterAvg'), lGen=lastWith('general');
+      const kpis=[
+        {t:'Sueño',v:lSleep?fmtHours(lSleep.sleepAvg):'Sin datos',s:'promedio semanal'},
+        {t:'Creatina',v:lCreat?`${lCreat.creatPct}%`:'Sin datos',s:lCreat?`${lCreat.creat}/${lCreat.creatDays} días`:'cumplimiento'},
+        {t:'Proteína',v:lProt?`${Math.round(lProt.protAvg)}%`:'Sin datos',s:'cumplimiento'},
+        {t:'Agua',v:lWater?`${(lWater.waterAvg||0).toFixed(1)}/10`:'Sin datos',s:'vasos promedio'},
+        {t:'Cumplimiento',v:lGen?`${lGen.general}%`:'Sin datos',s:'4 indicadores'}
+      ].map(k=>`<div class="lumen-stat mq-rec-kpi"><div class="lumen-num">${k.v}</div><div class="lumen-lbl">${k.t}</div><div class="lumen-sub">${k.s}</div></div>`).join('');
+      el.innerHTML=`<div class="section-label" style="margin-bottom:10px">Recuperación semanal</div><div class="mq-rec-kpi-row">${kpis}</div>${
+        mq178RenderRecoveryChart('sleep','Sueño promedio',data,d=>d.sleepAvg===null?null:Math.round(d.sleepAvg/60*100)/100,{target:7,unit:'h',axisFormat:v=>`${Math.round(v*10)/10}h`,format:(v,d)=>fmtHours(d.sleepAvg),meta:'Meta: 7h promedio',tooltip:d=>fmtHours(d.sleepAvg)})}${
+        mq178RenderRecoveryChart('creatine','Creatina',data,d=>d.creatPct,{target:100,valueSuffix:'%',axisFormat:v=>`${Math.round(v)}%`,format:v=>`${Math.round(v)}%`,meta:'Meta: 100% de días transcurridos',tooltip:d=>`${d.creat} de ${d.creatDays} días`})}${
+        mq178RenderRecoveryChart('protein','Proteína',data,d=>d.protAvg,{target:100,valueSuffix:'%',format:v=>`${Math.round(v)}%`,meta:'Meta: 100% semanal',tooltip:d=>`${Math.round(d.protAvg)}% promedio`})}${
+        mq178RenderRecoveryChart('water','Agua',data,d=>d.waterAvg,{target:10,unit:'vasos',axisFormat:v=>`${Math.round(v*10)/10}`,format:v=>`${v.toFixed(1)}/10`,meta:'Meta: 10 vasos promedio',tooltip:d=>`${d.waterAvg.toFixed(1)} vasos promedio`})}${
+        mq178RenderRecoveryChart('general','Cumplimiento general',data,d=>d.general,{target:100,valueSuffix:'%',format:v=>`${Math.round(v)}%`,meta:'Promedio simple de 4 indicadores',tooltip:d=>`${d.general}% recuperación`})}`;
+    };
+  }
+
+  // --- Gráfico genérico v180: ancho útil, eje Y, tooltip y tendencia lineal.
+  function mq180Trend(data, toX, toY){
+    if(!data || data.length<2) return '';
+    const pts=data.map((p,i)=>({x:i,y:parseFloat(p.value)})).filter(p=>!isNaN(p.y));
+    const n=pts.length; if(n<2) return '';
+    const sx=pts.reduce((a,p)=>a+p.x,0), sy=pts.reduce((a,p)=>a+p.y,0);
+    const sxx=pts.reduce((a,p)=>a+p.x*p.x,0), sxy=pts.reduce((a,p)=>a+p.x*p.y,0);
+    const den=n*sxx-sx*sx; if(!den) return '';
+    const m=(n*sxy-sx*sy)/den, b=(sy-m*sx)/n;
+    const first=0, last=data.length-1;
+    return `<line x1="${toX(first).toFixed(1)}" y1="${toY(m*first+b).toFixed(1)}" x2="${toX(last).toFixed(1)}" y2="${toY(m*last+b).toFixed(1)}" stroke="var(--border2)" stroke-width="2" stroke-dasharray="5,4" opacity=".9"/>`;
+  }
+  if(typeof renderMetricChart==='function'){
+    renderMetricChart=function(config){
+      const { id='chart_'+Date.now(), title='', subtitle='', unitLabel='', type='weight', unit='', yAxis={}, tooltip={}, filters, activeFilter, onFilter, height:H=220, color='var(--orange)', areaOpacity=0.12 }=config;
+      const allData=normalizeChartData(config.data,type);
+      const range=activeFilter||'all';
+      const data=applyTimeFilter(allData,range);
+      const headerHtml=`<div class="mq-chart-header"><div><div class="mq-chart-title">${title}</div>${subtitle?`<div class="mq-chart-subtitle">${subtitle}</div>`:''}</div><div class="mq-chart-unit">${unitLabel}</div></div>`;
+      let filtersHtml='';
+      if(filters&&filters.length&&onFilter){
+        const labels={'7d':'7d','30d':'1M','1m':'1M','3m':'3M','6m':'6M','12m':'12M','all':'Todo'};
+        filtersHtml=`<div class="mq-chart-filters">`+filters.map(f=>`<button class="mq-chart-filter-btn${f===range?' on':''}" onclick="${onFilter}('${f}')">${labels[f]||f}</button>`).join('')+`</div>`;
+      }
+      if(!data||data.length<2){
+        return `<div class="mq-chart-card mq-chart-card-v180" id="${id}">${headerHtml}${filtersHtml}<div class="mq-chart-empty"><div class="mq-chart-empty-text">Pocos datos en este período</div><div class="mq-chart-empty-sub">Registra al menos 2 datos para ver tendencia</div></div></div>`;
+      }
+      const PL=(type==='body_measure'||type==='heartrate'||type==='pace'||type==='percentage')?58:50;
+      const PB=30,PT=14,PR=14;
+      const n=data.length;
+      const W=Math.max(390,PL+PR+n*(n>40?8:n>20?12:18));
+      const vals=data.map(p=>parseFloat(p.value)).filter(v=>!isNaN(v));
+      const [domMin,domMax]=calculateYAxisDomain(vals,yAxis);
+      const toX=i=>PL+(i/(n-1||1))*(W-PL-PR);
+      const toY=v=>PT+(1-((v-domMin)/(domMax-domMin||1)))*(H-PT-PB);
+      const xs=data.map((_,i)=>toX(i)), ys=data.map(p=>toY(parseFloat(p.value)));
+      const linePath=xs.map((x,i)=>`${i===0?'M':'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+      const areaPath=linePath+` L${xs[n-1].toFixed(1)},${H-PB} L${xs[0].toFixed(1)},${H-PB} Z`;
+      const tickCount=4;
+      const yTicksHtml=Array.from({length:tickCount+1},(_,i)=>{
+        const v=domMax-(domMax-domMin)*(i/tickCount);
+        const y=toY(v);
+        return `<text x="${PL-5}" y="${y.toFixed(1)}" text-anchor="end" dominant-baseline="middle" fill="var(--ink3)" font-size="9">${formatAxisTick(v,type,unit)}</text><line x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>`;
+      }).join('');
+      const xStep=Math.max(1,Math.ceil(n/5));
+      const xTicksHtml=data.map((p,i)=>(i%xStep===0||i===n-1)?`<text x="${xs[i].toFixed(1)}" y="${H-4}" text-anchor="middle" fill="var(--ink3)" font-size="9">${p.label||''}</text>`:'').join('');
+      const dotsHtml=data.map((p,i)=>{
+        const isSmithPoint=p.equipment?detectSmith(p.value,p.equipment):detectSmith(p.value);
+        const ttMain=(p.displayValue||formatMetricValue(p.value,type,unit)||'').replace(/"/g,'&quot;');
+        const ttSub=[tooltip.showReps&&p.reps?`${p.sets||'?'}×${p.reps} reps`:'',tooltip.showEquipment&&isSmithPoint?'Smith':(tooltip.showEquipment&&p.equipment?p.equipment:''),tooltip.showNotes&&p.notes?p.notes:''].filter(Boolean).join(' · ').replace(/"/g,'&quot;');
+        const safeDate=(p.date||'').replace(/"/g,'&quot;');
+        return `<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="${n>40?2.6:n>20?3.4:4.4}" fill="${isSmithPoint&&n<60?'var(--green)':color}" stroke="var(--bg2)" stroke-width="1.4" style="cursor:pointer" onmouseenter="mqChartTooltipShow(event,'${safeDate}','${ttMain}','${ttSub}')" onmouseleave="mqChartTooltipHide()" onclick="mqChartTooltipShow(event,'${safeDate}','${ttMain}','${ttSub}')" ontouchstart="mqChartTooltipShow(event,'${safeDate}','${ttMain}','${ttSub}')"></circle>`;
+      }).join('');
+      const trend=mq180Trend(data,toX,toY);
+      const safeId=String(id).replace(/[^a-z0-9]/gi,'_');
+      return `<div class="mq-chart-card mq-chart-card-v180" id="${id}">${headerHtml}<div class="mq-chart-svg-wrap" style="overflow-x:${n>18?'auto':'hidden'}"><svg width="${n>18?W:'100%'}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block"><defs><linearGradient id="mq_area_grad_${safeId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="${areaOpacity*2}"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>${yTicksHtml}<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" stroke="var(--border)"/><line x1="${PL}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" stroke="var(--border)"/>${xTicksHtml}<path d="${areaPath}" fill="url(#mq_area_grad_${safeId})"/><path d="${linePath}" stroke="${color}" stroke-width="2.6" fill="none" stroke-linejoin="round" stroke-linecap="round"/>${trend}${dotsHtml}</svg></div>${filtersHtml}</div>`;
+    };
+  }
+
+  // Ejecutar migración al cargar.
+  try{
+    mq180SeedHevyHistory();
+    if(typeof saveDB==='function') saveDB();
+    setTimeout(()=>{ try{ if(typeof renderAll==='function') renderAll(); }catch(e){} }, 150);
+  }catch(e){ console.warn('MELQART v180 migration failed', e); }
+})();
+
