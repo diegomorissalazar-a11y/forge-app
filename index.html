@@ -2311,12 +2311,8 @@ document.addEventListener('DOMContentLoaded', function(){
         if(fdd){
           const vasos=fdd.aguaVasosHoy||fdd.agua||0;
           const comidasOk=Object.values(fdd.comidas||{}).filter(c=>c.completada).length;
-          let p={}, origen='legacy';
-          if(typeof calcNutritionState==='function'){
-            const st=calcNutritionState(fdd,{legacyFullDay:true});
-            p=st.consumed||{};
-            origen=st.source||'recalculado';
-          } else if(typeof calcPortionsConsumed==='function') { p=calcPortionsConsumed(fdd); }
+          let p={};
+          if(typeof calcPortionsConsumed==='function'){ p=calcPortionsConsumed(fdd); }
           else {
             comidas_.forEach(c=>{ if(fdd.comidas?.[c.id]?.completada&&c.portions) Object.entries(c.portions).forEach(([k,v])=>{ p[k]=(p[k]||0)+v; }); });
             (fdd.extraFoods||[]).forEach(f=>Object.entries(f.portions||{}).forEach(([k,v])=>{ p[k]=(p[k]||0)+v; }));
@@ -2324,12 +2320,10 @@ document.addEventListener('DOMContentLoaded', function(){
           const grupos=['proteinas','cereales','frutas','lacteoProtein','lacteoDescremado','lipidos','aceites','verduras'];
           let done=0,total=0;
           grupos.forEach(g=>{ const t=targets_[g]||0; total+=t; done+=Math.min(t,p[g]||0); });
-          const prot=+(p.proteinas||0).toFixed(1);
           nutriDias.push({fecha:key,vasos,ml:vasos*meta_.mlPorVaso,metaOk:vasos>=meta_.vasos?'S':'N',comidasOk,
-            prot, protPct:targets_.proteinas?Math.round(prot/targets_.proteinas*100):0,
-            cereal:+(p.cereales||0).toFixed(1),fruta:+(p.frutas||0).toFixed(1),
+            prot:+(p.proteinas||0).toFixed(1),cereal:+(p.cereales||0).toFixed(1),fruta:+(p.frutas||0).toFixed(1),
             lacteo:+((p.lacteoProtein||0)+(p.lacteoDescremado||0)).toFixed(1),verd:+(p.verduras||0).toFixed(1),
-            lip:+(p.lipidos||0).toFixed(1),aceit:+(p.aceites||0).toFixed(1), origen,
+            lip:+(p.lipidos||0).toFixed(1),aceit:+(p.aceites||0).toFixed(1),
             adh:total>0?Math.round(done/total*100):0});
         }
         cur=new Date(cur); cur.setDate(cur.getDate()+1);
@@ -2339,14 +2333,14 @@ document.addEventListener('DOMContentLoaded', function(){
         lines.push('');
         lines.push('NUTRICION');
         lines.push('');
-        lines.push('Fecha       Agua ml  Vasos    MetaH2O  Comidas  Prot  Prot% Cere  Frut  Lact  Verd  Lip   Aceit  Adh%  Origen');
-        lines.push('-'.repeat(118));
+        lines.push('Fecha       Agua ml  Vasos    MetaH2O  Comidas  Prot  Cere  Frut  Lact  Verd  Lip   Aceit  Adh%');
+        lines.push('-'.repeat(95));
         function c(v,w){ const s=String(v==null?'-':v); return s+' '.repeat(Math.max(1,w-s.length)); }
         nutriDias.forEach(d=>{
           const [y,m,dd]=d.fecha.split('-');
           lines.push(c(dd+'/'+m+'/'+y,12)+c(d.ml,9)+c(d.vasos+'/'+meta_.vasos,9)+c(d.metaOk,9)
-            +c(d.comidasOk+'/'+totalC_,9)+c(d.prot,6)+c(d.protPct+'%',7)+c(d.cereal,6)+c(d.fruta,6)
-            +c(d.lacteo,6)+c(d.verd,6)+c(d.lip,6)+c(d.aceit,7)+c(d.adh+'%',6)+(d.origen||''));
+            +c(d.comidasOk+'/'+totalC_,9)+c(d.prot,6)+c(d.cereal,6)+c(d.fruta,6)
+            +c(d.lacteo,6)+c(d.verd,6)+c(d.lip,6)+c(d.aceit,7)+c(d.adh+'%',5));
         });
         const n=nutriDias.length;
         const proV=Math.round(nutriDias.reduce((a,d)=>a+d.vasos,0)/n);

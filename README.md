@@ -1,24 +1,26 @@
-# MELQART v174 — Nutrición crítica + heatmaps de seguimiento
+# MELQART v174 — Legacy nutrition plate recalculation
 
 ## Cambios aplicados
-- Corrige cálculo nutricional usando equivalencias de proteína y pauta mínima en días 7/7.
-- Home y Tab Nutrición usan el mismo cálculo de porciones.
-- Actualiza alimentos frecuentes: huevo duro = 1.5 proteína; scoop = 2; pollo/pescado según equivalencias.
-- Agrega comidas rápidas: pollo, vacuno y pescados con arroz/papas/fideos.
-- Exportador nutricional agrega % de proteína y origen del cálculo.
-- Heatmap de pauta nutricional usa cálculo corregido.
-- Agrega heatmap de proteínas completas.
-- Heatmap de agua usa meta de 10 vasos.
-- Agrega heatmap de creatina.
-- Días entrenados se basan en día con sesión registrada.
 
-## Validación
-- app.js validado con `node --check app.js`.
+- Ajusta el cálculo histórico de nutrición cuando los días tienen platos/comidas marcadas.
+- Cada plato completado ahora abona porciones según la pauta definida para Melqart.
+- Mantiene la jerarquía de cálculo:
+  1. Si existe detalle interpretable de alimentos/cantidades, se calcula por equivalencias oficiales.
+  2. Si no existe detalle, se usa la plantilla del plato completado.
+- Corrige el subconteo de proteína en días completos.
+- Mantiene el fix de v173: equivalencias oficiales hacia adelante, comidas rápidas y cambio de Tren Inferior B.
 
-## No tocado
-- Login/Auth/Firebase.
-- Peso de Home.
-- Sueño.
-- Progreso antropométrico.
-- Rutinas ya validadas.
-- Colores globales y tipografías.
+## Plantillas por plato
+
+1. Desayuno: 3 proteínas + 1 lácteo protein + 1 fruta + 0.5 cereal + 0.5 lípidos.
+2. Fruta: 1 fruta.
+3. Almuerzo: 4 proteínas + 2 cereales.
+4. Leche protein: 1 lácteo protein.
+5. Huevos duros: 3 proteínas, usando 1 huevo = 1.5 porciones.
+6. Leche descremada: 1 lácteo descremado.
+7. Cena: 3 proteínas + 2 cereales + 2 verduras.
+
+## Validaciones
+
+- `node --check app.js` ejecutado correctamente.
+- No se modificaron módulos de Entrenar, Peso, Progreso, Agua, Creatina, Sueño, Login, Firebase/Auth, logo, colores globales ni tipografías.

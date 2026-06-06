@@ -802,6 +802,65 @@ function initRutinas(){
 // ---------------------------------------------------------------
 //  SCREEN: INICIO
 // ---------------------------------------------------------------
+
+function exportNutritionLines(fechaInicio, fechaFin){
+  const out=[];
+  const dates=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k && k.startsWith('ff_')){
+      const f=k.slice(3);
+      const d=new Date(f+'T12:00:00');
+      if(d>=fechaInicio && d<=fechaFin) dates.push(f);
+    }
+  }
+  dates.sort();
+  if(!dates.length) return out;
+  out.push('NUTRICION');
+  out.push('');
+  out.push('Fecha       Agua ml  Vasos    MetaH2O  Comidas  Proteina        Cere  Frut  LactProt LactDesc Verd  Adh%');
+  out.push('------------------------------------------------------------------------------------------------');
+  let totalProt=0, totalProtDays=0, completeDays=0, waterOk=0, waterSum=0;
+  dates.forEach(f=>{
+    const fd=getFD(f);
+    const meta=getAguaMeta();
+    const vasos=fd.aguaVasosHoy ?? fd.agua ?? 0;
+    const aguaMl=fd.aguaMl ?? Math.round(vasos*(meta.mlPorVaso||250));
+    const metaMl=(meta.vasos||10)*(meta.mlPorVaso||250);
+    const meals=getMealProgress(fd);
+    const calc=calcNutritionDayDetail(fd);
+    const p=calc.portions;
+    const prot=nRound(p.proteinas||0,2);
+    const protPct=NUTRITION_TARGETS.proteinas?Math.round(prot/NUTRITION_TARGETS.proteinas*100):0;
+    const groups=['proteinas','lacteoProtein','lacteoDescremado','cereales','frutas','lipidos','aceites','verduras'];
+    let done=0,total=0;
+    groups.forEach(g=>{ const t=NUTRITION_TARGETS[g]||0; total+=t; done+=Math.min(t,p[g]||0); });
+    const adh=total?Math.round(done/total*100):0;
+    if(aguaMl>=metaMl) waterOk++;
+    waterSum+=vasos;
+    if(meals.done===meals.total) completeDays++;
+    if(prot>0){ totalProt+=prot; totalProtDays++; }
+    const fmt=f.split('-').reverse().join('/');
+    out.push(`${fmt.padEnd(10)}  ${String(aguaMl).padEnd(7)}  ${String(vasos+'/'+(meta.vasos||10)).padEnd(7)}  ${(aguaMl>=metaMl?'S':'N').padEnd(7)}  ${String(meals.done+'/'+meals.total).padEnd(7)}  ${String(prot+' / 12 ('+protPct+'%)').padEnd(15)} ${String(nRound(p.cereales||0,2)).padEnd(5)} ${String(nRound(p.frutas||0,2)).padEnd(5)} ${String(nRound(p.lacteoProtein||0,2)).padEnd(8)} ${String(nRound(p.lacteoDescremado||0,2)).padEnd(8)} ${String(nRound(p.verduras||0,2)).padEnd(5)} ${adh}%`);
+    const detailLines=[];
+    calc.details.forEach(d=>{
+      (d.details||[]).forEach(x=>detailLines.push(`    - ${d.name}: ${x}`));
+    });
+    if(detailLines.length){
+      out.push('    Detalle cálculo:');
+      out.push(...detailLines.slice(0,10));
+      if(detailLines.length>10) out.push(`    ... ${detailLines.length-10} líneas más`);
+    }
+  });
+  out.push('');
+  out.push(`Resumen (${dates.length} dias con registro):`);
+  out.push(`  Agua promedio/dia:         ${dates.length?Math.round(waterSum/dates.length):0}/10 vasos - meta cumplida ${waterOk}/${dates.length} dias (${dates.length?Math.round(waterOk/dates.length*100):0}%)`);
+  out.push(`  Comidas dias completos:    ${completeDays}/${dates.length} dias (${dates.length?Math.round(completeDays/dates.length*100):0}%)`);
+  out.push(`  Proteina promedio:         ${totalProtDays?nRound(totalProt/totalProtDays,1):0}/12 porciones`);
+  out.push('');
+  return out;
+}
+
 function exportarSemana(){
   const semanas=parseInt(document.getElementById('export-semanas')?.value||'4');
   const hoy=new Date();
@@ -875,6 +934,14 @@ function exportarSemana(){
       lines.push('');
     });
   }
+  if(typeof exportNutritionLines === 'function') {
+    const nutritionLines = exportNutritionLines(fechaInicio, domingo);
+    if(nutritionLines.length){
+      lines.push(sep);
+      lines.push(...nutritionLines);
+    }
+  }
+
   lines.push(sep);
   lines.push('Generado por MELQART - '+new Date().toLocaleDateString('es-CL'));
   const txt=lines.join('\n');
@@ -5543,14 +5610,111 @@ const PORTION_LABELS = {
   cereales:'Cereales', frutas:'Frutas', proteinas:'Proteínas', lacteoProtein:'Lácteo protein',
   lacteoDescremado:'Lácteo descremado', lipidos:'Lípidos', aceites:'Aceites', verduras:'Verduras'
 };
+
+// v173 — Equivalencias oficiales de la pauta nutricional
+// Base única para calcular porciones desde cantidad registrada.
+const NUTRITION_EQUIVALENCES = {
+  targets:{ proteinas:12, lacteoProtein:2, lacteoDescremado:1 },
+  proteinas:{
+    pollo:50, pechuga:50, pavo:50, vacuno:50, carne:50, cerdo:50,
+    atun:60, atún:60, jurel:60,
+    merluza:80, tilapia:80, reineta:80, congrio:80, cojinova:80, salmon:80, salmón:80,
+    camaron:120, camarón:120, camarones:120
+  },
+  huevoPorciones:1.5,
+  scoopPorciones:2,
+  lecheDescremadaMl:200,
+  yogurtProteinPorciones:1
+};
+function nRound(v,dec=2){ const m=Math.pow(10,dec); return Math.round((parseFloat(v)||0)*m)/m; }
+function normFoodText(txt){ return String(txt||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function addP(base,k,v){ base[k]=(base[k]||0)+(parseFloat(v)||0); return base; }
+function officialProteinPortions(food,grams){
+  const key=normFoodText(food).trim();
+  const gramsPer=NUTRITION_EQUIVALENCES.proteinas[key];
+  if(!gramsPer || !grams) return 0;
+  return nRound(grams/gramsPer,2);
+}
+function parseNutritionTextToPortions(txt){
+  const text=normFoodText(txt);
+  const portions=clonePortionZero();
+  const details=[];
+  if(!text.trim()) return {portions,details,hasAny:false};
+
+  // Proteínas por gramos: 200g pollo / pollo 200 g
+  Object.keys(NUTRITION_EQUIVALENCES.proteinas).forEach(food=>{
+    const f=normFoodText(food);
+    const re1=new RegExp('(\\d+(?:[\\.,]\\d+)?)\\s*g(?:r|rs|ramos)?\\s+(?:de\\s+)?'+f+'\\b','gi');
+    const re2=new RegExp('\\b'+f+'\\s*(?:de\\s*)?(\\d+(?:[\\.,]\\d+)?)\\s*g(?:r|rs|ramos)?','gi');
+    let m;
+    while((m=re1.exec(text))){ const g=parseFloat(m[1].replace(',','.')); const val=officialProteinPortions(f,g); if(val){ addP(portions,'proteinas',val); details.push(`${food} ${g} g → ${val} proteína`); } }
+    while((m=re2.exec(text))){ const g=parseFloat(m[1].replace(',','.')); const val=officialProteinPortions(f,g); if(val){ addP(portions,'proteinas',val); details.push(`${food} ${g} g → ${val} proteína`); } }
+  });
+
+  // Huevos: 2 huevos / 4 huevos duros
+  const eh=text.match(/(\\d+(?:[\\.,]\\d+)?)\\s*huevos?/);
+  if(eh){ const n=parseFloat(eh[1].replace(',','.')); const val=nRound(n*NUTRITION_EQUIVALENCES.huevoPorciones,2); addP(portions,'proteinas',val); details.push(`${n} huevo(s) → ${val} proteína`); }
+
+  // Scoop proteína
+  const scoop=text.match(/(\\d+(?:[\\.,]\\d+)?)?\\s*scoops?\\s*(?:de\\s*)?(?:proteina|proteína)?/);
+  if(scoop && text.includes('scoop')){ const n=scoop[1]?parseFloat(scoop[1].replace(',','.')):1; const val=nRound(n*NUTRITION_EQUIVALENCES.scoopPorciones,2); addP(portions,'proteinas',val); details.push(`${n} scoop proteína → ${val} proteína`); }
+
+  // Lácteos separados: no suman proteína
+  if(text.includes('leche descremada')){ addP(portions,'lacteoDescremado',1); details.push('Leche descremada → 1 lácteo descremado'); }
+  if(text.includes('yogur protein')||text.includes('yogurt protein')||text.includes('leche protein')){ addP(portions,'lacteoProtein',1); details.push('Lácteo protein → 1 lácteo semidescremado protein'); }
+
+  // Cereales simples interpretables
+  const papas=text.match(/(\\d+(?:[\\.,]\\d+)?)\\s*papas?/);
+  if(papas){ const n=parseFloat(papas[1].replace(',','.')); addP(portions,'cereales',n); details.push(`${n} papa(s) → ${n} cereal`); }
+  if(text.includes('arroz')){ addP(portions,'cereales',1); details.push('Arroz → 1 cereal'); }
+  if(text.includes('fideos')||text.includes('pasta')){ addP(portions,'cereales',1); details.push('Fideos → 1 cereal'); }
+  if(text.includes('pan molde')||text.includes('pan integral')){ addP(portions,'cereales',0.5); details.push('Pan molde/integral → 0.5 cereal'); }
+  if(text.includes('platano')||text.includes('manzana')||text.includes('fruta')){ addP(portions,'frutas',1); details.push('Fruta → 1 fruta'); }
+  if(text.includes('palta')||text.includes('mani')||text.includes('maní')){ addP(portions,'lipidos',0.5); details.push('Palta/maní → 0.5 lípidos'); }
+  if(text.includes('verdura')||text.includes('lechuga')||text.includes('tomate')||text.includes('zanahoria')||text.includes('espinaca')||text.includes('zapallo')){ addP(portions,'verduras',1); details.push('Verduras → 1 verdura'); }
+
+  Object.keys(portions).forEach(k=>portions[k]=nRound(portions[k],2));
+  return {portions,details,hasAny:details.length>0};
+}
+function portionsForMeal(c,fd){
+  const txt=fd?.comidas?.[c.id]?.texto || '';
+  const parsed=parseNutritionTextToPortions(txt);
+  if(parsed.hasAny) return {portions:parsed.portions, source:'detalle', details:parsed.details};
+  return {portions:c.portions||MEAL_PORTIONS[c.id]||{}, source:'plantilla', details:[`${c.nombre} → plantilla pauta`]};
+}
+function makeQuickMeal(prot, carb){
+  const protMap={pollo:'pollo', vacuno:'vacuno', tilapia:'tilapia', merluza:'merluza', reineta:'reineta', cojinova:'cojinova', salmon:'salmón', atun:'atún'};
+  const nameProt=protMap[prot]||prot;
+  const proteinas=officialProteinPortions(prot,200);
+  const portions={proteinas, cereales:2};
+  return {id:`qm_${prot}_${carb}`, name:`${nameProt.charAt(0).toUpperCase()+nameProt.slice(1)} + ${carb}`, quickMeal:true, detail:`${nameProt} 200 g + ${carb} 2 porciones`, portions, calcDetail:[`${nameProt} 200 g → ${proteinas} proteína`, `${carb} → 2 cereales`]};
+}
+const QUICK_MEALS = (()=>{
+  const proteins=['pollo','vacuno','tilapia','merluza','reineta','cojinova','salmon','atun'];
+  const carbs=['arroz','papas','fideos'];
+  return proteins.flatMap(p=>carbs.map(c=>makeQuickMeal(p,c)));
+})();
+
+// v174 — Plantillas legacy por platos completados según pauta nutricional.
+// Si el registro tiene detalle interpretable, se calcula por alimento/cantidad.
+// Si no tiene detalle, cada plato completado abona estas porciones.
 const MEAL_PORTIONS = {
-  desayuno:{proteinas:2, frutas:1, cereales:0.5, lipidos:0.5},
+  // Plato 1: desayuno estándar de pauta/app.
+  // 1 scoop/proteína pauta + pan + 1/2 plátano + mantequilla de maní;
+  // se incluye 1 lácteo protein como plantilla oficial de desayuno para no subestimar días completos.
+  desayuno:{proteinas:3, lacteoProtein:1, frutas:1, cereales:0.5, lipidos:0.5},
+  // Plato 2: fruta.
   fruta_1000:{frutas:1},
-  almuerzo_post:{cereales:2, proteinas:2.5, verduras:1},
+  // Plato 3: almuerzo estándar: 200 g pollo/vacuno equivalente + carbohidrato.
+  almuerzo_post:{proteinas:4, cereales:2},
+  // Plato 4: leche/yogurt protein.
   leche_protein_1700:{lacteoProtein:1},
+  // Plato 5: 2 huevos duros. Regla oficial: 1 huevo = 1.5 porciones.
   huevos_1800:{proteinas:3},
+  // Plato 6: leche descremada.
   leche_descremada_casa:{lacteoDescremado:1},
-  cena:{proteinas:3, verduras:1}
+  // Plato 7: cena estándar: proteína + carbohidrato + verduras libre consumo.
+  cena:{proteinas:3, cereales:2, verduras:2}
 };
 const FREQUENT_FOODS = [
   {id:'scoop_proteina', name:'Scoop proteína', portions:{proteinas:2}},
@@ -5559,112 +5723,42 @@ const FREQUENT_FOODS = [
   {id:'mantequilla_mani', name:'Mantequilla de maní', portions:{lipidos:0.5}},
   {id:'fruta', name:'Fruta', portions:{frutas:1}},
   {id:'papa_cocida', name:'Papa cocida', portions:{cereales:1}},
-  {id:'presa_pollo', name:'Presa de pollo', portions:{proteinas:4}},
+  {id:'presa_pollo', name:'Presa de pollo', portions:{proteinas:2.5}},
   {id:'leche_protein', name:'Leche protein', portions:{lacteoProtein:1}},
   {id:'huevo_duro', name:'Huevo duro', portions:{proteinas:1.5}},
   {id:'leche_descremada', name:'Leche descremada', portions:{lacteoDescremado:1}},
   {id:'barra_low_carb', name:'Barra low carb', detail:'45g · 5,3g proteína · 6g carbos netos · 8g fibra', portions:{proteinas:0.5}},
   {id:'atun', name:'Atún', portions:{proteinas:2}},
-  {id:'pollo_pavo_pescado', name:'Pollo/pavo/pescado', portions:{proteinas:2.5}},
+  {id:'pollo_pavo_pescado', name:'Pollo/pavo/pescado', portions:{proteinas:2}},
   {id:'verduras', name:'Verduras', portions:{verduras:1}},
   {id:'aceite', name:'Aceite', portions:{aceites:1}},
   {id:'manzana', name:'Manzana', portions:{frutas:1}},
   {id:'arroz', name:'Porción de arroz', portions:{cereales:1}},
   {id:'tomates_cherry', name:'Tomates cherry', portions:{verduras:0.5}},
 ];
-const QUICK_MEALS = [
-  ['pollo','Pollo',4],['vacuno','Vacuno',4],
-  ['tilapia','Tilapia',2.5],['merluza','Merluza',2.5],['reineta','Reineta',2.5],['cojinova','Cojinova',2.5],['salmon','Salmón',2.5],['atun','Atún',3.33]
-].flatMap(([id,label,prot])=>['arroz','papas','fideos'].map(carb=>({
-  id:`quick_${id}_${carb}`,
-  name:`${label} + ${carb}`,
-  portions:{proteinas:prot,cereales:2},
-  detail:`${label} 200 g + ${carb} · 2 cereales`
-})));
 function clonePortionZero(){
   return Object.keys(NUTRITION_TARGETS).filter(k=>!['aguaMl','aguaVasos'].includes(k)).reduce((o,k)=>{o[k]=0;return o;},{});
 }
 function sumPortionsInto(base, add){ Object.entries(add||{}).forEach(([k,v])=>{base[k]=(base[k]||0)+(parseFloat(v)||0);}); return base; }
-
-const PROTEIN_EQUIV_GRAMS = {
-  pollo:50, pavo:50, vacuno:50, carne:50, cerdo:50,
-  atun:60, atún:60, jurel:60,
-  merluza:80, tilapia:80, reineta:80, congrio:80, cojinova:80, salmon:80, salmón:80,
-  camaron:120, camarón:120, camarones:120
-};
-function normalizeFoodText(txt){
-  return String(txt||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/,/g,'.');
-}
-function addIfPositive(obj,k,v){ v=parseFloat(v)||0; if(v>0) obj[k]=(obj[k]||0)+v; }
-function calcPortionsFromText(txt){
-  const out=clonePortionZero();
-  const t=normalizeFoodText(txt);
-  if(!t.trim()) return out;
-  // Proteína en polvo: scoop = 2 porciones
-  let m;
-  const scoopRe=/(\d+(?:\.\d+)?)?\s*(scoop|scoops)/g;
-  while((m=scoopRe.exec(t))) addIfPositive(out,'proteinas', (parseFloat(m[1]||'1'))*2);
-  // Huevos: 1 huevo = 1.5 porciones
-  const huevoRe=/(\d+(?:\.\d+)?)\s*(huevo|huevos)/g;
-  while((m=huevoRe.exec(t))) addIfPositive(out,'proteinas', parseFloat(m[1])*1.5);
-  if(!/\d+(?:\.\d+)?\s*(huevo|huevos)/.test(t) && /huevo duro/.test(t)) addIfPositive(out,'proteinas',1.5);
-  // Carnes y pescados con gramos oficiales
-  Object.entries(PROTEIN_EQUIV_GRAMS).forEach(([food,gramsPerPortion])=>{
-    const re1=new RegExp('(\\d+(?:\\.\\d+)?)\\s*(?:g|gr|gramos)\\s*(?:de\\s*)?'+food,'g');
-    const re2=new RegExp(food+'[^0-9]{0,12}(\\d+(?:\\.\\d+)?)\\s*(?:g|gr|gramos)','g');
-    let mm;
-    while((mm=re1.exec(t))) addIfPositive(out,'proteinas', parseFloat(mm[1])/gramsPerPortion);
-    while((mm=re2.exec(t))) addIfPositive(out,'proteinas', parseFloat(mm[1])/gramsPerPortion);
-  });
-  // Leche / lácteos separados: no suman proteína
-  const lecheMlRe=/(\d+(?:\.\d+)?)\s*ml\s*(?:de\s*)?leche\s*descremada/g;
-  while((m=lecheMlRe.exec(t))) addIfPositive(out,'lacteoDescremado', parseFloat(m[1])/200);
-  if(/leche\s*descremada/.test(t) && !/(\d+(?:\.\d+)?)\s*ml\s*(?:de\s*)?leche\s*descremada/.test(t)) addIfPositive(out,'lacteoDescremado',1);
-  if(/(yogur|yogurt|leche)\s*protein/.test(t)) addIfPositive(out,'lacteoProtein',1);
-  // Cereales y carbos frecuentes
-  if(/\b(1\/2|medio)\s*platano\b|\bplatano\b|\bplátano\b|\bmanzana\b|\bfruta\b|\bkiwi\b|\barandano/.test(t)) addIfPositive(out,'frutas',1);
-  if(/pan\s*molde|pan\s*integral/.test(t)) addIfPositive(out,'cereales',0.5);
-  if(/arroz|papas?|papa\s*cocida|fideos?|pasta/.test(t)) addIfPositive(out,'cereales',2);
-  if(/palta|mantequilla\s*de\s*mani|mantequilla\s*de\s*maní/.test(t)) addIfPositive(out,'lipidos',0.5);
-  if(/aceite/.test(t)) addIfPositive(out,'aceites',1);
-  if(/verdura|ensalada|lechuga|tomate|acelga|apio|espinaca|brocoli|brócoli|zanahoria|tomates\s*cherry/.test(t)) addIfPositive(out,'verduras',1);
-  return out;
-}
-function hasAnyPortion(obj){ return Object.values(obj||{}).some(v=>(parseFloat(v)||0)>0); }
-function isFullNutritionDay(fd){
-  if(!fd) return false;
-  const done=Object.values(fd.comidas||{}).filter(x=>x&&x.completada).length;
-  return !!fd.pautaManual || !!fd.allDone || done>=(COMIDAS?.length||7);
-}
-function applyMinimumTargets(consumed){
-  Object.keys(consumed).forEach(k=>{ if(NUTRITION_TARGETS[k]!=null) consumed[k]=Math.max(consumed[k]||0,NUTRITION_TARGETS[k]); });
-  return consumed;
-}
-function calcNutritionState(fd, opts={}){
-  const consumed=clonePortionZero();
-  let exact=false, source='detalle parcial';
+function calcNutritionDayDetail(fd){
+  const total=clonePortionZero();
+  const details=[];
   (COMIDAS||[]).forEach(c=>{
-    const est=fd?.comidas?.[c.id];
-    if(!est?.completada) return;
-    const parsed=calcPortionsFromText((est.texto||'')+' '+(c.ejemplo||''));
-    if(hasAnyPortion(parsed)){ sumPortionsInto(consumed,parsed); exact=true; }
-    else if(c.portions){ sumPortionsInto(consumed,c.portions); }
+    if(fd.comidas?.[c.id]?.completada){
+      const res=portionsForMeal(c,fd);
+      sumPortionsInto(total,res.portions||{});
+      details.push({type:'comida', name:c.nombre, source:res.source, portions:res.portions, details:res.details||[]});
+    }
   });
-  (fd?.extraFoods||[]).forEach(f=>{
-    if(f?.portions){ sumPortionsInto(consumed,f.portions); exact=true; }
-    else if(f?.name){ const parsed=calcPortionsFromText(f.name); if(hasAnyPortion(parsed)){ sumPortionsInto(consumed,parsed); exact=true; } }
+  (fd.extraFoods||[]).forEach(f=>{
+    sumPortionsInto(total, f.portions||{});
+    details.push({type:f.quickMeal?'comida_rapida':'alimento_rapido', name:f.name, source:f.quickMeal?'comida rápida':'registro rápido', portions:f.portions||{}, details:f.calcDetail||f.details||[]});
   });
-  if(opts.legacyFullDay!==false && isFullNutritionDay(fd)){
-    applyMinimumTargets(consumed);
-    source=exact?'detalle exacto + mínimo pauta':'pauta completa legacy';
-  } else if(exact) source='detalle exacto/parcial';
-  const grupos=Object.keys(consumed);
-  let done=0,total=0;
-  grupos.forEach(g=>{ const t=NUTRITION_TARGETS[g]||0; total+=t; done+=Math.min(t, consumed[g]||0); });
-  return {consumed, source, adherence: total>0?Math.round(done/total*100):0};
+  Object.keys(total).forEach(k=>total[k]=nRound(total[k],2));
+  return {portions:total, details};
 }
 function calcPortionsConsumed(fd){
-  return calcNutritionState(fd||{}, {legacyFullDay:true}).consumed;
+  return calcNutritionDayDetail(fd).portions;
 }
 function calcPortionsRemaining(consumed){
   const rem=clonePortionZero();
@@ -5935,7 +6029,7 @@ function newPorciones(){
 
 /** Suma todas las porciones registradas hoy (comidas + alimentos rápidos) */
 function getPorcionesHoy(fd){
-  return calcPortionsConsumed(fd||getFD(today()));
+  return calcPortionsConsumed(fd);
 }
 
 function renderHomeNutritionCard(){
@@ -6069,10 +6163,10 @@ function toggleVasoHoy(idx){
   renderFoodIfVisible();
 }
 function addFrequentFood(foodId){
-  const food=[...(FREQUENT_FOODS||[]), ...(typeof QUICK_MEALS!=='undefined'?QUICK_MEALS:[])].find(f=>f.id===foodId); if(!food) return;
+  const food=[...FREQUENT_FOODS,...QUICK_MEALS].find(f=>f.id===foodId); if(!food) return;
   const fd=getFD(foodFecha); if(!fd.extraFoods) fd.extraFoods=[];
-  fd.extraFoods.push({id:food.id,name:food.name,portions:food.portions,ts:Date.now()});
-  saveFD(fd); showToast('Alimento registrado',1400,'ok'); renderFood(); renderHomeNutritionCard();
+  fd.extraFoods.push({id:food.id,name:food.name,detail:food.detail||'',portions:food.portions,quickMeal:!!food.quickMeal,calcDetail:food.calcDetail||[],ts:Date.now()});
+  saveFD(fd); showToast(food.quickMeal?'Comida rápida registrada':'Alimento registrado',1400,'ok'); renderFood(); renderHomeNutritionCard();
 }
 function renderNutritionPortionDashboard(fd){
   const consumed=calcPortionsConsumed(fd), remaining=calcPortionsRemaining(consumed);
@@ -6083,9 +6177,13 @@ function renderNutritionPortionDashboard(fd){
   </div>`;
 }
 function renderFrequentFoods(){
-  return `<div class="mq-card" style="margin-bottom:12px"><div class="mq-card-head"><div><div class="mq-kicker">Registro rápido</div><div class="mq-card-title">Alimentos y comidas rápidas</div></div></div>`
-    +`<div class="mq-kicker" style="margin:8px 0 6px">Alimentos frecuentes</div><div class="mq-food-buttons">${FREQUENT_FOODS.map(f=>`<button onclick="addFrequentFood('${f.id}')">${f.name}</button>`).join('')}</div>`
-    +`<div class="mq-kicker" style="margin:12px 0 6px">Comidas rápidas</div><div class="mq-food-buttons">${(QUICK_MEALS||[]).map(f=>`<button onclick="addFrequentFood('${f.id}')">${f.name}</button>`).join('')}</div></div>`;
+  return `<div class="mq-card" style="margin-bottom:12px">
+    <div class="mq-card-head"><div><div class="mq-kicker">Registro rápido</div><div class="mq-card-title">Alimentos y comidas rápidas</div></div></div>
+    <div class="mq-kicker" style="margin:2px 0 6px">Alimentos frecuentes</div>
+    <div class="mq-food-buttons">${FREQUENT_FOODS.map(f=>`<button onclick="addFrequentFood('${f.id}')">${f.name}</button>`).join('')}</div>
+    <div class="mq-kicker" style="margin:12px 0 6px">Comidas rápidas · 200 g proteína + 2 cereales</div>
+    <div class="mq-food-buttons mq-quick-meal-buttons">${QUICK_MEALS.map(f=>`<button onclick="addFrequentFood('${f.id}')" title="${f.detail}">${f.name}</button>`).join('')}</div>
+  </div>`;
 }
 
 // ---------------------------------------------------------------
@@ -6220,13 +6318,13 @@ function ajustarMetaAgua(tipo, delta){
 //  SCREEN: NUTRICIÓN
 // ---------------------------------------------------------------
 const COMIDAS=[
-  {id:'desayuno', nombre:'Desayuno', hora:'08:00', grupos:'2 proteínas · 1 fruta · 0.5 cereal · 0.5 lípidos', ejemplo:'1 scoop proteína + 1/2 plátano + pan molde + mantequilla de maní medida', portions:MEAL_PORTIONS.desayuno},
+  {id:'desayuno', nombre:'Desayuno', hora:'08:00', grupos:'3 proteínas · 1 lácteo protein · 1 fruta · 0.5 cereal · 0.5 lípidos', ejemplo:'1 scoop proteína + 1/2 plátano + pan molde + mantequilla de maní medida', portions:MEAL_PORTIONS.desayuno},
   {id:'fruta_1000', nombre:'Fruta 10:00', hora:'10:00', grupos:'1 fruta', ejemplo:'1 fruta', portions:MEAL_PORTIONS.fruta_1000},
-  {id:'almuerzo_post', nombre:'Almuerzo post-entreno', hora:'13:30', grupos:'2 cereales · 2 a 3 proteínas · verduras', ejemplo:'2 papas cocidas + 1 presa de pollo + verduras si puedes', portions:MEAL_PORTIONS.almuerzo_post},
+  {id:'almuerzo_post', nombre:'Almuerzo post-entreno', hora:'13:30', grupos:'4 proteínas · 2 cereales', ejemplo:'200 g pollo/vacuno o pescado + arroz, papas o fideos', portions:MEAL_PORTIONS.almuerzo_post},
   {id:'leche_protein_1700', nombre:'Leche protein 17:00', hora:'17:00', grupos:'1 lácteo protein', ejemplo:'1 leche protein', portions:MEAL_PORTIONS.leche_protein_1700},
-  {id:'huevos_1800', nombre:'Huevos duros 18:00', hora:'18:00', grupos:'2 proteínas', ejemplo:'2 huevos duros', portions:MEAL_PORTIONS.huevos_1800},
+  {id:'huevos_1800', nombre:'Huevos duros 18:00', hora:'18:00', grupos:'3 proteínas', ejemplo:'2 huevos duros', portions:MEAL_PORTIONS.huevos_1800},
   {id:'leche_descremada_casa', nombre:'Leche descremada al llegar', hora:'19:30', grupos:'1 lácteo descremado', ejemplo:'200 ml leche descremada', portions:MEAL_PORTIONS.leche_descremada_casa},
-  {id:'cena', nombre:'Cena', hora:'21:00', grupos:'Proteína magra + verduras · cereal/aceite solo si queda pendiente', ejemplo:'Pollo, pescado, pavo, atún, huevos o jamón de pavo + verduras', portions:MEAL_PORTIONS.cena},
+  {id:'cena', nombre:'Cena', hora:'21:00', grupos:'3 proteínas · 2 cereales · 2 verduras', ejemplo:'Proteína magra + arroz, papas o fideos + verduras de libre consumo', portions:MEAL_PORTIONS.cena},
 ];
 const PORCIONES=[
   {emoji:'◌',nombre:'Cereales',              meta:'3'},
@@ -6445,8 +6543,7 @@ function switchPerfilTab(tab,btn2){
 function renderHabitsLumen(){
   const el=document.getElementById('perfil-habitos'); if(!el) return;
   const ses=forge.sessions||[];
-  const sessionDateKey=v=>{ if(typeof v==='string' && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0,10); return localDateStr(v); };
-  const entreDias=new Set(ses.map(s=>sessionDateKey(s.date)).filter(Boolean));
+  const entreDias=new Set(ses.map(s=>localDateStr(s.date)));
   const streak=calcStreak(), maxStr=calcMaxStreak(), total=entreDias.size;
   const year=new Date().getFullYear();
   const todayStr=today();
@@ -6463,7 +6560,7 @@ function renderHabitsLumen(){
       <div class="lumen-stat"><div class="lumen-num">${maxStr}</div><div class="lumen-lbl">Mejor racha</div><div class="lumen-sub">histórico</div></div>
       <div class="lumen-stat"><div class="lumen-num">${total}</div><div class="lumen-lbl">Días totales</div><div class="lumen-sub">registrados</div></div>
     </div>
-    ${renderLumenHabitoGrid('◈ Días entrenados','Cada día con sesión registrada',year,todayStr,d=>entreDias.has(d)?1:-1)}
+    ${renderLumenHabitoGrid('◈ Días entrenados','Cada día que completaste un entrenamiento',year,todayStr,d=>entreDias.has(d)?1:-1)}
 
     <div style="margin-bottom:10px">
       <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:8px">Consumo de alcohol hoy</div>
@@ -6492,32 +6589,15 @@ function renderHabitsLumen(){
 
     ${renderLumenHabitoGrid('◈ Pauta nutricional','Días con pauta alimentaria completada',year,todayStr,d=>{
       try{ const r=localStorage.getItem('ff_'+d); if(!r) return -1; const fd2=JSON.parse(r);
-        const state=calcNutritionState(fd2,{legacyFullDay:true});
-        if(fd2.pautaManual || fd2.allDone || state.adherence>=100) return 1;
-        if(state.adherence>=70) return 0.5;
-        if(state.adherence>0) return 0.25;
-        return -1;
+        const mealsDone=(fd2.meals||[]).filter(m=>m.done).length+(fd2.extraFoods||[]).length;
+        return fd2.pautaManual?1:(mealsDone>=5||fd2.allDone)?1:mealsDone>=3?0.5:mealsDone>0?0.25:-1;
       }catch{ return -1; }
     })}
 
-    ${renderLumenHabitoGrid('◈ Proteínas completas','Días con meta de proteína cumplida',year,todayStr,d=>{
+    ${renderLumenHabitoGrid('◈ Meta de agua','Días que alcanzaste los 7 checkpoints de agua',year,todayStr,d=>{
       try{ const r=localStorage.getItem('ff_'+d); if(!r) return -1; const fd2=JSON.parse(r);
-        const p=calcNutritionState(fd2,{legacyFullDay:true}).consumed.proteinas||0;
-        return p>=NUTRITION_TARGETS.proteinas?1:p>=NUTRITION_TARGETS.proteinas*0.7?0.5:p>0?0.25:-1;
-      }catch{ return -1; }
-    })}
-
-    ${renderLumenHabitoGrid('◈ Meta de agua','Días que alcanzaste los 10 vasos de agua',year,todayStr,d=>{
-      try{ const r=localStorage.getItem('ff_'+d); if(!r) return -1; const fd2=JSON.parse(r);
-        const meta=getAguaMeta();
-        const vasos=fd2.aguaVasosHoy||fd2.agua||((fd2.aguaCps||[]).filter(Boolean).length)||0;
-        return vasos>=meta.vasos?1:vasos>=Math.ceil(meta.vasos*0.7)?0.5:vasos>0?0.25:-1;
-      }catch{ return -1; }
-    })}
-
-    ${renderLumenHabitoGrid('◈ Creatina','Días con creatina tomada',year,todayStr,d=>{
-      try{ const r=localStorage.getItem('ff_'+d); if(!r) return -1; const fd2=JSON.parse(r);
-        return fd2.creatina?1:0;
+        const aguaCps=(fd2.aguaCps||[]).filter(Boolean).length;
+        return aguaCps>=7?1:aguaCps>=5?0.5:aguaCps>=3?0.25:-1;
       }catch{ return -1; }
     })}`;
 }
