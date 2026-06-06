@@ -2678,3 +2678,8 @@ td, th {
 .mq-recovery-chart .mq-recovery-svg{ min-height: 160px; }
 .mq-chart-tooltip{ z-index: 99999; }
 
+
+
+/* MELQART v181.1 */
+.mq-recovery-chart circle{ pointer-events:auto; }
+.mq-chart-tooltip.visible{ opacity:1; transform:translateY(0); }

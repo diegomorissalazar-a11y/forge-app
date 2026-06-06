@@ -9645,3 +9645,279 @@ try{
   }catch(e){ console.warn('MELQART v180 migration failed', e); }
 })();
 
+
+
+
+// ---------------------------------------------------------------
+//  MELQART v181.1 — migración real Hevy + fixes críticos UI
+// ---------------------------------------------------------------
+(function mq1811(){
+  const MIGRATION_ID = 'melqart_v181_1_hevy_real_migration';
+  const LOG_PREFIX = 'MELQART v181.1';
+
+  function slug(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''); }
+  function norm(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+  function ts(date,time='12:00'){ return new Date(`${date}T${time}:00`).getTime(); }
+  function dayOf(x){ try{ return typeof localDateStr==='function' ? localDateStr(x) : new Date(x).toISOString().slice(0,10); }catch(e){ return new Date(x).toISOString().slice(0,10); } }
+  function W(weight,reps){ return {type:'weight',done:true,weight:parseFloat(weight)||0,reps:parseInt(reps)||0,distance:'',time:'',fc:'',pasos:''}; }
+  function R(distance,time,fc='',pasos=''){ return {type:'run',done:true,weight:0,reps:0,distance:String(distance||''),time:String(time||''),fc:String(fc||''),pasos:String(pasos||'')}; }
+  function EX(exId,sets){ return {exId,sets}; }
+  function ensureArray(obj,key){ if(!obj[key]) obj[key]=[]; return obj[key]; }
+
+  function ensureExercise(id,name,type='barbell',muscle='',restSec=90,grupo=''){
+    if(!window.forge) return id;
+    ensureArray(forge,'exercises');
+    let ex=forge.exercises.find(e=>e.id===id);
+    if(!ex){
+      ex={id,name,type,muscle,restSec,grupo};
+      forge.exercises.push(ex);
+    }else{
+      ex.name=name;
+      ex.type=type||ex.type;
+      ex.muscle=muscle||ex.muscle;
+      ex.restSec=restSec||ex.restSec;
+      ex.grupo=grupo||ex.grupo;
+    }
+    return id;
+  }
+
+  function registerExercises(){
+    ensureExercise('ex_sentadilla','Sentadilla (Barra)','barbell','cuadriceps',180,'Cuádriceps');
+    ensureExercise('ex_peso_muerto_manc','Peso Muerto (Mancuerna)','dumbbell','isquios',150,'Isquiotibiales');
+    ensureExercise('ex_peso_muerto','Peso Muerto (Barra)','barbell','isquios',180,'Isquiotibiales');
+    ensureExercise('ex_hip_thrust','Hip Thrust (Barra)','barbell','gluteos',180,'Glúteos');
+    ensureExercise('ex_hip_thrust_maq','Hip Thrust (Máquina)','machine','gluteos',180,'Glúteos');
+    ensureExercise('ex_step_manc','Step con Mancuerna','dumbbell','piernas',90,'Piernas');
+    ensureExercise('ex_sent_bulgara','Sentadilla Búlgara','dumbbell','gluteos',120,'Glúteos');
+    ensureExercise('ex_crunch','Abdominal Banco Inclinado','bodyweight','core',60,'Core');
+    ensureExercise('ex_press_banca','Press Banca (Barra)','barbell','pecho',180,'Pecho');
+    ensureExercise('ex_press_inclinado','Press Inclinado (Barra)','barbell','pecho',180,'Pecho');
+    ensureExercise('ex_press_hombros','Press Hombros (Barra)','barbell','hombros',150,'Hombros');
+    ensureExercise('ex_press_homb_manc','Press Hombros (Mancuernas)','dumbbell','hombros',150,'Hombros');
+    ensureExercise('ex_press_homb_maq','Press Hombros (Máquina)','machine','hombros',150,'Hombros');
+    ensureExercise('ex_curl_barra_z','Curl con Barra Z','barbell','biceps',90,'Bíceps');
+    ensureExercise('ex_dominadas','Dominadas (Peso Corporal)','bodyweight','espalda',150,'Espalda');
+    ensureExercise('ex_jalon_pecho','Jalón al Pecho (Cable)','cable','espalda',150,'Espalda');
+    ensureExercise('ex_correr','Carrera / Trote','run','cardio',0,'Cardio');
+  }
+
+  function normalizeHipThrustMachine(){
+    if(!window.forge) return 0;
+    ensureArray(forge,'exercises');
+    registerExercises();
+    const canonical='ex_hip_thrust_maq';
+    const canonicalNames=[
+      'hiptrust maquina','hiptrust máquina','hip thrust maquina','hip thrust máquina',
+      'hip thrust (maquina)','hip thrust (máquina)','empuje de cadera maquina','empuje de cadera máquina',
+      'empuje de caderas maquina','empuje de caderas máquina'
+    ].map(norm);
+    const dupIds=[];
+    forge.exercises.forEach(e=>{
+      if(e.id!==canonical && canonicalNames.includes(norm(e.name))) dupIds.push(e.id);
+    });
+    (forge.sessions||[]).forEach(sess=>{
+      (sess.exercises||[]).forEach(ex=>{
+        const exDef=forge.exercises.find(e=>e.id===ex.exId);
+        if(dupIds.includes(ex.exId) || canonicalNames.includes(norm(exDef?.name||ex.name||''))){
+          ex.exId=canonical;
+          delete ex.name;
+        }
+      });
+      // fusionar ejercicios repetidos dentro de la misma sesión
+      const by={};
+      (sess.exercises||[]).forEach(ex=>{
+        if(!by[ex.exId]) by[ex.exId]={exId:ex.exId,sets:[]};
+        const existing=new Set(by[ex.exId].sets.map(setKey));
+        (ex.sets||[]).forEach(st=>{ const k=setKey(st); if(!existing.has(k)){ by[ex.exId].sets.push(st); existing.add(k); } });
+      });
+      sess.exercises=Object.values(by);
+    });
+    (forge.routines||[]).forEach(r=>{
+      if(Array.isArray(r.exercises)){
+        r.exercises=r.exercises.map(id=>dupIds.includes(id)?canonical:id).filter((id,i,a)=>a.indexOf(id)===i);
+      }
+    });
+    forge.exercises=forge.exercises.filter(e=>!dupIds.includes(e.id));
+    const c=forge.exercises.find(e=>e.id===canonical);
+    if(c) c.name='Hip Thrust (Máquina)';
+    return dupIds.length;
+  }
+
+  function volume(session){
+    return (session.exercises||[]).reduce((sum,ex)=>{
+      const def=(forge.exercises||[]).find(e=>e.id===ex.exId)||{};
+      if(def.type==='run'||def.type==='hiit'||ex.exId==='ex_correr') return sum;
+      return sum+(ex.sets||[]).reduce((a,s)=>a+(parseFloat(s.weight)||0)*(parseInt(s.reps)||0),0);
+    },0);
+  }
+  function setKey(st){ return st.type==='run' ? `r:${st.distance}:${st.time}:${st.fc}:${st.pasos}` : `w:${st.weight}:${st.reps}`; }
+  function mergeSets(target,incoming){
+    if(!target.sets) target.sets=[];
+    const keys=new Set(target.sets.map(setKey));
+    (incoming.sets||[]).forEach(st=>{ const k=setKey(st); if(!keys.has(k)){ target.sets.push(st); keys.add(k); } });
+  }
+  function session(date,time,kind,elapsedMin,exercises){
+    const routineName = kind === 'trote' ? 'Trote' : (kind === 'superior' ? 'Tren superior' : 'Tren inferior');
+    return {
+      id:`mq181_hevy_${date}_${kind}`,
+      routineId:null,
+      routineName,
+      date:ts(date,time),
+      elapsed:Math.round((elapsedMin||0)*60),
+      exercises,
+      source:'hevy_v181_1',
+      tipoHevy:kind
+    };
+  }
+  function hasOverlap(a,b){
+    const idsA=new Set((a.exercises||[]).map(e=>e.exId));
+    return (b.exercises||[]).some(e=>idsA.has(e.exId));
+  }
+  function similarSession(existing,incoming){
+    const sameDay=dayOf(existing.date)===dayOf(incoming.date);
+    if(!sameDay) return false;
+    if(existing.id===incoming.id) return true;
+    const er=String(existing.routineName||'').toLowerCase();
+    const ir=String(incoming.routineName||'').toLowerCase();
+    if(ir.includes('trote') || incoming.exercises?.some(e=>e.exId==='ex_correr')){
+      return (existing.exercises||[]).some(e=>e.exId==='ex_correr');
+    }
+    if(ir.includes('superior')) return (er.includes('superior') || hasOverlap(existing,incoming)) && !er.includes('inferior');
+    if(ir.includes('inferior')) return (er.includes('inferior') || hasOverlap(existing,incoming)) && !er.includes('superior');
+    return hasOverlap(existing,incoming);
+  }
+  function addOrMerge(incoming){
+    ensureArray(forge,'sessions');
+    incoming.totalVolume=volume(incoming);
+    let existing=forge.sessions.find(s=>s.id===incoming.id) || forge.sessions.find(s=>similarSession(s,incoming));
+    if(existing){
+      // Si el nombre era libre y ahora tenemos categoría clara, renombrar.
+      const er=String(existing.routineName||'').toLowerCase();
+      if(er.includes('libre') || !existing.routineName || (incoming.routineName==='Trote' && !(existing.exercises||[]).some(e=>e.exId!=='ex_correr'))){
+        existing.routineName=incoming.routineName;
+      }
+      existing.source=existing.source||incoming.source;
+      existing.tipoHevy=existing.tipoHevy||incoming.tipoHevy;
+      existing.elapsed=Math.max(existing.elapsed||0,incoming.elapsed||0);
+      ensureArray(existing,'exercises');
+      (incoming.exercises||[]).forEach(ix=>{
+        const tx=existing.exercises.find(e=>e.exId===ix.exId);
+        if(tx) mergeSets(tx,ix); else existing.exercises.push(ix);
+      });
+      existing.totalVolume=volume(existing);
+      return 'merged';
+    }
+    forge.sessions.push(incoming);
+    return 'added';
+  }
+
+  function hevySessions(){
+    return [
+      session('2026-03-19','15:12','superior',37,[EX('ex_press_inclinado',[W(60,6),W(60,5),W(50,8)]),EX('ex_jalon_pecho',[W(50,10),W(50,10),W(50,10)]),EX('ex_press_homb_manc',[W(28,10),W(28,10),W(28,10)])]),
+      session('2026-03-17','14:37','superior',38,[EX('ex_press_banca',[W(65,8),W(65,8),W(65,5)]),EX('ex_press_homb_maq',[W(30,7),W(30,8),W(30,8)]),EX('ex_curl_barra_z',[W(30,7),W(30,7),W(30,6)])]),
+      session('2026-03-16','14:44','inferior',48,[EX('ex_sentadilla',[W(70,10),W(70,9),W(70,9)]),EX('ex_peso_muerto_manc',[W(50,8),W(60,10)])]),
+      session('2026-03-10','15:07','superior',47,[EX('ex_press_banca',[W(60,8),W(60,8),W(60,6)]),EX('ex_press_hombros',[W(35,9),W(35,9),W(35,8)]),EX('ex_curl_barra_z',[W(30,7),W(30,6),W(30,7)])]),
+      session('2026-03-09','15:06','inferior',42,[EX('ex_sentadilla',[W(60.9,9),W(60.9,8),W(60.9,8)]),EX('ex_peso_muerto_manc',[W(44,8),W(44,9)]),EX('ex_hip_thrust_maq',[W(70.9,10),W(70.9,10),W(70.9,10)]),EX('ex_crunch',[W(0,30),W(0,30),W(0,30)])]),
+      session('2026-02-19','14:57','superior',35,[EX('ex_press_banca',[W(60,8),W(60,8),W(60,7)]),EX('ex_press_hombros',[W(35,8),W(35,8),W(35,7)]),EX('ex_curl_barra_z',[W(30,6),W(30,5)])]),
+      session('2026-02-16','14:54','inferior',56,[EX('ex_sentadilla',[W(60,9),W(60,8),W(60,9)]),EX('ex_peso_muerto_manc',[W(44,8),W(44,9)]),EX('ex_hip_thrust_maq',[W(67.5,9),W(62.7,10),W(62.7,9)]),EX('ex_crunch',[W(0,30),W(0,30),W(0,30)])]),
+      session('2026-02-12','20:54','inferior',40,[EX('ex_sentadilla',[W(60,10),W(60,9),W(60,9)]),EX('ex_peso_muerto_manc',[W(40,8),W(40,8)]),EX('ex_hip_thrust_maq',[W(67.5,7),W(62.7,9),W(62.7,9)])]),
+      session('2026-02-10','14:32','superior',49,[EX('ex_press_banca',[W(60,9),W(60,8),W(60,7)]),EX('ex_press_homb_maq',[W(30,6),W(30,7),W(30,6)])]),
+      session('2026-02-10','14:32','trote',10,[EX('ex_correr',[R(1.15,'9:52')])]),
+      session('2026-02-08','12:42','trote',53,[EX('ex_correr',[R(7.74,'53:19','',8072)])]),
+      session('2026-02-05','14:40','inferior',43,[EX('ex_sentadilla',[W(60,10),W(60,9),W(60,8)]),EX('ex_peso_muerto_manc',[W(40,8),W(40,8)]),EX('ex_hip_thrust',[W(62.7,10),W(62.7,9),W(62.7,8)]),EX('ex_crunch',[W(0,30),W(0,30),W(0,30)])]),
+      session('2026-02-03','20:51','trote',20,[EX('ex_correr',[R(1.21,'7:18','81',1057)])]),
+      session('2026-01-29','14:07','inferior',46,[EX('ex_sentadilla',[W(40,10),W(50,10),W(55,10),W(60,10)]),EX('ex_peso_muerto_manc',[W(40,8),W(40,8)]),EX('ex_hip_thrust',[W(42.7,9),W(62.7,9),W(62.7,10)]),EX('ex_crunch',[W(0,30),W(0,30),W(0,20)])]),
+      session('2026-01-27','20:56','superior',37,[EX('ex_press_banca',[W(40,10),W(40,11),W(40,9)]),EX('ex_press_hombros',[W(30,9),W(30,8),W(30,7)]),EX('ex_dominadas',[W(0,10),W(0,7),W(0,7)])]),
+      session('2026-01-27','20:56','trote',12,[EX('ex_correr',[R(2.03,'12:05')])]),
+      session('2026-01-25','09:32','trote',21,[EX('ex_correr',[R(3.52,'21:26','',3110)])]),
+      session('2026-01-18','12:00','trote',46,[EX('ex_correr',[R(6.7,'45:21','',6835)])]),
+      session('2026-01-13','21:03','trote',34,[EX('ex_correr',[R(3.36,'21:09','124',3109)])]),
+      session('2026-01-11','10:22','trote',45,[EX('ex_correr',[R(6.42,'45:08','133',6742)])]),
+      session('2026-01-08','20:48','inferior',31,[EX('ex_step_manc',[W(14,12),W(14,12),W(10,14)]),EX('ex_sent_bulgara',[W(14,7),W(14,7),W(14,5),W(14,5)])])
+    ];
+  }
+
+  function runMigration(reason='auto'){
+    if(!window.forge || !Array.isArray(forge.sessions)) return false;
+    registerExercises();
+    const dup=normalizeHipThrustMachine();
+    let added=0, merged=0;
+    hevySessions().forEach(s=>{ const r=addOrMerge(s); if(r==='added') added++; else merged++; });
+    normalizeHipThrustMachine();
+    forge.sessions.sort((a,b)=>(a.date||0)-(b.date||0));
+    try{ if(typeof saveDB==='function') saveDB(); }catch(e){}
+    try{ localStorage.setItem(MIGRATION_ID, JSON.stringify({at:new Date().toISOString(),reason,added,merged,hipThrustDupRemoved:dup,totalSessions:forge.sessions.length})); }catch(e){}
+    console.info(`${LOG_PREFIX}: migración ${reason} · agregadas ${added} · fusionadas ${merged} · sesiones ${forge.sessions.length}`);
+    return added>0 || merged>0 || dup>0;
+  }
+  window.melqartFix181 = () => { const changed=runMigration('manual'); try{ renderAll(); }catch(e){} return changed; };
+
+  // Ejecutar varias veces: antes y después de la carga desde nube, porque Firebase puede sobrescribir local.
+  function scheduleMigration(){
+    [250,1200,2600,5200,9000].forEach(ms=>setTimeout(()=>{ const changed=runMigration(`t+${ms}`); if(changed){ try{ renderAll(); }catch(e){} } },ms));
+  }
+  scheduleMigration();
+
+  // Hook renderAll para asegurar que, aunque una carga remota llegue tarde, se normalice antes de renderizar.
+  if(typeof renderAll==='function' && !window._mq181RenderAllHooked){
+    const oldRenderAll=renderAll;
+    window._mq181RenderAllHooked=true;
+    renderAll=function(){
+      runMigration('renderAll');
+      return oldRenderAll.apply(this,arguments);
+    };
+  }
+
+  // Fix segmentadores de peso / medidas: aplicar filtro antes de renderizar.
+  if(typeof setBodyAccFiltro==='function'){
+    setBodyAccFiltro=function(key,filtro){
+      if(!window._bodyAccFiltro) window._bodyAccFiltro={};
+      if(!window._bodyAccState) window._bodyAccState={};
+      window._bodyAccFiltro[key]=filtro;
+      if(key==='peso'){
+        window._bodyAccState['resumen']=true;
+        if(typeof renderProgCuerpo==='function') renderProgCuerpo();
+        setTimeout(()=>{ window._bodyAccState['resumen']=true; },0);
+        return;
+      }
+      const bodyEl=document.getElementById('body-acc-body-'+key);
+      if(bodyEl && typeof buildBodyAccBody==='function') bodyEl.innerHTML=buildBodyAccBody(key,filtro,window._cuerpoMets||[]);
+    };
+  }
+
+  // Fix tooltips de Recuperación: usar tooltip global en hover/click/touch, no solo <title>.
+  if(typeof mq178RenderRecoveryChart==='function'){
+    mq178RenderRecoveryChart=function(key,title,data,getVal,opts={}){
+      const filtered=mq178FilterWeeks(data,key).filter(d=>getVal(d)!==null && typeof getVal(d)!=='undefined' && !isNaN(getVal(d)));
+      if(filtered.length<2){
+        return `<div class="mq-recovery-chart card"><div class="mq-recovery-chart-head"><div><strong>${title}</strong></div></div>${mq178Seg(key)}<div class="mq-empty-small">Sin datos suficientes</div></div>`;
+      }
+      const W=360,H=168,PL=52,PR=14,PT=18,PB=30;
+      const vals=filtered.map(getVal);
+      const target=opts.target||0;
+      const allVals=target?vals.concat([target]):vals;
+      let minRaw=Math.min(...allVals), maxRaw=Math.max(...allVals);
+      if(opts.valueSuffix==='%' && minRaw===maxRaw){ minRaw=Math.max(0,minRaw-5); maxRaw=Math.min(100,maxRaw+5); }
+      const span=Math.max(maxRaw-minRaw,1);
+      const minV=Math.max(0,minRaw-span*.18), maxV=maxRaw+span*.18;
+      const xs=filtered.map((_,i)=>PL+(i/(Math.max(filtered.length-1,1)))*(W-PL-PR));
+      const y=v=>PT+(1-((v-minV)/(maxV-minV)))*(H-PT-PB);
+      const line=filtered.map((d,i)=>`${i===0?'M':'L'}${xs[i].toFixed(1)},${y(getVal(d)).toFixed(1)}`).join(' ');
+      const ticks=[maxV,minV+(maxV-minV)/2,minV];
+      const yAxis=ticks.map(v=>`<text x="${PL-6}" y="${y(v).toFixed(1)}" text-anchor="end" dominant-baseline="middle" font-size="9" fill="var(--ink3)">${mq179FormatAxis(v,opts)}</text><line x1="${PL}" y1="${y(v).toFixed(1)}" x2="${W-PR}" y2="${y(v).toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>`).join('');
+      const labels=filtered.map((d,i)=> i%Math.ceil(filtered.length/5)===0 || i===filtered.length-1 ? `<text x="${xs[i].toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="9" fill="var(--ink3)">${mq178WeekLabel(d.start)}</text>` : '').join('');
+      const dots=filtered.map((d,i)=>{
+        const val=getVal(d);
+        const main=(opts.tooltip?opts.tooltip(d):String(val)).replace(/"/g,'&quot;');
+        const date=mq178WeekLabel(d.start).replace(/"/g,'&quot;');
+        return `<circle cx="${xs[i].toFixed(1)}" cy="${y(val).toFixed(1)}" r="4.2" fill="var(--p)" stroke="var(--bg2)" stroke-width="1.4" style="cursor:pointer" onmouseenter="mqChartTooltipShow(event,'${date}','${main}','${title.replace(/"/g,'&quot;')}')" onmouseleave="mqChartTooltipHide()" onclick="mqChartTooltipShow(event,'${date}','${main}','${title.replace(/"/g,'&quot;')}')" ontouchstart="mqChartTooltipShow(event,'${date}','${main}','${title.replace(/"/g,'&quot;')}')"></circle>`;
+      }).join('');
+      const last=filtered[filtered.length-1], lastVal=getVal(last);
+      const display=opts.format?opts.format(lastVal,last):lastVal;
+      const pctMeta=target?Math.min(100,Math.round(lastVal/target*100)):Math.min(100,Math.round(lastVal));
+      return `<div class="mq-recovery-chart card"><div class="mq-recovery-chart-head"><div><strong>${title}</strong></div><div class="mq-recovery-chart-val">${display}</div></div><div class="mq-recovery-chart-meta">${opts.meta||''}</div>${mq178Seg(key)}<svg viewBox="0 0 ${W} ${H}" class="mq-recovery-svg">${yAxis}<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" stroke="var(--border)"/><line x1="${PL}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" stroke="var(--border)"/>${target?`<line x1="${PL}" y1="${y(target).toFixed(1)}" x2="${W-PR}" y2="${y(target).toFixed(1)}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="4,3" opacity=".55"/>`:''}<path d="${line}" fill="none" stroke="var(--p)" stroke-width="2.6"/>${dots}${labels}</svg><div class="mq-recovery-progress"><div style="width:${pctMeta}%"></div></div></div>`;
+    };
+  }
+
+})();
+
