@@ -10148,3 +10148,265 @@ try{
   if(typeof renderAll==='function' && !window._mq1813RenderAllHooked){ const old=renderAll; window._mq1813RenderAllHooked=true; renderAll=function(){ applyExactHevy('renderAll'); return old.apply(this,arguments); }; }
 })();
 
+
+
+
+// ---------------------------------------------------------------
+//  MELQART v181.4 — override final exportador + reparación Hevy/Nutrición
+// ---------------------------------------------------------------
+(function mq1814(){
+  const LOG='MELQART v181.4';
+  function nrm(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+  function dayOf(ts){ try{return typeof localDateStr==='function'?localDateStr(ts):new Date(ts).toISOString().slice(0,10)}catch(e){return new Date(ts).toISOString().slice(0,10)} }
+  function W(weight,reps){ return {type:'weight',done:true,weight:parseFloat(weight)||0,reps:parseInt(reps)||0,distance:'',time:'',fc:'',pasos:''}; }
+  function R(distance,time,fc='',pasos=''){ return {type:'run',done:true,weight:0,reps:0,distance:String(distance||''),time:String(time||''),fc:String(fc||''),pasos:String(pasos||'')}; }
+  function getExerciseByNameLike(name){
+    const target=nrm(name);
+    return (forge.exercises||[]).find(e=>nrm(e.name)===target);
+  }
+  function ensureEx(id,name,type='barbell'){
+    if(!forge.exercises) forge.exercises=[];
+    let e=forge.exercises.find(x=>x.id===id);
+    if(!e){ e={id,name,type}; forge.exercises.push(e); }
+    e.name=name; e.type=type||e.type;
+    return e;
+  }
+  function canonExerciseIds(){
+    const hipM=ensureEx('ex_hip_thrust_maq','Hip Thrust (Máquina)','machine');
+    const step=ensureEx('ex_step_manc','Step con Mancuerna','dumbbell');
+    const bulg=ensureEx('ex_sent_bulgara','Sentadilla Búlgara','dumbbell');
+    const run=ensureEx('ex_correr','Carrera / Trote','run');
+    // convertir variantes restantes por nombre
+    const aliases=['hiptrust maquina','hiptrust máquina','hip thrust maquina','hip thrust máquina','hip thrust (maquina)','hip thrust (máquina)'];
+    const dupIds=[];
+    (forge.exercises||[]).forEach(e=>{
+      if(e.id!=='ex_hip_thrust_maq' && aliases.includes(nrm(e.name))) dupIds.push(e.id);
+    });
+    (forge.sessions||[]).forEach(s=>{
+      (s.exercises||[]).forEach(ex=>{
+        const def=(forge.exercises||[]).find(e=>e.id===ex.exId);
+        if(dupIds.includes(ex.exId) || aliases.includes(nrm(def?.name||ex.name))) ex.exId='ex_hip_thrust_maq';
+        if(nrm(def?.name||ex.name)==='step con mancuerna') ex.exId='ex_step_manc';
+        if(nrm(def?.name||ex.name)==='sentadilla bulgara' || nrm(def?.name||ex.name)==='sentadilla búlgara') ex.exId='ex_sent_bulgara';
+        if(nrm(def?.name||ex.name)==='carrera / trote' || nrm(def?.name||ex.name)==='trote') ex.exId='ex_correr';
+        delete ex.name;
+      });
+    });
+    forge.exercises=(forge.exercises||[]).filter(e=>!dupIds.includes(e.id));
+  }
+  function findSession(date, routineContains){
+    const rc=nrm(routineContains||'');
+    return (forge.sessions||[]).find(s=>dayOf(s.date)===date && (!rc || nrm(s.routineName).includes(rc)));
+  }
+  function setExerciseSets(session, exId, sets){
+    if(!session) return false;
+    if(!session.exercises) session.exercises=[];
+    let ex=session.exercises.find(e=>e.exId===exId);
+    if(!ex){ ex={exId,sets:[]}; session.exercises.push(ex); }
+    ex.sets=sets;
+    return true;
+  }
+  function repairHevyKnownRecords(){
+    if(!window.forge && typeof forge==='undefined') return;
+    canonExerciseIds();
+
+    // 08-01: preservar series idénticas reales
+    const s0801=findSession('2026-01-08','tren inferior');
+    setExerciseSets(s0801,'ex_step_manc',[W(14,12),W(14,12),W(10,14)]);
+    setExerciseSets(s0801,'ex_sent_bulgara',[W(14,7),W(14,7),W(14,5),W(14,5)]);
+
+    // 08-02: distancia real, no sumada doble
+    const s0802=findSession('2026-02-08','trote') || (forge.sessions||[]).find(s=>dayOf(s.date)==='2026-02-08' && (s.exercises||[]).some(e=>e.exId==='ex_correr'));
+    setExerciseSets(s0802,'ex_correr',[R(7.74,'53:19','171','8072')]);
+
+    // 19-03: si hay sesión libre de trote, clasificarla como Trote.
+    const s1903=(forge.sessions||[]).find(s=>dayOf(s.date)==='2026-03-19' && (s.exercises||[]).some(e=>e.exId==='ex_correr'));
+    if(s1903 && nrm(s1903.routineName).includes('sesion libre')) s1903.routineName='Trote';
+
+    // Recalcular volumen simple
+    (forge.sessions||[]).forEach(s=>{
+      s.totalVolume=(s.exercises||[]).reduce((sum,ex)=>{
+        const def=(forge.exercises||[]).find(e=>e.id===ex.exId)||{};
+        if(def.type==='run'||ex.exId==='ex_correr') return sum;
+        return sum+(ex.sets||[]).filter(st=>st.done!==false).reduce((a,st)=>a+(parseFloat(st.weight)||0)*(parseInt(st.reps)||0),0);
+      },0);
+    });
+    try{ if(typeof saveDB==='function') saveDB(); }catch(e){}
+    try{ localStorage.setItem('melqart_v181_4_hevy_repaired',new Date().toISOString()); }catch(e){}
+  }
+
+  function proteinByMeals(done){
+    const n=parseInt(done||0);
+    if(n<=0) return 0;
+    if(n<=2) return 2;
+    if(n<=4) return 6;
+    if(n<=6) return 9;
+    return 13;
+  }
+  function correctedNutritionForDay(fd){
+    const meals=getMealProgress(fd);
+    const calc=calcNutritionDayDetail(fd);
+    const p=Object.assign({}, calc.portions||{});
+    const byMeals=proteinByMeals(meals.done);
+    p.proteinas=Math.max(parseFloat(p.proteinas||0), byMeals);
+    // Si el día es 7/7, completar estructura base; aceite no cuenta.
+    if(meals.done===meals.total && meals.total>0){
+      p.proteinas=Math.max(p.proteinas||0,13);
+      p.cereales=Math.max(p.cereales||0,4.5);
+      p.frutas=Math.max(p.frutas||0,2);
+      p.lacteoProtein=Math.max(p.lacteoProtein||0,2);
+      p.lacteoDescremado=Math.max(p.lacteoDescremado||0,1);
+      p.verduras=Math.max(p.verduras||0,2);
+      p.lipidos=Math.max(p.lipidos||0,0.5);
+    }
+    return {meals, portions:p, calc};
+  }
+  function adherencePct(meals,p){
+    // Regla final: 7/7 = 100%. Aceite no castiga.
+    if(meals.done===meals.total && meals.total>0) return 100;
+    const groups=['proteinas','lacteoProtein','lacteoDescremado','cereales','frutas','lipidos','verduras'];
+    let done=0,total=0;
+    groups.forEach(g=>{
+      const t=(NUTRITION_TARGETS&&NUTRITION_TARGETS[g])||0;
+      total+=t;
+      done+=Math.min(t, parseFloat(p[g]||0));
+    });
+    return total?Math.round(done/total*100):0;
+  }
+
+  // Override final del exportador de nutrición.
+  exportNutritionLines=function(fechaInicio, fechaFin){
+    const out=[], dates=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k && k.startsWith('ff_')){
+        const f=k.slice(3);
+        const d=new Date(f+'T12:00:00');
+        if(d>=fechaInicio && d<=fechaFin) dates.push(f);
+      }
+    }
+    dates.sort();
+    if(!dates.length) return out;
+    out.push('NUTRICION');
+    out.push('');
+    out.push('Fecha       Agua ml  Vasos    MetaH2O  Comidas  Prot  Cere  Frut  Lact  Verd  Lip   Aceit  Adh%');
+    out.push('-----------------------------------------------------------------------------------------------');
+    let completeDays=0, waterOk=0, waterSum=0, adhSum=0;
+    dates.forEach(f=>{
+      const fd=getFD(f);
+      const meta=getAguaMeta();
+      const vasos=fd.aguaVasosHoy ?? fd.agua ?? 0;
+      const aguaMl=fd.aguaMl ?? Math.round(vasos*(meta.mlPorVaso||250));
+      const metaMl=(meta.vasos||10)*(meta.mlPorVaso||250);
+      const cn=correctedNutritionForDay(fd);
+      const meals=cn.meals, p=cn.portions;
+      const prot=nRound(p.proteinas||0,2);
+      const adh=adherencePct(meals,p);
+      if(aguaMl>=metaMl) waterOk++;
+      waterSum+=parseFloat(vasos)||0;
+      if(meals.done===meals.total) completeDays++;
+      adhSum+=adh;
+      const fmt=f.split('-').reverse().join('/');
+      out.push(`${fmt.padEnd(10)}  ${String(aguaMl).padEnd(7)}  ${String(vasos+'/'+(meta.vasos||10)).padEnd(7)}  ${(aguaMl>=metaMl?'S':'N').padEnd(7)}  ${String(meals.done+'/'+meals.total).padEnd(7)}  ${String(prot).padEnd(5)} ${String(nRound(p.cereales||0,2)).padEnd(5)} ${String(nRound(p.frutas||0,2)).padEnd(5)} ${String(nRound((p.lacteoProtein||0)+(p.lacteoDescremado||0),2)).padEnd(5)} ${String(nRound(p.verduras||0,2)).padEnd(5)} ${String(nRound(p.lipidos||0,2)).padEnd(5)} ${String(nRound(p.aceites||0,2)).padEnd(6)} ${String(adh+'%').padEnd(5)}`);
+    });
+    out.push('');
+    out.push(`Resumen (${dates.length} dias con registro):`);
+    out.push(`  Agua promedio/dia:         ${dates.length?Math.round(waterSum/dates.length):0}/10 vasos - meta cumplida ${waterOk}/${dates.length} dias (${dates.length?Math.round(waterOk/dates.length*100):0}%)`);
+    out.push(`  Comidas dias completos:    ${completeDays}/${dates.length} dias (${dates.length?Math.round(completeDays/dates.length*100):0}%)`);
+    out.push(`  Adherencia pauta promedio: ${dates.length?Math.round(adhSum/dates.length):0}%`);
+    out.push('  Nota v181.4: aceite excluido del castigo; 7/7 comidas = 100% adherencia.');
+    out.push('');
+    return out;
+  };
+
+  // Override exportarSemana para usar exportación de sets sin colapsar y carrera sin sumar duplicados.
+  if(typeof exportarSemana==='function'){
+    exportarSemana=function(){
+      repairHevyKnownRecords();
+      const semanas=parseInt(document.getElementById('export-semanas')?.value||'4');
+      const hoy=new Date();
+      const lunes=new Date(hoy); lunes.setDate(hoy.getDate()-(hoy.getDay()||7)+1); lunes.setHours(0,0,0,0);
+      let fechaInicio;
+      if(semanas===0){ fechaInicio=new Date(0); }
+      else { fechaInicio=new Date(lunes); fechaInicio.setDate(lunes.getDate()-((semanas-1)*7)); }
+      const domingo=new Date(hoy); domingo.setHours(23,59,59,999);
+      const ses=(forge.sessions||[]).filter(s=>new Date(s.date)>=fechaInicio&&new Date(s.date)<=domingo).sort((a,b)=>a.date-b.date);
+      const fmtDate=d=>new Date(d).toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+      const fmtDur=s=>{ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; return h>0?(h+'h '+m+'m'):(m+'m '+sec+'s'); };
+      const sep='-------------------------------';
+      const lines=[];
+      lines.push(sep);
+      const tituloRango=semanas===0?'HISTORIAL COMPLETO':('ULTIMAS '+semanas+' SEMANA'+(semanas>1?'S':''));
+      lines.push(tituloRango);
+      lines.push(fechaInicio.toLocaleDateString('es-CL')+' - '+domingo.toLocaleDateString('es-CL'));
+      lines.push(sep); lines.push('');
+      if(typeof exportWeightLines==='function') lines.push(...exportWeightLines(fechaInicio,domingo));
+      if(typeof exportAnthropometryLines==='function'){
+        const a=exportAnthropometryLines(fechaInicio,domingo);
+        if(a.length) lines.push(...a);
+      }
+      if(!ses.length){ lines.push('Sin sesiones en este periodo.'); }
+      else{
+        const semanaStr=d=>{ const x=new Date(d); const l=new Date(x); l.setDate(x.getDate()-(x.getDay()||7)+1); return l.toLocaleDateString('es-CL',{day:'numeric',month:'long'}); };
+        let semActual='';
+        lines.push('SESIONES ('+ses.length+' total)'); lines.push('');
+        ses.forEach(s=>{
+          const sw=semanaStr(s.date);
+          if(sw!==semActual){ semActual=sw; lines.push('> '); lines.push('> Semana del '+sw); }
+          lines.push('> '+fmtDate(s.date)+' - '+(s.routineName||'Sesión libre'));
+          if(s.elapsed) lines.push('> Duracion: '+fmtDur(s.elapsed));
+          if(s.fcMedia) lines.push('> FC media: '+s.fcMedia+'bpm');
+          if(s.kcal) lines.push('> Calorias: '+s.kcal+'kcal');
+          if(s.pasos) lines.push('> Pasos: '+s.pasos);
+          (s.exercises||[]).forEach(ex=>{
+            const e=getEx(ex.exId); if(!e) return;
+            if(e.type==='warmup'||e.type==='stretch') return;
+            const sets=(ex.sets||[]).filter(st=>st.done!==false);
+            if(!sets.length) return;
+            if(e.type==='run'||e.type==='hiit'||ex.exId==='ex_correr'){
+              // No sumar duplicados: una sesión de trote se reporta por set real único.
+              const seen=new Set();
+              const unique=sets.filter(st=>{
+                const k=`${st.distance}|${st.time}|${st.fc||''}|${st.pasos||''}`;
+                if(seen.has(k)) return false;
+                seen.add(k); return true;
+              });
+              unique.forEach(st=>{
+                const dist=parseFloat(st.distance)||0;
+                lines.push('> '+e.name+': '+dist.toFixed(2)+'km'+(st.time?' - '+fmtTimeStr(st.time):'')+(st.fc?' - FC '+st.fc+'bpm':''));
+              });
+            }else{
+              // Preserva sets idénticos reales. No deduplica.
+              lines.push('> '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
+            }
+          });
+          lines.push('');
+        });
+      }
+      if(typeof exportNutritionLines==='function'){
+        const n=exportNutritionLines(fechaInicio,domingo);
+        if(n.length){ lines.push(sep); lines.push(...n); }
+      }
+      if(typeof exportRecoveryLines==='function'){
+        const r=exportRecoveryLines(fechaInicio,domingo);
+        if(r.length){ lines.push(sep); lines.push(...r); }
+      }
+      lines.push(sep);
+      lines.push('Generado por MELQART - '+new Date().toLocaleDateString('es-CL'));
+      const txt=lines.join('\n');
+      if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>showToast('Historial copiado al portapapeles',3000,'ok'));
+      else{
+        const modal=document.getElementById('modal-ejercicio');
+        modal.querySelector('.modal-title').textContent='Historial exportado';
+        modal.querySelector('.modal-body').innerHTML='<textarea style="width:100%;height:300px;font-family:monospace;font-size:11px;border:1px solid var(--border);border-radius:var(--r);padding:10px;resize:none" readonly>'+txt+'</textarea>';
+        modal.classList.add('show');
+      }
+      return txt;
+    };
+  }
+
+  window.melqartFix1814=function(){ repairHevyKnownRecords(); try{renderAll()}catch(e){} return localStorage.getItem('melqart_v181_4_hevy_repaired'); };
+  [200,1200,3500].forEach(ms=>setTimeout(()=>{ try{repairHevyKnownRecords();}catch(e){console.warn(LOG,e)} },ms));
+  console.info(LOG+': cargado');
+})();
+
