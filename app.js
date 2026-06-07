@@ -949,7 +949,9 @@ function exportNutritionLines(fechaInicio, fechaFin){
 }
 
 function exportarSemana(){
-  mq1815RepairCoreData();
+  // v181.7 reemplazo directo de la función original. No depende de override final.
+  if(typeof mq1815RepairCoreData==='function') mq1815RepairCoreData();
+  if(typeof melqartFix1816==='function') { try{ melqartFix1816(); }catch(e){} }
   const semanas=parseInt(document.getElementById('export-semanas')?.value||'4');
   const hoy=new Date();
   const lunes=new Date(hoy); lunes.setDate(hoy.getDate()-(hoy.getDay()||7)+1); lunes.setHours(0,0,0,0);
@@ -1010,9 +1012,11 @@ function exportarSemana(){
             if(!seen.has(key)){ seen.add(key); unique.push(st); }
           });
           unique.forEach(st=>{
-            lines.push('> '+e.name+': '+mq1815FormatRunSet(st));
+            const dist=parseFloat(st.distance)||0;
+            lines.push('> '+e.name+': '+dist.toFixed(2)+'km'+(st.time?' - '+fmtTimeStr(st.time):'')+(st.fc?' - FC '+st.fc+'bpm':''));
           });
         } else {
+          // v181.7: preservar todas las series, incluso idénticas. No deduplicar sets.
           lines.push('> '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
         }
       });
@@ -1036,7 +1040,7 @@ function exportarSemana(){
   }
 
   lines.push(sep);
-  lines.push('Corrección v181.5 aplicada en exportador');
+  lines.push('Corrección v181.7 aplicada en exportador DIRECTO');
   lines.push('Generado por MELQART - '+new Date().toLocaleDateString('es-CL'));
   const txt=lines.join('\n');
   if(navigator.clipboard){
@@ -10728,4 +10732,21 @@ try{
   window.melqartFix1816=function(){ repair1816(); try{renderAll()}catch(e){} return localStorage.getItem('melqart_v181_6_core_repaired'); };
   setTimeout(()=>{ try{ repair1816(); }catch(e){} }, 700);
   console.info('MELQART v181.6 FINAL cargado: exportarSemana/exportNutritionLines sobrescritos al final');
+})();
+
+
+
+// MELQART v181.7 hard binding
+(function(){
+  try{
+    window.exportarSemana = exportarSemana;
+    window.melqartDiagnosticoExportador = function(){
+      return {
+        exportarSemanaV1817: exportarSemana.toString().includes('v181.7'),
+        exportNutritionV1816: typeof exportNutritionLines==='function' && exportNutritionLines.toString().includes('v181.6'),
+        exportNutritionV1815: typeof exportNutritionLines==='function' && exportNutritionLines.toString().includes('v181.5')
+      };
+    };
+    console.info('MELQART v181.7 cargado: exportarSemana reemplazado en función original');
+  }catch(e){ console.warn('MELQART v181.7 hard binding error', e); }
 })();
