@@ -10750,3 +10750,399 @@ try{
     console.info('MELQART v181.7 cargado: exportarSemana reemplazado en función original');
   }catch(e){ console.warn('MELQART v181.7 hard binding error', e); }
 })();
+
+
+
+// ---------------------------------------------------------------
+// MELQART v181.8 — último override efectivo de exportarSemana
+// Diagnóstico anterior: exportNutritionLines v181.6 = true, exportarSemana v181.7 = false.
+// Este bloque va al final y redefine exportarSemana después de todos los parches previos.
+// ---------------------------------------------------------------
+(function(){
+  function fixBeforeExport1818(){
+    try{ if(typeof melqartFix1816==='function') melqartFix1816(); }catch(e){}
+    try{ if(typeof mq1815RepairCoreData==='function') mq1815RepairCoreData(); }catch(e){}
+  }
+  function fmtRun1818(st){
+    const dist=parseFloat(st.distance)||0;
+    return dist.toFixed(2)+'km'+(st.time?' - '+fmtTimeStr(st.time):'')+(st.fc?' - FC '+st.fc+'bpm':'');
+  }
+  exportarSemana = function(){
+    // v181.8 reemplazo final efectivo
+    fixBeforeExport1818();
+    const semanas=parseInt(document.getElementById('export-semanas')?.value||'4');
+    const hoy=new Date();
+    const lunes=new Date(hoy); lunes.setDate(hoy.getDate()-(hoy.getDay()||7)+1); lunes.setHours(0,0,0,0);
+    let fechaInicio;
+    if(semanas===0){
+      fechaInicio=new Date(0);
+    } else {
+      fechaInicio=new Date(lunes);
+      fechaInicio.setDate(lunes.getDate()-((semanas-1)*7));
+    }
+    const domingo=new Date(hoy); domingo.setHours(23,59,59,999);
+    const ses=(forge.sessions||[]).filter(s=>new Date(s.date)>=fechaInicio&&new Date(s.date)<=domingo).sort((a,b)=>a.date-b.date);
+    const fmtDate=d=>new Date(d).toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    const fmtDur=s=>{ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; return h>0?(h+'h '+m+'m'):(m+'m '+sec+'s'); };
+    const sep='-------------------------------';
+    const lines=[];
+    lines.push(sep);
+    const tituloRango=semanas===0?'HISTORIAL COMPLETO':('ULTIMAS '+semanas+' SEMANA'+(semanas>1?'S':''));
+    lines.push(tituloRango);
+    lines.push(fechaInicio.toLocaleDateString('es-CL')+' - '+domingo.toLocaleDateString('es-CL'));
+    lines.push(sep);
+    lines.push('');
+    if(typeof exportWeightLines==='function') lines.push(...exportWeightLines(fechaInicio,domingo));
+    if(typeof exportAnthropometryLines==='function'){
+      const anthroLines=exportAnthropometryLines(fechaInicio,domingo);
+      if(anthroLines.length) lines.push(...anthroLines);
+    }
+    if(!ses.length){
+      lines.push('Sin sesiones en este periodo.');
+    } else {
+      const semanaStr=d=>{ const x=new Date(d); const l=new Date(x); l.setDate(x.getDate()-(x.getDay()||7)+1); return l.toLocaleDateString('es-CL',{day:'numeric',month:'long'}); };
+      let semActual='';
+      lines.push('SESIONES ('+ses.length+' total)');
+      lines.push('');
+      ses.forEach(s=>{
+        const sw=semanaStr(s.date);
+        if(sw!==semActual){ semActual=sw; lines.push('> '); lines.push('> Semana del '+sw); }
+        lines.push('> '+fmtDate(s.date)+' - '+(s.routineName||'Sesion libre'));
+        if(s.elapsed) lines.push('> Duracion: '+fmtDur(s.elapsed));
+        if(s.fcMedia) lines.push('> FC media: '+s.fcMedia+'bpm');
+        if(s.kcal) lines.push('> Calorias: '+s.kcal+'kcal');
+        if(s.pasos) lines.push('> Pasos: '+s.pasos);
+        (s.exercises||[]).forEach(ex=>{
+          const e=getEx(ex.exId); if(!e) return;
+          if(e.type==='warmup'||e.type==='stretch') return;
+          const sets=(ex.sets||[]).filter(st=>st.done!==false);
+          if(!sets.length) return;
+          if(e.type==='run'||e.type==='hiit'||ex.exId==='ex_correr'){
+            const seen=new Set();
+            const unique=[];
+            sets.forEach(st=>{
+              const key=[st.distance,st.time,st.fc||'',st.pasos||''].join('|');
+              if(!seen.has(key)){ seen.add(key); unique.push(st); }
+            });
+            unique.forEach(st=>lines.push('> '+e.name+': '+fmtRun1818(st)));
+          } else {
+            // v181.8: no deduplicar series idénticas.
+            lines.push('> '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
+          }
+        });
+        lines.push('');
+      });
+    }
+    if(typeof exportNutritionLines==='function'){
+      const nutritionLines=exportNutritionLines(fechaInicio,domingo);
+      if(nutritionLines.length){ lines.push(sep); lines.push(...nutritionLines); }
+    }
+    if(typeof exportRecoveryLines==='function'){
+      const recoveryLines=exportRecoveryLines(fechaInicio,domingo);
+      if(recoveryLines.length){ lines.push(sep); lines.push(...recoveryLines); }
+    }
+    lines.push(sep);
+    lines.push('Corrección v181.8 aplicada en exportador FINAL');
+    lines.push('Generado por MELQART - '+new Date().toLocaleDateString('es-CL'));
+    const txt=lines.join('\n');
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(txt).then(()=>showToast('Historial copiado al portapapeles',3000,'ok'));
+    } else {
+      const modal=document.getElementById('modal-ejercicio');
+      modal.querySelector('.modal-title').textContent='Historial exportado';
+      modal.querySelector('.modal-body').innerHTML='<textarea style="width:100%;height:300px;font-family:monospace;font-size:11px;border:1px solid var(--border);border-radius:var(--r);padding:10px;resize:none" readonly>'+txt+'</textarea>';
+      modal.classList.add('show');
+    }
+    return txt;
+  };
+  window.exportarSemana=exportarSemana;
+  window.melqartDiagnosticoExportador=function(){
+    return {
+      exportarSemanaV1818: exportarSemana.toString().includes('v181.8'),
+      exportarSemanaV1817: exportarSemana.toString().includes('v181.7'),
+      exportNutritionV1816: typeof exportNutritionLines==='function' && exportNutritionLines.toString().includes('v181.6'),
+      exportNutritionV1815: typeof exportNutritionLines==='function' && exportNutritionLines.toString().includes('v181.5')
+    };
+  };
+  console.info('MELQART v181.8 cargado: exportarSemana final sobrescrito al final del archivo');
+})();
+
+
+
+// ---------------------------------------------------------------
+// MELQART v184 — importador JSON carrera + medidas con huincha
+// ---------------------------------------------------------------
+(function mq184Importers(){
+  function mq184Today(){
+    try { return typeof today==='function' ? today() : new Date().toISOString().slice(0,10); }
+    catch(e){ return new Date().toISOString().slice(0,10); }
+  }
+  function mq184NormDate(d){
+    if(!d) return mq184Today();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    const dt=new Date(d);
+    if(!isNaN(dt)) return dt.toISOString().slice(0,10);
+    return mq184Today();
+  }
+  function mq184TimeToSeconds(v){
+    if(typeof v==='number') return Math.round(v);
+    const s=String(v||'').trim();
+    if(!s) return 0;
+    const parts=s.split(':').map(x=>parseInt(x,10)||0);
+    if(parts.length===3) return parts[0]*3600+parts[1]*60+parts[2];
+    if(parts.length===2) return parts[0]*60+parts[1];
+    return parseInt(s,10)||0;
+  }
+  function mq184SecondsToDuration(sec){
+    sec=Math.round(sec||0);
+    const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+    return h>0 ? `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  function mq184EnsureExercise(id,name,type){
+    if(!forge.exercises) forge.exercises=[];
+    let e=forge.exercises.find(x=>x.id===id);
+    if(!e){ e={id,name,type}; forge.exercises.push(e); }
+    e.name=name; e.type=type||e.type;
+    return e;
+  }
+  function mq184EnsureRoutine(id,name,exerciseIds,emoji='◎'){
+    if(!forge.routines) forge.routines=[];
+    let r=forge.routines.find(x=>x.id===id);
+    if(!r){ r={id,name,emoji,exercises:exerciseIds||[],restSec:90}; forge.routines.push(r); }
+    r.name=name; r.emoji=emoji; r.exercises=exerciseIds||r.exercises||[];
+    return r;
+  }
+  function mq184RunJsonToSession(raw){
+    const j=typeof raw==='string' ? JSON.parse(raw) : raw;
+    const date=mq184NormDate(j.date);
+    const time=String(j.time||'12:00').slice(0,5);
+    const ts=new Date(`${date}T${time}:00`).getTime();
+    const distance=Number(j.distanceKm ?? j.distance ?? j.km ?? 0);
+    const duration=String(j.duration || j.timeTotal || j.elapsed || '');
+    const seconds=mq184TimeToSeconds(duration);
+    const avgPaceReported=j.avgPace || j.ritmoPromedio || j.pace || '';
+    const calcPace=distance>0 && seconds>0 ? mq184SecondsToDuration(seconds/distance) : '';
+    const avgHeartRate=j.avgHeartRate ?? j.fcMedia ?? j.heartRate ?? j.hr ?? '';
+    const calories=j.calories ?? j.kcal ?? '';
+    const steps=j.steps ?? j.pasos ?? '';
+    const strideCm=j.strideCm ?? j.zancadaCm ?? j.pasoMedioCm ?? '';
+    const routineName=j.routineName || 'Domingo — Cardio';
+    mq184EnsureExercise('ex_correr','Carrera / Trote','run');
+    const routine=mq184EnsureRoutine('rut_domingo_cardio','Domingo — Cardio',['ex_correr'],'◎');
+
+    let sess=(forge.sessions||[]).find(s=>{
+      const d=(typeof localDateStr==='function') ? localDateStr(s.date) : new Date(s.date).toISOString().slice(0,10);
+      return d===date && (s.exercises||[]).some(e=>e.exId==='ex_correr');
+    });
+    if(!sess){
+      sess={
+        id:'run_import_'+date.replaceAll('-','')+'_'+String(Date.now()).slice(-5),
+        routineId:routine.id,
+        routineName,
+        date:ts,
+        elapsed:seconds,
+        source:j.source||'json_carrera',
+        exercises:[]
+      };
+      if(!forge.sessions) forge.sessions=[];
+      forge.sessions.push(sess);
+    }
+    sess.routineId=sess.routineId||routine.id;
+    sess.routineName=routineName;
+    sess.date=ts;
+    sess.elapsed=seconds || sess.elapsed || 0;
+    sess.fcMedia=avgHeartRate ? Number(avgHeartRate) : sess.fcMedia;
+    sess.kcal=calories!=='' ? Number(calories) : sess.kcal;
+    sess.pasos=steps!=='' ? Number(steps) : sess.pasos;
+    sess.source=j.source||sess.source||'json_carrera';
+    sess.importedRun={
+      distanceKm:distance,
+      duration,
+      avgHeartRate:avgHeartRate?Number(avgHeartRate):null,
+      calories:calories!==''?Number(calories):null,
+      steps:steps!==''?Number(steps):null,
+      strideCm:strideCm!==''?Number(strideCm):null,
+      avgPaceReported,
+      avgPaceCalculated:calcPace,
+      source:j.source||'json_carrera'
+    };
+    let ex=(sess.exercises||[]).find(e=>e.exId==='ex_correr');
+    if(!ex){ ex={exId:'ex_correr',sets:[]}; sess.exercises.push(ex); }
+    ex.sets=[{
+      type:'run', done:true, weight:0, reps:0,
+      distance:String(distance),
+      time:duration,
+      fc:avgHeartRate?String(avgHeartRate):'',
+      pasos:steps?String(steps):'',
+      calories:calories,
+      strideCm:strideCm,
+      avgPaceReported,
+      avgPaceCalculated:calcPace
+    }];
+    try{ if(typeof saveDB==='function') saveDB(); }catch(e){}
+    try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
+    return sess;
+  }
+  function mq184NormalizeTapeJson(raw){
+    const j=typeof raw==='string' ? JSON.parse(raw) : raw;
+    const m=j.measurements || j.medidas || j.perimetros || j;
+    const n=v=>v===''||v===undefined||v===null?null:Number(v);
+    return {
+      date:mq184NormDate(j.date),
+      anthropometry:true,
+      source:j.source || 'huincha_semanal',
+      perimetros:{
+        cinturaOmbligo:n(m.cinturaOmbligo ?? m.cintura ?? m.contornoCintura),
+        pecho:n(m.pecho ?? m.torax ?? m.contornoPecho),
+        bicepsRelajado:n(m.bicepsRelajado ?? m.bícepsRelajado ?? m.brazoRelajado),
+        bicepsApretado:n(m.bicepsApretado ?? m.bícepsApretado ?? m.brazoFlexTension),
+        muslo:n(m.muslo ?? m.musloMedial),
+        cadera:n(m.cadera ?? m.caderaMaxima)
+      }
+    };
+  }
+  function mq184UpsertTape(raw){
+    const rec=mq184NormalizeTapeJson(raw);
+    if(!forge.bodyMetrics) forge.bodyMetrics=[];
+    if(!forge.anthropometry) forge.anthropometry=[];
+    const mergeInto=(arr)=>{
+      const idx=arr.findIndex(x=>x.date===rec.date && (x.source==='huincha_semanal' || x.source==='medicion_huincha_semanal'));
+      if(idx>=0) arr[idx]={...arr[idx], ...rec, perimetros:{...(arr[idx].perimetros||{}), ...rec.perimetros}};
+      else arr.push(rec);
+    };
+    mergeInto(forge.bodyMetrics);
+    mergeInto(forge.anthropometry);
+    try{ if(typeof normalizeAnthropometry==='function') normalizeAnthropometry(); }catch(e){}
+    try{ if(typeof saveDB==='function') saveDB(); }catch(e){}
+    try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
+    return rec;
+  }
+  function mq184Modal(title, placeholder, onLoad){
+    const modalBg=document.createElement('div');
+    modalBg.className='modal-bg on';
+    modalBg.id='mq184-json-modal';
+    modalBg.innerHTML=`<div class="modal" style="max-height:88dvh">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <div class="modal-title">${title}</div>
+        <button class="bicon" onclick="document.getElementById('mq184-json-modal')?.remove()">×</button>
+      </div>
+      <div class="modal-body">
+        <textarea id="mq184-json-text" style="width:100%;height:260px;font-family:monospace;font-size:12px;border:1px solid var(--border);border-radius:var(--r);padding:10px;background:var(--bg2);color:var(--ink)" placeholder='${placeholder.replaceAll("'","&#39;")}'></textarea>
+        <div id="mq184-json-err" style="color:var(--warn);font-size:12px;margin-top:8px;display:none"></div>
+        <button class="btn btn-p" style="margin-top:12px" onclick="mq184ConfirmJsonImport()">Cargar JSON</button>
+      </div>
+    </div>`;
+    window._mq184OnLoad=onLoad;
+    window.mq184ConfirmJsonImport=function(){
+      const txt=document.getElementById('mq184-json-text').value.trim();
+      const err=document.getElementById('mq184-json-err');
+      try{
+        const obj=JSON.parse(txt);
+        const res=window._mq184OnLoad(obj);
+        document.getElementById('mq184-json-modal')?.remove();
+        if(typeof showToast==='function') showToast('Datos cargados correctamente',3000,'ok');
+        console.log('MELQART v184 import OK', res);
+      }catch(e){
+        err.style.display='block';
+        err.textContent='JSON inválido o incompleto: '+(e.message||e);
+      }
+    };
+    modalBg.addEventListener('click', e=>{ if(e.target===modalBg) modalBg.remove(); });
+    document.body.appendChild(modalBg);
+  }
+
+  window.openRunJsonImporter=function(){
+    mq184Modal('Cargar datos de carrera', `{
+  "date": "2026-06-07",
+  "time": "09:27",
+  "type": "trote",
+  "routineName": "Domingo — Cardio",
+  "exerciseName": "Carrera / Trote",
+  "distanceKm": 10.01,
+  "duration": "01:19:36",
+  "avgHeartRate": 148,
+  "calories": 269.3,
+  "steps": 11568,
+  "strideCm": 87,
+  "avgPace": "8:56",
+  "source": "captura_reloj"
+}`, mq184RunJsonToSession);
+  };
+  window.openTapeJsonImporter=function(){
+    mq184Modal('Cargar medidas con huincha', `{
+  "date": "2026-06-07",
+  "source": "huincha_semanal",
+  "measurements": {
+    "cinturaOmbligo": 97,
+    "pecho": 111,
+    "bicepsRelajado": 36,
+    "bicepsApretado": 38,
+    "muslo": 60,
+    "cadera": 110
+  }
+}`, mq184UpsertTape);
+  };
+  window.importRunJson=window.mq184RunJsonToSession=mq184RunJsonToSession;
+  window.importTapeMeasurementsJson=window.mq184UpsertTape=mq184UpsertTape;
+
+  // Extender métricas de perímetros con huincha, sin romper informes antropométricos.
+  function ensureTapeMetrics(){
+    if(!window.ANTRO_METRICS || !ANTRO_METRICS.perimetros) return;
+    const add=(key,label,path)=>{
+      if(!ANTRO_METRICS.perimetros.some(x=>x.key===key)){
+        ANTRO_METRICS.perimetros.push({key,label,unit:'cm',color:'var(--teal)',path});
+      }
+    };
+    add('cinturaOmbligo','Cintura ombligo','perimetros.cinturaOmbligo');
+    add('pecho','Pecho','perimetros.pecho');
+    add('bicepsRelajado','Bíceps relajado','perimetros.bicepsRelajado');
+    add('bicepsApretado','Bíceps apretado','perimetros.bicepsApretado');
+    add('musloHuincha','Muslo huincha','perimetros.muslo');
+    add('caderaHuincha','Cadera huincha','perimetros.cadera');
+  }
+  ensureTapeMetrics();
+
+  // Añadir botones sin reescribir toda la pantalla.
+  const oldRenderRutinas=typeof renderRutinas==='function' ? renderRutinas : null;
+  if(oldRenderRutinas && !window._mq184RenderRutinasHooked){
+    window._mq184RenderRutinasHooked=true;
+    renderRutinas=function(){
+      oldRenderRutinas.apply(this,arguments);
+      const top=document.getElementById('train-topbar-right');
+      if(top && !document.getElementById('mq184-run-import-btn')){
+        top.innerHTML = `<button id="mq184-run-import-btn" class="btn btn-ghost btn-sm" onclick="openRunJsonImporter()">Cargar trote</button>` + top.innerHTML;
+      }
+      const list=document.getElementById('rutinas-list');
+      if(list && !document.getElementById('mq184-tape-import-card')){
+        list.insertAdjacentHTML('afterbegin', `<div id="mq184-tape-import-card" class="rutina-card" style="border-color:var(--border2);padding:14px 16px">
+          <div class="rutina-name">Medidas con huincha</div>
+          <div class="rutina-meta">Cintura, pecho, bíceps, muslo y cadera</div>
+          <button class="btn btn-p" style="margin-top:10px" onclick="openTapeJsonImporter()">Cargar medidas</button>
+        </div>`);
+      }
+      // En tarjetas de cardio/correr, añadir botón cargar datos.
+      document.querySelectorAll('.rutina-card').forEach(card=>{
+        const txt=card.textContent||'';
+        if(/cardio|trote|correr|domingo/i.test(txt) && !card.querySelector('.mq184-load-run-inline')){
+          card.insertAdjacentHTML('beforeend', `<button class="mq184-load-run-inline" onclick="event.stopPropagation();openRunJsonImporter()"
+            style="width:100%;padding:10px;background:var(--bg2);color:var(--p);border:0;border-top:1px solid var(--border);font-family:var(--ff);font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer">
+            Cargar datos
+          </button>`);
+        }
+      });
+    };
+  }
+
+  // Si está la pantalla progreso abierta, que se pueda re-renderizar con nuevas métricas.
+  const oldRenderProgCuerpo=typeof renderProgCuerpo==='function' ? renderProgCuerpo : null;
+  if(oldRenderProgCuerpo && !window._mq184RenderProgCuerpoHooked){
+    window._mq184RenderProgCuerpoHooked=true;
+    renderProgCuerpo=function(){
+      ensureTapeMetrics();
+      return oldRenderProgCuerpo.apply(this,arguments);
+    };
+  }
+
+  console.info('MELQART v184 importadores cargados');
+})();

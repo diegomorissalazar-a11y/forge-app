@@ -1,12 +1,21 @@
-# MELQART v181.7
+# MELQART v184 — importadores manuales
 
-Reemplazo directo de la función `function exportarSemana()` original, porque el diagnóstico mostró:
-- melqartFix1816: function
-- exportNutritionLines v181.6: true
-- exportarSemana v181.6: false
+Incluye:
+- Importador JSON de carrera/trote.
+- Importador JSON de medidas con huincha.
+- Botón `Cargar trote` en Entrenar.
+- Botón `Cargar medidas` en Entrenar.
+- Botón `Cargar datos` en tarjetas de cardio/trote/domingo.
+- Gráficos de tendencia para nuevas métricas de huincha en Progreso > Perímetros:
+  - Cintura ombligo
+  - Pecho
+  - Bíceps relajado
+  - Bíceps apretado
+  - Muslo huincha
+  - Cadera huincha
 
-Validar en consola:
-melqartDiagnosticoExportador()
-
-Debe mostrar:
-exportarSemanaV1817: true
+Funciones de consola:
+- importRunJson({...})
+- importTapeMeasurementsJson({...})
+- openRunJsonImporter()
+- openTapeJsonImporter()
