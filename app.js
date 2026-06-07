@@ -803,6 +803,106 @@ function initRutinas(){
 //  SCREEN: INICIO
 // ---------------------------------------------------------------
 
+
+// ---------------------------------------------------------------
+//  MELQART v181.5 — núcleo corregido exportación + nutrición
+// ---------------------------------------------------------------
+function mq1815DayOf(ts){
+  try { return typeof localDateStr==='function' ? localDateStr(ts) : new Date(ts).toISOString().slice(0,10); }
+  catch(e){ return new Date(ts).toISOString().slice(0,10); }
+}
+function mq1815W(weight,reps){
+  return {type:'weight',done:true,weight:parseFloat(weight)||0,reps:parseInt(reps)||0,distance:'',time:'',fc:'',pasos:''};
+}
+function mq1815R(distance,time,fc='',pasos=''){
+  return {type:'run',done:true,weight:0,reps:0,distance:String(distance||''),time:String(time||''),fc:String(fc||''),pasos:String(pasos||'')};
+}
+function mq1815EnsureEx(id,name,type){
+  if(!forge.exercises) forge.exercises=[];
+  let e=forge.exercises.find(x=>x.id===id);
+  if(!e){ e={id,name,type}; forge.exercises.push(e); }
+  e.name=name; e.type=type||e.type;
+  return e;
+}
+function mq1815SetExerciseSets(session, exId, sets){
+  if(!session) return false;
+  if(!session.exercises) session.exercises=[];
+  let ex=session.exercises.find(e=>e.exId===exId);
+  if(!ex){ ex={exId,sets:[]}; session.exercises.push(ex); }
+  ex.sets=sets;
+  return true;
+}
+function mq1815RepairCoreData(){
+  mq1815EnsureEx('ex_step_manc','Step con Mancuerna','dumbbell');
+  mq1815EnsureEx('ex_sent_bulgara','Sentadilla Búlgara','dumbbell');
+  mq1815EnsureEx('ex_correr','Carrera / Trote','run');
+  mq1815EnsureEx('ex_hip_thrust_maq','Hip Thrust (Máquina)','machine');
+
+  const s0801=(forge.sessions||[]).find(s=>mq1815DayOf(s.date)==='2026-01-08' && String(s.routineName||'').toLowerCase().includes('inferior'));
+  mq1815SetExerciseSets(s0801,'ex_step_manc',[mq1815W(14,12),mq1815W(14,12),mq1815W(10,14)]);
+  mq1815SetExerciseSets(s0801,'ex_sent_bulgara',[mq1815W(14,7),mq1815W(14,7),mq1815W(14,5),mq1815W(14,5)]);
+
+  const s0802=(forge.sessions||[]).find(s=>mq1815DayOf(s.date)==='2026-02-08' && (s.exercises||[]).some(e=>e.exId==='ex_correr'));
+  mq1815SetExerciseSets(s0802,'ex_correr',[mq1815R(7.74,'53:19','171','8072')]);
+
+  const s1903=(forge.sessions||[]).find(s=>mq1815DayOf(s.date)==='2026-03-19' && (s.exercises||[]).some(e=>e.exId==='ex_correr'));
+  if(s1903 && String(s1903.routineName||'').toLowerCase().includes('sesión libre')) s1903.routineName='Trote';
+  if(s1903 && String(s1903.routineName||'').toLowerCase().includes('sesion libre')) s1903.routineName='Trote';
+
+  // Normalizar cualquier variante restante de hip thrust máquina.
+  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const aliases=['hiptrust maquina','hip thrust maquina','hip thrust (maquina)'];
+  const dupIds=(forge.exercises||[]).filter(e=>e.id!=='ex_hip_thrust_maq' && aliases.includes(norm(e.name))).map(e=>e.id);
+  (forge.sessions||[]).forEach(sess=>{
+    (sess.exercises||[]).forEach(ex=>{
+      const def=(forge.exercises||[]).find(e=>e.id===ex.exId);
+      if(dupIds.includes(ex.exId) || aliases.includes(norm(def?.name))) ex.exId='ex_hip_thrust_maq';
+    });
+  });
+  forge.exercises=(forge.exercises||[]).filter(e=>!dupIds.includes(e.id));
+
+  try{ localStorage.setItem('melqart_v181_5_core_repaired', new Date().toISOString()); }catch(e){}
+}
+function mq1815ProteinByMeals(done){
+  const n=parseInt(done||0);
+  if(n<=0) return 0;
+  if(n<=2) return 2;
+  if(n<=4) return 6;
+  if(n<=6) return 9;
+  return 13;
+}
+function mq1815NutritionForDay(fd){
+  const meals=getMealProgress(fd);
+  const calc=calcNutritionDayDetail(fd);
+  const p=Object.assign({}, calc.portions||{});
+  p.proteinas=Math.max(parseFloat(p.proteinas||0), mq1815ProteinByMeals(meals.done));
+  if(meals.done===meals.total && meals.total>0){
+    p.proteinas=Math.max(parseFloat(p.proteinas||0),13);
+    p.cereales=Math.max(parseFloat(p.cereales||0),4.5);
+    p.frutas=Math.max(parseFloat(p.frutas||0),2);
+    p.lacteoProtein=Math.max(parseFloat(p.lacteoProtein||0),2);
+    p.lacteoDescremado=Math.max(parseFloat(p.lacteoDescremado||0),1);
+    p.verduras=Math.max(parseFloat(p.verduras||0),2);
+    p.lipidos=Math.max(parseFloat(p.lipidos||0),0.5);
+  }
+  return {meals, portions:p};
+}
+function mq1815Adherence(meals,p){
+  if(meals.done===meals.total && meals.total>0) return 100;
+  const groups=['proteinas','lacteoProtein','lacteoDescremado','cereales','frutas','lipidos','verduras']; // aceite excluido
+  let done=0,total=0;
+  groups.forEach(g=>{
+    const t=(NUTRITION_TARGETS&&NUTRITION_TARGETS[g])||0;
+    total+=t;
+    done+=Math.min(t, parseFloat(p[g]||0));
+  });
+  return total?Math.round(done/total*100):0;
+}
+function mq1815FormatRunSet(st){
+  const dist=parseFloat(st.distance)||0;
+  return dist.toFixed(2)+'km'+(st.time?' - '+fmtTimeStr(st.time):'')+(st.fc?' - FC '+st.fc+'bpm':'');
+}
+
 function exportNutritionLines(fechaInicio, fechaFin){
   const out=[];
   const dates=[];
@@ -818,56 +918,43 @@ function exportNutritionLines(fechaInicio, fechaFin){
   if(!dates.length) return out;
   out.push('NUTRICION');
   out.push('');
-  out.push('Fecha       Agua ml  Vasos    MetaH2O  Comidas  Proteina        Cere  Frut  LactProt LactDesc Verd  Adh%');
-  out.push('------------------------------------------------------------------------------------------------');
-  let totalProt=0, totalProtDays=0, completeDays=0, waterOk=0, waterSum=0;
+  out.push('Fecha       Agua ml  Vasos    MetaH2O  Comidas  Prot  Cere  Frut  Lact  Verd  Lip   Aceit  Adh%');
+  out.push('-----------------------------------------------------------------------------------------------');
+  let completeDays=0, waterOk=0, waterSum=0, adhSum=0;
   dates.forEach(f=>{
     const fd=getFD(f);
     const meta=getAguaMeta();
     const vasos=fd.aguaVasosHoy ?? fd.agua ?? 0;
     const aguaMl=fd.aguaMl ?? Math.round(vasos*(meta.mlPorVaso||250));
     const metaMl=(meta.vasos||10)*(meta.mlPorVaso||250);
-    const meals=getMealProgress(fd);
-    const calc=calcNutritionDayDetail(fd);
-    const p=calc.portions;
-    const prot=nRound(p.proteinas||0,2);
-    const protPct=NUTRITION_TARGETS.proteinas?Math.round(prot/NUTRITION_TARGETS.proteinas*100):0;
-    const groups=['proteinas','lacteoProtein','lacteoDescremado','cereales','frutas','lipidos','aceites','verduras'];
-    let done=0,total=0;
-    groups.forEach(g=>{ const t=NUTRITION_TARGETS[g]||0; total+=t; done+=Math.min(t,p[g]||0); });
-    const adh=total?Math.round(done/total*100):0;
+    const cn=mq1815NutritionForDay(fd);
+    const meals=cn.meals;
+    const p=cn.portions;
+    const adh=mq1815Adherence(meals,p);
     if(aguaMl>=metaMl) waterOk++;
-    waterSum+=vasos;
+    waterSum+=parseFloat(vasos)||0;
     if(meals.done===meals.total) completeDays++;
-    if(prot>0){ totalProt+=prot; totalProtDays++; }
+    adhSum+=adh;
     const fmt=f.split('-').reverse().join('/');
-    out.push(`${fmt.padEnd(10)}  ${String(aguaMl).padEnd(7)}  ${String(vasos+'/'+(meta.vasos||10)).padEnd(7)}  ${(aguaMl>=metaMl?'S':'N').padEnd(7)}  ${String(meals.done+'/'+meals.total).padEnd(7)}  ${String(prot+' / 12 ('+protPct+'%)').padEnd(15)} ${String(nRound(p.cereales||0,2)).padEnd(5)} ${String(nRound(p.frutas||0,2)).padEnd(5)} ${String(nRound(p.lacteoProtein||0,2)).padEnd(8)} ${String(nRound(p.lacteoDescremado||0,2)).padEnd(8)} ${String(nRound(p.verduras||0,2)).padEnd(5)} ${adh}%`);
-    const detailLines=[];
-    calc.details.forEach(d=>{
-      (d.details||[]).forEach(x=>detailLines.push(`    - ${d.name}: ${x}`));
-    });
-    if(detailLines.length){
-      out.push('    Detalle cálculo:');
-      out.push(...detailLines.slice(0,10));
-      if(detailLines.length>10) out.push(`    ... ${detailLines.length-10} líneas más`);
-    }
+    out.push(`${fmt.padEnd(10)}  ${String(aguaMl).padEnd(7)}  ${String(vasos+'/'+(meta.vasos||10)).padEnd(7)}  ${(aguaMl>=metaMl?'S':'N').padEnd(7)}  ${String(meals.done+'/'+meals.total).padEnd(7)}  ${String(nRound(p.proteinas||0,2)).padEnd(5)} ${String(nRound(p.cereales||0,2)).padEnd(5)} ${String(nRound(p.frutas||0,2)).padEnd(5)} ${String(nRound((p.lacteoProtein||0)+(p.lacteoDescremado||0),2)).padEnd(5)} ${String(nRound(p.verduras||0,2)).padEnd(5)} ${String(nRound(p.lipidos||0,2)).padEnd(5)} ${String(nRound(p.aceites||0,2)).padEnd(6)} ${String(adh+'%').padEnd(5)}`);
   });
   out.push('');
   out.push(`Resumen (${dates.length} dias con registro):`);
   out.push(`  Agua promedio/dia:         ${dates.length?Math.round(waterSum/dates.length):0}/10 vasos - meta cumplida ${waterOk}/${dates.length} dias (${dates.length?Math.round(waterOk/dates.length*100):0}%)`);
   out.push(`  Comidas dias completos:    ${completeDays}/${dates.length} dias (${dates.length?Math.round(completeDays/dates.length*100):0}%)`);
-  out.push(`  Proteina promedio:         ${totalProtDays?nRound(totalProt/totalProtDays,1):0}/12 porciones`);
+  out.push(`  Adherencia pauta promedio: ${dates.length?Math.round(adhSum/dates.length):0}%`);
+  out.push('  Corrección v181.5 aplicada: aceite excluido; 7/7 comidas = 100%; proteína por platos.');
   out.push('');
   return out;
 }
 
 function exportarSemana(){
+  mq1815RepairCoreData();
   const semanas=parseInt(document.getElementById('export-semanas')?.value||'4');
   const hoy=new Date();
   const lunes=new Date(hoy); lunes.setDate(hoy.getDate()-(hoy.getDay()||7)+1); lunes.setHours(0,0,0,0);
   let fechaInicio;
   if(semanas===0){
-    // Todo el historial
     fechaInicio=new Date(0);
   } else {
     fechaInicio=new Date(lunes);
@@ -882,19 +969,10 @@ function exportarSemana(){
   lines.push(sep);
   const tituloRango=semanas===0?'HISTORIAL COMPLETO':('ULTIMAS '+semanas+' SEMANA'+(semanas>1?'S':''));
   lines.push(tituloRango);
-  lines.push(fechaInicio.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'})+' - '+domingo.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'}));
+  lines.push(fechaInicio.toLocaleDateString('es-CL')+' - '+domingo.toLocaleDateString('es-CL'));
   lines.push(sep);
   lines.push('');
-
-  // Peso corporal
-  const pesos=(forge.bodyMetrics||[]).filter(m=>{ const d=new Date(m.date+'T12:00:00'); return d>=fechaInicio&&d<=domingo; }).sort((a,b)=>a.date>b.date?1:-1);
-  if(pesos.length){
-    lines.push('PESO CORPORAL');
-    pesos.forEach(m=>lines.push('  '+m.date+': '+m.peso+'kg'+(m.imc?' - IMC '+m.imc:'')));
-    lines.push('');
-  }
-
-  // v171: exportar antropometría completa si existe
+  if(typeof exportWeightLines === 'function') lines.push(...exportWeightLines(fechaInicio, domingo));
   if(typeof exportAnthropometryLines === 'function'){
     const anthroLines = exportAnthropometryLines(fechaInicio, domingo);
     if(anthroLines.length) lines.push(...anthroLines);
@@ -903,7 +981,6 @@ function exportarSemana(){
   if(!ses.length){
     lines.push('Sin sesiones en este periodo.');
   } else {
-    // Agrupar por semana
     const semanaStr=d=>{ const x=new Date(d); const l=new Date(x); l.setDate(x.getDate()-(x.getDay()||7)+1); return l.toLocaleDateString('es-CL',{day:'numeric',month:'long'}); };
     let semActual='';
     lines.push('SESIONES ('+ses.length+' total)');
@@ -912,28 +989,37 @@ function exportarSemana(){
       const sw=semanaStr(s.date);
       if(sw!==semActual){
         semActual=sw;
-        lines.push('>> Semana del '+sw);
+        lines.push('> ');
+        lines.push('> Semana del '+sw);
       }
-      lines.push('  > '+fmtDate(s.date)+' - '+(s.routineName||'Sesion libre'));
-      if(s.elapsed) lines.push('    Duracion: '+fmtDur(s.elapsed));
-      if(s.fcMedia) lines.push('    FC media: '+s.fcMedia+'bpm');
-      if(s.kcal)    lines.push('    Calorias: '+s.kcal+'kcal');
+      lines.push('> '+fmtDate(s.date)+' - '+(s.routineName||'Sesion libre'));
+      if(s.elapsed) lines.push('> Duracion: '+fmtDur(s.elapsed));
+      if(s.fcMedia) lines.push('> FC media: '+s.fcMedia+'bpm');
+      if(s.kcal)    lines.push('> Calorias: '+s.kcal+'kcal');
+      if(s.pasos)   lines.push('> Pasos: '+s.pasos);
       (s.exercises||[]).forEach(ex=>{
         const e=getEx(ex.exId); if(!e) return;
         if(e.type==='warmup'||e.type==='stretch') return;
-        const sets=(ex.sets||[]).filter(st=>st.done);
+        const sets=(ex.sets||[]).filter(st=>st.done!==false);
         if(!sets.length) return;
-        if(e.type==='run'||e.type==='hiit'){
-          const dist=sets.reduce((a,st)=>a+(parseFloat(st.distance)||0),0);
-          const fc=sets.find(st=>st.fc);
-          lines.push('    '+e.name+': '+dist.toFixed(2)+'km'+(sets[0]&&sets[0].time?' - '+fmtTimeStr(sets[0].time):'')+(fc?' - FC '+fc.fc+'bpm':''));
+        if(e.type==='run'||e.type==='hiit'||ex.exId==='ex_correr'){
+          const seen=new Set();
+          const unique=[];
+          sets.forEach(st=>{
+            const key=[st.distance,st.time,st.fc||'',st.pasos||''].join('|');
+            if(!seen.has(key)){ seen.add(key); unique.push(st); }
+          });
+          unique.forEach(st=>{
+            lines.push('> '+e.name+': '+mq1815FormatRunSet(st));
+          });
         } else {
-          lines.push('    '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
+          lines.push('> '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
         }
       });
       lines.push('');
     });
   }
+
   if(typeof exportNutritionLines === 'function') {
     const nutritionLines = exportNutritionLines(fechaInicio, domingo);
     if(nutritionLines.length){
@@ -941,8 +1027,16 @@ function exportarSemana(){
       lines.push(...nutritionLines);
     }
   }
+  if(typeof exportRecoveryLines === 'function') {
+    const recoveryLines = exportRecoveryLines(fechaInicio, domingo);
+    if(recoveryLines.length){
+      lines.push(sep);
+      lines.push(...recoveryLines);
+    }
+  }
 
   lines.push(sep);
+  lines.push('Corrección v181.5 aplicada en exportador');
   lines.push('Generado por MELQART - '+new Date().toLocaleDateString('es-CL'));
   const txt=lines.join('\n');
   if(navigator.clipboard){
@@ -951,8 +1045,9 @@ function exportarSemana(){
     const modal=document.getElementById('modal-ejercicio');
     modal.querySelector('.modal-title').textContent='Historial exportado';
     modal.querySelector('.modal-body').innerHTML='<textarea style="width:100%;height:300px;font-family:monospace;font-size:11px;border:1px solid var(--border);border-radius:var(--r);padding:10px;resize:none" readonly>'+txt+'</textarea>';
-    openModal('modal-ejercicio');
+    modal.classList.add('show');
   }
+  return txt;
 }
 
 function getPesoObjetivo(){
@@ -10410,3 +10505,14 @@ try{
   console.info(LOG+': cargado');
 })();
 
+
+
+
+// MELQART v181.5 bootstrap
+(function(){
+  try{
+    setTimeout(()=>{ if(typeof mq1815RepairCoreData==='function') mq1815RepairCoreData(); }, 500);
+    window.melqartFix1815=function(){ mq1815RepairCoreData(); try{renderAll()}catch(e){} return localStorage.getItem('melqart_v181_5_core_repaired'); };
+    console.info('MELQART v181.5 cargado: exportador reemplazado directamente');
+  }catch(e){ console.warn('MELQART v181.5 bootstrap error', e); }
+})();
