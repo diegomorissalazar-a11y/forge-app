@@ -1,11 +1,11 @@
-# MELQART v181.5
+# MELQART v181.6
 
-Reemplazo directo, no parche al final:
-- Reemplaza la función original exportarSemana.
-- Reemplaza la función original exportNutritionLines.
-- Corrige 08/02/2026: 7.74km - 53:19.
-- Preserva sets idénticos reales: Step 14x12 | 14x12 | 10x14.
-- Proteína por platos antes de exportar.
-- 7/7 comidas = 100% adherencia.
-- Aceite excluido de castigo.
-- El exportador debe incluir: "Corrección v181.5 aplicada en exportador".
+Override final al final del app.js. Debe ganar sobre parches anteriores.
+
+Validación:
+- El exportador debe incluir: Corrección v181.6 aplicada en exportador FINAL.
+- 08/02/2026 debe ser 7.74km - 53:19.
+- Step 08/01 debe preservar 14x12 | 14x12 | 10x14.
+- 20/03 5/7 debe ser Prot 9.
+- 27/03 3/7 debe ser Prot 6.
+- 7/7 debe mostrar Adh% 100%.
