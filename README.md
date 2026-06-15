@@ -1,21 +1,19 @@
-# MELQART v184 — importadores manuales
+# MELQART v187 — Planificación de Carrera 10K Base
 
 Incluye:
-- Importador JSON de carrera/trote.
-- Importador JSON de medidas con huincha.
-- Botón `Cargar trote` en Entrenar.
-- Botón `Cargar medidas` en Entrenar.
-- Botón `Cargar datos` en tarjetas de cardio/trote/domingo.
-- Gráficos de tendencia para nuevas métricas de huincha en Progreso > Perímetros:
-  - Cintura ombligo
-  - Pecho
-  - Bíceps relajado
-  - Bíceps apretado
-  - Muslo huincha
-  - Cadera huincha
+- Modelo opcional `forge.runningPlans`.
+- Crear plan 10K 6:40 al 31-12-2026.
+- Cálculo de totalWeeks/currentWeek.
+- Fases Base Aeróbica / Desarrollo / Específica.
+- FC objetivo por fase.
+- Prescripción semanal jueves/domingo.
+- Card Objetivo de carrera.
+- KPIs básicos.
+- Comparación plan vs real.
+- Sugerencias no automáticas.
+- Export opcional PLAN DE CARRERA.
 
-Funciones de consola:
-- importRunJson({...})
-- importTapeMeasurementsJson({...})
-- openRunJsonImporter()
-- openTapeJsonImporter()
+Validación:
+- createRunningPlan10K187()
+- mq187RunningMetrics()
+- copyRunningPlanExport187()

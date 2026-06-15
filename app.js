@@ -11146,3 +11146,710 @@ try{
 
   console.info('MELQART v184 importadores cargados');
 })();
+
+
+
+// ---------------------------------------------------------------
+// MELQART v185 — Perímetros medición manual separados
+// ---------------------------------------------------------------
+(function mq185ManualPerimeters(){
+  const MANUAL_KEYS = [
+    {key:'cinturaOmbligo', label:'Cintura ombligo', unit:'cm', paths:['perimetros.cinturaOmbligo','perimetros.cintura','measurements.cinturaOmbligo']},
+    {key:'pecho', label:'Pecho', unit:'cm', paths:['perimetros.pecho','measurements.pecho']},
+    {key:'bicepsRelajado', label:'Bíceps relajado', unit:'cm', paths:['perimetros.bicepsRelajado','perimetros.brazoRelajado','measurements.bicepsRelajado']},
+    {key:'bicepsApretado', label:'Bíceps apretado', unit:'cm', paths:['perimetros.bicepsApretado','perimetros.brazoFlexTension','measurements.bicepsApretado']},
+    {key:'muslo', label:'Muslo', unit:'cm', paths:['perimetros.muslo','perimetros.musloMedial','measurements.muslo']},
+    {key:'cadera', label:'Cadera', unit:'cm', paths:['perimetros.cadera','perimetros.caderaMaxima','measurements.cadera']}
+  ];
+
+  function getPath(obj,path){
+    return String(path).split('.').reduce((a,k)=>a==null?undefined:a[k], obj);
+  }
+  function hasManualPerim(m){
+    const src=String(m?.source||'').toLowerCase();
+    return src.includes('huincha') || src.includes('manual_perimetros') ||
+      MANUAL_KEYS.some(k=>k.paths.some(p=>getPath(m,p)!=null && getPath(m,p)!==''));
+  }
+  function collectManualPerimeters(){
+    const byDate={};
+    const sources=[...(forge.bodyMetrics||[]), ...(forge.anthropometry||[])];
+    sources.forEach(m=>{
+      if(!m || !m.date || !hasManualPerim(m)) return;
+      if(!byDate[m.date]) byDate[m.date]={date:m.date, source:m.source||'huincha_semanal', perimetros:{}};
+      MANUAL_KEYS.forEach(def=>{
+        for(const p of def.paths){
+          const v=getPath(m,p);
+          if(v!=null && v!=='' && !isNaN(Number(v))){
+            byDate[m.date].perimetros[def.key]=Number(v);
+            break;
+          }
+        }
+      });
+    });
+    return Object.values(byDate)
+      .filter(m=>MANUAL_KEYS.some(k=>m.perimetros[k.key]!=null))
+      .sort((a,b)=>a.date.localeCompare(b.date));
+  }
+  function filterByRange(data, filtro){
+    const days={ '1m':30, '2m':60, '3m':90, '4m':120, '6m':180, '8m':240, '12m':365 };
+    if(!days[filtro]) return data;
+    const corte=new Date(); corte.setDate(corte.getDate()-days[filtro]);
+    const corteStr=(typeof localDateStr==='function') ? localDateStr(corte) : corte.toISOString().slice(0,10);
+    return data.filter(m=>m.date>=corteStr);
+  }
+  function metricPts(data, key, filtro){
+    return filterByRange(data.filter(m=>m.perimetros?.[key]!=null), filtro)
+      .map(m=>({
+        date:m.date,
+        label:m.date.slice(5).replace('-','/'),
+        value:Number(m.perimetros[key]),
+        displayValue:Number(m.perimetros[key])+' cm'
+      }));
+  }
+  function renderOneMetric(def, data){
+    const ptsAll=data.filter(m=>m.perimetros?.[def.key]!=null);
+    if(!ptsAll.length) return '';
+    const cardKey='manual_'+def.key;
+    const isOpen=!!window._mq185ManualOpen?.[cardKey];
+    const filtro=window._mq185ManualFiltro?.[cardKey] || 'all';
+    const ult=ptsAll[ptsAll.length-1];
+    const prev=ptsAll.length>1 ? ptsAll[ptsAll.length-2] : null;
+    const delta=prev ? Math.round((ult.perimetros[def.key]-prev.perimetros[def.key])*10)/10 : null;
+    const deltaTxt=delta==null ? '' : ` · ${delta>0?'+':''}${delta} cm vs anterior`;
+    const filters=['1m','3m','6m','12m','all'];
+    const body = isOpen ? (
+      `<div class="acc-kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:10px">
+        <div class="acc-kpi"><div class="acc-kpi-val">${ult.perimetros[def.key]} cm</div><div class="acc-kpi-lbl">actual</div></div>
+        <div class="acc-kpi"><div class="acc-kpi-val" style="color:${delta==null?'var(--ink3)':delta<0?'var(--ok)':'var(--p)'}">${delta==null?'—':(delta>0?'+':'')+delta+' cm'}</div><div class="acc-kpi-lbl">variación</div></div>
+        <div class="acc-kpi"><div class="acc-kpi-val">${ptsAll.length}</div><div class="acc-kpi-lbl">registros</div></div>
+      </div>
+      <div class="acc-filters">${filters.map(f=>`<button class="acc-filter-btn${filtro===f?' on':''}" onclick="event.stopPropagation();mq185SetManualFiltro('${cardKey}','${f}')">${f==='all'?'Todo':f.toUpperCase()}</button>`).join('')}</div>
+      ${typeof renderMetricChart==='function' ? renderMetricChart({
+        id:'mq185_'+def.key+'_'+filtro,
+        type:'manual-perimeter',
+        unit:'cm',
+        unitLabel:'cm',
+        title:def.label,
+        subtitle:'Medición manual con huincha',
+        data:metricPts(data,def.key,filtro),
+        yAxis:{forceZero:false},
+        tooltip:{showDate:true},
+        height:180,
+        color:'var(--p)',
+        activeFilter:'all'
+      }) : `<div class="mq-chart-empty"><div class="mq-chart-empty-text">Sin motor de gráfico disponible</div></div>`}`
+    ) : '';
+    return `<div class="acc-card${isOpen?' open':''}" id="acc-${cardKey}" style="margin-bottom:0">
+      <div class="acc-head" onclick="mq185ToggleManual('${cardKey}');event.stopPropagation()">
+        <div class="acc-head-left">
+          <div class="acc-ex-name">${def.label}</div>
+          <div class="acc-ex-sub">${ptsAll.length} registros · huincha${deltaTxt}</div>
+        </div>
+        <div class="acc-head-right">
+          <div class="acc-pdr-val">${ult.perimetros[def.key]} cm</div>
+        </div>
+        <svg class="acc-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="acc-body" id="body-acc-body-${cardKey}">${body}</div>
+    </div>`;
+  }
+  function renderManualSection(){
+    const data=collectManualPerimeters();
+    const h=document.getElementById('cuerpo-historial');
+    if(!h) return;
+    const old=document.getElementById('body-acc-perimetros-manual');
+    if(old) old.remove();
+    const sub=data.length ? `${data.length} registro${data.length===1?'':'s'} · huincha semanal` : 'Cintura, pecho, bíceps, muslo y cadera';
+    const isOpen=!!window._mq185ManualSectionOpen;
+    const bodyHtml = isOpen ? (
+      data.length
+        ? MANUAL_KEYS.map(k=>renderOneMetric(k,data)).filter(Boolean).join('')
+        : `<div class="mq-chart-empty" style="padding:24px 0"><div class="mq-chart-empty-text">Sin datos de medición manual</div><div class="mq-chart-empty-sub">Carga un JSON de huincha desde Entrenar o consola.</div></div>`
+    ) : '';
+    const html=`<div class="body-acc-card${isOpen?' open':''}" id="body-acc-perimetros-manual">
+      <div class="acc-head" onclick="mq185ToggleManualSection()">
+        <div class="acc-head-left">
+          <div class="acc-ex-name">Perímetros medición manual</div>
+          <div class="acc-ex-sub">${sub}</div>
+        </div>
+        <svg class="acc-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="acc-body" id="body-acc-body-perimetros-manual">${bodyHtml}</div>
+    </div>`;
+    const per=document.getElementById('body-acc-perimetros');
+    if(per) per.insertAdjacentHTML('afterend', html);
+    else h.insertAdjacentHTML('beforeend', html);
+  }
+
+  window._mq185ManualOpen=window._mq185ManualOpen||{};
+  window._mq185ManualFiltro=window._mq185ManualFiltro||{};
+  window.mq185ToggleManualSection=function(){
+    window._mq185ManualSectionOpen=!window._mq185ManualSectionOpen;
+    renderManualSection();
+  };
+  window.mq185ToggleManual=function(key){
+    window._mq185ManualOpen[key]=!window._mq185ManualOpen[key];
+    renderManualSection();
+  };
+  window.mq185SetManualFiltro=function(key,filtro){
+    window._mq185ManualFiltro[key]=filtro;
+    renderManualSection();
+  };
+  window.mq185ManualPerimetersData=collectManualPerimeters;
+
+  const oldRenderProgCuerpo=typeof renderProgCuerpo==='function' ? renderProgCuerpo : null;
+  if(oldRenderProgCuerpo && !window._mq185RenderProgCuerpoHooked){
+    window._mq185RenderProgCuerpoHooked=true;
+    renderProgCuerpo=function(){
+      const r=oldRenderProgCuerpo.apply(this,arguments);
+      setTimeout(renderManualSection,0);
+      return r;
+    };
+  }
+
+  // Asegurar que el importador de huincha refresque esta sección.
+  if(typeof window.importTapeMeasurementsJson==='function' && !window._mq185ImportTapeHooked){
+    const oldImport=window.importTapeMeasurementsJson;
+    window._mq185ImportTapeHooked=true;
+    window.importTapeMeasurementsJson=function(obj){
+      const r=oldImport(obj);
+      setTimeout(()=>{ try{ renderProgCuerpo(); renderManualSection(); }catch(e){} },0);
+      return r;
+    };
+    window.mq184UpsertTape=window.importTapeMeasurementsJson;
+  }
+
+  // Exportador: sección separada de huincha.
+  window.exportManualPerimetersLines=function(fechaInicio, fechaFin){
+    const data=collectManualPerimeters().filter(m=>{
+      const d=new Date(m.date+'T12:00:00');
+      return (!fechaInicio || d>=fechaInicio) && (!fechaFin || d<=fechaFin);
+    });
+    if(!data.length) return [];
+    const lines=['PERIMETROS MEDICION MANUAL'];
+    data.forEach(m=>{
+      lines.push(`  ${m.date}: cintura ombligo=${m.perimetros.cinturaOmbligo??'—'} cm · pecho=${m.perimetros.pecho??'—'} cm · bíceps relajado=${m.perimetros.bicepsRelajado??'—'} cm · bíceps apretado=${m.perimetros.bicepsApretado??'—'} cm · muslo=${m.perimetros.muslo??'—'} cm · cadera=${m.perimetros.cadera??'—'} cm`);
+    });
+    lines.push('');
+    return lines;
+  };
+  if(typeof window.exportAnthropometryLines==='function' && !window._mq185ExportAnthroHooked){
+    const oldExport=window.exportAnthropometryLines;
+    window._mq185ExportAnthroHooked=true;
+    window.exportAnthropometryLines=function(fechaInicio, fechaFin){
+      const base=oldExport(fechaInicio,fechaFin)||[];
+      const manual=window.exportManualPerimetersLines(fechaInicio,fechaFin);
+      if(!manual.length) return base;
+      if(!base.length) return manual;
+      return base.concat(manual);
+    };
+  }
+
+  setTimeout(()=>{ try{ renderManualSection(); }catch(e){} },800);
+  console.info('MELQART v185: sección Perímetros medición manual cargada');
+})();
+
+
+
+// ---------------------------------------------------------------
+// MELQART v186 — mover huincha desde Entrenar a Progreso > Medidas corporales
+// ---------------------------------------------------------------
+(function mq186MoveTapeImporter(){
+  function removeTapeFromTraining(){
+    const card=document.getElementById('mq184-tape-import-card');
+    if(card) card.remove();
+  }
+  function addTapeButtonToBodyProgress(){
+    const h=document.getElementById('cuerpo-historial');
+    if(!h || document.getElementById('mq186-tape-progress-actions')) return;
+    const html=`<div id="mq186-tape-progress-actions" style="display:flex;gap:8px;justify-content:flex-end;margin:0 0 12px 0">
+      <button class="btn btn-ghost btn-sm" onclick="openTapeJsonImporter()">Cargar medidas con huincha</button>
+    </div>`;
+    h.insertAdjacentHTML('afterbegin', html);
+  }
+
+  const oldRenderRutinas = typeof renderRutinas==='function' ? renderRutinas : null;
+  if(oldRenderRutinas && !window._mq186RenderRutinasHooked){
+    window._mq186RenderRutinasHooked=true;
+    renderRutinas=function(){
+      const r=oldRenderRutinas.apply(this,arguments);
+      removeTapeFromTraining();
+      return r;
+    };
+  }
+
+  const oldRenderProgCuerpo = typeof renderProgCuerpo==='function' ? renderProgCuerpo : null;
+  if(oldRenderProgCuerpo && !window._mq186RenderProgCuerpoHooked){
+    window._mq186RenderProgCuerpoHooked=true;
+    renderProgCuerpo=function(){
+      const r=oldRenderProgCuerpo.apply(this,arguments);
+      setTimeout(()=>{
+        try{
+          addTapeButtonToBodyProgress();
+          if(typeof mq185ManualPerimetersData==='function'){
+            // La sección v185 se renderiza por su propio hook; este botón queda arriba como acción contextual.
+          }
+        }catch(e){}
+      },0);
+      return r;
+    };
+  }
+
+  // Si la pantalla ya está montada, limpiar y agregar.
+  setTimeout(()=>{
+    removeTapeFromTraining();
+    try{ addTapeButtonToBodyProgress(); }catch(e){}
+  },800);
+
+  console.info('MELQART v186: huincha movida a Progreso > Medidas corporales');
+})();
+
+
+
+// ---------------------------------------------------------------
+// MELQART v187 — Planificación de Carrera 10K Base
+// ---------------------------------------------------------------
+(function mq187RunningPlanBase(){
+  const DEFAULT_PLAN_ID='running_10k_2026';
+  const GOAL_PACE=400; // 6:40/km
+  const GOAL_TIME=4000; // 1h06m40s
+  const PHASES=[
+    {name:'Base Aeróbica', pct:.40},
+    {name:'Desarrollo', pct:.35},
+    {name:'Específica', pct:.25}
+  ];
+  const DEFAULT_HR={
+    'Base Aeróbica':{thu:[140,148],sun:[140,150]},
+    'Desarrollo':{thu:[145,155],sun:[140,150]},
+    'Específica':{thu:[150,160],sun:[140,152]}
+  };
+  function todayStr187(){
+    try{return typeof today==='function'?today():new Date().toISOString().slice(0,10)}
+    catch(e){return new Date().toISOString().slice(0,10)}
+  }
+  function localStr187(d){
+    try{return typeof localDateStr==='function'?localDateStr(d):new Date(d).toISOString().slice(0,10)}
+    catch(e){return new Date(d).toISOString().slice(0,10)}
+  }
+  function parseDate187(s){ return new Date(String(s||todayStr187())+'T12:00:00'); }
+  function daysBetween187(a,b){ return Math.ceil((parseDate187(b)-parseDate187(a))/(1000*60*60*24)); }
+  function fmtPace187(sec){
+    sec=Math.round(sec||0);
+    if(!sec || !isFinite(sec)) return '—';
+    return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}/km`;
+  }
+  function fmtTime187(sec){
+    sec=Math.round(sec||0);
+    if(!sec || !isFinite(sec)) return '—';
+    const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+    if(h>0) return `${h}h${String(m).padStart(2,'0')}m${s?String(s).padStart(2,'0')+'s':''}`;
+    return `${m}m${String(s).padStart(2,'0')}s`;
+  }
+  function secondsFromTime187(t){
+    if(typeof t==='number') return t;
+    const s=String(t||'').trim();
+    if(!s) return 0;
+    const p=s.split(':').map(x=>parseInt(x,10)||0);
+    if(p.length===3) return p[0]*3600+p[1]*60+p[2];
+    if(p.length===2) return p[0]*60+p[1];
+    return parseInt(s,10)||0;
+  }
+  function ensureStore187(){
+    if(!forge.runningPlans) forge.runningPlans=[];
+    if(!forge.runningPrescriptions) forge.runningPrescriptions={};
+  }
+  function createInitialRunningPlan187(){
+    ensureStore187();
+    let plan=forge.runningPlans.find(p=>p.id===DEFAULT_PLAN_ID);
+    const start=todayStr187();
+    if(!plan){
+      plan={
+        id:DEFAULT_PLAN_ID,
+        active:true,
+        planName:'Plan 10K 6:40 — 2026',
+        goalDistanceKm:10,
+        goalPaceSecondsPerKm:GOAL_PACE,
+        goalTimeSeconds:GOAL_TIME,
+        goalDate:'2026-12-31',
+        startDate:start,
+        createdAt:start,
+        currentWeek:1,
+        totalWeeks:1,
+        currentPhase:'Base Aeróbica',
+        phaseConfig:{basePct:.40,developmentPct:.35,specificPct:.25},
+        heartRateConfig:JSON.parse(JSON.stringify(DEFAULT_HR)),
+        checkpointEvents:[{name:'ASICS 10K Agosto 2026',date:'2026-08-01',type:'checkpoint',goalDistanceKm:10}],
+        status:'active'
+      };
+      forge.runningPlans.push(plan);
+    }else{
+      plan.active=true;
+      plan.goalDistanceKm=plan.goalDistanceKm||10;
+      plan.goalPaceSecondsPerKm=plan.goalPaceSecondsPerKm||GOAL_PACE;
+      plan.goalTimeSeconds=plan.goalTimeSeconds||GOAL_TIME;
+      plan.goalDate=plan.goalDate||'2026-12-31';
+      plan.startDate=plan.startDate||plan.createdAt||start;
+      plan.createdAt=plan.createdAt||plan.startDate;
+      plan.heartRateConfig=plan.heartRateConfig||JSON.parse(JSON.stringify(DEFAULT_HR));
+      plan.checkpointEvents=plan.checkpointEvents?.length?plan.checkpointEvents:[{name:'ASICS 10K Agosto 2026',date:'2026-08-01',type:'checkpoint',goalDistanceKm:10}];
+      plan.status=plan.status||'active';
+    }
+    updateRunningPlanComputed187(plan);
+    generateCurrentWeekPrescription187(plan);
+    try{saveDB()}catch(e){}
+    try{renderAll()}catch(e){}
+    return plan;
+  }
+  function getActiveRunningPlan187(){
+    ensureStore187();
+    const p=forge.runningPlans.find(p=>p.active);
+    if(p) updateRunningPlanComputed187(p);
+    return p||null;
+  }
+  function updateRunningPlanComputed187(plan){
+    const start=plan.startDate||plan.createdAt||todayStr187();
+    const total=Math.max(1,Math.ceil(daysBetween187(start,plan.goalDate)/7));
+    let cur=Math.floor(daysBetween187(start,todayStr187())/7)+1;
+    cur=Math.max(1,Math.min(cur,total));
+    plan.totalWeeks=total;
+    plan.currentWeek=cur;
+    if(parseDate187(todayStr187())>parseDate187(plan.goalDate)) plan.status=plan.status==='completed'?'completed':'expired';
+    const baseEnd=Math.ceil(total*(plan.phaseConfig?.basePct??.40));
+    const devEnd=baseEnd+Math.ceil(total*(plan.phaseConfig?.developmentPct??.35));
+    plan.currentPhase=cur<=baseEnd?'Base Aeróbica':cur<=devEnd?'Desarrollo':'Específica';
+    return plan;
+  }
+  function getRunSessions187(){
+    const runs=[];
+    (forge.sessions||[]).forEach(s=>{
+      (s.exercises||[]).forEach(ex=>{
+        const e=typeof getEx==='function'?getEx(ex.exId):null;
+        if(ex.exId==='ex_correr' || e?.type==='run' || /carrera|trote|correr/i.test(e?.name||'')){
+          (ex.sets||[]).forEach(st=>{
+            const dist=parseFloat(st.distance)||parseFloat(st.distanceKm)||0;
+            const sec=secondsFromTime187(st.time||st.duration||s.elapsed||0);
+            if(dist>0 && sec>0){
+              runs.push({
+                date:localStr187(s.date),
+                ts:s.date,
+                distanceKm:dist,
+                durationSec:sec,
+                paceSec:sec/dist,
+                fc:Number(st.fc||s.fcMedia||0)||null,
+                kcal:Number(st.calories||s.kcal||0)||null,
+                steps:Number(st.pasos||s.pasos||0)||null,
+                routineName:s.routineName||'Trote'
+              });
+            }
+          });
+        }
+      });
+    });
+    return runs.sort((a,b)=>a.ts-b.ts);
+  }
+  function currentPace187(){
+    const runs=getRunSessions187();
+    if(!runs.length) return {paceSec:null, source:'sin datos', runs:[]};
+    const now=new Date();
+    const d30=new Date(now); d30.setDate(now.getDate()-30);
+    let recent=runs.filter(r=>new Date(r.date+'T12:00:00')>=d30);
+    let source='últimos 30 días';
+    if(recent.length<2){
+      const d28=new Date(now); d28.setDate(now.getDate()-28);
+      recent=runs.filter(r=>new Date(r.date+'T12:00:00')>=d28);
+      source='últimas 4 semanas';
+    }
+    if(!recent.length){ recent=[runs[runs.length-1]]; source='último trote válido'; }
+    const priority=recent.filter(r=>r.distanceKm>=8 && r.distanceKm<=12);
+    const base=priority.length?priority:recent;
+    if(priority.length) source += ' · 8K–12K';
+    const totalKm=base.reduce((a,r)=>a+r.distanceKm,0);
+    const totalSec=base.reduce((a,r)=>a+r.durationSec,0);
+    return {paceSec:totalKm?totalSec/totalKm:null, source, runs:base};
+  }
+  function predict10k187(){
+    const runs=getRunSessions187().slice().reverse();
+    if(!runs.length) return {timeSec:null, source:'sin datos'};
+    const exact=runs.find(r=>r.distanceKm>=9.8 && r.distanceKm<=10.2);
+    if(exact) return {timeSec:exact.paceSec*10, source:'10K reciente'};
+    const near=runs.find(r=>r.distanceKm>=8 && r.distanceKm<=12);
+    if(near) return {timeSec:near.paceSec*10, source:'trote 8K–12K extrapolado'};
+    const five=runs.find(r=>r.distanceKm>=4.8 && r.distanceKm<=5.3);
+    if(five) return {timeSec:five.durationSec*2.1, source:'5K x 2.1'};
+    const cur=currentPace187();
+    return {timeSec:cur.paceSec?cur.paceSec*10:null, source:cur.source};
+  }
+  function longMax187(){
+    const runs=getRunSessions187();
+    if(!runs.length) return null;
+    return runs.reduce((max,r)=>!max||r.distanceKm>max.distanceKm?r:max,null);
+  }
+  function avgFc187(){
+    const runs=currentPace187().runs.filter(r=>r.fc);
+    if(!runs.length) return null;
+    return Math.round(runs.reduce((a,r)=>a+r.fc,0)/runs.length);
+  }
+  function weekStart187(dateStr){
+    const d=parseDate187(dateStr||todayStr187());
+    d.setDate(d.getDate()-(d.getDay()||7)+1);
+    return localStr187(d);
+  }
+  function phaseHr187(plan, day){
+    const phase=plan.currentPhase||'Base Aeróbica';
+    const cfg=plan.heartRateConfig||DEFAULT_HR;
+    return cfg[phase]?.[day] || DEFAULT_HR[phase]?.[day] || [140,150];
+  }
+  function prescriptionForWeek187(plan, week){
+    const phase=plan.currentPhase||'Base Aeróbica';
+    const baseLong=8.5, increment=.25;
+    const longKm=Math.min(12, Math.round((baseLong+(week-1)*increment)*10)/10);
+    const thuKm=Math.max(4, Math.min(7, Math.round((longKm*.52)*10)/10));
+    const thuType=phase==='Base Aeróbica'?'EASY_RUN':phase==='Desarrollo'?'PROGRESSIVE_RUN':'TEMPO_RUN';
+    const sunType='LONG_RUN';
+    const thuHr=phaseHr187(plan,'thu'), sunHr=phaseHr187(plan,'sun');
+    return {
+      planId:plan.id,
+      week,
+      weekStart:weekStart187(),
+      phase,
+      workouts:[
+        {
+          day:'jueves',
+          type:thuType,
+          targetDistanceKm:thuKm,
+          estimatedTimeSec:thuKm*(currentPace187().paceSec||plan.goalPaceSecondsPerKm+60),
+          targetHeartRateRange:thuHr,
+          description:phase==='Base Aeróbica'?'Rodaje controlado, cómodo y sin forzar.':phase==='Desarrollo'?'Progresivo moderado, cerrar controlado.':'Bloque específico cerca de ritmo objetivo.',
+          structure:phase==='Base Aeróbica'?['Rodaje suave continuo']:[`1 km suave`,`${Math.max(1,Math.round((thuKm-2)*10)/10)} km controlado`,`1 km suave`]
+        },
+        {
+          day:'domingo',
+          type:sunType,
+          targetDistanceKm:longKm,
+          estimatedTimeSec:longKm*(currentPace187().paceSec||plan.goalPaceSecondsPerKm+60),
+          targetHeartRateRange:sunHr,
+          description:'Largo aeróbico. Priorizar completar distancia dentro de rango de FC.',
+          structure:['Largo continuo aeróbico']
+        }
+      ]
+    };
+  }
+  function generateCurrentWeekPrescription187(plan){
+    ensureStore187();
+    updateRunningPlanComputed187(plan);
+    const key=`${plan.id}_w${plan.currentWeek}`;
+    const p=prescriptionForWeek187(plan,plan.currentWeek);
+    forge.runningPrescriptions[key]=p;
+    return p;
+  }
+  function getCurrentPrescription187(plan){
+    ensureStore187();
+    const key=`${plan.id}_w${plan.currentWeek}`;
+    return forge.runningPrescriptions[key] || generateCurrentWeekPrescription187(plan);
+  }
+  function actualForDay187(day){
+    const runs=getRunSessions187();
+    const ws=weekStart187();
+    const we=new Date(ws+'T12:00:00'); we.setDate(we.getDate()+6);
+    const start=parseDate187(ws).getTime(), end=we.getTime();
+    return runs.filter(r=>r.ts>=start && r.ts<=end).filter(r=>{
+      const dow=parseDate187(r.date).getDay();
+      return day==='jueves' ? dow===4 : day==='domingo' ? dow===0 : true;
+    }).sort((a,b)=>b.ts-a.ts)[0] || null;
+  }
+  function evalPlanWeek187(plan){
+    const pres=getCurrentPrescription187(plan);
+    const rows=pres.workouts.map(w=>{
+      const real=actualForDay187(w.day);
+      const distPct=real?real.distanceKm/w.targetDistanceKm:0;
+      const fcIn=real?.fc ? real.fc>=w.targetHeartRateRange[0] && real.fc<=w.targetHeartRateRange[1] : null;
+      const deviation=real?Math.round((real.distanceKm-w.targetDistanceKm)*10)/10:null;
+      return {w, real, distPct, fcIn, deviation};
+    });
+    const avg=rows.length?rows.reduce((a,r)=>a+(r.real?Math.min(1.2,r.distPct):0),0)/rows.length:0;
+    const overFc=rows.some(r=>r.fcIn===false && r.real?.fc>w.targetHeartRateRange?.[1]);
+    let suggestion='mantener';
+    if(avg>=.95 && rows.every(r=>r.fcIn!==false)) suggestion='subir suavemente';
+    if(avg<.8) suggestion='repetir semana';
+    if(overFc) suggestion='descargar o mantener';
+    return {prescription:pres, rows, compliancePct:Math.round(avg*100), suggestion};
+  }
+  function renderRunningGoalCard187(){
+    const plan=getActiveRunningPlan187();
+    const cur=currentPace187();
+    const pred=predict10k187();
+    const long=longMax187();
+    if(!plan){
+      return `<div class="card mq-running-card">
+        <div class="section-title">◇ Objetivo de carrera</div>
+        <div class="empty" style="padding:18px 0"><div class="empty-text">No hay plan de carrera activo</div><div class="empty-sub">Crea un plan 10K sin modificar fuerza.</div></div>
+        <button class="btn btn-p" onclick="createRunningPlan10K187()">Crear plan 10K</button>
+      </div>`;
+    }
+    const gap=cur.paceSec?Math.round(cur.paceSec-plan.goalPaceSecondsPerKm):null;
+    return `<div class="card mq-running-card">
+      <div class="section-title">◇ Objetivo de carrera</div>
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+        <div>
+          <div style="font-size:20px;font-weight:900;color:var(--ink)">10 km @ ${fmtPace187(plan.goalPaceSecondsPerKm)}</div>
+          <div style="font-size:12px;color:var(--ink3);margin-top:3px">Fecha: ${plan.goalDate} · Semana ${plan.currentWeek}/${plan.totalWeeks}</div>
+        </div>
+        <div class="chip" style="background:var(--bg3);color:var(--p);font-weight:800">${plan.currentPhase}</div>
+      </div>
+      <div class="acc-kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
+        <div class="acc-kpi"><div class="acc-kpi-val">${fmtPace187(cur.paceSec)}</div><div class="acc-kpi-lbl">ritmo actual</div></div>
+        <div class="acc-kpi"><div class="acc-kpi-val" style="color:${gap!=null&&gap<=0?'var(--ok)':'var(--p)'}">${gap==null?'—':(gap>0?'+':'')+Math.floor(Math.abs(gap)/60)+':'+String(Math.abs(gap)%60).padStart(2,'0')}</div><div class="acc-kpi-lbl">brecha</div></div>
+        <div class="acc-kpi"><div class="acc-kpi-val">${fmtTime187(pred.timeSec)}</div><div class="acc-kpi-lbl">pred. 10K</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:8px">Fuente ritmo: ${cur.source} · Predicción: ${pred.source}${long?` · Largo máx: ${long.distanceKm.toFixed(2)} km`:''}</div>
+    </div>`;
+  }
+  function injectRunningHome187(){
+    const host=document.getElementById('home-plan-banner');
+    if(!host || document.getElementById('mq187-home-running')) return;
+    host.insertAdjacentHTML('afterend', `<div id="mq187-home-running">${renderRunningGoalCard187()}</div>`);
+  }
+  function renderTrainPrescription187(){
+    const plan=getActiveRunningPlan187();
+    if(!plan) return '';
+    const pres=getCurrentPrescription187(plan);
+    return `<div id="mq187-train-prescription" class="rutina-card" style="grid-column:1/-1;border-color:var(--p);overflow:hidden">
+      <div style="background:linear-gradient(90deg,rgba(111,62,168,.10),var(--bg2));padding:8px 16px;border-bottom:1px solid var(--border)">
+        <span style="font-size:10px;font-weight:800;color:var(--p);letter-spacing:1px;text-transform:uppercase">Plan de carrera · Semana ${plan.currentWeek}/${plan.totalWeeks} · ${plan.currentPhase}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding:14px">
+        ${pres.workouts.map(w=>`<div style="border:1px solid var(--border);border-radius:14px;padding:12px;background:var(--bg2)">
+          <div style="font-size:12px;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;font-weight:800">${w.day}</div>
+          <div style="font-size:17px;font-weight:900;color:var(--ink);margin-top:3px">${w.type.replaceAll('_',' ')}</div>
+          <div style="font-size:13px;color:var(--p);font-weight:800;margin-top:4px">${w.targetDistanceKm} km · FC ${w.targetHeartRateRange[0]}-${w.targetHeartRateRange[1]}</div>
+          <div style="font-size:12px;color:var(--ink3);margin-top:6px">${w.description}</div>
+          <div style="font-size:11px;color:var(--ink2);margin-top:6px">${(w.structure||[]).join(' · ')}</div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="openRunJsonImporter()">Cargar datos</button>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+  function injectRunningTrain187(){
+    const list=document.getElementById('rutinas-list');
+    if(!list || document.getElementById('mq187-train-prescription')) return;
+    list.insertAdjacentHTML('afterbegin', renderTrainPrescription187());
+  }
+  function renderRunningProgress187(){
+    const plan=getActiveRunningPlan187();
+    if(!plan) return '';
+    const runs=getRunSessions187();
+    const pred=predict10k187(), cur=currentPace187(), long=longMax187(), fc=avgFc187();
+    const paceData=runs.map(r=>({date:r.date,label:r.date.slice(5).replace('-','/'),value:Math.round(r.paceSec),displayValue:fmtPace187(r.paceSec)}));
+    const fcData=runs.filter(r=>r.fc).map(r=>({date:r.date,label:r.date.slice(5).replace('-','/'),value:r.fc,displayValue:r.fc+' bpm'}));
+    let max=0; const distData=runs.map(r=>{max=Math.max(max,r.distanceKm); return {date:r.date,label:r.date.slice(5).replace('-','/'),value:Math.round(max*100)/100,displayValue:(Math.round(max*100)/100)+' km'};});
+    const chart=(id,title,unit,data,color='var(--p)')=> data.length && typeof renderMetricChart==='function' ? renderMetricChart({id,type:'running-plan',unit,unitLabel:unit,title,subtitle:'Plan de carrera',data,yAxis:{forceZero:false},tooltip:{showDate:true},height:185,color,activeFilter:'all'}) : `<div class="mq-chart-empty" style="padding:24px 0"><div class="mq-chart-empty-text">Sin datos para ${title}</div></div>`;
+    return `<div id="mq187-progress" style="margin-top:18px">
+      ${renderRunningGoalCard187()}
+      <div class="acc-kpi-grid" style="grid-template-columns:repeat(4,1fr);margin:12px 0">
+        <div class="acc-kpi"><div class="acc-kpi-val">${fmtPace187(cur.paceSec)}</div><div class="acc-kpi-lbl">ritmo</div></div>
+        <div class="acc-kpi"><div class="acc-kpi-val">${fmtTime187(pred.timeSec)}</div><div class="acc-kpi-lbl">pred. 10K</div></div>
+        <div class="acc-kpi"><div class="acc-kpi-val">${long?long.distanceKm.toFixed(2):'—'} km</div><div class="acc-kpi-lbl">largo máx.</div></div>
+        <div class="acc-kpi"><div class="acc-kpi-val">${fc||'—'}</div><div class="acc-kpi-lbl">FC prom.</div></div>
+      </div>
+      <div class="body-acc-card open"><div class="acc-head"><div class="acc-head-left"><div class="acc-ex-name">Carrera · Plan 10K</div><div class="acc-ex-sub">Métricas básicas</div></div></div>
+        <div class="acc-body">
+          ${chart('mq187_pace','Ritmo promedio','seg/km',paceData)}
+          ${chart('mq187_fc','FC promedio','bpm',fcData,'var(--warn)')}
+          ${chart('mq187_long','Distancia larga máxima','km',distData,'var(--teal)')}
+        </div>
+      </div>
+    </div>`;
+  }
+  function injectRunningProgress187(){
+    const el=document.getElementById('prog-plan-content') || document.getElementById('prog-ejercicios-content') || document.querySelector('#s-progress .tab-panel.on');
+    if(!el || document.getElementById('mq187-progress')) return;
+    const plan=getActiveRunningPlan187();
+    if(plan) el.insertAdjacentHTML('afterbegin', renderRunningProgress187());
+  }
+  function renderRunningWeekly187(){
+    const plan=getActiveRunningPlan187();
+    if(!plan) return '';
+    const ev=evalPlanWeek187(plan);
+    return `<div id="mq187-weekly" class="card" style="margin-top:14px">
+      <div class="section-title">◇ Plan de carrera</div>
+      <div style="font-size:13px;color:var(--ink3);margin-bottom:8px">Semana ${plan.currentWeek} de ${plan.totalWeeks} · ${plan.currentPhase}</div>
+      ${ev.rows.map(r=>`<div style="border:1px solid var(--border);border-radius:14px;padding:10px;margin-bottom:8px;background:var(--bg2)">
+        <div style="display:flex;justify-content:space-between;gap:8px"><strong style="color:var(--ink);text-transform:capitalize">${r.w.day}</strong><span style="color:var(--p);font-weight:800">${r.w.type.replaceAll('_',' ')}</span></div>
+        <div style="font-size:12px;color:var(--ink3);margin-top:4px">Objetivo: ${r.w.targetDistanceKm} km · FC ${r.w.targetHeartRateRange[0]}-${r.w.targetHeartRateRange[1]}</div>
+        <div style="font-size:12px;color:${r.real?'var(--ink2)':'var(--warn)'};margin-top:3px">Resultado: ${r.real?`${r.real.distanceKm.toFixed(2)} km · FC ${r.real.fc||'—'} · desv. ${r.deviation>0?'+':''}${r.deviation} km`:'pendiente'}</div>
+      </div>`).join('')}
+      <div style="font-weight:900;color:var(--p);margin-top:8px">Cumplimiento: ${ev.compliancePct}% · Sugerencia: ${ev.suggestion}</div>
+    </div>`;
+  }
+  function injectRunningWeekly187(){
+    const candidates=[document.getElementById('weekly-content'),document.getElementById('eval-content'),document.getElementById('home-sessions')];
+    const host=candidates.find(Boolean);
+    if(!host || document.getElementById('mq187-weekly')) return;
+    const plan=getActiveRunningPlan187();
+    if(plan && host.id==='home-sessions') host.insertAdjacentHTML('beforebegin', renderRunningWeekly187());
+  }
+  function exportRunningPlanLines187(fechaInicio,fechaFin){
+    const plan=getActiveRunningPlan187();
+    if(!plan) return [];
+    const ev=evalPlanWeek187(plan);
+    const lines=['PLAN DE CARRERA'];
+    lines.push(`  Objetivo: ${plan.goalDistanceKm}K @ ${fmtPace187(plan.goalPaceSecondsPerKm)} (${fmtTime187(plan.goalTimeSeconds)})`);
+    lines.push(`  Fecha objetivo: ${plan.goalDate}`);
+    lines.push(`  Semana: ${plan.currentWeek}/${plan.totalWeeks}`);
+    lines.push(`  Fase: ${plan.currentPhase}`);
+    ev.rows.forEach(r=>{
+      lines.push(`  ${r.w.day}: plan ${r.w.targetDistanceKm} km ${r.w.type} FC ${r.w.targetHeartRateRange[0]}-${r.w.targetHeartRateRange[1]} · real ${r.real?`${r.real.distanceKm.toFixed(2)} km FC ${r.real.fc||'—'} desv ${r.deviation>0?'+':''}${r.deviation} km`:'pendiente'}`);
+    });
+    lines.push(`  Cumplimiento semanal: ${ev.compliancePct}%`);
+    lines.push(`  Sugerencia semanal: ${ev.suggestion}`);
+    (plan.checkpointEvents||[]).forEach(c=>lines.push(`  Checkpoint: ${c.name} · ${c.date} · ${c.type}`));
+    lines.push('');
+    return lines;
+  }
+  // Hooks
+  window.createRunningPlan10K187=createInitialRunningPlan187;
+  window.getActiveRunningPlan187=getActiveRunningPlan187;
+  window.mq187RunningMetrics=()=>({currentPace:currentPace187(), prediction:predict10k187(), longMax:longMax187(), plan:getActiveRunningPlan187(), eval: getActiveRunningPlan187()?evalPlanWeek187(getActiveRunningPlan187()):null});
+  const oldHome=typeof renderHome==='function'?renderHome:null;
+  if(oldHome && !window._mq187HomeHooked){ window._mq187HomeHooked=true; renderHome=function(){ const r=oldHome.apply(this,arguments); setTimeout(()=>{try{injectRunningHome187();injectRunningWeekly187()}catch(e){}},0); return r; }; }
+  const oldRut=typeof renderRutinas==='function'?renderRutinas:null;
+  if(oldRut && !window._mq187RutHooked){ window._mq187RutHooked=true; renderRutinas=function(){ const r=oldRut.apply(this,arguments); setTimeout(()=>{try{injectRunningTrain187()}catch(e){}},0); return r; }; }
+  const oldProg=typeof renderProgress==='function'?renderProgress:null;
+  if(oldProg && !window._mq187ProgHooked){ window._mq187ProgHooked=true; renderProgress=function(){ const r=oldProg.apply(this,arguments); setTimeout(()=>{try{injectRunningProgress187()}catch(e){}},0); return r; }; }
+  if(typeof window.exportarSemana==='function' && !window._mq187ExportHooked){
+    const oldExport=window.exportarSemana;
+    window._mq187ExportHooked=true;
+    window.exportarSemana=function(){
+      const txt=oldExport.apply(this,arguments);
+      // Si el exportador antiguo devolvió texto, no se puede reinyectar dentro del clipboard ya copiado sin rehacerlo.
+      // Se deja función auxiliar abajo para export completo del plan.
+      return txt;
+    };
+  }
+  // Reforzar sección PLAN DE CARRERA en exportadores que usen exportWeight/exportAnthro por composición:
+  window.exportRunningPlanLines=exportRunningPlanLines187;
+  window.copyRunningPlanExport187=function(){
+    const lines=exportRunningPlanLines187();
+    const txt=lines.join('\n');
+    if(navigator.clipboard) navigator.clipboard.writeText(txt);
+    return txt;
+  };
+  // Añadir a exportarSemana si su cuerpo es v181.8 y fácil de sobreescribir con wrapper de clipboard posterior.
+  if(typeof exportarSemana==='function' && !exportarSemana.toString().includes('PLAN DE CARRERA v187 injected')){
+    const prevExport=exportarSemana;
+    exportarSemana=function(){
+      const result=prevExport.apply(this,arguments);
+      try{
+        const planLines=exportRunningPlanLines187();
+        if(planLines.length && typeof result==='string' && !result.includes('PLAN DE CARRERA')){
+          const txt=result.replace(/\nGenerado por MELQART/, '\n-------------------------------\n'+planLines.join('\n')+'Generado por MELQART');
+          if(navigator.clipboard) navigator.clipboard.writeText(txt);
+          return txt; // PLAN DE CARRERA v187 injected
+        }
+      }catch(e){}
+      return result;
+    };
+  }
+  setTimeout(()=>{try{injectRunningHome187();injectRunningTrain187();injectRunningProgress187();injectRunningWeekly187()}catch(e){}},900);
+  console.info('MELQART v187 Planificación de Carrera 10K Base cargado');
+})();
