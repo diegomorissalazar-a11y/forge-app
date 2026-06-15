@@ -12550,3 +12550,484 @@ try{
   setTimeout(()=>{try{renderRutinas()}catch(e){}},700);
   console.info('MELQART v190: plan de carrera integrado en rutinas semanales');
 })();
+
+
+
+// ---------------------------------------------------------------
+// MELQART v191 — Fix render Entrenar: carrera no es fuerza + fallback prescripción
+// ---------------------------------------------------------------
+(function mq191FixEntrenarRunningPlan(){
+  function norm191(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+  function title191(s){ return String(s||'').charAt(0).toUpperCase()+String(s||'').slice(1); }
+  function getRunPlan191(){
+    try{ return typeof getActiveRunningPlan187==='function' ? getActiveRunningPlan187() : null; }catch(e){ return null; }
+  }
+  function pace191(){
+    try{
+      const m=typeof mq188RunningMetrics==='function'?mq188RunningMetrics():typeof mq187RunningMetrics==='function'?mq187RunningMetrics():null;
+      return m?.currentPace?.paceSec || 460;
+    }catch(e){ return 460; }
+  }
+  function hrFor191(plan, day){
+    const phase=plan?.currentPhase || 'Base Aeróbica';
+    const cfg=plan?.heartRateConfig || {};
+    const defaults={
+      'Base Aeróbica':{jueves:[140,148],domingo:[140,150]},
+      'Desarrollo':{jueves:[145,155],domingo:[140,150]},
+      'Específica':{jueves:[150,160],domingo:[140,152]}
+    };
+    return cfg?.[phase]?.[day==='domingo'?'sun':'thu'] || defaults[phase]?.[day] || [140,150];
+  }
+  function fallbackPrescription191(plan){
+    if(!plan) return null;
+    const week=Math.max(1,Number(plan.currentWeek||1));
+    const phase=plan.currentPhase||'Base Aeróbica';
+    const baseLong=8.5, inc=.25;
+    const longKm=Math.min(12, Math.round((baseLong+(week-1)*inc)*10)/10);
+    const thuKm=Math.max(4, Math.min(7, Math.round((longKm*.52)*10)/10));
+    const p=pace191();
+    const thuType=phase==='Base Aeróbica'?'EASY_RUN':phase==='Desarrollo'?'PROGRESSIVE_RUN':'TEMPO_RUN';
+    return {
+      planId:plan.id,
+      week,
+      phase,
+      workouts:[
+        {
+          day:'jueves',
+          type:thuType,
+          targetDistanceKm:thuKm,
+          estimatedTimeSec:thuKm*p,
+          targetHeartRateRange:hrFor191(plan,'jueves'),
+          description:phase==='Base Aeróbica'?'Rodaje controlado, cómodo y sin forzar.':phase==='Desarrollo'?'Rodaje progresivo moderado, cerrar controlado.':'Trabajo controlado cerca de ritmo objetivo.',
+          structure:phase==='Base Aeróbica'?['Rodaje suave continuo']:[`1 km suave`,`${Math.max(1,Math.round((thuKm-2)*10)/10)} km controlado`,`1 km suave`]
+        },
+        {
+          day:'domingo',
+          type:'LONG_RUN',
+          targetDistanceKm:longKm,
+          estimatedTimeSec:longKm*p,
+          targetHeartRateRange:hrFor191(plan,'domingo'),
+          description:'Largo aeróbico. Priorizar completar distancia dentro de rango de FC.',
+          structure:['Largo continuo aeróbico']
+        }
+      ]
+    };
+  }
+  function getPrescription191(plan){
+    try{
+      if(typeof getCurrentPrescription187==='function') return getCurrentPrescription187(plan);
+    }catch(e){}
+    return fallbackPrescription191(plan);
+  }
+  function isRunRoutine191(r){
+    const n=norm191(r?.name||'');
+    const exs=(r?.exercises||[]).map(id=>typeof getEx==='function'?getEx(id):null).filter(Boolean);
+    return n.includes('cardio') || n.includes('trote') || n.includes('correr') || exs.some(e=>e.id==='ex_correr'||e.type==='run'||e.type==='hiit'||norm191(e.name).includes('carrera'));
+  }
+  function runDay191(r){
+    const n=norm191(r?.name||'');
+    if(n.includes('jueves')) return 'jueves';
+    if(n.includes('domingo')) return 'domingo';
+    return '';
+  }
+  function isStrengthRoutine191(r){
+    const n=norm191(r?.name||'');
+    if(isRunRoutine191(r)) return false;
+    return n.includes('tren inferior a') || n.includes('tren inferior b') || n.includes('tren superior a') || n.includes('tren superior b');
+  }
+  function runName191(type,day){
+    const t=String(type||'').toUpperCase();
+    if(t==='LONG_RUN') return 'Largo aeróbico';
+    if(t==='EASY_RUN') return 'Rodaje suave';
+    if(t==='PROGRESSIVE_RUN') return 'Rodaje progresivo';
+    if(t==='TEMPO_RUN') return 'Tempo controlado';
+    if(t==='FARTLEK') return 'Fartlek';
+    if(t==='RECOVERY_RUN') return 'Rodaje recuperación';
+    return day==='domingo'?'Largo aeróbico':'Rodaje suave';
+  }
+  function renderRunCard191(r, opts){
+    const {runPlan,prescription,esSugerida,diasFalta,diaLabel}=opts;
+    const day=runDay191(r);
+    const w=(prescription?.workouts||[]).find(x=>x.day===day);
+    if(!w) return '';
+    const label=day==='domingo'?'Domingo':'Jueves';
+    const tagTxt=diasFalta===0?'HOY':diasFalta===1?'MAÑANA':label.toUpperCase();
+    const tagBg=diasFalta===0?'var(--orange)':diasFalta===1?'var(--bg4)':'var(--bg3)';
+    const tagCol=diasFalta===0?'#fff':diasFalta===1?'var(--gold)':'var(--ink3)';
+    const title=`${label} — ${runName191(w.type,day)}`;
+    const banner=esSugerida?`<div style="background:linear-gradient(90deg,rgba(111,62,168,.08),var(--bg2));padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;font-weight:700;color:var(--p);letter-spacing:1px;text-transform:uppercase">✶ Sugerida — ${tagTxt==='HOY'?'Hoy':tagTxt==='MAÑANA'?'Mañana':title191(day)}</span>
+    </div>`:'';
+    return `<div class="rutina-card mq191-run-card" style="border-color:${esSugerida?'var(--orange)':'var(--p)'}">
+      ${banner}
+      <div class="rutina-head" onclick="openRutinaPreview('${r.id}')">
+        <span class="rutina-emoji">◎</span>
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:2px">
+          <div class="rutina-name">${title}</div>
+          <span style="background:${tagBg};color:${tagCol};font-size:9px;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">${tagTxt}</span>
+        </div>
+        <div class="rutina-meta">${w.targetDistanceKm} km · FC ${w.targetHeartRateRange[0]}-${w.targetHeartRateRange[1]}</div>
+        <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">
+          <span style="background:var(--p);color:#fff;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:800;letter-spacing:.5px;text-transform:uppercase">Plan carrera · Sem ${runPlan.currentWeek}/${runPlan.totalWeeks}</span>
+          <span style="background:var(--bg3);color:var(--p);font-size:9px;padding:2px 7px;border-radius:4px;font-weight:800;letter-spacing:.5px;text-transform:uppercase">${runPlan.currentPhase}</span>
+        </div>
+        <div style="font-size:12px;color:var(--ink3);margin-top:8px">${w.description||''}</div>
+        <div style="font-size:11px;color:var(--ink2);margin-top:5px">${(w.structure||[]).join(' · ')}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);margin-top:auto">
+        <button onclick="event.stopPropagation();openRunJsonImporter()"
+          style="padding:10px;background:var(--bg3);color:var(--p);border:none;border-right:1px solid var(--border);font-family:var(--ff);font-size:11px;font-weight:800;letter-spacing:1px;cursor:pointer">
+          Cargar datos
+        </button>
+        <button onclick="event.stopPropagation();iniciarRutina('${r.id}')"
+          style="padding:10px;background:var(--p);color:#fff;border:none;font-family:var(--ff);font-size:11px;font-weight:800;letter-spacing:1px;cursor:pointer">
+          ▶ Iniciar
+        </button>
+      </div>
+    </div>`;
+  }
+
+  renderRutinas=function(){
+    const list=document.getElementById('rutinas-list');
+    const rutinas=forge.routines||[];
+    if(!rutinas.length){
+      list.innerHTML=`<div class="empty"><div class="empty-icon">▤</div><div class="empty-text">Sin rutinas</div><div class="empty-sub">Crea tu primera rutina.</div></div>`;
+      return;
+    }
+
+    const fuerzaPlan=(forge.planes||[]).find(p=>p.activo);
+    const semG=fuerzaPlan?semanaActualPlan(fuerzaPlan):0;
+    const runPlan=getRunPlan191();
+    const prescription=getPrescription191(runPlan);
+
+    const ahora=new Date();
+    const diasOrden=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    const diaHoyIdx=ahora.getDay();
+    const inicioHoy=new Date(ahora); inicioHoy.setHours(0,0,0,0);
+    const sesiones=(forge.sessions||[]);
+    const yaEntrenoHoy=sesiones.some(s=>s.date>=inicioHoy.getTime()&&s.routineId);
+
+    function diaDeRutina(r){
+      const n=norm191(r.name);
+      for(let i=0;i<diasOrden.length;i++){
+        if(n.includes(norm191(diasOrden[i]))) return i;
+      }
+      return 999;
+    }
+    function diasHasta(idx){
+      if(idx===999||idx<0) return 999;
+      let diff=idx-diaHoyIdx;
+      if(diff<0) diff+=7;
+      if(diff===0&&yaEntrenoHoy) diff=7;
+      return diff;
+    }
+
+    const seenRunDays=new Set();
+    const filtered=[];
+    rutinas.forEach(r=>{
+      if(runPlan && isRunRoutine191(r)){
+        const d=runDay191(r);
+        if(d){
+          if(seenRunDays.has(d)) return;
+          seenRunDays.add(d);
+        }
+      }
+      filtered.push(r);
+    });
+
+    const sorted=[...filtered].sort((a,b)=>diasHasta(diaDeRutina(a))-diasHasta(diaDeRutina(b)));
+    const sugeridaId=sorted.find(r=>diaDeRutina(r)!==999)?.id || null;
+
+    list.innerHTML=sorted.map(r=>{
+      const diaRut=diaDeRutina(r);
+      const diasFalta=diasHasta(diaRut);
+      const esSugerida=r.id===sugeridaId;
+
+      if(runPlan && prescription && isRunRoutine191(r) && runDay191(r)){
+        return renderRunCard191(r,{runPlan,prescription,esSugerida,diasFalta});
+      }
+
+      const exs=(r.exercises||[]).map(id=>getEx(id)).filter(Boolean);
+      const ultsesion=sesiones.filter(s=>s.routineId===r.id).sort((a,b)=>b.date-a.date)[0];
+      const ultstxt=ultsesion?'Último: '+fmtDate(ultsesion.date):'Sin sesiones aún';
+      const esPlanFuerza=!!fuerzaPlan && isStrengthRoutine191(r);
+      const cargas=fuerzaPlan?getCargasSemana(r.id):{};
+      const tieneCarga=esPlanFuerza&&Object.keys(cargas).length>0;
+      const borderColor=esSugerida?'var(--orange)':esPlanFuerza?'var(--green)':'var(--border2)';
+
+      let diaTag='';
+      if(diaRut!==999){
+        const label=diasFalta===0?'HOY':diasFalta===1?'Mañana':title191(diasOrden[diaRut]);
+        const bg=diasFalta===0?'var(--orange)':diasFalta===1?'var(--bg4)':'var(--bg3)';
+        const col=diasFalta===0?'#fff':diasFalta===1?'var(--gold)':'var(--ink3)';
+        diaTag=`<span style="background:${bg};color:${col};font-size:9px;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">${label}</span>`;
+      }
+      const planTag=esPlanFuerza?`<span style="background:var(--green);color:#fff;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">Plan fuerza · Sem ${semG}</span>`:'';
+      const cargaHint=tieneCarga?`<div style="background:var(--bg3);border-top:1px solid var(--border);padding:7px 16px;font-size:11px;color:var(--green)">
+        ✦ Carga plan sem ${semG}: ${exs.filter(e=>cargas[e.id]).map(e=>`${e.name.split('(')[0].trim()} ${cargas[e.id]}kg`).join(' · ')}
+      </div>`:'';
+      const banner=esSugerida?`<div style="background:linear-gradient(90deg,rgba(37,99,235,.06),var(--bg2));padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase">✶ Sugerida — ${diasFalta===0?'HOY':diasFalta===1?'Mañana':diaRut!==999?title191(diasOrden[diaRut]):'Próxima'}</span>
+      </div>`:'';
+      return `<div class="rutina-card" style="border-color:${borderColor}">
+        ${banner}
+        <div class="rutina-head" onclick="openRutinaPreview('${r.id}')">
+          <span class="rutina-emoji">${r.emoji||'◈'}</span>
+          <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:2px">
+            <div class="rutina-name">${r.name}</div>${diaTag}
+          </div>
+          <div class="rutina-meta">${exs.length} ejerc. · ${ultstxt}</div>
+          ${planTag?`<div style="margin-top:4px">${planTag}</div>`:''}
+        </div>
+        ${cargaHint}
+        <button onclick="iniciarRutina('${r.id}')"
+          style="width:100%;padding:10px;background:${esSugerida||esPlanFuerza?'var(--p)':'var(--bg3)'};
+          color:${esSugerida||esPlanFuerza?'#fff':'var(--ink2)'};border:none;font-family:var(--ff);
+          font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;
+          border-top:1px solid var(--border);border-radius:0 0 16px 16px;margin-top:auto">
+          ▶ ${esPlanFuerza?'Iniciar (plan)':'Iniciar'}
+        </button>
+      </div>`;
+    }).join('');
+
+    const top=document.getElementById('train-topbar-right');
+    if(top) top.innerHTML=`<button class="btn btn-p btn-sm" onclick="openNewRutina()">+ Nueva</button>`;
+    document.getElementById('mq187-train-prescription')?.remove();
+  };
+
+  setTimeout(()=>{try{renderRutinas()}catch(e){console.warn('v191 renderRutinas error',e)}},600);
+  console.info('MELQART v191: Entrenar corregido, carrera integrada y no marcada como fuerza');
+})();
+
+
+
+// ---------------------------------------------------------------
+// MELQART v192 — Seguridad: no ocultar ni eliminar rutinas/sesiones de jueves
+// ---------------------------------------------------------------
+(function mq192NoHideThursdaySessions(){
+  function norm192(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+  function title192(s){ return String(s||'').charAt(0).toUpperCase()+String(s||'').slice(1); }
+  function getRunPlan192(){ try{return typeof getActiveRunningPlan187==='function'?getActiveRunningPlan187():null}catch(e){return null} }
+  function pace192(){
+    try{
+      const m=typeof mq188RunningMetrics==='function'?mq188RunningMetrics():typeof mq187RunningMetrics==='function'?mq187RunningMetrics():null;
+      return m?.currentPace?.paceSec || 460;
+    }catch(e){return 460}
+  }
+  function hrFor192(plan, day){
+    const phase=plan?.currentPhase || 'Base Aeróbica';
+    const cfg=plan?.heartRateConfig || {};
+    const defaults={
+      'Base Aeróbica':{jueves:[140,148],domingo:[140,150]},
+      'Desarrollo':{jueves:[145,155],domingo:[140,150]},
+      'Específica':{jueves:[150,160],domingo:[140,152]}
+    };
+    return cfg?.[phase]?.[day==='domingo'?'sun':'thu'] || defaults[phase]?.[day] || [140,150];
+  }
+  function fallbackPrescription192(plan){
+    if(!plan) return null;
+    const week=Math.max(1,Number(plan.currentWeek||1));
+    const phase=plan.currentPhase||'Base Aeróbica';
+    const baseLong=8.5, inc=.25;
+    const longKm=Math.min(12, Math.round((baseLong+(week-1)*inc)*10)/10);
+    const thuKm=Math.max(4, Math.min(7, Math.round((longKm*.52)*10)/10));
+    const p=pace192();
+    const thuType=phase==='Base Aeróbica'?'EASY_RUN':phase==='Desarrollo'?'PROGRESSIVE_RUN':'TEMPO_RUN';
+    return {
+      planId:plan.id,
+      week,
+      phase,
+      workouts:[
+        {day:'jueves',type:thuType,targetDistanceKm:thuKm,estimatedTimeSec:thuKm*p,targetHeartRateRange:hrFor192(plan,'jueves'),
+          description:phase==='Base Aeróbica'?'Rodaje controlado, cómodo y sin forzar.':phase==='Desarrollo'?'Rodaje progresivo moderado, cerrar controlado.':'Trabajo controlado cerca de ritmo objetivo.',
+          structure:phase==='Base Aeróbica'?['Rodaje suave continuo']:[`1 km suave`,`${Math.max(1,Math.round((thuKm-2)*10)/10)} km controlado`,`1 km suave`]},
+        {day:'domingo',type:'LONG_RUN',targetDistanceKm:longKm,estimatedTimeSec:longKm*p,targetHeartRateRange:hrFor192(plan,'domingo'),
+          description:'Largo aeróbico. Priorizar completar distancia dentro de rango de FC.',structure:['Largo continuo aeróbico']}
+      ]
+    };
+  }
+  function getPrescription192(plan){
+    try{ if(typeof getCurrentPrescription187==='function') return getCurrentPrescription187(plan); }catch(e){}
+    return fallbackPrescription192(plan);
+  }
+  function isRunRoutine192(r){
+    const n=norm192(r?.name||'');
+    const exs=(r?.exercises||[]).map(id=>typeof getEx==='function'?getEx(id):null).filter(Boolean);
+    return n.includes('cardio') || n.includes('trote') || n.includes('correr') || exs.some(e=>e.id==='ex_correr'||e.type==='run'||e.type==='hiit'||norm192(e.name).includes('carrera'));
+  }
+  function runDay192(r){
+    const n=norm192(r?.name||'');
+    if(n.includes('jueves')) return 'jueves';
+    if(n.includes('domingo')) return 'domingo';
+    return '';
+  }
+  function isStrengthRoutine192(r){
+    const n=norm192(r?.name||'');
+    if(isRunRoutine192(r)) return false;
+    return n.includes('tren inferior a') || n.includes('tren inferior b') || n.includes('tren superior a') || n.includes('tren superior b');
+  }
+  function runName192(type,day){
+    const t=String(type||'').toUpperCase();
+    if(t==='LONG_RUN') return 'Largo aeróbico';
+    if(t==='EASY_RUN') return 'Rodaje suave';
+    if(t==='PROGRESSIVE_RUN') return 'Rodaje progresivo';
+    if(t==='TEMPO_RUN') return 'Tempo controlado';
+    if(t==='FARTLEK') return 'Fartlek';
+    if(t==='RECOVERY_RUN') return 'Rodaje recuperación';
+    return day==='domingo'?'Largo aeróbico':'Rodaje suave';
+  }
+  function renderRunCard192(r, opts){
+    const {runPlan,prescription,esSugerida,diasFalta,isSecondaryRun}=opts;
+    const day=runDay192(r);
+    const w=(prescription?.workouts||[]).find(x=>x.day===day);
+    if(!w) return '';
+    const label=day==='domingo'?'Domingo':'Jueves';
+    const tagTxt=diasFalta===0?'HOY':diasFalta===1?'MAÑANA':label.toUpperCase();
+    const tagBg=diasFalta===0?'var(--orange)':diasFalta===1?'var(--bg4)':'var(--bg3)';
+    const tagCol=diasFalta===0?'#fff':diasFalta===1?'var(--gold)':'var(--ink3)';
+    const title=isSecondaryRun ? r.name : `${label} — ${runName192(w.type,day)}`;
+    const subtitle=isSecondaryRun
+      ? 'Rutina histórica de carrera · no se oculta'
+      : `${w.targetDistanceKm} km · FC ${w.targetHeartRateRange[0]}-${w.targetHeartRateRange[1]}`;
+    const banner=esSugerida?`<div style="background:linear-gradient(90deg,rgba(111,62,168,.08),var(--bg2));padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;font-weight:700;color:var(--p);letter-spacing:1px;text-transform:uppercase">✶ Sugerida — ${tagTxt==='HOY'?'Hoy':tagTxt==='MAÑANA'?'Mañana':title192(day)}</span>
+    </div>`:'';
+    return `<div class="rutina-card mq192-run-card" style="border-color:${esSugerida?'var(--orange)':isSecondaryRun?'var(--border2)':'var(--p)'}">
+      ${banner}
+      <div class="rutina-head" onclick="openRutinaPreview('${r.id}')">
+        <span class="rutina-emoji">◎</span>
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:2px">
+          <div class="rutina-name">${title}</div>
+          <span style="background:${tagBg};color:${tagCol};font-size:9px;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">${tagTxt}</span>
+        </div>
+        <div class="rutina-meta">${subtitle}</div>
+        <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">
+          ${isSecondaryRun
+            ? `<span style="background:var(--bg3);color:var(--ink3);font-size:9px;padding:2px 7px;border-radius:4px;font-weight:800;letter-spacing:.5px;text-transform:uppercase">Carrera histórica</span>`
+            : `<span style="background:var(--p);color:#fff;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:800;letter-spacing:.5px;text-transform:uppercase">Plan carrera · Sem ${runPlan.currentWeek}/${runPlan.totalWeeks}</span>
+               <span style="background:var(--bg3);color:var(--p);font-size:9px;padding:2px 7px;border-radius:4px;font-weight:800;letter-spacing:.5px;text-transform:uppercase">${runPlan.currentPhase}</span>`}
+        </div>
+        ${!isSecondaryRun?`<div style="font-size:12px;color:var(--ink3);margin-top:8px">${w.description||''}</div><div style="font-size:11px;color:var(--ink2);margin-top:5px">${(w.structure||[]).join(' · ')}</div>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);margin-top:auto">
+        <button onclick="event.stopPropagation();openRunJsonImporter()"
+          style="padding:10px;background:var(--bg3);color:var(--p);border:none;border-right:1px solid var(--border);font-family:var(--ff);font-size:11px;font-weight:800;letter-spacing:1px;cursor:pointer">
+          Cargar datos
+        </button>
+        <button onclick="event.stopPropagation();iniciarRutina('${r.id}')"
+          style="padding:10px;background:${isSecondaryRun?'var(--bg3)':'var(--p)'};color:${isSecondaryRun?'var(--ink2)':'#fff'};border:none;font-family:var(--ff);font-size:11px;font-weight:800;letter-spacing:1px;cursor:pointer">
+          ▶ Iniciar
+        </button>
+      </div>
+    </div>`;
+  }
+
+  renderRutinas=function(){
+    const list=document.getElementById('rutinas-list');
+    const rutinas=forge.routines||[];
+    if(!rutinas.length){
+      list.innerHTML=`<div class="empty"><div class="empty-icon">▤</div><div class="empty-text">Sin rutinas</div><div class="empty-sub">Crea tu primera rutina.</div></div>`;
+      return;
+    }
+
+    const fuerzaPlan=(forge.planes||[]).find(p=>p.activo);
+    const semG=fuerzaPlan?semanaActualPlan(fuerzaPlan):0;
+    const runPlan=getRunPlan192();
+    const prescription=getPrescription192(runPlan);
+
+    const ahora=new Date();
+    const diasOrden=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    const diaHoyIdx=ahora.getDay();
+    const inicioHoy=new Date(ahora); inicioHoy.setHours(0,0,0,0);
+    const sesiones=(forge.sessions||[]);
+    const yaEntrenoHoy=sesiones.some(s=>s.date>=inicioHoy.getTime()&&s.routineId);
+
+    function diaDeRutina(r){
+      const n=norm192(r.name);
+      for(let i=0;i<diasOrden.length;i++){ if(n.includes(norm192(diasOrden[i]))) return i; }
+      return 999;
+    }
+    function diasHasta(idx){
+      if(idx===999||idx<0) return 999;
+      let diff=idx-diaHoyIdx;
+      if(diff<0) diff+=7;
+      if(diff===0&&yaEntrenoHoy) diff=7;
+      return diff;
+    }
+
+    // IMPORTANTE v192: NO filtramos rutinas. No se oculta ni elimina nada del jueves.
+    const sorted=[...rutinas].sort((a,b)=>diasHasta(diaDeRutina(a))-diasHasta(diaDeRutina(b)));
+    const sugeridaId=sorted.find(r=>diaDeRutina(r)!==999)?.id || null;
+    const primaryRunSeen={jueves:false,domingo:false};
+
+    list.innerHTML=sorted.map(r=>{
+      const diaRut=diaDeRutina(r);
+      const diasFalta=diasHasta(diaRut);
+      const esSugerida=r.id===sugeridaId;
+
+      if(runPlan && prescription && isRunRoutine192(r) && runDay192(r)){
+        const d=runDay192(r);
+        const isSecondary=!!primaryRunSeen[d];
+        primaryRunSeen[d]=true;
+        return renderRunCard192(r,{runPlan,prescription,esSugerida,diasFalta,isSecondaryRun:isSecondary});
+      }
+
+      const exs=(r.exercises||[]).map(id=>getEx(id)).filter(Boolean);
+      const ultsesion=sesiones.filter(s=>s.routineId===r.id).sort((a,b)=>b.date-a.date)[0];
+      const ultstxt=ultsesion?'Último: '+fmtDate(ultsesion.date):'Sin sesiones aún';
+      const esPlanFuerza=!!fuerzaPlan && isStrengthRoutine192(r);
+      const cargas=fuerzaPlan?getCargasSemana(r.id):{};
+      const tieneCarga=esPlanFuerza&&Object.keys(cargas).length>0;
+      const borderColor=esSugerida?'var(--orange)':esPlanFuerza?'var(--green)':'var(--border2)';
+      let diaTag='';
+      if(diaRut!==999){
+        const label=diasFalta===0?'HOY':diasFalta===1?'Mañana':title192(diasOrden[diaRut]);
+        const bg=diasFalta===0?'var(--orange)':diasFalta===1?'var(--bg4)':'var(--bg3)';
+        const col=diasFalta===0?'#fff':diasFalta===1?'var(--gold)':'var(--ink3)';
+        diaTag=`<span style="background:${bg};color:${col};font-size:9px;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">${label}</span>`;
+      }
+      const planTag=esPlanFuerza?`<span style="background:var(--green);color:#fff;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">Plan fuerza · Sem ${semG}</span>`:'';
+      const cargaHint=tieneCarga?`<div style="background:var(--bg3);border-top:1px solid var(--border);padding:7px 16px;font-size:11px;color:var(--green)">
+        ✦ Carga plan sem ${semG}: ${exs.filter(e=>cargas[e.id]).map(e=>`${e.name.split('(')[0].trim()} ${cargas[e.id]}kg`).join(' · ')}
+      </div>`:'';
+      const banner=esSugerida?`<div style="background:linear-gradient(90deg,rgba(37,99,235,.06),var(--bg2));padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase">✶ Sugerida — ${diasFalta===0?'HOY':diasFalta===1?'Mañana':diaRut!==999?title192(diasOrden[diaRut]):'Próxima'}</span>
+      </div>`:'';
+      return `<div class="rutina-card" style="border-color:${borderColor}">
+        ${banner}
+        <div class="rutina-head" onclick="openRutinaPreview('${r.id}')">
+          <span class="rutina-emoji">${r.emoji||'◈'}</span>
+          <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:2px">
+            <div class="rutina-name">${r.name}</div>${diaTag}
+          </div>
+          <div class="rutina-meta">${exs.length} ejerc. · ${ultstxt}</div>
+          ${planTag?`<div style="margin-top:4px">${planTag}</div>`:''}
+        </div>
+        ${cargaHint}
+        <button onclick="iniciarRutina('${r.id}')"
+          style="width:100%;padding:10px;background:${esSugerida||esPlanFuerza?'var(--p)':'var(--bg3)'};
+          color:${esSugerida||esPlanFuerza?'#fff':'var(--ink2)'};border:none;font-family:var(--ff);font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;border-top:1px solid var(--border);border-radius:0 0 16px 16px;margin-top:auto">
+          ▶ ${esPlanFuerza?'Iniciar (plan)':'Iniciar'}
+        </button>
+      </div>`;
+    }).join('');
+
+    const top=document.getElementById('train-topbar-right');
+    if(top) top.innerHTML=`<button class="btn btn-p btn-sm" onclick="openNewRutina()">+ Nueva</button>`;
+    document.getElementById('mq187-train-prescription')?.remove();
+  };
+
+  window.mq192DiagnosticoRutinas=function(){
+    return (forge.routines||[]).map(r=>({
+      id:r.id,
+      name:r.name,
+      isRun:isRunRoutine192(r),
+      runDay:runDay192(r),
+      isStrength:isStrengthRoutine192(r),
+      exerciseIds:r.exercises||[]
+    }));
+  };
+
+  setTimeout(()=>{try{renderRutinas()}catch(e){console.warn('v192 renderRutinas error',e)}},600);
+  console.info('MELQART v192: no se ocultan rutinas/sesiones de jueves; carrera no es fuerza');
+})();
