@@ -12062,3 +12062,491 @@ try{
   setTimeout(()=>{try{repairExistingRunDurations188();injectDataQualityNote()}catch(e){}},800);
   console.info('MELQART v188: duración JSON carrera corregida + métricas con filtro de datos sospechosos');
 })();
+
+
+
+// ---------------------------------------------------------------
+// MELQART v189 — Fix definitivo duración de trote en importador y editor
+// ---------------------------------------------------------------
+(function mq189RunDurationEditorFix(){
+  function secFromTime189(v){
+    if(typeof v==='number') return Math.round(v);
+    const s=String(v||'').trim();
+    if(!s) return 0;
+    const p=s.split(':').map(x=>parseInt(x,10)||0);
+    if(p.length===3) return p[0]*3600+p[1]*60+p[2];
+    if(p.length===2) return p[0]*60+p[1];
+    return parseInt(s,10)||0;
+  }
+  function mmssFromSec189(sec){
+    sec=Math.round(sec||0);
+    return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;
+  }
+  function hhmmssFromSec189(sec){
+    sec=Math.round(sec||0);
+    const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  function normDate189(d){
+    if(!d) return (typeof today==='function'?today():new Date().toISOString().slice(0,10));
+    if(/^\d{4}-\d{2}-\d{2}$/.test(String(d))) return String(d);
+    const x=new Date(d);
+    return isNaN(x)?new Date().toISOString().slice(0,10):x.toISOString().slice(0,10);
+  }
+  function ensureEx189(id,name,type){
+    if(!forge.exercises) forge.exercises=[];
+    let e=forge.exercises.find(x=>x.id===id);
+    if(!e){ e={id,name,type}; forge.exercises.push(e); }
+    e.name=name; e.type=type||e.type;
+    return e;
+  }
+  function ensureRoutine189(id,name,exerciseIds,emoji='◎'){
+    if(!forge.routines) forge.routines=[];
+    let r=forge.routines.find(x=>x.id===id);
+    if(!r){ r={id,name,emoji,exercises:exerciseIds||[],restSec:90}; forge.routines.push(r); }
+    r.name=name; r.emoji=emoji; r.exercises=exerciseIds||r.exercises||[];
+    return r;
+  }
+  function localDate189(ts){
+    try{return typeof localDateStr==='function'?localDateStr(ts):new Date(ts).toISOString().slice(0,10)}
+    catch(e){return new Date(ts).toISOString().slice(0,10)}
+  }
+
+  // Reemplaza importador: guarda siempre set.time en MM:SS largo, por ejemplo 01:16:57 -> 76:57.
+  window.importRunJson = window.importRunJson188 = window.mq184RunJsonToSession = function(raw){
+    const j=typeof raw==='string'?JSON.parse(raw):raw;
+    const date=normDate189(j.date);
+    const time=String(j.time||'12:00').slice(0,5);
+    const ts=new Date(`${date}T${time}:00`).getTime();
+    const distance=Number(j.distanceKm ?? j.distance ?? j.km ?? 0);
+    const durationRaw=String(j.duration || j.timeTotal || j.elapsed || '');
+    const seconds=secFromTime189(durationRaw);
+    if(!distance || !seconds) throw new Error('Faltan distanceKm o duration');
+    const timeForSet=mmssFromSec189(seconds);
+    const avgHeartRate=j.avgHeartRate ?? j.fcMedia ?? j.heartRate ?? j.hr ?? '';
+    const calories=j.calories ?? j.kcal ?? '';
+    const steps=j.steps ?? j.pasos ?? '';
+    const strideCm=j.strideCm ?? j.zancadaCm ?? j.pasoMedioCm ?? '';
+    const routineName=j.routineName || (new Date(ts).getDay()===0?'Domingo — Cardio':'Jueves Noche — Trote');
+
+    ensureEx189('ex_correr','Carrera / Trote','run');
+    const routine=ensureRoutine189(new Date(ts).getDay()===0?'rut_domingo_cardio':'rut_jueves_trote', routineName, ['ex_correr'], '◎');
+
+    let sess=(forge.sessions||[]).find(s=>{
+      const sd=localDate189(s.date);
+      return sd===date && (s.exercises||[]).some(e=>e.exId==='ex_correr');
+    });
+    if(!sess){
+      sess={
+        id:'run_import_'+date.replaceAll('-','')+'_'+String(Date.now()).slice(-5),
+        routineId:routine.id,
+        routineName,
+        date:ts,
+        elapsed:seconds,
+        source:j.source||'json_carrera',
+        exercises:[]
+      };
+      if(!forge.sessions) forge.sessions=[];
+      forge.sessions.push(sess);
+    }
+
+    sess.routineId=routine.id;
+    sess.routineName=routineName;
+    sess.date=ts;
+    sess.elapsed=seconds;
+    sess.fcMedia=avgHeartRate?Number(avgHeartRate):sess.fcMedia;
+    sess.kcal=calories!==''?Number(String(calories).replace(',','.')):sess.kcal;
+    sess.pasos=steps!==''?Number(steps):sess.pasos;
+    sess.source=j.source||sess.source||'json_carrera';
+    sess.importedRun={
+      distanceKm:distance,
+      durationRaw,
+      durationStored:timeForSet,
+      durationSeconds:seconds,
+      durationHHMMSS:hhmmssFromSec189(seconds),
+      avgHeartRate:avgHeartRate?Number(avgHeartRate):null,
+      calories:calories!==''?Number(String(calories).replace(',','.')):null,
+      steps:steps!==''?Number(steps):null,
+      strideCm:strideCm!==''?Number(strideCm):null,
+      avgPaceReported:j.avgPace||j.ritmoPromedio||j.pace||'',
+      avgPaceCalculated:distance?mmssFromSec189(seconds/distance):'',
+      rawPaceFromImage:j.rawPaceFromImage||'',
+      notes:j.notes||'',
+      source:j.source||'json_carrera'
+    };
+
+    let ex=(sess.exercises||[]).find(e=>e.exId==='ex_correr');
+    if(!ex){ ex={exId:'ex_correr',sets:[]}; sess.exercises.push(ex); }
+    ex.sets=[{
+      type:'run',
+      done:true,
+      weight:0,
+      reps:0,
+      distance:String(distance),
+      time:timeForSet,
+      durationSeconds:seconds,
+      durationRaw,
+      durationHHMMSS:hhmmssFromSec189(seconds),
+      fc:avgHeartRate?String(avgHeartRate):'',
+      pasos:steps?String(steps):'',
+      calories:calories,
+      strideCm:strideCm,
+      avgPaceReported:j.avgPace||'',
+      rawPaceFromImage:j.rawPaceFromImage||'',
+      notes:j.notes||''
+    }];
+
+    try{saveDB()}catch(e){}
+    try{renderAll()}catch(e){}
+    return sess;
+  };
+
+  // Reemplaza el modal de importador para que use SIEMPRE el importador corregido.
+  window.openRunJsonImporter=function(){
+    const placeholder=`{
+  "date": "2026-06-14",
+  "time": "08:43",
+  "type": "trote",
+  "routineName": "Domingo — Trote",
+  "exerciseName": "Carrera / Trote",
+  "distanceKm": 9.8,
+  "duration": "01:16:57",
+  "avgHeartRate": 144,
+  "calories": 263.7,
+  "steps": 11290,
+  "strideCm": 87,
+  "avgPace": "07:51",
+  "source": "captura_reloj"
+}`;
+    if(typeof mq184Modal==='function'){
+      mq184Modal('Cargar datos de carrera', placeholder, window.importRunJson);
+      return;
+    }
+    const modalBg=document.createElement('div');
+    modalBg.className='modal-bg on';
+    modalBg.id='mq189-json-modal';
+    modalBg.innerHTML=`<div class="modal" style="max-height:88dvh">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <div class="modal-title">Cargar datos de carrera</div>
+        <button class="bicon" onclick="document.getElementById('mq189-json-modal')?.remove()">×</button>
+      </div>
+      <div class="modal-body">
+        <textarea id="mq189-json-text" style="width:100%;height:260px;font-family:monospace;font-size:12px;border:1px solid var(--border);border-radius:var(--r);padding:10px;background:var(--bg2);color:var(--ink)" placeholder='${placeholder.replaceAll("'","&#39;")}'></textarea>
+        <div id="mq189-json-err" style="color:var(--warn);font-size:12px;margin-top:8px;display:none"></div>
+        <button class="btn btn-p" style="margin-top:12px" onclick="mq189ConfirmRunJsonImport()">Cargar JSON</button>
+      </div>
+    </div>`;
+    window.mq189ConfirmRunJsonImport=function(){
+      const txt=document.getElementById('mq189-json-text').value.trim();
+      const err=document.getElementById('mq189-json-err');
+      try{
+        const obj=JSON.parse(txt);
+        const res=window.importRunJson(obj);
+        document.getElementById('mq189-json-modal')?.remove();
+        if(typeof showToast==='function') showToast('Carrera cargada correctamente',3000,'ok');
+        console.log('MELQART v189 import carrera OK', res);
+      }catch(e){
+        err.style.display='block';
+        err.textContent='JSON inválido o incompleto: '+(e.message||e);
+      }
+    };
+    modalBg.addEventListener('click', e=>{ if(e.target===modalBg) modalBg.remove(); });
+    document.body.appendChild(modalBg);
+  };
+
+  // Editor: si set.time viene HH:MM:SS, mostrar minutos totales y segundos correctos.
+  getEditTimeMM=function(timeVal,setObj){
+    const sec = setObj?.durationSeconds || secFromTime189(timeVal);
+    return Math.floor(sec/60);
+  };
+  getEditTimeSS=function(timeVal,setObj){
+    const sec = setObj?.durationSeconds || secFromTime189(timeVal);
+    return sec%60;
+  };
+
+  // Como renderEditSesExs llama getEditTimeMM(set.time) sin setObj, hacemos compatible con HH:MM:SS.
+  const oldGetMM=getEditTimeMM, oldGetSS=getEditTimeSS;
+  getEditTimeMM=function(timeVal){
+    const sec=secFromTime189(timeVal);
+    return Math.floor(sec/60);
+  };
+  getEditTimeSS=function(timeVal){
+    const sec=secFromTime189(timeVal);
+    return sec%60;
+  };
+
+  updateEditTimeFromSel=function(sesId,ei,si){
+    const mm=parseInt(document.getElementById('edit-time-mm-'+ei+'-'+si)?.value)||0;
+    const ss=parseInt(document.getElementById('edit-time-ss-'+ei+'-'+si)?.value)||0;
+    const total=mm*60+ss;
+    const timeStr=String(mm).padStart(2,'0')+':'+String(ss).padStart(2,'0');
+    const s=(forge.sessions||[]).find(x=>x.id===sesId); if(!s) return;
+    const set=s.exercises[ei].sets[si];
+    set.time=timeStr;
+    set.durationSeconds=total;
+    set.durationHHMMSS=hhmmssFromSec189(total);
+    set.durationRaw=set.durationRaw||set.durationHHMMSS;
+  };
+
+  // Reparación sobre registros existentes: si quedó 01:16:57, pasarlo a 76:57.
+  window.mq189RepairRunDurations=function(){
+    let changed=0;
+    (forge.sessions||[]).forEach(s=>{
+      (s.exercises||[]).forEach(ex=>{
+        if(ex.exId!=='ex_correr') return;
+        (ex.sets||[]).forEach(set=>{
+          if(String(set.time||'').split(':').length===3){
+            const sec=secFromTime189(set.time);
+            set.durationSeconds=sec;
+            set.durationRaw=set.time;
+            set.durationHHMMSS=hhmmssFromSec189(sec);
+            set.time=mmssFromSec189(sec);
+            s.elapsed=sec;
+            changed++;
+          }else if(set.durationSeconds && set.time && secFromTime189(set.time)!==Number(set.durationSeconds)){
+            // Si durationSeconds existe y time quedó truncado, durationSeconds manda.
+            const sec=Number(set.durationSeconds);
+            set.time=mmssFromSec189(sec);
+            set.durationHHMMSS=hhmmssFromSec189(sec);
+            s.elapsed=sec;
+            changed++;
+          }
+        });
+      });
+    });
+    try{saveDB()}catch(e){}
+    try{renderAll()}catch(e){}
+    return changed;
+  };
+
+  window.mq189DiagnosticoRun=function(){
+    const rows=[];
+    (forge.sessions||[]).forEach(s=>{
+      (s.exercises||[]).forEach(ex=>{
+        if(ex.exId==='ex_correr'){
+          (ex.sets||[]).forEach(set=>{
+            rows.push({
+              date:localDate189(s.date),
+              routine:s.routineName,
+              distance:set.distance,
+              time:set.time,
+              durationSeconds:set.durationSeconds||secFromTime189(set.time),
+              paceSec:(Number(set.durationSeconds)||secFromTime189(set.time))/(parseFloat(set.distance)||1),
+              fc:set.fc||s.fcMedia||''
+            });
+          });
+        }
+      });
+    });
+    return rows.sort((a,b)=>a.date.localeCompare(b.date));
+  };
+
+  setTimeout(()=>{try{window.mq189RepairRunDurations()}catch(e){}},600);
+  console.info('MELQART v189: importador y editor de duración de carrera corregidos');
+})();
+
+
+
+// ---------------------------------------------------------------
+// MELQART v190 — Integración visual plan carrera dentro de rutinas semanales
+// ---------------------------------------------------------------
+(function mq190IntegratedWeeklyPlan(){
+  function titleCase(s){ return String(s||'').charAt(0).toUpperCase()+String(s||'').slice(1); }
+  function normalize(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+  function getRunPlan190(){
+    try{ return typeof getActiveRunningPlan187==='function' ? getActiveRunningPlan187() : null; }catch(e){ return null; }
+  }
+  function getRunPrescription190(plan){
+    try{ return typeof getCurrentPrescription187==='function' ? getCurrentPrescription187(plan) : null; }catch(e){ return null; }
+  }
+  function isRunRoutine190(r){
+    const n=normalize(r?.name||'');
+    const exs=(r?.exercises||[]).map(id=>typeof getEx==='function'?getEx(id):null).filter(Boolean);
+    return n.includes('cardio') || n.includes('trote') || n.includes('correr') || exs.some(e=>e.id==='ex_correr'||e.type==='run'||e.type==='hiit');
+  }
+  function runDay190(r){
+    const n=normalize(r?.name||'');
+    if(n.includes('jueves')) return 'jueves';
+    if(n.includes('domingo')) return 'domingo';
+    return '';
+  }
+  function isStrengthPlanRoutine190(r){
+    const n=normalize(r?.name||'');
+    return n.includes('tren inferior a') || n.includes('tren inferior b') || n.includes('tren superior a') || n.includes('tren superior b') ||
+      n.includes('lunes') || n.includes('martes') || n.includes('miercoles') || n.includes('jueves');
+  }
+  function spanishRunName190(type, day){
+    const t=String(type||'').toUpperCase();
+    if(t==='LONG_RUN') return 'Largo aeróbico';
+    if(t==='EASY_RUN') return 'Rodaje suave';
+    if(t==='PROGRESSIVE_RUN') return 'Rodaje progresivo';
+    if(t==='TEMPO_RUN') return 'Tempo controlado';
+    if(t==='FARTLEK') return 'Fartlek';
+    if(t==='RECOVERY_RUN') return 'Rodaje recuperación';
+    return day==='domingo'?'Largo aeróbico':'Rodaje suave';
+  }
+  function renderIntegratedRunCard190(r, idx, opts){
+    const {runPlan, prescription, semG, esSugerida, diasFalta, diaRut, diasOrden}=opts;
+    const day=runDay190(r) || (idx%2?'domingo':'jueves');
+    const w=(prescription?.workouts||[]).find(x=>x.day===day);
+    if(!w) return null;
+    const label=day==='jueves'?'Jueves':'Domingo';
+    const diaTag=`<span style="background:${diasFalta===0?'var(--orange)':diasFalta===1?'var(--bg4)':'var(--bg3)'};color:${diasFalta===0?'#fff':diasFalta===1?'var(--gold)':'var(--ink3)'};font-size:9px;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">${diasFalta===0?'HOY':diasFalta===1?'MAÑANA':label}</span>`;
+    const bannerSugerida=esSugerida?`<div style="background:linear-gradient(90deg,rgba(111,62,168,.08),var(--bg2));padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;font-weight:700;color:var(--p);letter-spacing:1px;text-transform:uppercase">✶ Sugerida — ${diasFalta===0?'HOY':diasFalta===1?'Mañana':label}</span>
+    </div>`:'';
+    const planTag=`<span style="background:var(--p);color:#fff;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:800;letter-spacing:.5px;text-transform:uppercase">Carrera · Sem ${runPlan.currentWeek}/${runPlan.totalWeeks}</span>
+      <span style="background:var(--bg3);color:var(--p);font-size:9px;padding:2px 7px;border-radius:4px;font-weight:800;letter-spacing:.5px;text-transform:uppercase">${runPlan.currentPhase}</span>`;
+    const title=`${label} — ${spanishRunName190(w.type,day)}`;
+    const subtitle=`${w.targetDistanceKm} km · FC ${w.targetHeartRateRange[0]}-${w.targetHeartRateRange[1]}`;
+    return `<div class="rutina-card mq190-run-card" style="border-color:${esSugerida?'var(--orange)':'var(--p)'}">
+      ${bannerSugerida}
+      <div class="rutina-head" onclick="openRutinaPreview('${r.id}')">
+        <span class="rutina-emoji">◎</span>
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:2px">
+          <div class="rutina-name">${title}</div>${diaTag}
+        </div>
+        <div class="rutina-meta">${subtitle}</div>
+        <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${planTag}</div>
+        <div style="font-size:12px;color:var(--ink3);margin-top:8px">${w.description||''}</div>
+        <div style="font-size:11px;color:var(--ink2);margin-top:5px">${(w.structure||[]).join(' · ')}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);margin-top:auto">
+        <button onclick="event.stopPropagation();openRunJsonImporter()"
+          style="padding:10px;background:var(--bg3);color:var(--p);border:none;border-right:1px solid var(--border);font-family:var(--ff);font-size:11px;font-weight:800;letter-spacing:1px;cursor:pointer">
+          Cargar datos
+        </button>
+        <button onclick="event.stopPropagation();iniciarRutina('${r.id}')"
+          style="padding:10px;background:var(--p);color:#fff;border:none;font-family:var(--ff);font-size:11px;font-weight:800;letter-spacing:1px;cursor:pointer">
+          ▶ Iniciar
+        </button>
+      </div>
+    </div>`;
+  }
+
+  renderRutinas=function(){
+    const list=document.getElementById('rutinas-list');
+    const rutinas=forge.routines||[];
+    if(!rutinas.length){ list.innerHTML=`<div class="empty"><div class="empty-icon">▤</div><div class="empty-text">Sin rutinas</div><div class="empty-sub">Crea tu primera rutina.</div></div>`; return; }
+
+    const fuerzaPlan=(forge.planes||[]).find(p=>p.activo);
+    const semG=fuerzaPlan?semanaActualPlan(fuerzaPlan):0;
+    const runPlan=getRunPlan190();
+    const prescription=runPlan?getRunPrescription190(runPlan):null;
+
+    const ahora=new Date();
+    const diasOrden=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    const diaHoyIdx=ahora.getDay();
+    const inicioHoy=new Date(ahora); inicioHoy.setHours(0,0,0,0);
+    const sesionesForgadas=forge.sessions||[];
+    const yaEntrenoHoy=sesionesForgadas.some(s=>s.date>=inicioHoy.getTime()&&s.routineId);
+
+    function diaDeRutina(r){
+      const n=normalize(r.name);
+      for(let i=0;i<diasOrden.length;i++){
+        const d=normalize(diasOrden[i]);
+        if(n.includes(d)) return i;
+      }
+      return 999;
+    }
+    function diasHasta(diaRutinaIdx){
+      if(diaRutinaIdx<0 || diaRutinaIdx===999) return 999;
+      let diff=diaRutinaIdx-diaHoyIdx;
+      if(diff<0) diff+=7;
+      if(diff===0&&yaEntrenoHoy) diff=7;
+      return diff;
+    }
+
+    // Deduplicar visualmente cardio: dejar sólo una rutina por jueves y una por domingo.
+    const seenRunDays=new Set();
+    const filtered=[];
+    rutinas.forEach(r=>{
+      if(runPlan && isRunRoutine190(r)){
+        const d=runDay190(r);
+        if(d){
+          if(seenRunDays.has(d)) return;
+          seenRunDays.add(d);
+        }
+      }
+      filtered.push(r);
+    });
+
+    const sorted=[...filtered].sort((a,b)=>diasHasta(diaDeRutina(a))-diasHasta(diaDeRutina(b)));
+    const primero=sorted[0];
+    const sugeridaId=(primero&&diaDeRutina(primero)!==999)?primero.id:null;
+
+    list.innerHTML=sorted.map((r,idx)=>{
+      const exs=(r.exercises||[]).map(id=>getEx(id)).filter(Boolean);
+      const diaRut=diaDeRutina(r);
+      const diasFalta=diasHasta(diaRut);
+      const esSugerida=r.id===sugeridaId;
+
+      if(runPlan && prescription && isRunRoutine190(r) && runDay190(r)){
+        const html=renderIntegratedRunCard190(r, idx, {runPlan,prescription,semG,esSugerida,diasFalta,diaRut,diasOrden});
+        if(html) return html;
+      }
+
+      const ultsesion=sesionesForgadas.filter(s=>s.routineId===r.id).sort((a,b)=>b.date-a.date)[0];
+      const ultstxt=ultsesion?'Último: '+fmtDate(ultsesion.date):'Sin sesiones aún';
+      const esClavePlan=!!fuerzaPlan && isStrengthPlanRoutine190(r);
+      const cargas=fuerzaPlan?getCargasSemana(r.id):{};
+      const tieneCarga=esClavePlan&&Object.keys(cargas).length>0;
+      const borderColor=esSugerida?'var(--orange)':esClavePlan?'var(--green)':'var(--border2)';
+      const planTag=esClavePlan?`<span style="background:var(--green);color:#fff;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">Plan fuerza · Sem ${semG}</span>`:'';
+
+      let diaTag='';
+      if(diaRut!==999){
+        const label=diasFalta===0?'HOY':diasFalta===1?'Mañana':titleCase(diasOrden[diaRut]);
+        const bg=diasFalta===0?'var(--orange)':diasFalta===1?'var(--bg4)':'var(--bg3)';
+        const col=diasFalta===0?'#fff':diasFalta===1?'var(--gold)':'var(--ink3)';
+        diaTag=`<span style="background:${bg};color:${col};font-size:9px;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">${label}</span>`;
+      }
+      const cargaHint=tieneCarga?`<div style="background:var(--bg3);border-top:1px solid var(--border);padding:7px 16px;font-size:11px;color:var(--green)">
+        ✦ Carga plan sem ${semG}: ${exs.filter(e=>cargas[e.id]).map(e=>`${e.name.split('(')[0].trim()} ${cargas[e.id]}kg`).join(' · ')}
+      </div>`:'';
+      const bannerSugerida=esSugerida?`<div style="background:linear-gradient(90deg,rgba(37,99,235,.06),var(--bg2));padding:5px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase">✶ Sugerida — ${diasFalta===0?'HOY':diasFalta===1?'Mañana':diaRut!==999?titleCase(diasOrden[diaRut]):'Próxima'}</span>
+      </div>`:'';
+
+      return `<div class="rutina-card" style="border-color:${borderColor}">
+        ${bannerSugerida}
+        <div class="rutina-head" onclick="openRutinaPreview('${r.id}')">
+          <span class="rutina-emoji">${r.emoji||'◈'}</span>
+          <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:2px">
+            <div class="rutina-name">${r.name}</div>${diaTag}
+          </div>
+          <div class="rutina-meta">${exs.length} ejerc. · ${ultstxt}</div>
+          ${planTag ? `<div style="margin-top:4px">${planTag}</div>` : ''}
+        </div>
+        ${cargaHint}
+        <button onclick="iniciarRutina('${r.id}')"
+          style="width:100%;padding:10px;background:${esSugerida||esClavePlan?'var(--p)':'var(--bg3)'};
+          color:${esSugerida||esClavePlan?'#fff':'var(--ink2)'};border:none;font-family:var(--ff);
+          font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;
+          display:flex;align-items:center;justify-content:center;gap:6px;
+          border-top:1px solid var(--border);border-radius:0 0 16px 16px;margin-top:auto">
+          ▶ ${esClavePlan?'Iniciar (plan)':'Iniciar'}
+        </button>
+      </div>`;
+    }).join('');
+
+    // Topbar: dejar sólo Nueva. El cargador de trote queda dentro de las tarjetas de carrera.
+    const top=document.getElementById('train-topbar-right');
+    if(top) top.innerHTML=`<button class="btn btn-p btn-sm" onclick="openNewRutina()">+ Nueva</button>`;
+
+    // Seguridad: si algún hook anterior insertó el bloque grande de v187, eliminarlo.
+    const legacy=document.getElementById('mq187-train-prescription');
+    if(legacy) legacy.remove();
+  };
+
+  // Evitar que hooks antiguos vuelvan a insertar el bloque separado.
+  const oldInject=window.injectRunningTrain187;
+  window.injectRunningTrain187=function(){
+    const legacy=document.getElementById('mq187-train-prescription');
+    if(legacy) legacy.remove();
+  };
+
+  setTimeout(()=>{try{renderRutinas()}catch(e){}},700);
+  console.info('MELQART v190: plan de carrera integrado en rutinas semanales');
+})();
