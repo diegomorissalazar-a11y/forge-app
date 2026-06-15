@@ -11853,3 +11853,212 @@ try{
   setTimeout(()=>{try{injectRunningHome187();injectRunningTrain187();injectRunningProgress187();injectRunningWeekly187()}catch(e){}},900);
   console.info('MELQART v187 Planificación de Carrera 10K Base cargado');
 })();
+
+
+
+// ---------------------------------------------------------------
+// MELQART v188 — Fix duración import JSON carrera + métricas limpias
+// ---------------------------------------------------------------
+(function mq188RunImportAndMetricsFix(){
+  const MIN_VALID_PACE=240;   // 4:00/km
+  const MAX_VALID_PACE=810;   // 13:30/km
+
+  function dStr(ts){
+    try{return typeof localDateStr==='function'?localDateStr(ts):new Date(ts).toISOString().slice(0,10)}
+    catch(e){return new Date(ts).toISOString().slice(0,10)}
+  }
+  function todayStr(){
+    try{return typeof today==='function'?today():new Date().toISOString().slice(0,10)}
+    catch(e){return new Date().toISOString().slice(0,10)}
+  }
+  function normDate(d){
+    if(!d) return todayStr();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(String(d))) return String(d);
+    const x=new Date(d);
+    return isNaN(x)?todayStr():x.toISOString().slice(0,10);
+  }
+  function secFromTime(v){
+    if(typeof v==='number') return Math.round(v);
+    const s=String(v||'').trim();
+    if(!s) return 0;
+    const p=s.split(':').map(x=>parseInt(x,10)||0);
+    if(p.length===3) return p[0]*3600+p[1]*60+p[2];
+    if(p.length===2) return p[0]*60+p[1];
+    return parseInt(s,10)||0;
+  }
+  function mmssFromSec(sec){
+    sec=Math.round(sec||0);
+    const m=Math.floor(sec/60), s=sec%60;
+    return `${m}:${String(s).padStart(2,'0')}`;
+  }
+  function hhmmssFromSec(sec){
+    sec=Math.round(sec||0);
+    const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  function fmtPace(sec){
+    sec=Math.round(sec||0);
+    if(!sec || !isFinite(sec)) return '—';
+    return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}/km`;
+  }
+  function ensureEx(id,name,type){
+    if(!forge.exercises) forge.exercises=[];
+    let e=forge.exercises.find(x=>x.id===id);
+    if(!e){ e={id,name,type}; forge.exercises.push(e); }
+    e.name=name; e.type=type||e.type;
+    return e;
+  }
+  function ensureRoutine(id,name,exerciseIds,emoji='◎'){
+    if(!forge.routines) forge.routines=[];
+    let r=forge.routines.find(x=>x.id===id);
+    if(!r){ r={id,name,emoji,exercises:exerciseIds||[],restSec:90}; forge.routines.push(r); }
+    r.name=name; r.emoji=emoji; r.exercises=exerciseIds||r.exercises||[];
+    return r;
+  }
+
+  function importRunJson188(raw){
+    const j=typeof raw==='string'?JSON.parse(raw):raw;
+    const date=normDate(j.date);
+    const time=String(j.time||'12:00').slice(0,5);
+    const ts=new Date(`${date}T${time}:00`).getTime();
+    const distance=Number(j.distanceKm ?? j.distance ?? j.km ?? 0);
+    const durationRaw=String(j.duration || j.timeTotal || j.elapsed || '');
+    const seconds=secFromTime(durationRaw);
+    if(!distance || !seconds) throw new Error('Faltan distanceKm o duration');
+    const timeForSet=mmssFromSec(seconds); // la app espera MM:SS. 01:19:36 -> 79:36
+    const avgPaceReported=j.avgPace || j.ritmoPromedio || j.pace || '';
+    const avgPaceCalculated=distance>0 ? fmtPace(seconds/distance).replace('/km','') : '';
+    const avgHeartRate=j.avgHeartRate ?? j.fcMedia ?? j.heartRate ?? j.hr ?? '';
+    const calories=j.calories ?? j.kcal ?? '';
+    const steps=j.steps ?? j.pasos ?? '';
+    const strideCm=j.strideCm ?? j.zancadaCm ?? j.pasoMedioCm ?? '';
+    const routineName=j.routineName || (new Date(ts).getDay()===0?'Domingo — Cardio':'Jueves Noche — Trote');
+
+    ensureEx('ex_correr','Carrera / Trote','run');
+    const routine=ensureRoutine(new Date(ts).getDay()===0?'rut_domingo_cardio':'rut_jueves_trote', routineName, ['ex_correr'], '◎');
+
+    let sess=(forge.sessions||[]).find(s=>{
+      const sd=dStr(s.date);
+      return sd===date && (s.exercises||[]).some(e=>e.exId==='ex_correr');
+    });
+    if(!sess){
+      sess={id:'run_import_'+date.replaceAll('-','')+'_'+String(Date.now()).slice(-5),routineId:routine.id,routineName,date:ts,elapsed:seconds,source:j.source||'json_carrera',exercises:[]};
+      if(!forge.sessions) forge.sessions=[];
+      forge.sessions.push(sess);
+    }
+    sess.routineId=routine.id;
+    sess.routineName=routineName;
+    sess.date=ts;
+    sess.elapsed=seconds;
+    sess.fcMedia=avgHeartRate?Number(avgHeartRate):sess.fcMedia;
+    sess.kcal=calories!==''?Number(calories):sess.kcal;
+    sess.pasos=steps!==''?Number(steps):sess.pasos;
+    sess.source=j.source||sess.source||'json_carrera';
+    sess.importedRun={distanceKm:distance,durationRaw,durationStored:timeForSet,durationSeconds:seconds,durationHHMMSS:hhmmssFromSec(seconds),avgHeartRate:avgHeartRate?Number(avgHeartRate):null,calories:calories!==''?Number(calories):null,steps:steps!==''?Number(steps):null,strideCm:strideCm!==''?Number(strideCm):null,avgPaceReported,avgPaceCalculated,source:j.source||'json_carrera'};
+    let ex=(sess.exercises||[]).find(e=>e.exId==='ex_correr');
+    if(!ex){ ex={exId:'ex_correr',sets:[]}; sess.exercises.push(ex); }
+    ex.sets=[{type:'run',done:true,weight:0,reps:0,distance:String(distance),time:timeForSet,durationSeconds:seconds,durationRaw,durationHHMMSS:hhmmssFromSec(seconds),fc:avgHeartRate?String(avgHeartRate):'',pasos:steps?String(steps):'',calories,strideCm,avgPaceReported,avgPaceCalculated}];
+    try{saveDB()}catch(e){}
+    try{renderAll()}catch(e){}
+    return sess;
+  }
+
+  function collectRuns188(){
+    const runs=[];
+    (forge.sessions||[]).forEach(s=>{
+      (s.exercises||[]).forEach(ex=>{
+        const e=typeof getEx==='function'?getEx(ex.exId):null;
+        if(ex.exId==='ex_correr' || e?.type==='run' || /carrera|trote|correr/i.test(e?.name||'')){
+          (ex.sets||[]).forEach(st=>{
+            const dist=parseFloat(st.distance)||parseFloat(st.distanceKm)||0;
+            const sec=Number(st.durationSeconds)||secFromTime(st.time||st.duration||s.elapsed||0);
+            if(dist>0 && sec>0){
+              const pace=sec/dist;
+              runs.push({date:dStr(s.date),ts:s.date,distanceKm:dist,durationSec:sec,paceSec:pace,fc:Number(st.fc||s.fcMedia||0)||null,kcal:Number(st.calories||s.kcal||0)||null,steps:Number(st.pasos||s.pasos||0)||null,routineName:s.routineName||'Trote',validForPlan:pace>=MIN_VALID_PACE && pace<=MAX_VALID_PACE,excludedReason:pace<MIN_VALID_PACE?'ritmo imposible bajo 4:00/km':pace>MAX_VALID_PACE?'ritmo sobre 13:30/km':''});
+            }
+          });
+        }
+      });
+    });
+    return runs.sort((a,b)=>a.ts-b.ts);
+  }
+  function validRuns188(){ return collectRuns188().filter(r=>r.validForPlan); }
+  function currentPace188(){
+    const runs=validRuns188();
+    const excluded=collectRuns188().filter(r=>!r.validForPlan);
+    if(!runs.length) return {paceSec:null, source:'sin datos válidos', runs:[], excluded};
+    const now=new Date();
+    const d30=new Date(now); d30.setDate(now.getDate()-30);
+    let recent=runs.filter(r=>new Date(r.date+'T12:00:00')>=d30);
+    let source='últimos 30 días';
+    if(recent.length<2){
+      const d28=new Date(now); d28.setDate(now.getDate()-28);
+      recent=runs.filter(r=>new Date(r.date+'T12:00:00')>=d28);
+      source='últimas 4 semanas';
+    }
+    if(!recent.length){ recent=[runs[runs.length-1]]; source='último trote válido'; }
+    const priority=recent.filter(r=>r.distanceKm>=8 && r.distanceKm<=12);
+    const base=priority.length?priority:recent;
+    if(priority.length) source+=' · 8K–12K';
+    const totalKm=base.reduce((a,r)=>a+r.distanceKm,0);
+    const totalSec=base.reduce((a,r)=>a+r.durationSec,0);
+    return {paceSec:totalKm?totalSec/totalKm:null, source, runs:base, excluded};
+  }
+  function predict10k188(){
+    const runs=validRuns188().slice().reverse();
+    if(!runs.length) return {timeSec:null, source:'sin datos válidos'};
+    const exact=runs.find(r=>r.distanceKm>=9.8 && r.distanceKm<=10.2);
+    if(exact) return {timeSec:exact.paceSec*10, source:'10K reciente'};
+    const near=runs.find(r=>r.distanceKm>=8 && r.distanceKm<=12);
+    if(near) return {timeSec:near.paceSec*10, source:'trote 8K–12K extrapolado'};
+    const five=runs.find(r=>r.distanceKm>=4.8 && r.distanceKm<=5.3);
+    if(five) return {timeSec:five.durationSec*2.1, source:'5K x 2.1'};
+    const cur=currentPace188();
+    return {timeSec:cur.paceSec?cur.paceSec*10:null, source:cur.source};
+  }
+  function longMax188(){ const runs=validRuns188(); return runs.length?runs.reduce((m,r)=>!m||r.distanceKm>m.distanceKm?r:m,null):null; }
+  function avgFc188(){ const runs=currentPace188().runs.filter(r=>r.fc); return runs.length?Math.round(runs.reduce((a,r)=>a+r.fc,0)/runs.length):null; }
+  function repairExistingRunDurations188(){
+    let changed=0;
+    (forge.sessions||[]).forEach(s=>{
+      (s.exercises||[]).forEach(ex=>{
+        if(ex.exId!=='ex_correr') return;
+        (ex.sets||[]).forEach(st=>{
+          const raw=String(st.time||'');
+          if(/^\d{1,2}:\d{2}:\d{2}$/.test(raw)){
+            const sec=secFromTime(raw);
+            st.durationSeconds=sec; st.durationRaw=raw; st.durationHHMMSS=hhmmssFromSec(sec); st.time=mmssFromSec(sec); s.elapsed=sec; changed++;
+          }
+          if(st.durationRaw && !st.durationSeconds){
+            const sec=secFromTime(st.durationRaw);
+            if(sec){ st.durationSeconds=sec; st.time=mmssFromSec(sec); s.elapsed=sec; changed++; }
+          }
+        });
+      });
+    });
+    try{saveDB()}catch(e){}
+    try{renderAll()}catch(e){}
+    return changed;
+  }
+  window.importRunJson=window.mq184RunJsonToSession=window.importRunJson188=importRunJson188;
+  window.mq188RunningMetrics=function(){
+    const plan=typeof getActiveRunningPlan187==='function'?getActiveRunningPlan187():null;
+    return {currentPace:currentPace188(),prediction:predict10k188(),longMax:longMax188(),avgFc:avgFc188(),allRuns:collectRuns188(),excludedRuns:collectRuns188().filter(r=>!r.validForPlan),plan};
+  };
+  window.mq187RunningMetrics=window.mq188RunningMetrics;
+  window.mq188RepairExistingRunDurations=repairExistingRunDurations188;
+  function injectDataQualityNote(){
+    const card=document.querySelector('#mq187-progress .mq-running-card, .mq-running-card');
+    if(!card || document.getElementById('mq188-data-quality-note')) return;
+    const excluded=collectRuns188().filter(r=>!r.validForPlan);
+    if(!excluded.length) return;
+    card.insertAdjacentHTML('beforeend', `<div id="mq188-data-quality-note" style="font-size:11px;color:var(--warn);margin-top:8px">${excluded.length} trote${excluded.length===1?'':'s'} excluido${excluded.length===1?'':'s'} del cálculo por ritmo sospechoso.</div>`);
+  }
+  const oldRenderAll=typeof renderAll==='function'?renderAll:null;
+  if(oldRenderAll && !window._mq188RenderAllHooked){
+    window._mq188RenderAllHooked=true;
+    renderAll=function(){ const r=oldRenderAll.apply(this,arguments); setTimeout(()=>{try{injectDataQualityNote()}catch(e){}},0); return r; };
+  }
+  setTimeout(()=>{try{repairExistingRunDurations188();injectDataQualityNote()}catch(e){}},800);
+  console.info('MELQART v188: duración JSON carrera corregida + métricas con filtro de datos sospechosos');
+})();
