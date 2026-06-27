@@ -1,16 +1,17 @@
-# MELQART v192 — Seguridad: no ocultar jueves
+# MELQART v194 — Versión visible corregida
 
-Corrige el riesgo detectado antes de cargar v191:
-- No filtra ni oculta rutinas de jueves.
-- No elimina sesiones ni registros.
-- Si hay más de una rutina de trote/carrera el mismo día, muestra la primera como plan de carrera y las otras como "Carrera histórica".
-- Jueves Noche — Trote no se marca como Plan fuerza.
-- Mantiene v189/v190: importador/editor de duración de trote corregido e integración visual del plan.
+Incluye todo v193:
+- Ritmos parciales de carrera.
+- Seguridad v192 para no ocultar rutinas/sesiones de jueves.
+- Fix duración de trote v189.
 
-Validar en consola:
-mq192DiagnosticoRutinas()
+Nuevo:
+- Corrige el número de versión visible en el menú de usuario.
+- Cambia el hardcode v144 por v194.
+- Agrega `window.MELQART_VERSION = 'v194'`.
+- Agrega `id="um-version"` al indicador de versión.
 
-Validar visual:
-- Entrenar debe conservar todas las rutinas.
-- Ninguna rutina de trote debe decir Plan fuerza.
-- Si existe una segunda rutina de jueves, no se oculta.
+Validar:
+1. Abrir menú de usuario.
+2. Debe decir v194, no v144.
+3. En consola: `MELQART_VERSION` debe devolver `"v194"`.

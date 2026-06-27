@@ -13031,3 +13031,363 @@ try{
   setTimeout(()=>{try{renderRutinas()}catch(e){console.warn('v192 renderRutinas error',e)}},600);
   console.info('MELQART v192: no se ocultan rutinas/sesiones de jueves; carrera no es fuerza');
 })();
+
+
+
+// ---------------------------------------------------------------
+// MELQART v193 — Importador carrera con ritmos parciales por km
+// ---------------------------------------------------------------
+(function mq193RunSplitsImporter(){
+  function secFromTime193(v){
+    if(typeof v==='number') return Math.round(v);
+    const s=String(v||'').trim();
+    if(!s) return 0;
+    const p=s.split(':').map(x=>parseInt(x,10)||0);
+    if(p.length===3) return p[0]*3600+p[1]*60+p[2];
+    if(p.length===2) return p[0]*60+p[1];
+    return parseInt(s,10)||0;
+  }
+  function paceToSec193(v){
+    if(typeof v==='number') return Math.round(v);
+    let s=String(v||'').trim().replace(/[’']/g,':').replace(/[”"]/g,'');
+    if(!s) return null;
+    const p=s.split(':').map(x=>parseInt(x,10)||0);
+    if(p.length>=2) return p[0]*60+p[1];
+    return parseInt(s,10)||null;
+  }
+  function mmss193(sec){
+    sec=Math.round(sec||0);
+    return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;
+  }
+  function hhmmss193(sec){
+    sec=Math.round(sec||0);
+    const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  function normDate193(d){
+    if(!d) return (typeof today==='function'?today():new Date().toISOString().slice(0,10));
+    if(/^\d{4}-\d{2}-\d{2}$/.test(String(d))) return String(d);
+    const x=new Date(d);
+    return isNaN(x)?new Date().toISOString().slice(0,10):x.toISOString().slice(0,10);
+  }
+  function localDate193(ts){
+    try{return typeof localDateStr==='function'?localDateStr(ts):new Date(ts).toISOString().slice(0,10)}
+    catch(e){return new Date(ts).toISOString().slice(0,10)}
+  }
+  function ensureEx193(id,name,type){
+    if(!forge.exercises) forge.exercises=[];
+    let e=forge.exercises.find(x=>x.id===id);
+    if(!e){ e={id,name,type}; forge.exercises.push(e); }
+    e.name=name; e.type=type||e.type;
+    return e;
+  }
+  function ensureRoutine193(id,name,exerciseIds,emoji='◎'){
+    if(!forge.routines) forge.routines=[];
+    let r=forge.routines.find(x=>x.id===id);
+    if(!r){ r={id,name,emoji,exercises:exerciseIds||[],restSec:90}; forge.routines.push(r); }
+    r.name=name; r.emoji=emoji; r.exercises=exerciseIds||r.exercises||[];
+    return r;
+  }
+  function normalizeSplits193(j){
+    const raw=j.splits || j.ritmosParciales || j.partialPaces || j.laps || [];
+    const out=[];
+    raw.forEach((x,i)=>{
+      if(typeof x==='string'){
+        const paceSec=paceToSec193(x);
+        if(paceSec) out.push({km:i+1,distanceKm:1,pace:x,paceSeconds:paceSec});
+      }else if(x && typeof x==='object'){
+        const km=Number(x.km ?? x.lap ?? i+1);
+        const distanceKm=Number(x.distanceKm ?? x.distance ?? 1);
+        const pace=x.pace || x.ritmo || x.avgPace || '';
+        const paceSec=Number(x.paceSeconds ?? x.ritmoSegundos ?? 0) || paceToSec193(pace);
+        const time=x.time || x.duration || '';
+        const timeSec=Number(x.timeSeconds ?? x.durationSeconds ?? 0) || secFromTime193(time);
+        out.push({
+          km,
+          distanceKm,
+          pace: pace || (paceSec?mmss193(paceSec):''),
+          paceSeconds: paceSec || (distanceKm&&timeSec?Math.round(timeSec/distanceKm):null),
+          time: time || (timeSec?mmss193(timeSec):''),
+          timeSeconds: timeSec || (paceSec&&distanceKm?Math.round(paceSec*distanceKm):null)
+        });
+      }
+    });
+    return out.filter(x=>x.paceSeconds || x.timeSeconds);
+  }
+  function splitSummary193(splits){
+    if(!splits?.length) return null;
+    const fastest=splits.reduce((a,b)=>!a||b.paceSeconds<a.paceSeconds?b:a,null);
+    const slowest=splits.reduce((a,b)=>!a||b.paceSeconds>b.paceSeconds?b:a,null);
+    const avg=Math.round(splits.reduce((a,b)=>a+(b.paceSeconds||0),0)/splits.length);
+    return {count:splits.length, fastest, slowest, avgPace:mmss193(avg), avgPaceSeconds:avg};
+  }
+
+  window.importRunJson = window.importRunJson193 = window.importRunJson188 = window.mq184RunJsonToSession = function(raw){
+    const j=typeof raw==='string'?JSON.parse(raw):raw;
+    const date=normDate193(j.date);
+    const time=String(j.time||'12:00').slice(0,5);
+    const ts=new Date(`${date}T${time}:00`).getTime();
+    const distance=Number(j.distanceKm ?? j.distance ?? j.km ?? 0);
+    const durationRaw=String(j.duration || j.timeTotal || j.elapsed || '');
+    const seconds=secFromTime193(durationRaw);
+    if(!distance || !seconds) throw new Error('Faltan distanceKm o duration');
+
+    const splits=normalizeSplits193(j);
+    const splitSummary=splitSummary193(splits);
+    const avgHeartRate=j.avgHeartRate ?? j.fcMedia ?? j.heartRate ?? j.hr ?? '';
+    const maxHeartRate=j.maxHeartRate ?? j.fcMax ?? j.maxHr ?? '';
+    const calories=j.calories ?? j.kcal ?? '';
+    const steps=j.steps ?? j.pasos ?? '';
+    const strideCm=j.strideCm ?? j.zancadaCm ?? j.pasoMedioCm ?? '';
+    const avgCadence=j.avgCadence ?? j.cadenciaMedia ?? '';
+    const maxCadence=j.maxCadence ?? j.cadenciaMaxima ?? '';
+    const routineName=j.routineName || (new Date(ts).getDay()===0?'Domingo — Cardio':'Jueves Noche — Trote');
+
+    ensureEx193('ex_correr','Carrera / Trote','run');
+    const routine=ensureRoutine193(new Date(ts).getDay()===0?'rut_domingo_cardio':'rut_jueves_trote', routineName, ['ex_correr'], '◎');
+
+    let sess=(forge.sessions||[]).find(s=>{
+      const sd=localDate193(s.date);
+      return sd===date && (s.exercises||[]).some(e=>e.exId==='ex_correr');
+    });
+    if(!sess){
+      sess={
+        id:'run_import_'+date.replaceAll('-','')+'_'+String(Date.now()).slice(-5),
+        routineId:routine.id,
+        routineName,
+        date:ts,
+        elapsed:seconds,
+        source:j.source||'json_carrera',
+        exercises:[]
+      };
+      if(!forge.sessions) forge.sessions=[];
+      forge.sessions.push(sess);
+    }
+
+    const timeForSet=mmss193(seconds);
+    sess.routineId=routine.id;
+    sess.routineName=routineName;
+    sess.date=ts;
+    sess.elapsed=seconds;
+    sess.fcMedia=avgHeartRate?Number(avgHeartRate):sess.fcMedia;
+    sess.fcMax=maxHeartRate?Number(maxHeartRate):sess.fcMax;
+    sess.kcal=calories!==''?Number(String(calories).replace(',','.')):sess.kcal;
+    sess.pasos=steps!==''?Number(steps):sess.pasos;
+    sess.source=j.source||sess.source||'json_carrera';
+    sess.importedRun={
+      distanceKm:distance,
+      durationRaw,
+      durationStored:timeForSet,
+      durationSeconds:seconds,
+      durationHHMMSS:hhmmss193(seconds),
+      avgHeartRate:avgHeartRate?Number(avgHeartRate):null,
+      maxHeartRate:maxHeartRate?Number(maxHeartRate):null,
+      calories:calories!==''?Number(String(calories).replace(',','.')):null,
+      steps:steps!==''?Number(steps):null,
+      strideCm:strideCm!==''?Number(strideCm):null,
+      avgCadence:avgCadence!==''?Number(avgCadence):null,
+      maxCadence:maxCadence!==''?Number(maxCadence):null,
+      avgPaceReported:j.avgPace||j.ritmoPromedio||j.pace||'',
+      avgPaceCalculated:distance?mmss193(seconds/distance):'',
+      rawPaceFromImage:j.rawPaceFromImage||'',
+      splits,
+      splitSummary,
+      milestones:j.milestones || j.hitos || {},
+      notes:j.notes||'',
+      source:j.source||'json_carrera'
+    };
+
+    let ex=(sess.exercises||[]).find(e=>e.exId==='ex_correr');
+    if(!ex){ ex={exId:'ex_correr',sets:[]}; sess.exercises.push(ex); }
+    ex.sets=[{
+      type:'run',
+      done:true,
+      weight:0,
+      reps:0,
+      distance:String(distance),
+      time:timeForSet,
+      durationSeconds:seconds,
+      durationRaw,
+      durationHHMMSS:hhmmss193(seconds),
+      fc:avgHeartRate?String(avgHeartRate):'',
+      fcMax:maxHeartRate?String(maxHeartRate):'',
+      pasos:steps?String(steps):'',
+      calories:calories,
+      strideCm:strideCm,
+      avgCadence,
+      maxCadence,
+      avgPaceReported:j.avgPace||'',
+      rawPaceFromImage:j.rawPaceFromImage||'',
+      splits,
+      splitSummary,
+      milestones:j.milestones || j.hitos || {},
+      notes:j.notes||''
+    }];
+
+    try{saveDB()}catch(e){}
+    try{renderAll()}catch(e){}
+    return sess;
+  };
+
+  window.openRunJsonImporter=function(){
+    const placeholder=`{
+  "date": "2026-06-21",
+  "time": "08:02",
+  "type": "trote",
+  "routineName": "Domingo — Cardio",
+  "exerciseName": "Carrera / Trote",
+  "distanceKm": 10.35,
+  "duration": "01:22:44",
+  "avgHeartRate": 140,
+  "maxHeartRate": 163,
+  "calories": 1303,
+  "steps": 12263,
+  "avgPace": "7:59",
+  "avgCadence": 141,
+  "maxCadence": 160,
+  "splits": [
+    {"km": 1, "pace": "7:49"},
+    {"km": 2, "pace": "8:04"},
+    {"km": 3, "pace": "8:37"},
+    {"km": 4, "pace": "8:36"},
+    {"km": 5, "pace": "8:43"},
+    {"km": 6, "pace": "7:45"},
+    {"km": 7, "pace": "7:47"},
+    {"km": 8, "pace": "7:43"},
+    {"km": 9, "pace": "7:58"},
+    {"km": 10, "pace": "7:26"}
+  ],
+  "milestones": {
+    "5k": "00:41:49",
+    "10k": "01:20:28"
+  },
+  "source": "captura_reloj"
+}`;
+    const modalBg=document.createElement('div');
+    modalBg.className='modal-bg on';
+    modalBg.id='mq193-json-modal';
+    modalBg.innerHTML=`<div class="modal" style="max-height:88dvh">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <div class="modal-title">Cargar datos de carrera</div>
+        <button class="bicon" onclick="document.getElementById('mq193-json-modal')?.remove()">×</button>
+      </div>
+      <div class="modal-body">
+        <textarea id="mq193-json-text" style="width:100%;height:300px;font-family:monospace;font-size:12px;border:1px solid var(--border);border-radius:var(--r);padding:10px;background:var(--bg2);color:var(--ink)" placeholder='${placeholder.replaceAll("'","&#39;")}'></textarea>
+        <div id="mq193-json-err" style="color:var(--warn);font-size:12px;margin-top:8px;display:none"></div>
+        <button class="btn btn-p" style="margin-top:12px" onclick="mq193ConfirmRunJsonImport()">Cargar JSON</button>
+      </div>
+    </div>`;
+    window.mq193ConfirmRunJsonImport=function(){
+      const txt=document.getElementById('mq193-json-text').value.trim();
+      const err=document.getElementById('mq193-json-err');
+      try{
+        const obj=JSON.parse(txt);
+        const res=window.importRunJson(obj);
+        document.getElementById('mq193-json-modal')?.remove();
+        if(typeof showToast==='function') showToast('Carrera cargada correctamente',3000,'ok');
+        console.log('MELQART v193 import carrera OK', res);
+      }catch(e){
+        err.style.display='block';
+        err.textContent='JSON inválido o incompleto: '+(e.message||e);
+      }
+    };
+    modalBg.addEventListener('click', e=>{ if(e.target===modalBg) modalBg.remove(); });
+    document.body.appendChild(modalBg);
+  };
+
+  window.mq193DiagnosticoSplits=function(){
+    const rows=[];
+    (forge.sessions||[]).forEach(s=>{
+      (s.exercises||[]).forEach(ex=>{
+        if(ex.exId==='ex_correr'){
+          (ex.sets||[]).forEach(set=>{
+            rows.push({
+              date:localDate193(s.date),
+              routine:s.routineName,
+              distance:set.distance,
+              time:set.time,
+              durationSeconds:set.durationSeconds||secFromTime193(set.time),
+              splits:set.splits||[],
+              splitSummary:set.splitSummary||null
+            });
+          });
+        }
+      });
+    });
+    return rows.sort((a,b)=>a.date.localeCompare(b.date));
+  };
+
+  window.exportRunSplitsLines=function(fechaInicio,fechaFin){
+    const lines=[];
+    (forge.sessions||[]).sort((a,b)=>a.date-b.date).forEach(s=>{
+      const d=new Date(s.date);
+      if(fechaInicio && d<fechaInicio) return;
+      if(fechaFin && d>fechaFin) return;
+      (s.exercises||[]).forEach(ex=>{
+        if(ex.exId!=='ex_correr') return;
+        (ex.sets||[]).forEach(set=>{
+          const splits=set.splits||s.importedRun?.splits||[];
+          if(!splits.length) return;
+          if(!lines.length) lines.push('RITMOS PARCIALES CARRERA');
+          lines.push(`  ${localDate193(s.date)} - ${s.routineName||'Carrera'}:`);
+          splits.forEach(sp=>lines.push(`    km ${sp.km}: ${sp.pace || mmss193(sp.paceSeconds)}/km`));
+          const summary=set.splitSummary||s.importedRun?.splitSummary;
+          if(summary) lines.push(`    Resumen: rápido km ${summary.fastest?.km} ${summary.fastest?.pace}/km · lento km ${summary.slowest?.km} ${summary.slowest?.pace}/km · promedio parciales ${summary.avgPace}/km`);
+        });
+      });
+    });
+    if(lines.length) lines.push('');
+    return lines;
+  };
+
+  if(typeof exportarSemana==='function' && !window._mq193ExportHooked){
+    const prev=exportarSemana;
+    window._mq193ExportHooked=true;
+    exportarSemana=function(){
+      const result=prev.apply(this,arguments);
+      try{
+        if(typeof result==='string'){
+          const splitLines=exportRunSplitsLines();
+          if(splitLines.length && !result.includes('RITMOS PARCIALES CARRERA')){
+            const txt=result.replace(/\nGenerado por MELQART/, '\n-------------------------------\n'+splitLines.join('\n')+'Generado por MELQART');
+            if(navigator.clipboard) navigator.clipboard.writeText(txt);
+            return txt;
+          }
+        }
+      }catch(e){}
+      return result;
+    };
+  }
+
+  console.info('MELQART v193: importador carrera acepta ritmos parciales');
+})();
+
+
+
+// ---------------------------------------------------------------
+// MELQART v194 — Corrección número de versión visible
+// ---------------------------------------------------------------
+(function mq194VersionLabel(){
+  window.MELQART_VERSION = 'v194';
+  function setVersionLabel(){
+    const el=document.getElementById('um-version');
+    if(el) el.textContent=window.MELQART_VERSION;
+    // Fallback para builds antiguos donde el div no tenía id y aún decía v144.
+    document.querySelectorAll('#user-menu div').forEach(d=>{
+      if((d.textContent||'').trim()==='v144') d.textContent=window.MELQART_VERSION;
+    });
+  }
+  const oldUpdateUserUI=typeof updateUserUI==='function'?updateUserUI:null;
+  if(oldUpdateUserUI && !window._mq194UpdateUserHooked){
+    window._mq194UpdateUserHooked=true;
+    updateUserUI=function(user){
+      const r=oldUpdateUserUI.apply(this,arguments);
+      setVersionLabel();
+      return r;
+    };
+  }
+  setTimeout(setVersionLabel,300);
+  setTimeout(setVersionLabel,1000);
+  console.info('MELQART v194: versión visible corregida en menú de usuario');
+})();
