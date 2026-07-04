@@ -1,17 +1,18 @@
-# MELQART v194 — Versión visible corregida
+# MELQART v195 — Ajuste retroactivo nutrición y agua
 
-Incluye todo v193:
-- Ritmos parciales de carrera.
-- Seguridad v192 para no ocultar rutinas/sesiones de jueves.
-- Fix duración de trote v189.
+Incluye todo v194 y agrega:
+- Modal para corregir agua y comidas de cualquier fecha.
+- Botón "Editar día" en Nutrición > Registro.
+- Botón "Corregir ayer" en el card de nutrición del inicio.
+- Permite marcar/desmarcar cena, almuerzo y demás comidas.
+- Permite editar vasos y ml de agua.
+- Recalcula pendientes, allDone, selectedPendingMealId.
+- No modifica registros de entrenamiento.
+- Actualiza indicador de versión a v195.
 
-Nuevo:
-- Corrige el número de versión visible en el menú de usuario.
-- Cambia el hardcode v144 por v194.
-- Agrega `window.MELQART_VERSION = 'v194'`.
-- Agrega `id="um-version"` al indicador de versión.
-
-Validar:
-1. Abrir menú de usuario.
-2. Debe decir v194, no v144.
-3. En consola: `MELQART_VERSION` debe devolver `"v194"`.
+Validación:
+1. Nutrición > Registro > Editar día.
+2. Elegir fecha de ayer o antes de ayer.
+3. Marcar Cena y ajustar Agua.
+4. Guardar.
+5. Ejecutar `mq195NutritionDebug('YYYY-MM-DD')`.

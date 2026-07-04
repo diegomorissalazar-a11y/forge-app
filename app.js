@@ -13391,3 +13391,229 @@ try{
   setTimeout(setVersionLabel,1000);
   console.info('MELQART v194: versión visible corregida en menú de usuario');
 })();
+
+
+
+// ---------------------------------------------------------------
+// MELQART v195 — Ajuste retroactivo de nutrición y agua
+// ---------------------------------------------------------------
+(function mq195NutritionBackfill(){
+  function mq195Today(){
+    try{return typeof today==='function'?today():new Date().toISOString().slice(0,10)}
+    catch(e){return new Date().toISOString().slice(0,10)}
+  }
+  function mq195LocalStr(d){
+    try{return typeof localDateStr==='function'?localDateStr(d):new Date(d).toISOString().slice(0,10)}
+    catch(e){return new Date(d).toISOString().slice(0,10)}
+  }
+  function mq195DateMinus(days){
+    const d=new Date(mq195Today()+'T12:00:00');
+    d.setDate(d.getDate()-days);
+    return mq195LocalStr(d);
+  }
+  function mq195EnsureFDDate(f){
+    const fd=getFD(f);
+    if(!fd.fecha) fd.fecha=f;
+    if(!fd.comidas) fd.comidas={};
+    COMIDAS.forEach(c=>{
+      if(!fd.comidas[c.id]) fd.comidas[c.id]={completada:false,texto:''};
+    });
+    return fd;
+  }
+  function mq195MealLabel(id){
+    const c=COMIDAS.find(x=>x.id===id);
+    return c ? c.nombre : id;
+  }
+  function mq195RenderMealRows(fd){
+    return COMIDAS.map(c=>{
+      const est=fd.comidas?.[c.id] || {completada:false,texto:''};
+      return `<div class="mq195-meal-row" style="border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px;background:var(--bg2)">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--ink);cursor:pointer">
+          <input type="checkbox" id="mq195-meal-${c.id}" ${est.completada?'checked':''} style="width:18px;height:18px;accent-color:var(--p)">
+          <span>${c.nombre}</span>
+          <span style="margin-left:auto;font-size:10px;color:var(--ink3);font-weight:700">${c.hora}</span>
+        </label>
+        <textarea id="mq195-txt-${c.id}" rows="2" placeholder="${c.ejemplo}" style="width:100%;margin-top:8px;border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--bg);color:var(--ink);font-family:var(--ff);font-size:12px">${est.texto||''}</textarea>
+      </div>`;
+    }).join('');
+  }
+  function mq195LoadDateIntoModal(f){
+    const fd=mq195EnsureFDDate(f);
+    const meta=getAguaMeta();
+    const dateInput=document.getElementById('mq195-date');
+    if(dateInput) dateInput.value=f;
+    const vasos=document.getElementById('mq195-water-cups');
+    if(vasos) vasos.value=fd.aguaVasosHoy ?? fd.agua ?? 0;
+    const ml=document.getElementById('mq195-water-ml');
+    if(ml) ml.value=fd.aguaMl ?? Math.round((fd.aguaVasosHoy ?? fd.agua ?? 0)*(meta.mlPorVaso||250));
+    const list=document.getElementById('mq195-meals-list');
+    if(list) list.innerHTML=mq195RenderMealRows(fd);
+    const title=document.getElementById('mq195-date-title');
+    if(title) title.textContent=f.split('-').reverse().join('/');
+  }
+  function mq195SetQuickDate(offset){
+    const f=mq195DateMinus(offset);
+    mq195LoadDateIntoModal(f);
+  }
+  window.mq195SetQuickDate=mq195SetQuickDate;
+
+  window.openNutritionAdjustModal=function(dateStr){
+    const f=dateStr||foodFecha||mq195Today();
+    let modal=document.getElementById('mq195-nutrition-modal');
+    if(!modal){
+      modal=document.createElement('div');
+      modal.className='modal-bg';
+      modal.id='mq195-nutrition-modal';
+      modal.innerHTML=`<div class="modal" style="max-height:90dvh">
+        <div class="modal-handle"></div>
+        <div class="modal-head">
+          <div>
+            <div class="modal-title">Ajustar nutrición y agua</div>
+            <div id="mq195-date-title" style="font-size:11px;color:var(--ink3);margin-top:2px"></div>
+          </div>
+          <button class="bicon" onclick="closeNutritionAdjustModal()">×</button>
+        </div>
+        <div class="modal-body" style="overflow:auto">
+          <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:10px">
+            <div style="flex:1;min-width:150px">
+              <div class="mq-kicker" style="margin-bottom:4px">Fecha a corregir</div>
+              <input id="mq195-date" type="date" onchange="mq195LoadDateIntoModal(this.value)" style="width:100%;border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--bg2);color:var(--ink);font-family:var(--ff)">
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="mq195SetQuickDate(1)">Ayer</button>
+            <button class="btn btn-ghost btn-sm" onclick="mq195SetQuickDate(2)">Antes de ayer</button>
+          </div>
+
+          <div style="border:1px solid var(--border);border-radius:14px;padding:12px;background:var(--bg3);margin-bottom:12px">
+            <div class="mq-kicker" style="margin-bottom:8px;color:var(--teal)">Agua</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <label style="font-size:11px;color:var(--ink3)">Vasos
+                <input id="mq195-water-cups" type="number" min="0" max="20" step="1" style="display:block;width:100%;margin-top:4px;border:1px solid var(--border);border-radius:10px;padding:9px;background:var(--bg);color:var(--ink);font-family:var(--ff)">
+              </label>
+              <label style="font-size:11px;color:var(--ink3)">Mililitros
+                <input id="mq195-water-ml" type="number" min="0" step="50" style="display:block;width:100%;margin-top:4px;border:1px solid var(--border);border-radius:10px;padding:9px;background:var(--bg);color:var(--ink);font-family:var(--ff)">
+              </label>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+              <button class="btn btn-ghost btn-sm" onclick="mq195WaterPreset(0)">0 vasos</button>
+              <button class="btn btn-ghost btn-sm" onclick="mq195WaterPreset(8)">8 vasos</button>
+              <button class="btn btn-ghost btn-sm" onclick="mq195WaterPreset(10)">10 vasos</button>
+            </div>
+          </div>
+
+          <div class="mq-kicker" style="margin-bottom:8px">Comidas del día</div>
+          <div id="mq195-meals-list"></div>
+
+          <div style="position:sticky;bottom:-1px;background:var(--bg);padding-top:10px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-ghost" onclick="closeNutritionAdjustModal()">Cancelar</button>
+            <button class="btn btn-p" onclick="saveNutritionAdjustModal()">Guardar ajuste</button>
+          </div>
+        </div>
+      </div>`;
+      modal.addEventListener('click', e=>{ if(e.target===modal) closeNutritionAdjustModal(); });
+      document.body.appendChild(modal);
+    }
+    modal.classList.add('on');
+    mq195LoadDateIntoModal(f);
+  };
+  window.closeNutritionAdjustModal=function(){
+    document.getElementById('mq195-nutrition-modal')?.classList.remove('on');
+  };
+  window.mq195LoadDateIntoModal=mq195LoadDateIntoModal;
+  window.mq195WaterPreset=function(v){
+    const meta=getAguaMeta();
+    const vasos=document.getElementById('mq195-water-cups');
+    const ml=document.getElementById('mq195-water-ml');
+    if(vasos) vasos.value=v;
+    if(ml) ml.value=v*(meta.mlPorVaso||250);
+  };
+  window.saveNutritionAdjustModal=function(){
+    const f=document.getElementById('mq195-date')?.value || mq195Today();
+    const fd=mq195EnsureFDDate(f);
+    const meta=getAguaMeta();
+    let vasos=parseInt(document.getElementById('mq195-water-cups')?.value||'0',10);
+    if(!isFinite(vasos)||vasos<0) vasos=0;
+    let ml=parseInt(document.getElementById('mq195-water-ml')?.value||'0',10);
+    if(!isFinite(ml)||ml<0) ml=vasos*(meta.mlPorVaso||250);
+    fd.aguaVasosHoy=vasos;
+    fd.agua=vasos;
+    fd.aguaMl=ml;
+    fd.comidas=fd.comidas||{};
+    COMIDAS.forEach(c=>{
+      const checked=!!document.getElementById('mq195-meal-'+c.id)?.checked;
+      const txt=document.getElementById('mq195-txt-'+c.id)?.value||'';
+      fd.comidas[c.id]={...(fd.comidas[c.id]||{}), completada:checked, texto:txt};
+    });
+    const pending=COMIDAS.filter(c=>!fd.comidas[c.id]?.completada);
+    if(pending.length){
+      fd.selectedPendingMealId=pending[0].id;
+      fd.allDone=false;
+    }else{
+      delete fd.selectedPendingMealId;
+      fd.allDone=true;
+    }
+    fd.ajusteManualNutricion={ts:Date.now(), tipo:'retroactivo', version:'v195'};
+    saveFD(fd);
+
+    // Si se ajustó el día que está abierto, refrescar esa pantalla. Si no, mantener fecha actual.
+    if(typeof foodFecha!=='undefined' && foodFecha===f) renderFood();
+    else if(typeof renderFood==='function' && currentScreen==='food') renderFood();
+    try{ renderHomeNutritionCard(); renderHomeWaterCard(); }catch(e){}
+    try{ renderPerfil(); }catch(e){}
+    closeNutritionAdjustModal();
+    showToast('Ajuste de nutrición guardado',2200,'ok');
+  };
+
+  // Inserta acceso en Nutrición sin modificar estructura base.
+  function mq195InjectFoodButton(){
+    const reg=document.getElementById('food-registro');
+    if(!reg || document.getElementById('mq195-adjust-btn')) return;
+    reg.insertAdjacentHTML('afterbegin', `<div id="mq195-adjust-btn" class="card" style="margin-bottom:12px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div>
+        <div class="mq-kicker">Corrección retroactiva</div>
+        <div style="font-size:12px;color:var(--ink3);margin-top:2px">Edita agua y comidas de días anteriores.</div>
+      </div>
+      <button class="btn btn-p btn-sm" onclick="openNutritionAdjustModal(foodFecha)">Editar día</button>
+    </div>`);
+  }
+  const oldRenderFood=typeof renderFood==='function'?renderFood:null;
+  if(oldRenderFood && !window._mq195RenderFoodHooked){
+    window._mq195RenderFoodHooked=true;
+    renderFood=function(){
+      const r=oldRenderFood.apply(this,arguments);
+      setTimeout(mq195InjectFoodButton,0);
+      return r;
+    };
+  }
+
+  // Acceso rápido desde home, si existe el card de nutrición.
+  function mq195InjectHomeButton(){
+    const el=document.getElementById('home-food-today');
+    if(!el || document.getElementById('mq195-home-adjust')) return;
+    const card=el.querySelector('.mq-home-card');
+    if(card){
+      card.insertAdjacentHTML('beforeend', `<button id="mq195-home-adjust" class="mq-btn-sec" style="margin-top:8px;width:100%" onclick="openNutritionAdjustModal(mq195DateMinus(1))">Corregir ayer</button>`);
+    }
+  }
+  const oldHomeNutrition=typeof renderHomeNutritionCard==='function'?renderHomeNutritionCard:null;
+  if(oldHomeNutrition && !window._mq195HomeNutritionHooked){
+    window._mq195HomeNutritionHooked=true;
+    renderHomeNutritionCard=function(){
+      const r=oldHomeNutrition.apply(this,arguments);
+      setTimeout(mq195InjectHomeButton,0);
+      return r;
+    };
+  }
+
+  window.mq195NutritionDebug=function(f){
+    const fd=mq195EnsureFDDate(f||foodFecha||mq195Today());
+    return {fecha:fd.fecha, aguaVasosHoy:fd.aguaVasosHoy, aguaMl:fd.aguaMl, comidas:fd.comidas, allDone:fd.allDone, selectedPendingMealId:fd.selectedPendingMealId};
+  };
+
+  setTimeout(()=>{try{mq195InjectFoodButton(); mq195InjectHomeButton();}catch(e){}},800);
+  console.info('MELQART v195: ajuste retroactivo de nutrición y agua cargado');
+})();
+
+
+// MELQART v195 version override
+window.MELQART_VERSION='v195';
+setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textContent='v195';},500);
