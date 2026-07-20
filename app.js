@@ -13617,3 +13617,651 @@ try{
 // MELQART v195 version override
 window.MELQART_VERSION='v195';
 setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textContent='v195';},500);
+
+
+
+// ---------------------------------------------------------------
+// MELQART v196 — Ajuste nutrición últimos 5 días, sin botón en Inicio
+// ---------------------------------------------------------------
+(function mq196NutritionBackfillLast5(){
+  function mq196Today(){
+    try{return typeof today==='function'?today():new Date().toISOString().slice(0,10)}
+    catch(e){return new Date().toISOString().slice(0,10)}
+  }
+  function mq196LocalStr(d){
+    try{return typeof localDateStr==='function'?localDateStr(d):new Date(d).toISOString().slice(0,10)}
+    catch(e){return new Date(d).toISOString().slice(0,10)}
+  }
+  function mq196DateMinus(days){
+    const d=new Date(mq196Today()+'T12:00:00');
+    d.setDate(d.getDate()-days);
+    return mq196LocalStr(d);
+  }
+  function mq196Last5Dates(){
+    return Array.from({length:5},(_,i)=>mq196DateMinus(i));
+  }
+  function mq196Fmt(f){
+    if(!f) return '';
+    const [y,m,d]=String(f).split('-');
+    return `${d}-${m}-${y}`;
+  }
+  function mq196EnsureFDDate(f){
+    const fd=getFD(f);
+    if(!fd.fecha) fd.fecha=f;
+    if(!fd.comidas) fd.comidas={};
+    COMIDAS.forEach(c=>{
+      if(!fd.comidas[c.id]) fd.comidas[c.id]={completada:false,texto:''};
+    });
+    return fd;
+  }
+  function mq196MealRows(fd){
+    return COMIDAS.map(c=>{
+      const est=fd.comidas?.[c.id] || {completada:false,texto:''};
+      const portions=c.portions||{};
+      const portionText=[
+        portions.proteinas?`${portions.proteinas} prot.`:'',
+        portions.lacteoProtein?`${portions.lacteoProtein} lácteo protein`:'',
+        portions.lacteoDescremado?`${portions.lacteoDescremado} lácteo desc.`:'',
+        portions.cereales?`${portions.cereales} cereal`:'',
+        portions.frutas?`${portions.frutas} fruta`:'',
+        portions.verduras?`${portions.verduras} verd.`:'',
+        portions.lipidos?`${portions.lipidos} líp.`:''
+      ].filter(Boolean).join(' · ');
+      return `<div class="mq196-meal-row" style="border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px;background:var(--bg2)">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--ink);cursor:pointer">
+          <input type="checkbox" id="mq196-meal-${c.id}" ${est.completada?'checked':''} style="width:18px;height:18px;accent-color:var(--p)">
+          <span>${c.nombre}</span>
+          <span style="margin-left:auto;font-size:10px;color:var(--ink3);font-weight:700">${c.hora}</span>
+        </label>
+        <div style="font-size:11px;color:var(--p);font-weight:700;margin-top:5px">${portionText||c.grupos||''}</div>
+        <textarea id="mq196-txt-${c.id}" rows="2" placeholder="${c.ejemplo}" style="width:100%;margin-top:8px;border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--bg);color:var(--ink);font-family:var(--ff);font-size:12px">${est.texto||''}</textarea>
+      </div>`;
+    }).join('');
+  }
+  function mq196Summary(fd){
+    const meta=getAguaMeta();
+    const vasos=fd.aguaVasosHoy ?? fd.agua ?? 0;
+    const ml=fd.aguaMl ?? Math.round(vasos*(meta.mlPorVaso||250));
+    const done=COMIDAS.filter(c=>fd.comidas?.[c.id]?.completada).length;
+    return {vasos,ml,done,total:COMIDAS.length};
+  }
+  function mq196DateSelector(active){
+    return `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:8px 0 12px">
+      ${mq196Last5Dates().map((f,i)=>{
+        const fd=mq196EnsureFDDate(f);
+        const s=mq196Summary(fd);
+        const label=i===0?'Hoy':i===1?'Ayer':mq196Fmt(f).slice(0,5);
+        const on=f===active;
+        return `<button onclick="mq196LoadDateIntoModal('${f}')" style="border:1px solid ${on?'var(--p)':'var(--border)'};background:${on?'rgba(111,62,168,.10)':'var(--bg2)'};border-radius:12px;padding:8px 4px;color:${on?'var(--p)':'var(--ink2)'};font-family:var(--ff);cursor:pointer">
+          <div style="font-size:11px;font-weight:900">${label}</div>
+          <div style="font-size:10px;color:var(--ink3);margin-top:2px">${s.done}/${s.total} com.</div>
+          <div style="font-size:10px;color:var(--teal);font-weight:800">${s.vasos}/${getAguaMeta().vasos} agua</div>
+        </button>`;
+      }).join('')}
+    </div>`;
+  }
+  function mq196LoadDateIntoModal(f){
+    const fd=mq196EnsureFDDate(f);
+    const meta=getAguaMeta();
+    const dateInput=document.getElementById('mq196-date');
+    if(dateInput) dateInput.value=f;
+    const title=document.getElementById('mq196-date-title');
+    if(title) title.textContent=mq196Fmt(f);
+    const selector=document.getElementById('mq196-date-selector');
+    if(selector) selector.innerHTML=mq196DateSelector(f);
+    const vasos=document.getElementById('mq196-water-cups');
+    if(vasos) vasos.value=fd.aguaVasosHoy ?? fd.agua ?? 0;
+    const ml=document.getElementById('mq196-water-ml');
+    if(ml) ml.value=fd.aguaMl ?? Math.round((fd.aguaVasosHoy ?? fd.agua ?? 0)*(meta.mlPorVaso||250));
+    const list=document.getElementById('mq196-meals-list');
+    if(list) list.innerHTML=mq196MealRows(fd);
+    const stats=document.getElementById('mq196-day-stats');
+    if(stats){
+      const s=mq196Summary(fd);
+      stats.innerHTML=`<strong>${s.done}/${s.total}</strong> comidas · <strong>${s.vasos}/${meta.vasos}</strong> vasos · <strong>${s.ml}</strong> ml`;
+    }
+  }
+  window.mq196LoadDateIntoModal=mq196LoadDateIntoModal;
+  window.mq196WaterPreset=function(v){
+    const meta=getAguaMeta();
+    const vasos=document.getElementById('mq196-water-cups');
+    const ml=document.getElementById('mq196-water-ml');
+    if(vasos) vasos.value=v;
+    if(ml) ml.value=v*(meta.mlPorVaso||250);
+  };
+
+  // Reemplaza modal v195 por uno orientado a últimos 5 días.
+  window.openNutritionAdjustModal=function(dateStr){
+    const f=dateStr||foodFecha||mq196Today();
+    let modal=document.getElementById('mq196-nutrition-modal');
+    if(!modal){
+      modal=document.createElement('div');
+      modal.className='modal-bg';
+      modal.id='mq196-nutrition-modal';
+      modal.innerHTML=`<div class="modal" style="max-height:92dvh">
+        <div class="modal-handle"></div>
+        <div class="modal-head">
+          <div>
+            <div class="modal-title">Corregir nutrición</div>
+            <div id="mq196-date-title" style="font-size:11px;color:var(--ink3);margin-top:2px"></div>
+          </div>
+          <button class="bicon" onclick="closeNutritionAdjustModal()">×</button>
+        </div>
+        <div class="modal-body" style="overflow:auto">
+          <div style="font-size:12px;color:var(--ink3);line-height:1.45;margin-bottom:8px">
+            Selecciona uno de los últimos 5 días y corrige agua/comidas. No altera entrenamientos.
+          </div>
+          <div id="mq196-date-selector"></div>
+          <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:10px">
+            <div style="flex:1;min-width:150px">
+              <div class="mq-kicker" style="margin-bottom:4px">Fecha seleccionada</div>
+              <input id="mq196-date" type="date" onchange="mq196LoadDateIntoModal(this.value)" style="width:100%;border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--bg2);color:var(--ink);font-family:var(--ff)">
+            </div>
+            <div id="mq196-day-stats" style="font-size:12px;color:var(--ink2);padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:12px"></div>
+          </div>
+
+          <div style="border:1px solid var(--border);border-radius:14px;padding:12px;background:var(--bg3);margin-bottom:12px">
+            <div class="mq-kicker" style="margin-bottom:8px;color:var(--teal)">Agua</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <label style="font-size:11px;color:var(--ink3)">Vasos
+                <input id="mq196-water-cups" type="number" min="0" max="20" step="1" style="display:block;width:100%;margin-top:4px;border:1px solid var(--border);border-radius:10px;padding:9px;background:var(--bg);color:var(--ink);font-family:var(--ff)">
+              </label>
+              <label style="font-size:11px;color:var(--ink3)">Mililitros
+                <input id="mq196-water-ml" type="number" min="0" step="50" style="display:block;width:100%;margin-top:4px;border:1px solid var(--border);border-radius:10px;padding:9px;background:var(--bg);color:var(--ink);font-family:var(--ff)">
+              </label>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+              <button class="btn btn-ghost btn-sm" onclick="mq196WaterPreset(0)">0 vasos</button>
+              <button class="btn btn-ghost btn-sm" onclick="mq196WaterPreset(8)">8 vasos</button>
+              <button class="btn btn-ghost btn-sm" onclick="mq196WaterPreset(10)">10 vasos</button>
+            </div>
+          </div>
+
+          <div class="mq-kicker" style="margin-bottom:8px">Comidas y porciones</div>
+          <div id="mq196-meals-list"></div>
+
+          <div style="position:sticky;bottom:-1px;background:var(--bg);padding-top:10px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-ghost" onclick="closeNutritionAdjustModal()">Cancelar</button>
+            <button class="btn btn-p" onclick="saveNutritionAdjustModal()">Guardar ajuste</button>
+          </div>
+        </div>
+      </div>`;
+      modal.addEventListener('click', e=>{ if(e.target===modal) closeNutritionAdjustModal(); });
+      document.body.appendChild(modal);
+    }
+    modal.classList.add('on');
+    mq196LoadDateIntoModal(f);
+  };
+  window.closeNutritionAdjustModal=function(){
+    document.getElementById('mq196-nutrition-modal')?.classList.remove('on');
+  };
+  window.saveNutritionAdjustModal=function(){
+    const f=document.getElementById('mq196-date')?.value || mq196Today();
+    const fd=mq196EnsureFDDate(f);
+    const meta=getAguaMeta();
+    let vasos=parseInt(document.getElementById('mq196-water-cups')?.value||'0',10);
+    if(!isFinite(vasos)||vasos<0) vasos=0;
+    let ml=parseInt(document.getElementById('mq196-water-ml')?.value||'0',10);
+    if(!isFinite(ml)||ml<0) ml=vasos*(meta.mlPorVaso||250);
+    fd.aguaVasosHoy=vasos;
+    fd.agua=vasos;
+    fd.aguaMl=ml;
+    fd.comidas=fd.comidas||{};
+    COMIDAS.forEach(c=>{
+      const checked=!!document.getElementById('mq196-meal-'+c.id)?.checked;
+      const txt=document.getElementById('mq196-txt-'+c.id)?.value||'';
+      fd.comidas[c.id]={...(fd.comidas[c.id]||{}), completada:checked, texto:txt};
+    });
+    const pending=COMIDAS.filter(c=>!fd.comidas[c.id]?.completada);
+    if(pending.length){
+      fd.selectedPendingMealId=pending[0].id;
+      fd.allDone=false;
+    }else{
+      delete fd.selectedPendingMealId;
+      fd.allDone=true;
+    }
+    fd.ajusteManualNutricion={ts:Date.now(), tipo:'retroactivo_ultimos_5_dias', version:'v196'};
+    saveFD(fd);
+    if(typeof foodFecha!=='undefined' && foodFecha===f) renderFood();
+    else if(typeof renderFood==='function' && currentScreen==='food') renderFood();
+    try{ renderHomeNutritionCard(); renderHomeWaterCard(); }catch(e){}
+    try{ renderPerfil(); }catch(e){}
+    closeNutritionAdjustModal();
+    showToast('Ajuste de nutrición guardado',2200,'ok');
+  };
+
+  // Botón solo en Nutrición. Se elimina cualquier botón del inicio.
+  function mq196RemoveHomeButton(){
+    document.getElementById('mq195-home-adjust')?.remove();
+    document.getElementById('mq196-home-adjust')?.remove();
+  }
+  function mq196InjectFoodButton(){
+    const reg=document.getElementById('food-registro');
+    if(!reg) return;
+    document.getElementById('mq195-adjust-btn')?.remove();
+    if(document.getElementById('mq196-adjust-btn')) return;
+    reg.insertAdjacentHTML('afterbegin', `<div id="mq196-adjust-btn" class="card" style="margin-bottom:12px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div>
+        <div class="mq-kicker">Corrección últimos 5 días</div>
+        <div style="font-size:12px;color:var(--ink3);margin-top:2px">Selecciona fecha, revisa cantidades y corrige agua/comidas.</div>
+      </div>
+      <button class="btn btn-p btn-sm" onclick="openNutritionAdjustModal(foodFecha)">Editar</button>
+    </div>`);
+  }
+
+  const oldRenderFood=typeof renderFood==='function'?renderFood:null;
+  if(oldRenderFood && !window._mq196RenderFoodHooked){
+    window._mq196RenderFoodHooked=true;
+    renderFood=function(){
+      const r=oldRenderFood.apply(this,arguments);
+      setTimeout(()=>{mq196InjectFoodButton(); mq196RemoveHomeButton();},0);
+      return r;
+    };
+  }
+  const oldHomeNutrition=typeof renderHomeNutritionCard==='function'?renderHomeNutritionCard:null;
+  if(oldHomeNutrition && !window._mq196HomeNutritionHooked){
+    window._mq196HomeNutritionHooked=true;
+    renderHomeNutritionCard=function(){
+      const r=oldHomeNutrition.apply(this,arguments);
+      setTimeout(mq196RemoveHomeButton,0);
+      return r;
+    };
+  }
+  window.mq196NutritionDebug=function(f){
+    const fd=mq196EnsureFDDate(f||foodFecha||mq196Today());
+    return {fecha:fd.fecha, resumen:mq196Summary(fd), comidas:fd.comidas, allDone:fd.allDone, selectedPendingMealId:fd.selectedPendingMealId};
+  };
+
+  setTimeout(()=>{try{mq196RemoveHomeButton(); mq196InjectFoodButton();}catch(e){}},500);
+  setTimeout(mq196RemoveHomeButton,1200);
+  console.info('MELQART v196: ajuste últimos 5 días en Nutrición; botón Inicio eliminado');
+})();
+
+
+// MELQART v196 version override
+window.MELQART_VERSION='v196';
+setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textContent='v196';},500);
+
+
+
+// ---------------------------------------------------------------
+// MELQART v197 — Ciclo 2 (16 semanas) + Índice de Rendimiento Funcional
+// ---------------------------------------------------------------
+(function mq197Cycle2AndIRF(){
+  const VERSION='v197';
+  const CYCLE_ID='plan_ciclo_2_funcional_16s';
+  const CYCLE_START=(typeof today==='function'?today():new Date().toISOString().slice(0,10));
+
+  function nrm(s){
+    return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  }
+  function dstr(ts){
+    try{return typeof localDateStr==='function'?localDateStr(ts):new Date(ts).toISOString().slice(0,10)}
+    catch(e){return new Date(ts).toISOString().slice(0,10)}
+  }
+  function ensureExercise(ex){
+    forge.exercises=forge.exercises||[];
+    let cur=forge.exercises.find(x=>x.id===ex.id);
+    if(!cur){cur={...ex};forge.exercises.push(cur);}
+    else Object.assign(cur,ex);
+    return cur;
+  }
+  function upsertRoutine(r){
+    forge.routines=forge.routines||[];
+    const idx=forge.routines.findIndex(x=>x.id===r.id);
+    if(idx>=0) forge.routines[idx]={...forge.routines[idx],...r};
+    else forge.routines.push({...r});
+  }
+
+  function cycle2Routines(){
+    ensureExercise({id:'ex_farmer_carry',name:'Farmer Carry',type:'dumbbell',muscle:'core',restSec:90,grupo:'Core'});
+    ensureExercise({id:'ex_plancha_frontal',name:'Plancha Frontal',type:'bodyweight',muscle:'core',restSec:60,grupo:'Core'});
+    ensureExercise({id:'ex_fondos_asist',name:'Fondos Asistidos',type:'machine',muscle:'pecho',restSec:120,grupo:'Pecho'});
+
+    return [
+      {
+        id:'r_lunes',name:'Lunes — Tren Inferior A',emoji:'◉',restSec:180,
+        objective:'Fuerza de sentadilla',priority:'high',cycle:2,weekDay:'lunes',
+        exercises:['ex_saltos_cajon','ex_sentadilla','ex_sent_bulgara','ex_curl_femoral'],
+        exercisePlan:{
+          ex_saltos_cajon:{sets:2,reps:'4',role:'activación',restSec:60},
+          ex_sentadilla:{sets:3,reps:'5–6',role:'principal',restSec:180},
+          ex_sent_bulgara:{sets:2,reps:'8 por pierna',role:'accesorio',restSec:120},
+          ex_curl_femoral:{sets:2,reps:'10',role:'accesorio',restSec:90}
+        }
+      },
+      {
+        id:'r_martes',name:'Martes — Tren Superior A',emoji:'◈',restSec:180,
+        objective:'Empuje + espalda',priority:'medium',cycle:2,weekDay:'martes',
+        exercises:['ex_press_banca','ex_remo_maq','ex_press_hombros','ex_elev_lateral'],
+        exercisePlan:{
+          ex_press_banca:{sets:3,reps:'5–6',role:'principal',restSec:180},
+          ex_remo_maq:{sets:3,reps:'6–8',role:'principal',restSec:150},
+          ex_press_hombros:{sets:2,reps:'6',role:'secundario',restSec:150},
+          ex_elev_lateral:{sets:2,reps:'12–15',role:'accesorio',restSec:75}
+        }
+      },
+      {
+        id:'r_mierco',name:'Miércoles — Carrera de Calidad',emoji:'⚡',restSec:0,
+        objective:'Calidad: intervalos, tempo o progresivo',priority:'high',cycle:2,weekDay:'miércoles',
+        exercises:['ex_cal_trote','ex_correr','ex_est_trote'],
+        runningRole:'quality',alternation:['INTERVALOS','TEMPO','PROGRESIVO']
+      },
+      {
+        id:'r_jueves',name:'Jueves — Tren Inferior B',emoji:'✦',restSec:180,
+        objective:'Cadena posterior y glúteos',priority:'high',cycle:2,weekDay:'jueves',
+        exercises:['ex_peso_muerto','ex_hip_thrust_maq','ex_cable_pallof','ex_farmer_carry'],
+        exercisePlan:{
+          ex_peso_muerto:{sets:3,reps:'5',role:'principal',restSec:180},
+          ex_hip_thrust_maq:{sets:3,reps:'8',role:'principal',restSec:150},
+          ex_cable_pallof:{sets:3,reps:'10–12 por lado',role:'core anti-rotación',restSec:60},
+          ex_farmer_carry:{sets:3,reps:'25–30 m',role:'funcional',restSec:90}
+        },
+        fallback:{ex_farmer_carry:'ex_plancha_frontal'}
+      },
+      {
+        id:'r_jueves_noche',name:'Jueves Noche — Rodaje Regenerativo',emoji:'☾',restSec:0,
+        objective:'Recuperación, técnica y baja intensidad',priority:'low',cycle:2,weekDay:'jueves',
+        exercises:['ex_cal_trote','ex_correr','ex_est_trote'],runningRole:'recovery',
+        durationTargetMin:[30,45]
+      },
+      {
+        id:'r_viernes',name:'Viernes — Tren Superior B',emoji:'✶',restSec:150,
+        objective:'Fuerza relativa y estabilidad del hombro',priority:'medium',cycle:2,weekDay:'viernes',
+        exercises:['ex_dominadas','ex_press_incl_manc','ex_fondos','ex_facepull'],
+        exercisePlan:{
+          ex_dominadas:{sets:3,reps:'máximas técnicas',role:'fuerza relativa',restSec:150},
+          ex_press_incl_manc:{sets:3,reps:'8',role:'principal',restSec:150},
+          ex_fondos:{sets:3,reps:'máximas técnicas',role:'fuerza relativa',restSec:120},
+          ex_facepull:{sets:3,reps:'12–15',role:'estabilidad hombro',restSec:75}
+        },
+        fallback:{ex_dominadas:'ex_jalon_pecho',ex_fondos:'ex_fondos_asist'}
+      },
+      {
+        id:'r_cardio',name:'Domingo — Fondo Largo',emoji:'↝',restSec:0,
+        objective:'Volumen aeróbico',priority:'high',cycle:2,weekDay:'domingo',
+        exercises:['ex_correr','ex_est_trote'],runningRole:'long'
+      }
+    ];
+  }
+
+  function applyCycle2(force=false){
+    forge.routines=forge.routines||[];
+    const defs=cycle2Routines();
+    defs.forEach(upsertRoutine);
+
+    forge.planes=forge.planes||[];
+    let old=forge.planes.find(p=>p.activo);
+    let plan=forge.planes.find(p=>p.id===CYCLE_ID);
+    if(!plan){
+      plan={
+        id:CYCLE_ID,
+        nombre:'Ciclo 2 — Rendimiento Funcional',
+        inicio:CYCLE_START,
+        totalSemanas:16,
+        ciclo:2,
+        activo:true,
+        createdAt:Date.now(),
+        cargas:{...(old?.cargas||{})},
+        metas:{...(old?.metas||{})},
+        metas10kMin:old?.metas10kMin||66.67,
+        bloques:[
+          {nombre:'Base y técnica',semInicio:1,semFin:4},
+          {nombre:'Desarrollo',semInicio:5,semFin:8},
+          {nombre:'Fuerza y capacidad',semInicio:9,semFin:12},
+          {nombre:'Consolidación',semInicio:13,semFin:16}
+        ],
+        weeklyStructure:{
+          lunes:'Tren Inferior A',
+          martes:'Tren Superior A',
+          miercoles:'Carrera de Calidad',
+          juevesAM:'Tren Inferior B',
+          juevesPM:'Rodaje Regenerativo',
+          viernes:'Tren Superior B',
+          domingo:'Fondo Largo'
+        },
+        irfWeights:{absoluteStrength:.30,relativeStrength:.30,running:.20,bodyComposition:.20}
+      };
+      forge.planes.forEach(p=>p.activo=false);
+      forge.planes.push(plan);
+    }else{
+      forge.planes.forEach(p=>p.activo=p.id===CYCLE_ID);
+      plan.activo=true;
+    }
+
+    localStorage.setItem('mq197_cycle2_applied','1');
+    try{saveDB()}catch(e){}
+    try{renderAll()}catch(e){}
+    return {plan,routines:defs};
+  }
+  window.applyCycle2=applyCycle2;
+
+  // ---------- IRF ----------
+  function bestSet(exIds, fromDate=null, toDate=null){
+    let best=null;
+    (forge.sessions||[]).forEach(s=>{
+      const date=dstr(s.date);
+      if(fromDate && date<fromDate) return;
+      if(toDate && date>toDate) return;
+      (s.exercises||[]).forEach(ex=>{
+        if(!exIds.includes(ex.exId)) return;
+        (ex.sets||[]).forEach(st=>{
+          if(st.done===false) return;
+          const w=Number(st.weight||0), reps=Number(st.reps||0);
+          if(w<=0 && reps<=0) return;
+          const e1rm=w>0 && reps>0 ? w*(1+reps/30) : reps;
+          if(!best || e1rm>best.e1rm) best={date,weight:w,reps,e1rm,exId:ex.exId};
+        });
+      });
+    });
+    return best;
+  }
+  function bestBodyweight(exIds, fromDate=null){
+    let best=0, assisted=null;
+    (forge.sessions||[]).forEach(s=>{
+      const date=dstr(s.date);
+      if(fromDate && date<fromDate) return;
+      (s.exercises||[]).forEach(ex=>{
+        if(!exIds.includes(ex.exId)) return;
+        (ex.sets||[]).forEach(st=>{
+          if(st.done===false) return;
+          const reps=Number(st.reps||0);
+          const weight=Number(st.weight||0);
+          best=Math.max(best,reps);
+          if(weight<0 || /asist/i.test(ex.exId)) assisted=Math.max(assisted||0,reps);
+        });
+      });
+    });
+    return {reps:best,assistedReps:assisted};
+  }
+  function runs(){
+    const out=[];
+    (forge.sessions||[]).forEach(s=>{
+      (s.exercises||[]).forEach(ex=>{
+        const ge=typeof getEx==='function'?getEx(ex.exId):null;
+        if(ex.exId!=='ex_correr' && ge?.type!=='run') return;
+        (ex.sets||[]).forEach(st=>{
+          const km=Number(st.distance||0);
+          let sec=Number(st.durationSeconds||0);
+          if(!sec && st.time){
+            const p=String(st.time).split(':').map(Number);
+            sec=p.length===3?p[0]*3600+p[1]*60+p[2]:(p[0]||0)*60+(p[1]||0);
+          }
+          if(km>0&&sec>0) out.push({date:dstr(s.date),km,sec,pace:sec/km,fc:Number(st.fc||s.fcMedia||0)||null});
+        });
+      });
+    });
+    return out;
+  }
+  function bodySeries(keyCandidates){
+    const rows=[];
+    const src=[...(forge.bodyMetrics||[]),...(forge.anthropometry||[])];
+    src.forEach(m=>{
+      for(const key of keyCandidates){
+        const val=key.split('.').reduce((a,k)=>a?.[k],m);
+        if(val!=null&&!isNaN(Number(val))){
+          rows.push({date:m.date,value:Number(val)});break;
+        }
+      }
+    });
+    return rows.sort((a,b)=>a.date.localeCompare(b.date));
+  }
+  function scoreChange(current,base,positiveHigher=true,sensitivity=5){
+    if(current==null||base==null||base===0) return null;
+    const pct=(current-base)/Math.abs(base)*100*(positiveHigher?1:-1);
+    return Math.max(0,Math.min(100,Math.round(50+pct*sensitivity)));
+  }
+  function avg(vals){
+    const v=vals.filter(x=>x!=null&&isFinite(x));
+    return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;
+  }
+  function calcIRF(){
+    const plan=(forge.planes||[]).find(p=>p.id===CYCLE_ID)|| (forge.planes||[]).find(p=>p.activo);
+    const start=plan?.inicio||CYCLE_START;
+    const before=new Date(start+'T12:00:00'); before.setDate(before.getDate()-120);
+    const baseStart=dstr(before);
+
+    const absDefs=[
+      ['Sentadilla',['ex_sentadilla']],
+      ['Peso muerto',['ex_peso_muerto']],
+      ['Press banca',['ex_press_banca']],
+      ['Press militar',['ex_press_hombros']]
+    ];
+    const absDetails=absDefs.map(([label,ids])=>{
+      const base=bestSet(ids,baseStart,start);
+      const cur=bestSet(ids,start);
+      return {label,base,cur,score:scoreChange(cur?.e1rm,base?.e1rm,true,4)};
+    });
+    const absoluteScore=avg(absDetails.map(x=>x.score)) ?? 50;
+
+    const pull=bestBodyweight(['ex_dominadas','ex_dominadas_asist'],start);
+    const dips=bestBodyweight(['ex_fondos','ex_fondos_asist'],start);
+    const pullScore=Math.min(100,Math.round((pull.reps/10)*100));
+    const dipScore=Math.min(100,Math.round((dips.reps/15)*100));
+    const relativeScore=avg([pullScore,dipScore]) ?? 0;
+
+    const allRuns=runs().sort((a,b)=>a.date.localeCompare(b.date));
+    const baseRuns=allRuns.filter(r=>r.date<start);
+    const curRuns=allRuns.filter(r=>r.date>=start);
+    const best5=(arr)=>arr.filter(r=>r.km>=4.8&&r.km<=5.5).sort((a,b)=>a.pace-b.pace)[0];
+    const bestLong=(arr)=>arr.filter(r=>r.km>=8&&r.km<=12.5).sort((a,b)=>a.pace-b.pace)[0];
+    const r5b=best5(baseRuns), r5c=best5(curRuns);
+    const rlb=bestLong(baseRuns), rlc=bestLong(curRuns);
+    const runningScore=avg([
+      scoreChange(r5c?.pace,r5b?.pace,false,4),
+      scoreChange(rlc?.pace,rlb?.pace,false,4)
+    ]) ?? 50;
+
+    const weights=bodySeries(['peso','weight']);
+    const waists=bodySeries(['perimetros.cinturaOmbligo','perimetros.cintura','cintura','measurements.cinturaOmbligo']);
+    const baseW=[...weights].filter(x=>x.date<=start).pop()||weights[0];
+    const curW=weights[weights.length-1];
+    const baseWaist=[...waists].filter(x=>x.date<=start).pop()||waists[0];
+    const curWaist=waists[waists.length-1];
+    const bodyScore=avg([
+      scoreChange(curWaist?.value,baseWaist?.value,false,6),
+      scoreChange(curW?.value,baseW?.value,false,2)
+    ]) ?? 50;
+
+    const weightsCfg=plan?.irfWeights||{absoluteStrength:.30,relativeStrength:.30,running:.20,bodyComposition:.20};
+    const total=Math.round(
+      absoluteScore*weightsCfg.absoluteStrength+
+      relativeScore*weightsCfg.relativeStrength+
+      runningScore*weightsCfg.running+
+      bodyScore*weightsCfg.bodyComposition
+    );
+    return {
+      score:Math.max(0,Math.min(100,total)),
+      cycleStart:start,
+      weights:weightsCfg,
+      components:{
+        absoluteStrength:{score:Math.round(absoluteScore),details:absDetails},
+        relativeStrength:{score:Math.round(relativeScore),pull,dips,targets:{pullups:10,dips:15}},
+        running:{score:Math.round(runningScore),best5k:r5c||r5b||null,bestLong:rlc||rlb||null},
+        bodyComposition:{score:Math.round(bodyScore),weight:{base:baseW,current:curW},waist:{base:baseWaist,current:curWaist}}
+      }
+    };
+  }
+  window.calcIRF=calcIRF;
+
+  function irfCard(){
+    const irf=calcIRF();
+    const cs=irf.components;
+    const row=(label,value,weight,detail)=>`
+      <div style="border:1px solid var(--border);border-radius:14px;padding:11px;background:var(--bg2)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div><div style="font-size:13px;font-weight:900;color:var(--ink)">${label}</div><div style="font-size:10px;color:var(--ink3)">${weight}% del índice</div></div>
+          <div style="font-size:22px;font-weight:900;color:var(--p)">${value}</div>
+        </div>
+        <div style="height:6px;background:var(--bg3);border-radius:8px;overflow:hidden;margin:8px 0 6px"><div style="height:100%;width:${value}%;background:var(--p);border-radius:8px"></div></div>
+        <div style="font-size:11px;color:var(--ink3);line-height:1.4">${detail}</div>
+      </div>`;
+    return `<div class="card" id="mq197-irf-card" style="margin-bottom:14px">
+      <div class="section-title">◇ Índice de Rendimiento Funcional</div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 0 14px">
+        <div><div style="font-size:46px;font-weight:950;color:var(--p);line-height:1">${irf.score}</div><div style="font-size:11px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase">de 100 · progreso personal</div></div>
+        <div style="font-size:11px;color:var(--ink3);text-align:right">Inicio ciclo<br><strong style="color:var(--ink)">${irf.cycleStart}</strong></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px">
+        ${row('Fuerza absoluta',cs.absoluteStrength.score,30,'Sentadilla, peso muerto, press banca y press militar.')}
+        ${row('Fuerza relativa',cs.relativeStrength.score,30,`Dominadas: ${cs.relativeStrength.pull.reps} · Fondos: ${cs.relativeStrength.dips.reps}.`)}
+        ${row('Carrera',cs.running.score,20,`${cs.running.best5k?'5K '+Math.round(cs.running.best5k.pace/60*100)/100+' min/km':'Sin 5K'} · ${cs.running.bestLong?'largo '+cs.running.bestLong.km.toFixed(1)+' km':'sin largo'}.`)}
+        ${row('Composición corporal',cs.bodyComposition.score,20,`Peso y cintura comparados con el inicio del ciclo.`)}
+      </div>
+      <div style="font-size:10px;color:var(--ink3);margin-top:10px;line-height:1.45">El índice no compara personas. Resume tu evolución frente a tu propio punto de partida y muestra cada componente por separado.</div>
+    </div>`;
+  }
+
+  function injectIRF(){
+    const host=document.getElementById('prog-plan-content');
+    if(!host || document.getElementById('mq197-irf-card')) return;
+    host.insertAdjacentHTML('afterbegin',irfCard());
+  }
+  const oldRenderPlan=typeof renderProgPlan==='function'?renderProgPlan:null;
+  if(oldRenderPlan&&!window._mq197PlanHook){
+    window._mq197PlanHook=true;
+    renderProgPlan=function(){
+      const r=oldRenderPlan.apply(this,arguments);
+      setTimeout(injectIRF,0);
+      return r;
+    };
+  }
+
+  function decorateCycleCards(){
+    (forge.routines||[]).filter(r=>r.cycle===2).forEach(r=>{
+      const cards=[...document.querySelectorAll('.rutina-card')];
+      const card=cards.find(c=>nrm(c.textContent).includes(nrm(r.name)));
+      if(!card||card.querySelector('.mq197-cycle-objective')) return;
+      const head=card.querySelector('.rutina-head');
+      if(head){
+        head.insertAdjacentHTML('beforeend',`<div class="mq197-cycle-objective" style="font-size:11px;color:var(--ink3);margin-top:6px"><strong style="color:var(--p)">${r.objective}</strong> · prioridad ${r.priority==='high'?'alta':r.priority==='medium'?'media':'baja'}</div>`);
+      }
+    });
+  }
+  const oldRut=typeof renderRutinas==='function'?renderRutinas:null;
+  if(oldRut&&!window._mq197RutHook){
+    window._mq197RutHook=true;
+    renderRutinas=function(){
+      const r=oldRut.apply(this,arguments);
+      setTimeout(decorateCycleCards,0);
+      return r;
+    };
+  }
+
+  window.mq197Diagnostico=function(){
+    return {
+      version:VERSION,
+      activePlan:(forge.planes||[]).find(p=>p.activo),
+      cycle2Routines:(forge.routines||[]).filter(r=>r.cycle===2).map(r=>({id:r.id,name:r.name,objective:r.objective,priority:r.priority,exercises:r.exercises,exercisePlan:r.exercisePlan})),
+      irf:calcIRF()
+    };
+  };
+
+  // Aplicación automática una sola vez. No toca sesiones históricas.
+  if(localStorage.getItem('mq197_cycle2_applied')!=='1') applyCycle2();
+  else setTimeout(()=>{try{injectIRF();decorateCycleCards();}catch(e){}},700);
+
+  window.MELQART_VERSION=VERSION;
+  setTimeout(()=>{const el=document.getElementById('um-version');if(el)el.textContent=VERSION;},500);
+  console.info('MELQART v197: Ciclo 2 + IRF cargados');
+})();
