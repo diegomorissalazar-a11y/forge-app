@@ -13884,13 +13884,17 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
 
 
 
+
 // ---------------------------------------------------------------
-// MELQART v197 — Ciclo 2 (16 semanas) + Índice de Rendimiento Funcional
+// MELQART v198 — Ciclo 2 depurado + IRF corregido
+// Inicio fijo: lunes 20-07-2026. Conserva todo el historial.
 // ---------------------------------------------------------------
-(function mq197Cycle2AndIRF(){
-  const VERSION='v197';
+(function mq198Cycle2AndIRF(){
+  'use strict';
+  const VERSION='v198';
   const CYCLE_ID='plan_ciclo_2_funcional_16s';
-  const CYCLE_START=(typeof today==='function'?today():new Date().toISOString().slice(0,10));
+  const CYCLE_START='2026-07-20';
+  const STORAGE_FLAG='mq198_cycle2_applied';
 
   function nrm(s){
     return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -13899,15 +13903,21 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     try{return typeof localDateStr==='function'?localDateStr(ts):new Date(ts).toISOString().slice(0,10)}
     catch(e){return new Date(ts).toISOString().slice(0,10)}
   }
-  function ensureExercise(ex){
+  function ensureArrays(){
     forge.exercises=forge.exercises||[];
+    forge.routines=forge.routines||[];
+    forge.planes=forge.planes||[];
+    forge.sessions=forge.sessions||[];
+  }
+  function ensureExercise(ex){
+    ensureArrays();
     let cur=forge.exercises.find(x=>x.id===ex.id);
     if(!cur){cur={...ex};forge.exercises.push(cur);}
     else Object.assign(cur,ex);
     return cur;
   }
   function upsertRoutine(r){
-    forge.routines=forge.routines||[];
+    ensureArrays();
     const idx=forge.routines.findIndex(x=>x.id===r.id);
     if(idx>=0) forge.routines[idx]={...forge.routines[idx],...r};
     else forge.routines.push({...r});
@@ -13917,7 +13927,6 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     ensureExercise({id:'ex_farmer_carry',name:'Farmer Carry',type:'dumbbell',muscle:'core',restSec:90,grupo:'Core'});
     ensureExercise({id:'ex_plancha_frontal',name:'Plancha Frontal',type:'bodyweight',muscle:'core',restSec:60,grupo:'Core'});
     ensureExercise({id:'ex_fondos_asist',name:'Fondos Asistidos',type:'machine',muscle:'pecho',restSec:120,grupo:'Pecho'});
-
     return [
       {
         id:'r_lunes',name:'Lunes — Tren Inferior A',emoji:'◉',restSec:180,
@@ -13944,8 +13953,8 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
       {
         id:'r_mierco',name:'Miércoles — Carrera de Calidad',emoji:'⚡',restSec:0,
         objective:'Calidad: intervalos, tempo o progresivo',priority:'high',cycle:2,weekDay:'miércoles',
-        exercises:['ex_cal_trote','ex_correr','ex_est_trote'],
-        runningRole:'quality',alternation:['INTERVALOS','TEMPO','PROGRESIVO']
+        exercises:['ex_cal_trote','ex_correr','ex_est_trote'],runningRole:'quality',
+        alternation:['INTERVALOS','TEMPO','PROGRESIVO']
       },
       {
         id:'r_jueves',name:'Jueves — Tren Inferior B',emoji:'✦',restSec:180,
@@ -13956,14 +13965,12 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
           ex_hip_thrust_maq:{sets:3,reps:'8',role:'principal',restSec:150},
           ex_cable_pallof:{sets:3,reps:'10–12 por lado',role:'core anti-rotación',restSec:60},
           ex_farmer_carry:{sets:3,reps:'25–30 m',role:'funcional',restSec:90}
-        },
-        fallback:{ex_farmer_carry:'ex_plancha_frontal'}
+        },fallback:{ex_farmer_carry:'ex_plancha_frontal'}
       },
       {
         id:'r_jueves_noche',name:'Jueves Noche — Rodaje Regenerativo',emoji:'☾',restSec:0,
         objective:'Recuperación, técnica y baja intensidad',priority:'low',cycle:2,weekDay:'jueves',
-        exercises:['ex_cal_trote','ex_correr','ex_est_trote'],runningRole:'recovery',
-        durationTargetMin:[30,45]
+        exercises:['ex_cal_trote','ex_correr','ex_est_trote'],runningRole:'recovery',durationTargetMin:[30,45]
       },
       {
         id:'r_viernes',name:'Viernes — Tren Superior B',emoji:'✶',restSec:150,
@@ -13974,8 +13981,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
           ex_press_incl_manc:{sets:3,reps:'8',role:'principal',restSec:150},
           ex_fondos:{sets:3,reps:'máximas técnicas',role:'fuerza relativa',restSec:120},
           ex_facepull:{sets:3,reps:'12–15',role:'estabilidad hombro',restSec:75}
-        },
-        fallback:{ex_dominadas:'ex_jalon_pecho',ex_fondos:'ex_fondos_asist'}
+        },fallback:{ex_dominadas:'ex_jalon_pecho',ex_fondos:'ex_fondos_asist'}
       },
       {
         id:'r_cardio',name:'Domingo — Fondo Largo',emoji:'↝',restSec:0,
@@ -13985,283 +13991,209 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     ];
   }
 
-  function applyCycle2(force=false){
-    forge.routines=forge.routines||[];
+  function applyCycle2(force=false,render=true){
+    ensureArrays();
     const defs=cycle2Routines();
     defs.forEach(upsertRoutine);
 
-    forge.planes=forge.planes||[];
-    let old=forge.planes.find(p=>p.activo);
+    const old=forge.planes.find(p=>p.activo && p.id!==CYCLE_ID);
     let plan=forge.planes.find(p=>p.id===CYCLE_ID);
     if(!plan){
       plan={
-        id:CYCLE_ID,
-        nombre:'Ciclo 2 — Rendimiento Funcional',
-        inicio:CYCLE_START,
-        totalSemanas:16,
-        ciclo:2,
-        activo:true,
-        createdAt:Date.now(),
-        cargas:{...(old?.cargas||{})},
-        metas:{...(old?.metas||{})},
-        metas10kMin:old?.metas10kMin||66.67,
+        id:CYCLE_ID,nombre:'Ciclo 2 — Rendimiento Funcional',inicio:CYCLE_START,
+        totalSemanas:16,ciclo:2,activo:true,createdAt:Date.now(),
+        cargas:{...(old?.cargas||{})},metas:{...(old?.metas||{})},
+        metas10kMin:old?.metas10kMin||74,
         bloques:[
           {nombre:'Base y técnica',semInicio:1,semFin:4},
           {nombre:'Desarrollo',semInicio:5,semFin:8},
           {nombre:'Fuerza y capacidad',semInicio:9,semFin:12},
           {nombre:'Consolidación',semInicio:13,semFin:16}
-        ],
-        weeklyStructure:{
-          lunes:'Tren Inferior A',
-          martes:'Tren Superior A',
-          miercoles:'Carrera de Calidad',
-          juevesAM:'Tren Inferior B',
-          juevesPM:'Rodaje Regenerativo',
-          viernes:'Tren Superior B',
-          domingo:'Fondo Largo'
-        },
-        irfWeights:{absoluteStrength:.30,relativeStrength:.30,running:.20,bodyComposition:.20}
+        ]
       };
-      forge.planes.forEach(p=>p.activo=false);
       forge.planes.push(plan);
-    }else{
-      forge.planes.forEach(p=>p.activo=p.id===CYCLE_ID);
-      plan.activo=true;
     }
+    plan.nombre='Ciclo 2 — Rendimiento Funcional';
+    plan.inicio=CYCLE_START;
+    plan.totalSemanas=16;
+    plan.ciclo=2;
+    plan.activo=true;
+    plan.weeklyStructure={
+      lunes:'Tren Inferior A',martes:'Tren Superior A',miercoles:'Carrera de Calidad',
+      juevesAM:'Tren Inferior B',juevesPM:'Rodaje Regenerativo',viernes:'Tren Superior B',domingo:'Fondo Largo'
+    };
+    plan.irfWeights={absoluteStrength:.30,relativeStrength:.30,running:.20,bodyComposition:.20};
+    plan.irfTargets={pullups:8,dips:12};
+    forge.planes.forEach(p=>{if(p.id!==CYCLE_ID)p.activo=false;});
 
-    localStorage.setItem('mq197_cycle2_applied','1');
-    try{saveDB()}catch(e){}
-    try{renderAll()}catch(e){}
+    localStorage.setItem(STORAGE_FLAG,'1');
+    try{saveDB();}catch(e){console.warn('v198 saveDB',e);}
+    if(render){try{renderAll();}catch(e){console.warn('v198 renderAll',e);}}
     return {plan,routines:defs};
   }
   window.applyCycle2=applyCycle2;
+  window.applyCycle2v198=applyCycle2;
 
-  // ---------- IRF ----------
-  function bestSet(exIds, fromDate=null, toDate=null){
+  function bestSet(exIds,fromDate=null,toDate=null){
     let best=null;
     (forge.sessions||[]).forEach(s=>{
       const date=dstr(s.date);
       if(fromDate && date<fromDate) return;
-      if(toDate && date>toDate) return;
+      if(toDate && date>=toDate) return;
       (s.exercises||[]).forEach(ex=>{
         if(!exIds.includes(ex.exId)) return;
         (ex.sets||[]).forEach(st=>{
           if(st.done===false) return;
           const w=Number(st.weight||0), reps=Number(st.reps||0);
-          if(w<=0 && reps<=0) return;
-          const e1rm=w>0 && reps>0 ? w*(1+reps/30) : reps;
-          if(!best || e1rm>best.e1rm) best={date,weight:w,reps,e1rm,exId:ex.exId};
+          if(w<=0||reps<=0) return;
+          const e1rm=w*(1+reps/30);
+          if(!best||e1rm>best.e1rm) best={date,weight:w,reps,e1rm,exId:ex.exId};
         });
       });
     });
     return best;
   }
-  function bestBodyweight(exIds, fromDate=null){
-    let best=0, assisted=null;
+  function bestBodyweight(freeId,assistedId,fromDate=null){
+    let freeReps=0,assistedReps=0;
     (forge.sessions||[]).forEach(s=>{
       const date=dstr(s.date);
-      if(fromDate && date<fromDate) return;
+      if(fromDate&&date<fromDate)return;
       (s.exercises||[]).forEach(ex=>{
-        if(!exIds.includes(ex.exId)) return;
+        if(ex.exId!==freeId&&ex.exId!==assistedId)return;
         (ex.sets||[]).forEach(st=>{
-          if(st.done===false) return;
+          if(st.done===false)return;
           const reps=Number(st.reps||0);
-          const weight=Number(st.weight||0);
-          best=Math.max(best,reps);
-          if(weight<0 || /asist/i.test(ex.exId)) assisted=Math.max(assisted||0,reps);
+          if(ex.exId===freeId) freeReps=Math.max(freeReps,reps);
+          else assistedReps=Math.max(assistedReps,reps);
         });
       });
     });
-    return {reps:best,assistedReps:assisted};
+    return {reps:freeReps,assistedReps};
   }
   function runs(){
     const out=[];
     (forge.sessions||[]).forEach(s=>{
       (s.exercises||[]).forEach(ex=>{
         const ge=typeof getEx==='function'?getEx(ex.exId):null;
-        if(ex.exId!=='ex_correr' && ge?.type!=='run') return;
+        if(ex.exId!=='ex_correr'&&ge?.type!=='run')return;
         (ex.sets||[]).forEach(st=>{
-          const km=Number(st.distance||0);
-          let sec=Number(st.durationSeconds||0);
-          if(!sec && st.time){
-            const p=String(st.time).split(':').map(Number);
-            sec=p.length===3?p[0]*3600+p[1]*60+p[2]:(p[0]||0)*60+(p[1]||0);
-          }
-          if(km>0&&sec>0) out.push({date:dstr(s.date),km,sec,pace:sec/km,fc:Number(st.fc||s.fcMedia||0)||null});
+          const km=Number(st.distance||0);let sec=Number(st.durationSeconds||0);
+          if(!sec&&st.time){const p=String(st.time).split(':').map(Number);sec=p.length===3?p[0]*3600+p[1]*60+p[2]:(p[0]||0)*60+(p[1]||0);}
+          if(km>0&&sec>0)out.push({date:dstr(s.date),km,sec,pace:sec/km,fc:Number(st.fc||s.fcMedia||0)||null});
         });
       });
     });
     return out;
   }
-  function bodySeries(keyCandidates){
-    const rows=[];
-    const src=[...(forge.bodyMetrics||[]),...(forge.anthropometry||[])];
-    src.forEach(m=>{
-      for(const key of keyCandidates){
-        const val=key.split('.').reduce((a,k)=>a?.[k],m);
-        if(val!=null&&!isNaN(Number(val))){
-          rows.push({date:m.date,value:Number(val)});break;
-        }
-      }
-    });
-    return rows.sort((a,b)=>a.date.localeCompare(b.date));
+  function bodySeries(keys){
+    const rows=[],src=[...(forge.bodyMetrics||[]),...(forge.anthropometry||[])];
+    src.forEach(m=>{for(const key of keys){const val=key.split('.').reduce((x,k)=>x?.[k],m);if(val!=null&&!isNaN(Number(val))){rows.push({date:m.date,value:Number(val)});break;}}});
+    return rows.sort((x,y)=>String(x.date).localeCompare(String(y.date)));
   }
   function scoreChange(current,base,positiveHigher=true,sensitivity=5){
-    if(current==null||base==null||base===0) return null;
+    if(current==null||base==null||base===0)return null;
     const pct=(current-base)/Math.abs(base)*100*(positiveHigher?1:-1);
     return Math.max(0,Math.min(100,Math.round(50+pct*sensitivity)));
   }
-  function avg(vals){
-    const v=vals.filter(x=>x!=null&&isFinite(x));
-    return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;
-  }
+  function avg(vals){const v=vals.filter(x=>x!=null&&isFinite(x));return v.length?v.reduce((x,y)=>x+y,0)/v.length:null;}
+
   function calcIRF(){
-    const plan=(forge.planes||[]).find(p=>p.id===CYCLE_ID)|| (forge.planes||[]).find(p=>p.activo);
+    ensureArrays();
+    const plan=forge.planes.find(p=>p.id===CYCLE_ID)||forge.planes.find(p=>p.activo);
     const start=plan?.inicio||CYCLE_START;
-    const before=new Date(start+'T12:00:00'); before.setDate(before.getDate()-120);
-    const baseStart=dstr(before);
+    const d=new Date(start+'T12:00:00');d.setDate(d.getDate()-120);const baseStart=dstr(d);
+    const absDefs=[['Sentadilla',['ex_sentadilla']],['Peso muerto',['ex_peso_muerto']],['Press banca',['ex_press_banca']],['Press militar',['ex_press_hombros']]];
+    const absDetails=absDefs.map(([label,ids])=>{const base=bestSet(ids,baseStart,start),cur=bestSet(ids,start);return{label,base,cur,score:scoreChange(cur?.e1rm,base?.e1rm,true,4)};});
+    const absoluteScore=avg(absDetails.map(x=>x.score));
 
-    const absDefs=[
-      ['Sentadilla',['ex_sentadilla']],
-      ['Peso muerto',['ex_peso_muerto']],
-      ['Press banca',['ex_press_banca']],
-      ['Press militar',['ex_press_hombros']]
-    ];
-    const absDetails=absDefs.map(([label,ids])=>{
-      const base=bestSet(ids,baseStart,start);
-      const cur=bestSet(ids,start);
-      return {label,base,cur,score:scoreChange(cur?.e1rm,base?.e1rm,true,4)};
-    });
-    const absoluteScore=avg(absDetails.map(x=>x.score)) ?? 50;
+    const pull=bestBodyweight('ex_dominadas','ex_dominadas_asist',start);
+    const dips=bestBodyweight('ex_fondos','ex_fondos_asist',start);
+    const pullScore=pull.reps>0?Math.min(100,Math.round(pull.reps/8*100)):null;
+    const dipScore=dips.reps>0?Math.min(100,Math.round(dips.reps/12*100)):null;
+    const relativeScore=avg([pullScore,dipScore]);
 
-    const pull=bestBodyweight(['ex_dominadas','ex_dominadas_asist'],start);
-    const dips=bestBodyweight(['ex_fondos','ex_fondos_asist'],start);
-    const pullScore=Math.min(100,Math.round((pull.reps/10)*100));
-    const dipScore=Math.min(100,Math.round((dips.reps/15)*100));
-    const relativeScore=avg([pullScore,dipScore]) ?? 0;
-
-    const allRuns=runs().sort((a,b)=>a.date.localeCompare(b.date));
-    const baseRuns=allRuns.filter(r=>r.date<start);
-    const curRuns=allRuns.filter(r=>r.date>=start);
-    const best5=(arr)=>arr.filter(r=>r.km>=4.8&&r.km<=5.5).sort((a,b)=>a.pace-b.pace)[0];
-    const bestLong=(arr)=>arr.filter(r=>r.km>=8&&r.km<=12.5).sort((a,b)=>a.pace-b.pace)[0];
-    const r5b=best5(baseRuns), r5c=best5(curRuns);
-    const rlb=bestLong(baseRuns), rlc=bestLong(curRuns);
-    const runningScore=avg([
-      scoreChange(r5c?.pace,r5b?.pace,false,4),
-      scoreChange(rlc?.pace,rlb?.pace,false,4)
-    ]) ?? 50;
+    const allRuns=runs().sort((x,y)=>x.date.localeCompare(y.date));
+    const baseRuns=allRuns.filter(r=>r.date<start),curRuns=allRuns.filter(r=>r.date>=start);
+    const best5=arr=>arr.filter(r=>r.km>=4.8&&r.km<=5.5).sort((x,y)=>x.pace-y.pace)[0];
+    const bestLong=arr=>arr.filter(r=>r.km>=8&&r.km<=12.5).sort((x,y)=>x.pace-y.pace)[0];
+    const r5b=best5(baseRuns),r5c=best5(curRuns),rlb=bestLong(baseRuns),rlc=bestLong(curRuns);
+    const runningScore=avg([scoreChange(r5c?.pace,r5b?.pace,false,4),scoreChange(rlc?.pace,rlb?.pace,false,4)]);
 
     const weights=bodySeries(['peso','weight']);
     const waists=bodySeries(['perimetros.cinturaOmbligo','perimetros.cintura','cintura','measurements.cinturaOmbligo']);
-    const baseW=[...weights].filter(x=>x.date<=start).pop()||weights[0];
-    const curW=weights[weights.length-1];
-    const baseWaist=[...waists].filter(x=>x.date<=start).pop()||waists[0];
-    const curWaist=waists[waists.length-1];
-    const bodyScore=avg([
-      scoreChange(curWaist?.value,baseWaist?.value,false,6),
-      scoreChange(curW?.value,baseW?.value,false,2)
-    ]) ?? 50;
+    const baseW=[...weights].filter(x=>x.date<=start).pop()||null,curW=weights.filter(x=>x.date>=start).pop()||null;
+    const baseWaist=[...waists].filter(x=>x.date<=start).pop()||null,curWaist=waists.filter(x=>x.date>=start).pop()||null;
+    const bodyScore=avg([scoreChange(curWaist?.value,baseWaist?.value,false,6),scoreChange(curW?.value,baseW?.value,false,2)]);
 
-    const weightsCfg=plan?.irfWeights||{absoluteStrength:.30,relativeStrength:.30,running:.20,bodyComposition:.20};
-    const total=Math.round(
-      absoluteScore*weightsCfg.absoluteStrength+
-      relativeScore*weightsCfg.relativeStrength+
-      runningScore*weightsCfg.running+
-      bodyScore*weightsCfg.bodyComposition
-    );
-    return {
-      score:Math.max(0,Math.min(100,total)),
-      cycleStart:start,
-      weights:weightsCfg,
+    const cfg=plan?.irfWeights||{absoluteStrength:.30,relativeStrength:.30,running:.20,bodyComposition:.20};
+    const comps=[['absoluteStrength',absoluteScore,cfg.absoluteStrength],['relativeStrength',relativeScore,cfg.relativeStrength],['running',runningScore,cfg.running],['bodyComposition',bodyScore,cfg.bodyComposition]];
+    const available=comps.filter(x=>x[1]!=null);
+    const den=available.reduce((sum,x)=>sum+x[2],0);
+    const total=den?Math.round(available.reduce((sum,x)=>sum+x[1]*x[2],0)/den):null;
+    return{
+      score:total,cycleStart:start,weights:cfg,availableWeight:den,
       components:{
-        absoluteStrength:{score:Math.round(absoluteScore),details:absDetails},
-        relativeStrength:{score:Math.round(relativeScore),pull,dips,targets:{pullups:10,dips:15}},
-        running:{score:Math.round(runningScore),best5k:r5c||r5b||null,bestLong:rlc||rlb||null},
-        bodyComposition:{score:Math.round(bodyScore),weight:{base:baseW,current:curW},waist:{base:baseWaist,current:curWaist}}
+        absoluteStrength:{score:absoluteScore==null?null:Math.round(absoluteScore),details:absDetails},
+        relativeStrength:{score:relativeScore==null?null:Math.round(relativeScore),pull,dips,targets:{pullups:8,dips:12}},
+        running:{score:runningScore==null?null:Math.round(runningScore),best5k:r5c||null,bestLong:rlc||null},
+        bodyComposition:{score:bodyScore==null?null:Math.round(bodyScore),weight:{base:baseW,current:curW},waist:{base:baseWaist,current:curWaist}}
       }
     };
   }
   window.calcIRF=calcIRF;
 
   function irfCard(){
-    const irf=calcIRF();
-    const cs=irf.components;
-    const row=(label,value,weight,detail)=>`
-      <div style="border:1px solid var(--border);border-radius:14px;padding:11px;background:var(--bg2)">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <div><div style="font-size:13px;font-weight:900;color:var(--ink)">${label}</div><div style="font-size:10px;color:var(--ink3)">${weight}% del índice</div></div>
-          <div style="font-size:22px;font-weight:900;color:var(--p)">${value}</div>
-        </div>
-        <div style="height:6px;background:var(--bg3);border-radius:8px;overflow:hidden;margin:8px 0 6px"><div style="height:100%;width:${value}%;background:var(--p);border-radius:8px"></div></div>
-        <div style="font-size:11px;color:var(--ink3);line-height:1.4">${detail}</div>
-      </div>`;
-    return `<div class="card" id="mq197-irf-card" style="margin-bottom:14px">
-      <div class="section-title">◇ Índice de Rendimiento Funcional</div>
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 0 14px">
-        <div><div style="font-size:46px;font-weight:950;color:var(--p);line-height:1">${irf.score}</div><div style="font-size:11px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase">de 100 · progreso personal</div></div>
-        <div style="font-size:11px;color:var(--ink3);text-align:right">Inicio ciclo<br><strong style="color:var(--ink)">${irf.cycleStart}</strong></div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px">
-        ${row('Fuerza absoluta',cs.absoluteStrength.score,30,'Sentadilla, peso muerto, press banca y press militar.')}
-        ${row('Fuerza relativa',cs.relativeStrength.score,30,`Dominadas: ${cs.relativeStrength.pull.reps} · Fondos: ${cs.relativeStrength.dips.reps}.`)}
-        ${row('Carrera',cs.running.score,20,`${cs.running.best5k?'5K '+Math.round(cs.running.best5k.pace/60*100)/100+' min/km':'Sin 5K'} · ${cs.running.bestLong?'largo '+cs.running.bestLong.km.toFixed(1)+' km':'sin largo'}.`)}
-        ${row('Composición corporal',cs.bodyComposition.score,20,`Peso y cintura comparados con el inicio del ciclo.`)}
-      </div>
-      <div style="font-size:10px;color:var(--ink3);margin-top:10px;line-height:1.45">El índice no compara personas. Resume tu evolución frente a tu propio punto de partida y muestra cada componente por separado.</div>
-    </div>`;
+    const irf=calcIRF(),cs=irf.components;
+    const val=v=>v==null?'Sin datos':v;
+    const width=v=>v==null?0:v;
+    const row=(label,value,weight,detail)=>`<div style="border:1px solid var(--border);border-radius:14px;padding:11px;background:var(--bg2)"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div><div style="font-size:13px;font-weight:900;color:var(--ink)">${label}</div><div style="font-size:10px;color:var(--ink3)">${weight}% del índice</div></div><div style="font-size:${value==null?'13':'22'}px;font-weight:900;color:var(--p)">${val(value)}</div></div><div style="height:6px;background:var(--bg3);border-radius:8px;overflow:hidden;margin:8px 0 6px"><div style="height:100%;width:${width(value)}%;background:var(--p);border-radius:8px"></div></div><div style="font-size:11px;color:var(--ink3);line-height:1.4">${detail}</div></div>`;
+    const pullDetail=`Dominadas libres: ${cs.relativeStrength.pull.reps||0}/8${cs.relativeStrength.pull.assistedReps?' · asistidas: '+cs.relativeStrength.pull.assistedReps:''}`;
+    const dipDetail=`Fondos libres: ${cs.relativeStrength.dips.reps||0}/12${cs.relativeStrength.dips.assistedReps?' · asistidos: '+cs.relativeStrength.dips.assistedReps:''}`;
+    return `<div class="card" id="mq198-irf-card" style="margin-bottom:14px"><div class="section-title">◇ Índice de Rendimiento Funcional</div><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 0 14px"><div><div style="font-size:${irf.score==null?'22':'46'}px;font-weight:950;color:var(--p);line-height:1">${irf.score==null?'Sin datos suficientes':irf.score}</div><div style="font-size:11px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase">${irf.score==null?'registra datos del ciclo':'de 100 · progreso personal'}</div></div><div style="font-size:11px;color:var(--ink3);text-align:right">Inicio ciclo<br><strong style="color:var(--ink)">${irf.cycleStart}</strong></div></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px">${row('Fuerza absoluta',cs.absoluteStrength.score,30,'Sentadilla, peso muerto, press banca y press militar.')}${row('Fuerza relativa',cs.relativeStrength.score,30,pullDetail+' · '+dipDetail+'.')}${row('Carrera',cs.running.score,20,`${cs.running.best5k?'5K '+Math.round(cs.running.best5k.pace/60*100)/100+' min/km':'Sin 5K del ciclo'} · ${cs.running.bestLong?'largo '+cs.running.bestLong.km.toFixed(1)+' km':'sin largo del ciclo'}.`)}${row('Composición corporal',cs.bodyComposition.score,20,'Peso y cintura comparados con el inicio del ciclo.')}</div><div style="font-size:10px;color:var(--ink3);margin-top:10px;line-height:1.45">Las variantes asistidas se muestran como referencia, pero no cuentan como repeticiones libres. Los componentes sin datos no reciben puntaje ficticio.</div></div>`;
   }
-
   function injectIRF(){
-    const host=document.getElementById('prog-plan-content');
-    if(!host || document.getElementById('mq197-irf-card')) return;
+    const old=document.getElementById('mq197-irf-card');if(old)old.remove();
+    const host=document.getElementById('prog-plan-content');if(!host||document.getElementById('mq198-irf-card'))return;
     host.insertAdjacentHTML('afterbegin',irfCard());
   }
   const oldRenderPlan=typeof renderProgPlan==='function'?renderProgPlan:null;
-  if(oldRenderPlan&&!window._mq197PlanHook){
-    window._mq197PlanHook=true;
-    renderProgPlan=function(){
-      const r=oldRenderPlan.apply(this,arguments);
-      setTimeout(injectIRF,0);
-      return r;
-    };
-  }
+  if(oldRenderPlan&&!window._mq198PlanHook){window._mq198PlanHook=true;renderProgPlan=function(){const r=oldRenderPlan.apply(this,arguments);setTimeout(injectIRF,0);return r;};}
 
   function decorateCycleCards(){
     (forge.routines||[]).filter(r=>r.cycle===2).forEach(r=>{
-      const cards=[...document.querySelectorAll('.rutina-card')];
-      const card=cards.find(c=>nrm(c.textContent).includes(nrm(r.name)));
-      if(!card||card.querySelector('.mq197-cycle-objective')) return;
-      const head=card.querySelector('.rutina-head');
-      if(head){
-        head.insertAdjacentHTML('beforeend',`<div class="mq197-cycle-objective" style="font-size:11px;color:var(--ink3);margin-top:6px"><strong style="color:var(--p)">${r.objective}</strong> · prioridad ${r.priority==='high'?'alta':r.priority==='medium'?'media':'baja'}</div>`);
-      }
+      const card=[...document.querySelectorAll('.rutina-card')].find(c=>nrm(c.textContent).includes(nrm(r.name)));
+      if(!card||card.querySelector('.mq198-cycle-objective'))return;
+      const head=card.querySelector('.rutina-head');if(head)head.insertAdjacentHTML('beforeend',`<div class="mq198-cycle-objective" style="font-size:11px;color:var(--ink3);margin-top:6px"><strong style="color:var(--p)">${r.objective}</strong> · prioridad ${r.priority==='high'?'alta':r.priority==='medium'?'media':'baja'}</div>`);
     });
   }
   const oldRut=typeof renderRutinas==='function'?renderRutinas:null;
-  if(oldRut&&!window._mq197RutHook){
-    window._mq197RutHook=true;
-    renderRutinas=function(){
-      const r=oldRut.apply(this,arguments);
-      setTimeout(decorateCycleCards,0);
-      return r;
-    };
+  if(oldRut&&!window._mq198RutHook){window._mq198RutHook=true;renderRutinas=function(){const r=oldRut.apply(this,arguments);setTimeout(decorateCycleCards,0);return r;};}
+
+  // Reaplica el contenido después de una carga manual desde nube.
+  if(typeof doCargarNube==='function'&&!window._mq198CloudHook){
+    window._mq198CloudHook=true;
+    const oldLoad=doCargarNube;
+    doCargarNube=async function(){const r=await oldLoad.apply(this,arguments);applyCycle2(true,false);try{renderAll();}catch(e){}return r;};
   }
 
-  window.mq197Diagnostico=function(){
-    return {
-      version:VERSION,
+  window.mq198Diagnostico=function(){
+    const defs=cycle2Routines();
+    const actual=(forge.routines||[]).filter(r=>defs.some(d=>d.id===r.id));
+    return{
+      version:VERSION,title:document.title,cycleStart:CYCLE_START,
       activePlan:(forge.planes||[]).find(p=>p.activo),
-      cycle2Routines:(forge.routines||[]).filter(r=>r.cycle===2).map(r=>({id:r.id,name:r.name,objective:r.objective,priority:r.priority,exercises:r.exercises,exercisePlan:r.exercisePlan})),
+      routines:actual.map(r=>({id:r.id,name:r.name,count:(r.exercises||[]).length,exercises:r.exercises})),
+      allStrengthMax4:actual.filter(r=>r.exercisePlan).every(r=>(r.exercises||[]).length<=4),
       irf:calcIRF()
     };
   };
 
-  // Aplicación automática una sola vez. No toca sesiones históricas.
-  if(localStorage.getItem('mq197_cycle2_applied')!=='1') applyCycle2();
-  else setTimeout(()=>{try{injectIRF();decorateCycleCards();}catch(e){}},700);
+  applyCycle2(true,false);
+  setTimeout(()=>{try{injectIRF();decorateCycleCards();renderAll();}catch(e){}},300);
+  setTimeout(()=>{try{applyCycle2(true,false);injectIRF();decorateCycleCards();}catch(e){}},2500);
 
   window.MELQART_VERSION=VERSION;
-  setTimeout(()=>{const el=document.getElementById('um-version');if(el)el.textContent=VERSION;},500);
-  console.info('MELQART v197: Ciclo 2 + IRF cargados');
+  document.title='MELQART v198';
+  setTimeout(()=>{const el=document.getElementById('um-version');if(el)el.textContent=VERSION;},300);
+  console.info('MELQART v198: Ciclo 2 depurado + IRF corregido');
 })();
