@@ -14197,3 +14197,252 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   setTimeout(()=>{const el=document.getElementById('um-version');if(el)el.textContent=VERSION;},300);
   console.info('MELQART v198: Ciclo 2 depurado + IRF corregido');
 })();
+
+// ---------------------------------------------------------------
+// MELQART 2.0.0 — Carrera de Calidad JSON + intervalos persistentes
+// ---------------------------------------------------------------
+(function mq200QualityRun(){
+  'use strict';
+  const VERSION='2.0.0';
+  const DATA_SCHEMA_VERSION=2;
+  const QUALITY_ROUTINE_ID='r_mierco';
+  const QUALITY_NAME='Miércoles — Carrera de Calidad';
+
+  function dateStr(v){
+    const s=String(v||'').trim();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const d=new Date(v);
+    if(isNaN(d)) return '';
+    return typeof localDateStr==='function'?localDateStr(d):d.toISOString().slice(0,10);
+  }
+  function secondsFrom(v){
+    if(Number.isFinite(v)) return Math.max(0,Math.round(v));
+    const s=String(v||'').trim();
+    if(!s) return 0;
+    const p=s.split(':').map(x=>Number(x));
+    if(p.some(x=>!Number.isFinite(x))) return 0;
+    if(p.length===3) return p[0]*3600+p[1]*60+p[2];
+    if(p.length===2) return p[0]*60+p[1];
+    return Number.isFinite(Number(s))?Math.round(Number(s)):0;
+  }
+  function paceSeconds(v){
+    const n=secondsFrom(v);
+    return n>0?n:null;
+  }
+  function fmtDuration(sec){
+    sec=Math.max(0,Math.round(Number(sec)||0));
+    const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
+    return h?`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  function clone(x){ return x==null?x:JSON.parse(JSON.stringify(x)); }
+  function normText(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();}
+  function isQuality(j){
+    return normText(j.tipoSesion)==='carrera_calidad' || normText(j.sesion).includes('carrera de calidad') || normText(j.routineName).includes('carrera de calidad');
+  }
+  function normalizeRecoveries(raw){
+    if(!Array.isArray(raw)) return [];
+    return raw.map(x=>({
+      ...clone(x),
+      despuesSerie:Number(x?.despuesSerie ?? x?.afterSeries ?? x?.serie ?? 0)||null,
+      tipo:['trote','caminata','pausa'].includes(normText(x?.tipo))?normText(x.tipo):(x?.tipo||null)
+    }));
+  }
+  function normalizeIntervals(raw){
+    if(!raw || typeof raw!=='object' || Array.isArray(raw)) return null;
+    const out=clone(raw); // preservar propiedades desconocidas
+    const num=(...keys)=>{ for(const k of keys){ if(raw[k]!==undefined&&raw[k]!==null&&raw[k]!==''){const n=Number(raw[k]);return Number.isFinite(n)?n:null;} } return null; };
+    const bool=(...keys)=>{ for(const k of keys){ if(raw[k]!==undefined&&raw[k]!==null){return typeof raw[k]==='boolean'?raw[k]:String(raw[k]).toLowerCase()==='true';} } return null; };
+    out.calentamientoMin=num('calentamientoMin','warmupMin');
+    out.repeticionesPlanificadas=num('repeticionesPlanificadas','plannedRepetitions');
+    out.repeticionesCompletadas=num('repeticionesCompletadas','completedRepetitions');
+    out.trabajoMin=num('trabajoMin','workMin');
+    out.recuperacionMin=num('recuperacionMin','recoveryMin');
+    out.recuperaciones=normalizeRecoveries(raw.recuperaciones||raw.recoveries||[]);
+    out.enfriamientoCompletado=bool('enfriamientoCompletado','cooldownCompleted');
+    out.sesionRecortadaPorTiempo=bool('sesionRecortadaPorTiempo','cutShortForTime');
+    return out;
+  }
+  function duplicateKey(date,type,durationSec,distanceKm){
+    return [date,type,durationSec,Number(distanceKm).toFixed(3)].join('|');
+  }
+  function sessionDistance(s){
+    const imp=Number(s?.importedRun?.distanceKm||s?.running?.distanceKm||0);
+    if(imp) return imp;
+    for(const ex of (s?.exercises||[])) for(const st of (ex.sets||[])){const n=Number(st.distance||0);if(n)return n;}
+    return 0;
+  }
+  function sessionKey(s){
+    const d=typeof localDateStr==='function'?localDateStr(s.date):new Date(s.date).toISOString().slice(0,10);
+    const type=s.tipoSesion||s.sessionSubtype||(s.routineId===QUALITY_ROUTINE_ID?'carrera_calidad':'running');
+    return duplicateKey(d,type,Number(s.elapsed||s.durationSeconds||0),sessionDistance(s));
+  }
+  function findDuplicate(key){ return (forge.sessions||[]).find(s=>sessionKey(s)===key); }
+  function ensureQualityRoutine(){
+    forge.routines=Array.isArray(forge.routines)?forge.routines:[];
+    let r=forge.routines.find(x=>x.id===QUALITY_ROUTINE_ID);
+    if(!r){r={id:QUALITY_ROUTINE_ID,name:QUALITY_NAME,emoji:'⚡',exercises:['ex_cal_trote','ex_correr','ex_est_trote'],restSec:0};forge.routines.push(r);}
+    r.name=QUALITY_NAME;r.cycle=2;r.weekDay='miércoles';r.runningRole='quality';
+    return r;
+  }
+  function normalizeInput(raw){
+    const j=typeof raw==='string'?JSON.parse(raw):clone(raw||{});
+    const fecha=dateStr(j.fecha||j.date);
+    const duracionSegundos=secondsFrom(j.duracion||j.duration||j.elapsed||j.timeTotal);
+    const distanciaKm=Number(j.distanciaKm ?? j.distanceKm ?? j.distance ?? j.km ?? 0);
+    if(!fecha) throw new Error('Falta el campo obligatorio fecha (YYYY-MM-DD).');
+    if(!duracionSegundos) throw new Error('Falta el campo obligatorio duración (HH:MM:SS).');
+    if(!distanciaKm || distanciaKm<=0) throw new Error('Falta el campo obligatorio distanciaKm.');
+    const quality=isQuality(j);
+    const tipoSesion=quality?'carrera_calidad':(j.tipoSesion||'running');
+    const sesion=quality?QUALITY_NAME:(j.sesion||j.routineName||'Carrera / Trote');
+    const ritmoSegKm=paceSeconds(j.ritmoMedio||j.avgPace||j.ritmoPromedio||j.pace) || Math.round(duracionSegundos/distanciaKm);
+    return {
+      raw:j,fecha,duracionSegundos,distanciaKm,tipoSesion,sesion,ritmoSegKm,
+      frecuenciaCardiacaMedia:Number(j.frecuenciaCardiacaMedia ?? j.avgHeartRate ?? j.fcMedia ?? 0)||null,
+      frecuenciaCardiacaMaxima:Number(j.frecuenciaCardiacaMaxima ?? j.maxHeartRate ?? j.fcMax ?? 0)||null,
+      cadenciaMedia:Number(j.cadenciaMedia ?? j.avgCadence ?? 0)||null,
+      cadenciaMaxima:Number(j.cadenciaMaxima ?? j.maxCadence ?? 0)||null,
+      caloriasActivas:Number(j.caloriasActivas ?? j.activeCalories ?? 0)||null,
+      caloriasTotales:Number(j.caloriasTotales ?? j.calories ?? j.kcal ?? 0)||null,
+      pasos:Number(j.pasos ?? j.steps ?? 0)||null,
+      observacion:String(j.observacion ?? j.notes ?? '').trim(),
+      intervalos:normalizeIntervals(j.intervalos),
+      splits:clone(j.splits||j.parciales||[])
+    };
+  }
+
+  window.importQualityRunJson=function(raw){
+    const n=normalizeInput(raw);
+    if(n.tipoSesion!=='carrera_calidad') throw new Error('Este cargador acepta la sesión “Miércoles — Carrera de Calidad” o tipoSesion “carrera_calidad”.');
+    forge.sessions=Array.isArray(forge.sessions)?forge.sessions:[];
+    forge.exercises=Array.isArray(forge.exercises)?forge.exercises:[];
+    if(!forge.exercises.some(e=>e.id==='ex_correr')) forge.exercises.push({id:'ex_correr',name:'Carrera / Trote',type:'run',muscle:'cardio',restSec:0});
+    const key=duplicateKey(n.fecha,n.tipoSesion,n.duracionSegundos,n.distanciaKm);
+    const duplicate=findDuplicate(key);
+    if(duplicate){ const err=new Error('Este entrenamiento coincide con una sesión que ya está registrada.'); err.code='DUPLICATE_SESSION';err.sessionId=duplicate.id;throw err; }
+    const routine=ensureQualityRoutine();
+    const ts=new Date(`${n.fecha}T12:00:00`).getTime();
+    const id=(crypto?.randomUUID?crypto.randomUUID():`run_${Date.now()}_${Math.random().toString(36).slice(2,8)}`);
+    const session={
+      id,routineId:routine.id,routineName:QUALITY_NAME,date:ts,elapsed:n.duracionSegundos,
+      schemaVersion:DATA_SCHEMA_VERSION,sessionType:'running',sessionSubtype:'carrera_calidad',tipoSesion:'carrera_calidad',
+      source:'json_reloj',duplicateKey:key,cycleId:'ciclo_2_2026',cycleWeek:typeof semanaActualPlan==='function'?semanaActualPlan((forge.planes||[]).find(p=>p.activo)):null,
+      planSessionId:'c2_carrera_calidad',plannedWeekDay:'miércoles',actualDate:n.fecha,
+      fcMedia:n.frecuenciaCardiacaMedia,fcMax:n.frecuenciaCardiacaMaxima,kcal:n.caloriasTotales,pasos:n.pasos,
+      running:{distanceKm:n.distanciaKm,durationSeconds:n.duracionSegundos,paceSecondsPerKm:n.ritmoSegKm,avgHeartRate:n.frecuenciaCardiacaMedia,maxHeartRate:n.frecuenciaCardiacaMaxima,avgCadence:n.cadenciaMedia,maxCadence:n.cadenciaMaxima,activeCalories:n.caloriasActivas,totalCalories:n.caloriasTotales,steps:n.pasos},
+      intervalos:n.intervalos,observacion:n.observacion,rawImport:clone(n.raw),
+      importedRun:{distanceKm:n.distanciaKm,durationSeconds:n.duracionSegundos,durationHHMMSS:fmtDuration(n.duracionSegundos),avgPaceCalculated:fmtDuration(n.ritmoSegKm),avgHeartRate:n.frecuenciaCardiacaMedia,maxHeartRate:n.frecuenciaCardiacaMaxima,avgCadence:n.cadenciaMedia,maxCadence:n.cadenciaMaxima,calories:n.caloriasTotales,activeCalories:n.caloriasActivas,steps:n.pasos,splits:n.splits,intervalos:n.intervalos,notes:n.observacion,source:'json_reloj'},
+      exercises:[{exId:'ex_correr',sets:[{type:'run',done:true,distance:String(n.distanciaKm),time:fmtDuration(n.duracionSegundos),durationSeconds:n.duracionSegundos,fc:n.frecuenciaCardiacaMedia?String(n.frecuenciaCardiacaMedia):'',fcMax:n.frecuenciaCardiacaMaxima?String(n.frecuenciaCardiacaMaxima):'',pasos:n.pasos?String(n.pasos):'',avgCadence:n.cadenciaMedia,maxCadence:n.cadenciaMaxima,calories:n.caloriasTotales,activeCalories:n.caloriasActivas,paceSecondsPerKm:n.ritmoSegKm,intervalos:n.intervalos,splits:n.splits}]}]
+    };
+    forge.sessions.push(session);
+    forge.sessions.sort((a,b)=>(a.date||0)-(b.date||0));
+    forge.dataSchemaVersion=DATA_SCHEMA_VERSION;
+    saveDB();
+    try{renderAll();}catch(e){console.warn('MELQART 2.0 render',e);}
+    return session;
+  };
+
+  function intervalSummary(i){
+    if(!i) return '';
+    const done=i.repeticionesCompletadas,planned=i.repeticionesPlanificadas;
+    const recs=i.recuperaciones||[];
+    const counts=recs.reduce((m,r)=>{const k=r.tipo||'sin tipo';m[k]=(m[k]||0)+1;return m;},{});
+    const recText=Object.entries(counts).map(([k,v])=>`${v} ${k==='caminata'?'caminando':k}`).join(' y ');
+    return [done!=null&&planned!=null?`${done}/${planned} intervalos`:'',recText?`Recuperación: ${recText}`:'',i.sesionRecortadaPorTiempo===true?'Sesión recortada por tiempo':''].filter(Boolean).join(' · ');
+  }
+
+  window.openQualityRunJsonImporter=function(){
+    document.getElementById('mq200-quality-modal')?.remove();
+    const sample={fecha:'2026-07-22',sesion:QUALITY_NAME,tipoSesion:'carrera_calidad',duracion:'00:33:16',distanciaKm:4.9,frecuenciaCardiacaMedia:150,ritmoMedio:'06:47',cadenciaMedia:140,cadenciaMaxima:164,caloriasActivas:377,caloriasTotales:446,pasos:4670,intervalos:{calentamientoMin:10,repeticionesPlanificadas:5,repeticionesCompletadas:5,trabajoMin:3,recuperacionMin:2,recuperaciones:[{despuesSerie:1,tipo:'trote'},{despuesSerie:2,tipo:'caminata'},{despuesSerie:3,tipo:'caminata'},{despuesSerie:4,tipo:'caminata'}],enfriamientoCompletado:false,sesionRecortadaPorTiempo:true},observacion:'Primera sesión de intervalos del Ciclo 2.'};
+    const bg=document.createElement('div');bg.className='modal-bg on';bg.id='mq200-quality-modal';
+    bg.innerHTML=`<div class="modal" style="max-height:92dvh"><div class="modal-handle"></div><div class="modal-head"><div class="modal-title">Carrera de Calidad</div><button class="bicon" id="mq200-close">×</button></div><div class="modal-body"><div style="font-size:12px;color:var(--ink3);margin-bottom:10px">Pega el JSON del reloj. Fecha, duración y distancia son obligatorios.</div><textarea id="mq200-json" style="width:100%;height:340px;font-family:monospace;font-size:12px;border:1px solid var(--border);border-radius:var(--r);padding:10px;background:var(--bg2);color:var(--ink)">${JSON.stringify(sample,null,2)}</textarea><div id="mq200-error" style="display:none;margin-top:10px;padding:10px;border-radius:10px;background:rgba(154,101,82,.10);color:var(--red);font-size:12px;line-height:1.45"></div><div id="mq200-actions"><button class="btn btn-p" style="margin-top:12px" id="mq200-import">Cargar JSON</button></div></div></div>`;
+    const close=()=>bg.remove();bg.querySelector('#mq200-close').onclick=close;bg.onclick=e=>{if(e.target===bg)close();};
+    bg.querySelector('#mq200-import').onclick=()=>{
+      const err=bg.querySelector('#mq200-error');
+      try{
+        const session=window.importQualityRunJson(bg.querySelector('#mq200-json').value.trim());
+        close();showToast('Carrera de Calidad cargada correctamente',3000,'ok');
+        console.info('MELQART 2.0.0 Carrera de Calidad importada',session);
+      }catch(e){
+        err.style.display='block';err.textContent=e.message||String(e);
+        if(e.code==='DUPLICATE_SESSION'){
+          bg.querySelector('#mq200-actions').innerHTML=`<button class="btn btn-s" style="margin-top:12px" id="mq200-cancel">Cancelar</button>`;
+          bg.querySelector('#mq200-cancel').onclick=close;
+        }
+      }
+    };
+    document.body.appendChild(bg);
+  };
+
+  function decorateQualityCard(){
+    const cards=[...document.querySelectorAll('.rutina-card')];
+    const card=cards.find(c=>normText(c.textContent).includes('miercoles — carrera de calidad')||normText(c.textContent).includes('miercoles - carrera de calidad'));
+    if(!card||card.querySelector('.mq200-quality-actions')) return;
+    const oldButton=[...card.querySelectorAll('button')].find(b=>normText(b.textContent).includes('iniciar'));
+    if(oldButton){
+      const wrap=document.createElement('div');wrap.className='mq200-quality-actions';wrap.style.cssText='display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);margin-top:auto';
+      const load=document.createElement('button');load.textContent='Cargar datos';load.style.cssText='padding:10px;background:var(--bg3);color:var(--p);border:none;border-right:1px solid var(--border);font-family:var(--ff);font-size:11px;font-weight:800;letter-spacing:1px;cursor:pointer';load.onclick=e=>{e.stopPropagation();openQualityRunJsonImporter();};
+      const start=oldButton.cloneNode(true);start.onclick=e=>{e.stopPropagation();iniciarRutina(QUALITY_ROUTINE_ID);};start.style.borderRadius='0';
+      oldButton.replaceWith(wrap);wrap.append(load,start);
+    }
+  }
+  const prevRender=typeof renderRutinas==='function'?renderRutinas:null;
+  if(prevRender&&!window._mq200RenderHook){window._mq200RenderHook=true;renderRutinas=function(){const r=prevRender.apply(this,arguments);setTimeout(decorateQualityCard,0);return r;};}
+
+  // Enriquecer el detalle existente sin romper sesiones antiguas.
+  const prevOpen=typeof openSesDetail==='function'?openSesDetail:null;
+  if(prevOpen&&!window._mq200DetailHook){window._mq200DetailHook=true;openSesDetail=function(id){const r=prevOpen.apply(this,arguments);const s=(forge.sessions||[]).find(x=>x.id===id);if(s?.intervalos){const body=document.getElementById('ses-detail-body');if(body&&!body.querySelector('.mq200-interval-detail')){const i=s.intervalos;body.insertAdjacentHTML('beforeend',`<div class="mq200-interval-detail" style="padding:16px;border-top:1px solid var(--border)"><div class="section-label">Intervalos</div><div style="font-size:14px;font-weight:800;color:var(--ink);margin-bottom:6px">${intervalSummary(i)||'Detalle guardado'}</div><div style="font-size:12px;color:var(--ink3);line-height:1.6">Trabajo: ${i.trabajoMin??'—'} min · Recuperación: ${i.recuperacionMin??'—'} min<br>Calentamiento: ${i.calentamientoMin??'—'} min · Enfriamiento: ${i.enfriamientoCompletado===true?'sí':i.enfriamientoCompletado===false?'no':'—'}</div></div>`);}}return r;};}
+
+  window.mq200Diagnostico=function(){
+    const q=(forge.sessions||[]).filter(s=>s.tipoSesion==='carrera_calidad'||s.sessionSubtype==='carrera_calidad');
+    return {version:VERSION,dataSchemaVersion:forge.dataSchemaVersion||DATA_SCHEMA_VERSION,qualityRoutine:forge.routines?.find(r=>r.id===QUALITY_ROUTINE_ID),qualitySessions:q.map(s=>({id:s.id,date:dateStr(s.date),distanceKm:sessionDistance(s),durationSeconds:s.elapsed,intervalos:s.intervalos,duplicateKey:s.duplicateKey})),localPersistence:!!localStorage.getItem(DB_KEY)};
+  };
+
+  forge.dataSchemaVersion=forge.dataSchemaVersion||DATA_SCHEMA_VERSION;
+  ensureQualityRoutine();
+  saveDB();
+  window.MELQART_VERSION=VERSION;
+  document.title='MELQART 2.0.0';
+  setTimeout(()=>{const el=document.getElementById('um-version');if(el)el.textContent='2.0.0';try{renderRutinas();}catch(e){}},250);
+  console.info('MELQART 2.0.0: Carrera de Calidad JSON + intervalos + duplicados');
+})();
+
+// MELQART 2.0.0 — detalle de intervalos en exportable legible
+(function mq200IntervalsExport(){
+  function yn(v){return v===true?'sí':v===false?'no':'—';}
+  function linesForIntervals(fechaInicio,fechaFin){
+    const lines=[];
+    (forge.sessions||[]).slice().sort((a,b)=>(a.date||0)-(b.date||0)).forEach(s=>{
+      if(!s.intervalos) return;
+      const d=new Date(s.date);
+      if(fechaInicio&&d<fechaInicio)return;
+      if(fechaFin&&d>fechaFin)return;
+      const i=s.intervalos;
+      if(!lines.length) lines.push('DETALLE DE INTERVALOS','');
+      lines.push(`${typeof localDateStr==='function'?localDateStr(s.date):d.toISOString().slice(0,10)} - ${s.routineName||'Carrera de Calidad'}`);
+      if(i.repeticionesCompletadas!=null||i.repeticionesPlanificadas!=null) lines.push(`  Intervalos: ${i.repeticionesCompletadas??'—'}/${i.repeticionesPlanificadas??'—'}`);
+      if(i.trabajoMin!=null) lines.push(`  Trabajo: ${i.trabajoMin} min`);
+      if(i.recuperacionMin!=null) lines.push(`  Recuperación: ${i.recuperacionMin} min`);
+      (i.recuperaciones||[]).forEach(r=>lines.push(`  Recuperación posterior a serie ${r.despuesSerie??'—'}: ${r.tipo||'—'}`));
+      lines.push(`  Enfriamiento completado: ${yn(i.enfriamientoCompletado)}`);
+      lines.push(`  Sesión recortada por tiempo: ${yn(i.sesionRecortadaPorTiempo)}`);
+      if(s.observacion) lines.push(`  Observación: ${s.observacion}`);
+      lines.push('');
+    });
+    return lines;
+  }
+  window.exportQualityIntervalsLines=linesForIntervals;
+  if(typeof exportarSemana==='function'&&!window._mq200ExportHook){
+    window._mq200ExportHook=true;
+    const prev=exportarSemana;
+    exportarSemana=function(){
+      const result=prev.apply(this,arguments);
+      if(typeof result!=='string')return result;
+      const extra=linesForIntervals();
+      if(!extra.length||result.includes('DETALLE DE INTERVALOS'))return result;
+      const txt=result.replace(/\nGenerado por MELQART/,`\n-------------------------------\n${extra.join('\n')}Generado por MELQART`);
+      try{if(navigator.clipboard)navigator.clipboard.writeText(txt);}catch(e){}
+      return txt;
+    };
+  }
+})();
