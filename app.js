@@ -14446,3 +14446,269 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     };
   }
 })();
+
+// ---------------------------------------------------------------
+// MELQART 2.0.1 — Fuerza relativa + running estructurado
+// ---------------------------------------------------------------
+(function mq201Upgrade(){
+  'use strict';
+  const VERSION='2.0.1';
+  const DATA_SCHEMA_VERSION=3;
+  const BW_IDS=new Set(['ex_dominadas','ex_dominadas_asist','ex_fondos','ex_fondos_asist']);
+  const RUN_TYPES={
+    carrera_calidad:{routineId:'r_mierco',routineName:'Miércoles — Carrera de Calidad',planSessionId:'c2_carrera_calidad',plannedWeekDay:'miércoles'},
+    rodaje_regenerativo:{routineId:'r_jueves_noche',routineName:'Jueves Noche — Rodaje Regenerativo',planSessionId:'c2_rodaje_regenerativo',plannedWeekDay:'jueves'},
+    fondo_largo:{routineId:'r_cardio',routineName:'Domingo — Fondo Largo',planSessionId:'c2_fondo_largo',plannedWeekDay:'domingo'}
+  };
+  const clone=x=>x==null?x:JSON.parse(JSON.stringify(x));
+  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const dateStr=v=>{const s=String(v||'').trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const d=new Date(v);return isNaN(d)?'':(typeof localDateStr==='function'?localDateStr(d):d.toISOString().slice(0,10));};
+  const secs=v=>{if(Number.isFinite(v))return Math.max(0,Math.round(v));const s=String(v||'').trim();if(!s)return 0;const p=s.split(':').map(Number);if(p.some(x=>!Number.isFinite(x)))return 0;if(p.length===3)return p[0]*3600+p[1]*60+p[2];if(p.length===2)return p[0]*60+p[1];return Math.round(Number(s)||0);};
+  const fmt=sec=>{sec=Math.max(0,Math.round(Number(sec)||0));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return h?`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;};
+  const num=(...vals)=>{for(const v of vals){if(v!==undefined&&v!==null&&v!==''){const n=Number(String(v).replace(',','.'));if(Number.isFinite(n))return n;}}return null;};
+  function latestBodyWeight(){
+    const arr=(forge.bodyMetrics||[]).filter(x=>Number(x.peso)>0).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    return arr.length?Number(arr[arr.length-1].peso):null;
+  }
+  function isBW(exId){return BW_IDS.has(exId);}
+  function modeLabel(m){return m==='assisted'?'Asistencia':m==='weighted'?'Lastre':'Peso corporal';}
+  function normalizeBWSet(set,exId){
+    if(!set)return set;
+    let mode=set.loadMode||set.modoCarga;
+    if(!mode){mode=exId==='ex_dominadas_asist'||exId==='ex_fondos_asist'?'assisted':'bodyweight';}
+    if(mode==='asistencia')mode='assisted';if(mode==='lastre')mode='weighted';if(mode==='libre')mode='bodyweight';
+    set.loadMode=mode;
+    set.assistanceKg=num(set.assistanceKg,set.asistenciaKg)??0;
+    set.ballastKg=num(set.ballastKg,set.lastreKg)??0;
+    set.bodyWeightKg=num(set.bodyWeightKg,set.pesoCorporalKg)??latestBodyWeight();
+    set.effectiveLoadKg=set.bodyWeightKg==null?null:Math.max(0,set.bodyWeightKg+(mode==='weighted'?set.ballastKg:0)-(mode==='assisted'?set.assistanceKg:0));
+    set.weight=0; // evita volumen y exportación engañosa como "0 kg"
+    return set;
+  }
+  function normalizeAllBW(){
+    (forge.sessions||[]).forEach(s=>(s.exercises||[]).forEach(ex=>{if(isBW(ex.exId))(ex.sets||[]).forEach(st=>normalizeBWSet(st,ex.exId));}));
+    forge.dataSchemaVersion=Math.max(Number(forge.dataSchemaVersion||0),DATA_SCHEMA_VERSION);
+  }
+  window.mq201SetBWMode=function(ei,si,mode){const ex=activeSession?.exercises?.[ei],st=ex?.sets?.[si];if(!st)return;st.loadMode=mode;normalizeBWSet(st,ex.exId);rerenderActiveSessionExercises();};
+  window.mq201SetBWValue=function(ei,si,field,value){const ex=activeSession?.exercises?.[ei],st=ex?.sets?.[si];if(!st)return;st[field]=Number(String(value||'').replace(',','.'))||0;normalizeBWSet(st,ex.exId);};
+  function renderBWRow(ei,si,set,ultSet){
+    const ex=activeSession.exercises[ei];normalizeBWSet(set,ex.exId);if(ultSet)normalizeBWSet(ultSet,ex.exId);
+    const mode=set.loadMode||'bodyweight';
+    const prev=ultSet?`${modeLabel(ultSet.loadMode)}${ultSet.loadMode==='assisted'?` ${ultSet.assistanceKg||0} kg`:ultSet.loadMode==='weighted'?` +${ultSet.ballastKg||0} kg`:''} · ${ultSet.reps||0} reps`:'—';
+    const kgField=mode==='bodyweight'?`<div class="set-inp" style="display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:11px">PC ${set.bodyWeightKg?set.bodyWeightKg+' kg':'—'}</div>`:`<input class="set-inp" type="text" placeholder="${mode==='assisted'?'asistencia kg':'lastre kg'}" value="${mode==='assisted'?(set.assistanceKg||''):(set.ballastKg||'')}" oninput="mq201SetBWValue(${ei},${si},'${mode==='assisted'?'assistanceKg':'ballastKg'}',this.value)" inputmode="decimal">`;
+    return `<div class="set-row mq201-bw-row" id="sr-${ei}-${si}" style="background:${set.done?'rgba(22,163,74,.06)':'transparent'};grid-template-columns:28px 1.25fr 1fr 1fr auto auto;align-items:center">
+      <div class="set-num" style="color:${set.done?'var(--green)':'var(--ink3)'}">${si+1}</div>
+      <div style="font-size:10px;color:var(--ink3);line-height:1.35">${prev}</div>
+      <select class="set-inp" onchange="mq201SetBWMode(${ei},${si},this.value)" style="padding:8px 4px;font-size:11px"><option value="bodyweight"${mode==='bodyweight'?' selected':''}>Peso corporal</option><option value="assisted"${mode==='assisted'?' selected':''}>Asistencia</option><option value="weighted"${mode==='weighted'?' selected':''}>Lastre</option></select>
+      ${kgField}
+      <input class="set-inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateSet(${ei},${si},'reps',this.value)" inputmode="numeric" style="max-width:70px">
+      <div style="display:flex;align-items:center;gap:4px"><div class="set-check ${set.done?'done':''}" onclick="toggleSet(${ei},${si})"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><button onclick="removeSetFromEx(${ei},${si})" style="background:none;border:none;color:var(--ink3);cursor:pointer;padding:4px;font-size:16px">✕</button></div>
+      <div style="grid-column:2/-1;font-size:10px;color:var(--ink3);padding-top:3px">Carga efectiva: ${set.effectiveLoadKg!=null?set.effectiveLoadKg.toFixed(1)+' kg':'sin peso corporal registrado'}</div>
+    </div>`;
+  }
+  const oldRenderSetRow=window.renderSetRow;
+  if(oldRenderSetRow&&!window._mq201BWRender){window._mq201BWRender=true;window.renderSetRow=function(ei,si,set,isRun,ultSet){const ex=activeSession?.exercises?.[ei];if(ex&&isBW(ex.exId))return renderBWRow(ei,si,set,ultSet);return oldRenderSetRow.apply(this,arguments);};}
+  const oldAdd=window.addSetToEx;
+  if(oldAdd&&!window._mq201BWAdd){window._mq201BWAdd=true;window.addSetToEx=function(ei){const ex=activeSession?.exercises?.[ei];if(ex&&isBW(ex.exId)){const last=ex.sets[ex.sets.length-1]||{};ex.sets.push(normalizeBWSet({type:'bodyweight',done:false,reps:last.reps||0,loadMode:last.loadMode||((ex.exId.endsWith('_asist'))?'assisted':'bodyweight'),assistanceKg:last.assistanceKg||0,ballastKg:last.ballastKg||0,bodyWeightKg:latestBodyWeight()},ex.exId));rerenderActiveSessionExercises();return;}return oldAdd.apply(this,arguments);};}
+  const oldFinish=window.finishSession;
+  if(oldFinish&&!window._mq201BWFinish){window._mq201BWFinish=true;window.finishSession=function(){if(activeSession)(activeSession.exercises||[]).forEach(ex=>{if(isBW(ex.exId))(ex.sets||[]).forEach(st=>normalizeBWSet(st,ex.exId));});return oldFinish.apply(this,arguments);};}
+  function bwText(st,exId){normalizeBWSet(st,exId);const reps=Number(st.reps||0);if(st.loadMode==='assisted')return `asistencia ${st.assistanceKg||0} kg · PC ${st.bodyWeightKg??'—'} kg · ${reps} reps · carga efectiva ${st.effectiveLoadKg?.toFixed?.(1)??'—'} kg`;if(st.loadMode==='weighted')return `PC ${st.bodyWeightKg??'—'} kg + lastre ${st.ballastKg||0} kg · ${reps} reps · carga efectiva ${st.effectiveLoadKg?.toFixed?.(1)??'—'} kg`;return `peso corporal ${st.bodyWeightKg??'—'} kg · ${reps} reps`;}
+
+  function inferRunType(j,forced){
+    if(forced&&RUN_TYPES[forced])return forced;const s=norm(j.tipoSesion||j.sessionSubtype||j.sesion||j.routineName);
+    if(s.includes('calidad')||s.includes('interval'))return 'carrera_calidad';if(s.includes('regener')||s.includes('recuper'))return 'rodaje_regenerativo';if(s.includes('fondo')||s.includes('largo'))return 'fondo_largo';return 'fondo_largo';
+  }
+  function normalizeSplits(raw){
+    if(!Array.isArray(raw))return [];
+    return raw.map((x,i)=>{const dur=secs(x.duracion||x.tiempo||x.time);const dist=num(x.distanciaKm,x.distanceKm,x.distancia,x.km)??1;const pace=secs(x.ritmo||x.pace)|| (dur&&dist?Math.round(dur/dist):null);return {...clone(x),numero:Number(x.numero??x.kilometro??x.kmNumero??i+1),distanciaKm:dist,duracionSegundos:dur||null,duracion:dur?fmt(dur):null,ritmoSegKm:pace,ritmo:pace?fmt(pace):null,frecuenciaCardiacaMedia:num(x.frecuenciaCardiacaMedia,x.fcMedia,x.avgHeartRate),cadenciaMedia:num(x.cadenciaMedia,x.avgCadence)};});
+  }
+  function normalizeIntervals(raw){
+    if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;const out=clone(raw);
+    out.repeticionesPlanificadas=num(raw.repeticionesPlanificadas,raw.plannedRepetitions,raw.cantidadPlanificada);
+    out.repeticionesCompletadas=num(raw.repeticionesCompletadas,raw.completedRepetitions,raw.cantidadCompletada,Array.isArray(raw.series)?raw.series.length:null);
+    out.calentamientoMin=num(raw.calentamientoMin,raw.warmupMin);out.trabajoMin=num(raw.trabajoMin,raw.workMin);out.trabajoMetros=num(raw.trabajoMetros,raw.workMeters);out.recuperacionMin=num(raw.recuperacionMin,raw.recoveryMin);out.recuperacionSeg=num(raw.recuperacionSeg,raw.recoverySeconds);
+    out.series=Array.isArray(raw.series)?raw.series.map((s,i)=>({...clone(s),numero:Number(s.numero??i+1),duracionSegundos:secs(s.duracion||s.tiempo)||null,distanciaMetros:num(s.distanciaMetros,s.metros),ritmoSegKm:secs(s.ritmo)||null,frecuenciaCardiacaMedia:num(s.frecuenciaCardiacaMedia,s.fcMedia),recuperacionTipo:s.recuperacionTipo||s.tipoRecuperacion||null})):[];
+    out.recuperaciones=Array.isArray(raw.recuperaciones)?clone(raw.recuperaciones):[];
+    return out;
+  }
+  function runDistance(s){return Number(s?.running?.distanceKm||s?.importedRun?.distanceKm||s?.exercises?.flatMap(e=>e.sets||[]).find(st=>Number(st.distance)>0)?.distance||0);}
+  function runKey(date,type,dur,dist){return `${date}|${type}|${dur}|${Number(dist).toFixed(3)}`;}
+  window.importStructuredRunJson=function(raw,forcedType){
+    const j=typeof raw==='string'?JSON.parse(raw):clone(raw||{}),type=inferRunType(j,forcedType),cfg=RUN_TYPES[type];
+    const fecha=dateStr(j.fecha||j.date),dur=secs(j.duracion||j.duration||j.elapsed||j.tiempoTotal),dist=num(j.distanciaKm,j.distanceKm,j.distancia,j.km);
+    if(!fecha)throw new Error('Falta fecha (YYYY-MM-DD).');if(!dur)throw new Error('Falta duración (HH:MM:SS).');if(!dist||dist<=0)throw new Error('Falta distanciaKm.');
+    const pace=secs(j.ritmoMedio||j.avgPace||j.ritmoPromedio||j.pace)||Math.round(dur/dist),splits=normalizeSplits(j.parciales||j.splits||j.ritmosPorKm||[]),intervalos=normalizeIntervals(j.intervalos);
+    if(type==='carrera_calidad'&&(!intervalos||intervalos.repeticionesCompletadas==null))throw new Error('Para Carrera de Calidad falta intervalos.repeticionesCompletadas.');
+    const key=runKey(fecha,type,dur,dist),dup=(forge.sessions||[]).find(s=>runKey(dateStr(s.date),s.sessionSubtype||s.tipoSesion||'running',Number(s.elapsed||0),runDistance(s))===key);
+    if(dup){const e=new Error('Este entrenamiento coincide con una sesión que ya está registrada.');e.code='DUPLICATE_SESSION';throw e;}
+    const id=(globalThis.crypto&&crypto.randomUUID)?crypto.randomUUID():`run_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+    const fc=num(j.frecuenciaCardiacaMedia,j.avgHeartRate,j.fcMedia),fcMax=num(j.frecuenciaCardiacaMaxima,j.maxHeartRate,j.fcMax),cad=num(j.cadenciaMedia,j.avgCadence),cadMax=num(j.cadenciaMaxima,j.maxCadence),kcal=num(j.caloriasTotales,j.calories,j.kcal),active=num(j.caloriasActivas,j.activeCalories),steps=num(j.pasos,j.steps);
+    const session={id,routineId:cfg.routineId,routineName:cfg.routineName,date:new Date(`${fecha}T12:00:00`).getTime(),actualDate:fecha,elapsed:dur,schemaVersion:DATA_SCHEMA_VERSION,sessionType:'running',sessionSubtype:type,tipoSesion:type,source:'json_reloj',duplicateKey:key,cycleId:'ciclo_2_2026',cycleWeek:typeof semanaActualPlan==='function'?semanaActualPlan((forge.planes||[]).find(p=>p.activo)):null,planSessionId:cfg.planSessionId,plannedWeekDay:cfg.plannedWeekDay,fcMedia:fc,fcMax,kcal,pasos:steps,intervalos,observacion:String(j.observacion||j.notes||''),running:{distanceKm:dist,durationSeconds:dur,paceSecondsPerKm:pace,avgHeartRate:fc,maxHeartRate:fcMax,avgCadence:cad,maxCadence:cadMax,activeCalories:active,totalCalories:kcal,steps,splits,intervalos},importedRun:{distanceKm:dist,durationSeconds:dur,durationHHMMSS:fmt(dur),avgPaceCalculated:fmt(pace),avgHeartRate:fc,maxHeartRate:fcMax,avgCadence:cad,maxCadence:cadMax,activeCalories:active,calories:kcal,steps,splits,intervalos,source:'json_reloj'},rawImport:clone(j),exercises:[{exId:'ex_correr',sets:[{type:'run',done:true,distance:String(dist),time:fmt(dur),durationSeconds:dur,fc:fc?String(fc):'',fcMax:fcMax?String(fcMax):'',pasos:steps?String(steps):'',paceSecondsPerKm:pace,avgCadence:cad,maxCadence:cadMax,activeCalories:active,calories:kcal,splits,intervalos}]}]};
+    forge.sessions=forge.sessions||[];forge.sessions.push(session);forge.sessions.sort((a,b)=>(a.date||0)-(b.date||0));forge.dataSchemaVersion=DATA_SCHEMA_VERSION;saveDB();try{renderAll();}catch{}return session;
+  };
+  function runSample(type){const cfg=RUN_TYPES[type];const base={fecha:'2026-08-02',sesion:cfg.routineName,tipoSesion:type,duracion:'00:48:30',distanciaKm:7.2,frecuenciaCardiacaMedia:148,frecuenciaCardiacaMaxima:166,ritmoMedio:'06:44',cadenciaMedia:151,cadenciaMaxima:165,caloriasActivas:560,caloriasTotales:640,pasos:7200,parciales:[{numero:1,distanciaKm:1,duracion:'06:58',ritmo:'06:58',frecuenciaCardiacaMedia:139},{numero:2,distanciaKm:1,duracion:'06:45',ritmo:'06:45',frecuenciaCardiacaMedia:146}]};if(type==='carrera_calidad'){base.duracion='00:35:00';base.distanciaKm=5.1;base.intervalos={calentamientoMin:10,repeticionesPlanificadas:5,repeticionesCompletadas:5,trabajoMin:3,recuperacionMin:2,series:[{numero:1,duracion:'03:00',ritmo:'05:45',frecuenciaCardiacaMedia:160,recuperacionTipo:'trote'}],enfriamientoCompletado:true};}return base;}
+  window.openStructuredRunImporter=function(type){
+    const cfg=RUN_TYPES[type]||RUN_TYPES.fondo_largo,bg=document.createElement('div');bg.className='modal-bg on';bg.id='mq201-run-modal';bg.innerHTML=`<div class="modal" style="max-height:92dvh"><div class="modal-handle"></div><div class="modal-head"><div class="modal-title">${cfg.routineName}</div><button class="bicon" data-close>×</button></div><div class="modal-body"><div style="font-size:12px;color:var(--ink3);margin-bottom:10px">Pega el JSON del reloj. Se guardan duración, distancia, ritmo, FC, cadencia, calorías, pasos, parciales por kilómetro e intervalos.</div><textarea data-json style="width:100%;height:390px;font-family:monospace;font-size:11px;border:1px solid var(--border);border-radius:var(--r);padding:10px;background:var(--bg2);color:var(--ink)">${JSON.stringify(runSample(type),null,2)}</textarea><div data-error style="display:none;margin-top:10px;padding:10px;border-radius:10px;background:rgba(154,101,82,.10);color:var(--red);font-size:12px"></div><button class="btn btn-p" style="margin-top:12px" data-import>Cargar JSON</button></div></div>`;const close=()=>bg.remove();bg.querySelector('[data-close]').onclick=close;bg.onclick=e=>{if(e.target===bg)close();};bg.querySelector('[data-import]').onclick=()=>{const er=bg.querySelector('[data-error]');try{window.importStructuredRunJson(bg.querySelector('[data-json]').value,type);close();showToast('✓ Carrera cargada correctamente',2600,'ok');}catch(e){er.style.display='block';er.textContent=e.message||String(e);}};document.body.appendChild(bg);
+  };
+  window.openQualityRunJsonImporter=()=>openStructuredRunImporter('carrera_calidad');
+  function decorateRunCards(){
+    const defs=[['r_mierco','carrera_calidad'],['r_jueves_noche','rodaje_regenerativo'],['r_cardio','fondo_largo']];
+    document.querySelectorAll('.rutina-card').forEach(card=>{const text=norm(card.textContent);const def=defs.find(([id,t])=>text.includes(norm(RUN_TYPES[t].routineName)));if(!def)return;const type=def[1];let btn=card.querySelector(`.mq201-load-${type}`);if(btn)return;const start=[...card.querySelectorAll('button')].find(b=>norm(b.textContent).includes('iniciar'));if(!start)return;btn=document.createElement('button');btn.className=`btn btn-s btn-sm mq201-load-${type}`;btn.textContent='Cargar datos';btn.style.margin='0 8px 10px';btn.onclick=e=>{e.stopPropagation();openStructuredRunImporter(type);};start.parentElement?.insertBefore(btn,start);});
+  }
+  const oldRenderRut=window.renderRutinas;if(oldRenderRut&&!window._mq201RunCards){window._mq201RunCards=true;window.renderRutinas=function(){const r=oldRenderRut.apply(this,arguments);setTimeout(decorateRunCards,0);return r;};}
+  const oldDetail=window.openSesDetail;if(oldDetail&&!window._mq201Detail){window._mq201Detail=true;window.openSesDetail=function(id){const r=oldDetail.apply(this,arguments),s=(forge.sessions||[]).find(x=>x.id===id),body=document.getElementById('ses-detail-body');if(!s||!body)return r;
+      const bw=[];(s.exercises||[]).forEach(ex=>{if(isBW(ex.exId)){const e=getEx(ex.exId);(ex.sets||[]).filter(st=>st.done).forEach((st,i)=>bw.push(`<div style="padding:5px 0"><strong>${e?.name||ex.exId} · S${i+1}:</strong> ${bwText(st,ex.exId)}</div>`));}});if(bw.length&&!body.querySelector('.mq201-bw-detail'))body.insertAdjacentHTML('beforeend',`<div class="mq201-bw-detail" style="padding:16px;border-top:1px solid var(--border)"><div class="section-label">Fuerza relativa</div><div style="font-size:12px;color:var(--ink2);line-height:1.5">${bw.join('')}</div></div>`);
+      const splits=s.running?.splits||s.importedRun?.splits||[];if(splits.length&&!body.querySelector('.mq201-splits'))body.insertAdjacentHTML('beforeend',`<div class="mq201-splits" style="padding:16px;border-top:1px solid var(--border)"><div class="section-label">Ritmos por kilómetro</div>${splits.map(x=>`<div style="display:grid;grid-template-columns:40px 1fr 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><strong>Km ${x.numero}</strong><span>${x.ritmo||fmt(x.ritmoSegKm)||'—'}/km</span><span>${x.frecuenciaCardiacaMedia?`FC ${x.frecuenciaCardiacaMedia}`:''}</span></div>`).join('')}</div>`);return r;};}
+  window.exportMq201Lines=function(fechaInicio,fechaFin){const lines=[];(forge.sessions||[]).slice().sort((a,b)=>(a.date||0)-(b.date||0)).forEach(s=>{const d=new Date(s.date);if(fechaInicio&&d<fechaInicio||fechaFin&&d>fechaFin)return;const b=[];(s.exercises||[]).forEach(ex=>{if(isBW(ex.exId))(ex.sets||[]).filter(st=>st.done).forEach((st,i)=>b.push(`  ${getEx(ex.exId)?.name||ex.exId} S${i+1}: ${bwText(st,ex.exId)}`));});const splits=s.running?.splits||s.importedRun?.splits||[];if(!b.length&&!splits.length&&!s.intervalos)return;lines.push(`${dateStr(s.date)} - ${s.routineName||'Sesión'}`,...b);if(s.intervalos){const i=s.intervalos;lines.push(`  Intervalos: ${i.repeticionesCompletadas??'—'}/${i.repeticionesPlanificadas??'—'}`);(i.series||[]).forEach(sr=>lines.push(`  Serie ${sr.numero}: ${sr.distanciaMetros?sr.distanciaMetros+' m · ':''}${sr.duracionSegundos?fmt(sr.duracionSegundos)+' · ':''}${sr.ritmoSegKm?fmt(sr.ritmoSegKm)+'/km · ':''}${sr.frecuenciaCardiacaMedia?'FC '+sr.frecuenciaCardiacaMedia:''}`));}if(splits.length){lines.push('  Ritmos por kilómetro:');splits.forEach(x=>lines.push(`    Km ${x.numero}: ${x.ritmo||fmt(x.ritmoSegKm)||'—'}/km${x.frecuenciaCardiacaMedia?' · FC '+x.frecuenciaCardiacaMedia:''}${x.cadenciaMedia?' · cad '+x.cadenciaMedia:''}`));}lines.push('');});return lines;};
+  const oldExport=window.exportarSemana;if(oldExport&&!window._mq201Export){window._mq201Export=true;window.exportarSemana=function(){const base=oldExport.apply(this,arguments);if(typeof base!=='string')return base;const extra=window.exportMq201Lines();if(!extra.length||base.includes('FUERZA RELATIVA Y RUNNING ESTRUCTURADO'))return base;const txt=base.replace(/\nGenerado por MELQART/,`\n-------------------------------\nFUERZA RELATIVA Y RUNNING ESTRUCTURADO\n\n${extra.join('\n')}Generado por MELQART`);try{navigator.clipboard?.writeText(txt);}catch{}return txt;};}
+  normalizeAllBW();saveDB();window.MELQART_VERSION=VERSION;document.title='MELQART 2.0.1';setTimeout(()=>{const el=document.getElementById('um-version');if(el)el.textContent=VERSION;try{renderRutinas();}catch{}},300);
+  window.mq201Diagnostico=()=>({version:VERSION,dataSchemaVersion:forge.dataSchemaVersion,bodyweightSessions:(forge.sessions||[]).filter(s=>(s.exercises||[]).some(ex=>isBW(ex.exId))).length,structuredRuns:(forge.sessions||[]).filter(s=>RUN_TYPES[s.sessionSubtype]).map(s=>({id:s.id,tipo:s.sessionSubtype,fecha:dateStr(s.date),intervalos:s.intervalos?.repeticionesCompletadas??null,parciales:(s.running?.splits||[]).length}))});
+  console.info('MELQART 2.0.1: asistencia/lastre + intervalos + ritmos por kilómetro');
+})();
+
+// ---------------------------------------------------------------
+// MELQART 2.0.2 — Carga externa continua para fuerza relativa
+// ---------------------------------------------------------------
+(function mq202ExternalLoadUpgrade(){
+  'use strict';
+  const VERSION='2.0.2';
+  const DATA_SCHEMA_VERSION=4;
+  const CANONICAL_IDS=new Set(['ex_dominadas','ex_fondos']);
+  const ALL_BW_IDS=new Set(['ex_dominadas','ex_dominadas_asist','ex_fondos','ex_fondos_asist','ex_fondos_tricep']);
+  const ALIAS_MAP={ex_dominadas_asist:'ex_dominadas',ex_fondos_asist:'ex_fondos'};
+  const num=v=>{if(v===undefined||v===null||v==='')return null;const n=Number(String(v).replace(',','.'));return Number.isFinite(n)?n:null;};
+  const signed=v=>{const n=Number(v)||0;return n>0?`+${n}`:String(n);};
+  const dateOf=ts=>typeof localDateStr==='function'?localDateStr(ts||Date.now()):new Date(ts||Date.now()).toISOString().slice(0,10);
+  function latestBodyWeight(untilDate){
+    const limit=untilDate||'9999-12-31';
+    const arr=(forge.bodyMetrics||[]).filter(x=>Number(x.peso)>0&&String(x.date||'')<=limit).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    return arr.length?Number(arr[arr.length-1].peso):null;
+  }
+  function isBW(id){return ALL_BW_IDS.has(id);}
+  function canonicalId(id){return ALIAS_MAP[id]||id;}
+  function inferExternalLoad(st,exId){
+    const direct=num(st.externalLoadKg??st.cargaExternaKg);
+    if(direct!==null)return direct;
+    const mode=st.loadMode||st.modoCarga;
+    const assistance=num(st.assistanceKg??st.asistenciaKg)??0;
+    const ballast=num(st.ballastKg??st.lastreKg)??0;
+    if(mode==='assisted'||mode==='asistencia'||exId==='ex_dominadas_asist'||exId==='ex_fondos_asist')return -Math.abs(assistance);
+    if(mode==='weighted'||mode==='lastre')return Math.abs(ballast);
+    return 0;
+  }
+  function normalizeSet(st,exId,session){
+    if(!st)return st;
+    const external=inferExternalLoad(st,exId);
+    const sessionDate=dateOf(session?.date);
+    const bw=num(st.bodyWeightKg??st.pesoCorporalKg??session?.bodyWeightKg)??latestBodyWeight(sessionDate);
+    st.type='bodyweight';
+    st.externalLoadKg=external;
+    st.cargaExternaKg=external;
+    st.bodyWeightKg=bw;
+    st.pesoCorporalKg=bw;
+    st.effectiveLoadKg=bw===null?null:Math.round((bw+external)*10)/10;
+    // Compatibilidad de lectura con 2.0.1, sin usarlos como fuente principal.
+    st.loadMode=external<0?'assisted':external>0?'weighted':'bodyweight';
+    st.assistanceKg=external<0?Math.abs(external):0;
+    st.ballastKg=external>0?external:0;
+    st.weight=0;
+    return st;
+  }
+  function migrateExerciseAliases(){
+    (forge.sessions||[]).forEach(session=>{
+      const merged=[];
+      (session.exercises||[]).forEach(ex=>{
+        const oldId=ex.exId;
+        const id=canonicalId(oldId);
+        if(isBW(oldId)) (ex.sets||[]).forEach(st=>normalizeSet(st,oldId,session));
+        const existing=merged.find(x=>x.exId===id);
+        if(existing&&id!==oldId) existing.sets=[...(existing.sets||[]),...(ex.sets||[])];
+        else merged.push({...ex,exId:id});
+      });
+      session.exercises=merged;
+      const bwSet=merged.flatMap(ex=>CANONICAL_IDS.has(ex.exId)?(ex.sets||[]):[]).find(st=>num(st.bodyWeightKg)!==null);
+      if(bwSet)session.bodyWeightKg=num(bwSet.bodyWeightKg);
+    });
+    (forge.routines||[]).forEach(r=>{
+      if(!Array.isArray(r.exercises))return;
+      r.exercises=[...new Set(r.exercises.map(canonicalId))];
+    });
+    // Ocultar variantes asistidas separadas: ahora son el mismo ejercicio con carga externa negativa.
+    forge.exercises=(forge.exercises||[]).filter(e=>!['ex_dominadas_asist','ex_fondos_asist'].includes(e.id));
+    forge.dataSchemaVersion=Math.max(Number(forge.dataSchemaVersion||0),DATA_SCHEMA_VERSION);
+  }
+  function activeReferenceWeight(){
+    if(!activeSession)return latestBodyWeight();
+    const own=num(activeSession.bodyWeightKg);
+    if(own!==null)return own;
+    const fromSets=(activeSession.exercises||[]).flatMap(ex=>isBW(ex.exId)?(ex.sets||[]):[]).map(st=>num(st.bodyWeightKg)).find(v=>v!==null);
+    const w=fromSets??latestBodyWeight(dateOf(activeSession.date));
+    if(w!==null)activeSession.bodyWeightKg=w;
+    return w;
+  }
+  function setSessionWeight(weight,saveMeasurement){
+    const w=num(weight);if(w===null||w<=0)return false;
+    if(activeSession){
+      activeSession.bodyWeightKg=w;
+      (activeSession.exercises||[]).forEach(ex=>{if(isBW(ex.exId))(ex.sets||[]).forEach(st=>{st.bodyWeightKg=w;normalizeSet(st,ex.exId,activeSession);});});
+    }
+    if(saveMeasurement){
+      const d=dateOf(activeSession?.date||Date.now());
+      forge.bodyMetrics=forge.bodyMetrics||[];
+      let m=forge.bodyMetrics.find(x=>x.date===d);
+      if(!m){m={date:d,peso:null,imc:null,grasa:null,muscular:null,pliegues:{p6:null,p8:null}};forge.bodyMetrics.push(m);}
+      m.peso=w;
+      if(typeof autoCalcIMC==='function')autoCalcIMC(m);
+      forge.bodyMetrics.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    }
+    saveDB();
+    if(typeof rerenderActiveSessionExercises==='function')rerenderActiveSessionExercises();
+    return true;
+  }
+  function ensureWeightModal(){
+    if(document.getElementById('modal-mq202-weight'))return;
+    const div=document.createElement('div');
+    div.id='modal-mq202-weight';div.className='modal-bg';
+    div.innerHTML=`<div class="modal"><div class="modal-handle"></div><div class="modal-head"><div class="modal-title">Peso para fuerza relativa</div><button class="bicon" onclick="closeModal('modal-mq202-weight')">✕</button></div><div class="modal-body"><div style="font-size:13px;color:var(--ink2);line-height:1.5;margin-bottom:14px">Se usará para calcular la carga efectiva de dominadas y fondos. Quedará congelado dentro de esta sesión.</div><div class="field"><label>Peso corporal de referencia (kg)</label><input id="mq202-weight-input" class="inp" type="text" inputmode="decimal" placeholder="97,1" style="font-size:22px;text-align:center"></div><label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2);margin:4px 0 16px"><input id="mq202-save-weight" type="checkbox" checked> Guardar también como pesaje de esta fecha</label><button class="btn btn-p" onclick="mq202SaveSessionWeight()">Guardar peso</button></div></div>`;
+    document.body.appendChild(div);
+  }
+  window.mq202OpenSessionWeight=function(){ensureWeightModal();const inp=document.getElementById('mq202-weight-input');if(inp)inp.value=activeReferenceWeight()??'';openModal('modal-mq202-weight');setTimeout(()=>inp?.focus(),80);};
+  window.mq202SaveSessionWeight=function(){const inp=document.getElementById('mq202-weight-input'),save=document.getElementById('mq202-save-weight');if(!setSessionWeight(inp?.value,!!save?.checked)){showToast('Ingresa un peso válido');return;}closeModal('modal-mq202-weight');showToast('Peso de referencia actualizado',1800,'ok');};
+  window.mq202SetExternalLoad=function(ei,si,value){const ex=activeSession?.exercises?.[ei],st=ex?.sets?.[si];if(!st)return;st.externalLoadKg=num(value)??0;normalizeSet(st,ex.exId,activeSession);const hint=document.getElementById(`mq202-effective-${ei}-${si}`);if(hint)hint.textContent=st.effectiveLoadKg==null?'Sin peso ref.':`${st.effectiveLoadKg.toFixed(1)} kg efectivos`;};
+  function previousText(st,exId,session){if(!st)return '—';normalizeSet(st,exId,session);return `${signed(st.externalLoadKg)} kg · ${st.reps||0} reps`;}
+  function renderExternalRow(ei,si,set,ultSet){
+    const ex=activeSession.exercises[ei];normalizeSet(set,ex.exId,activeSession);if(ultSet)normalizeSet(ultSet,ex.exId);
+    return `<div class="set-row mq202-external-row" id="sr-${ei}-${si}" style="background:${set.done?'rgba(22,163,74,.06)':'transparent'};grid-template-columns:28px 1fr 1fr 1fr auto;align-items:center">
+      <div class="set-num" style="color:${set.done?'var(--green)':'var(--ink3)'}">${si+1}</div>
+      <div style="font-size:10px;color:var(--ink3);line-height:1.35">${previousText(ultSet,ex.exId)}</div>
+      <div><input class="set-inp" type="text" inputmode="decimal" placeholder="−27 / 0 / +5" value="${set.externalLoadKg??0}" oninput="mq202SetExternalLoad(${ei},${si},this.value)"><div id="mq202-effective-${ei}-${si}" style="font-size:9px;color:var(--ink3);text-align:center;margin-top:2px">${set.effectiveLoadKg==null?'Sin peso ref.':set.effectiveLoadKg.toFixed(1)+' kg efectivos'}</div></div>
+      <input class="set-inp" type="number" min="0" placeholder="reps" value="${set.reps||''}" oninput="updateSet(${ei},${si},'reps',this.value)" inputmode="numeric">
+      <div class="set-check ${set.done?'done':''}" onclick="toggleSet(${ei},${si})"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+    </div>`;
+  }
+  const prevRenderSet=window.renderSetRow;
+  window.renderSetRow=function(ei,si,set,isRun,ultSet){const ex=activeSession?.exercises?.[ei];if(ex&&isBW(ex.exId))return renderExternalRow(ei,si,set,ultSet);return prevRenderSet.apply(this,arguments);};
+  const prevRenderSex=window.renderSexBlock;
+  window.renderSexBlock=function(ex,ei){
+    let html=prevRenderSex.apply(this,arguments);
+    if(!isBW(ex?.exId))return html;
+    const w=activeReferenceWeight();
+    html=html.replace(/>KG<\/span>/,'>Carga externa<\/span>');
+    const strip=`<div class="mq202-weight-strip" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:11px"><span><strong>Peso ref.:</strong> ${w==null?'Sin registrar':w.toFixed(1)+' kg'} · <span style="color:var(--ink3)">negativo = asistencia · positivo = lastre</span></span><button class="btn btn-s btn-sm" style="width:auto;white-space:nowrap" onclick="mq202OpenSessionWeight()">${w==null?'Registrar':'Actualizar'}</button></div>`;
+    const marker='<div class="set-row mq202-external-row"';
+    const idx=html.indexOf(marker);
+    if(idx>=0)html=html.slice(0,idx)+strip+html.slice(idx);
+    return html;
+  };
+  const prevAdd=window.addSetToEx;
+  window.addSetToEx=function(ei){const ex=activeSession?.exercises?.[ei];if(ex&&isBW(ex.exId)){const last=ex.sets?.[ex.sets.length-1]||{};ex.sets.push(normalizeSet({type:'bodyweight',done:false,reps:last.reps||0,externalLoadKg:num(last.externalLoadKg)??0,bodyWeightKg:activeReferenceWeight()},ex.exId,activeSession));rerenderActiveSessionExercises();return;}return prevAdd.apply(this,arguments);};
+  const prevFinish=window.finishSession;
+  window.finishSession=function(){if(activeSession)(activeSession.exercises||[]).forEach(ex=>{if(isBW(ex.exId)){ex.exId=canonicalId(ex.exId);(ex.sets||[]).forEach(st=>normalizeSet(st,ex.exId,activeSession));}});return prevFinish.apply(this,arguments);};
+  function bwText(st,exId,session){normalizeSet(st,exId,session);const ext=signed(st.externalLoadKg);const mode=st.externalLoadKg<0?'asistencia':st.externalLoadKg>0?'lastre':'peso corporal';return `${st.reps||0} reps · carga externa ${ext} kg (${mode}) · peso corporal ${st.bodyWeightKg==null?'—':st.bodyWeightKg.toFixed(1)} kg · carga efectiva ${st.effectiveLoadKg==null?'—':st.effectiveLoadKg.toFixed(1)} kg`;}
+  const prevDetail=window.openSesDetail;
+  window.openSesDetail=function(id){const r=prevDetail.apply(this,arguments);const s=(forge.sessions||[]).find(x=>x.id===id),body=document.getElementById('ses-detail-body');if(!s||!body)return r;body.querySelector('.mq201-bw-detail')?.remove();const rows=[];(s.exercises||[]).forEach(ex=>{if(CANONICAL_IDS.has(canonicalId(ex.exId)))(ex.sets||[]).filter(st=>st.done).forEach((st,i)=>rows.push(`<div style="padding:6px 0;border-bottom:1px solid var(--border)"><strong>${getEx(canonicalId(ex.exId))?.name||canonicalId(ex.exId)} · Serie ${i+1}</strong><br><span style="color:var(--ink2)">${bwText(st,ex.exId,s)}</span></div>`));});if(rows.length)body.insertAdjacentHTML('beforeend',`<div class="mq202-bw-detail" style="padding:16px;border-top:1px solid var(--border)"><div class="section-label">Fuerza relativa · carga externa</div><div style="font-size:12px;line-height:1.5">${rows.join('')}</div></div>`);return r;};
+  window.exportMq201Lines=function(fechaInicio,fechaFin){const lines=[];(forge.sessions||[]).slice().sort((a,b)=>(a.date||0)-(b.date||0)).forEach(s=>{const d=new Date(s.date);if((fechaInicio&&d<fechaInicio)||(fechaFin&&d>fechaFin))return;const b=[];(s.exercises||[]).forEach(ex=>{if(CANONICAL_IDS.has(canonicalId(ex.exId)))(ex.sets||[]).filter(st=>st.done).forEach((st,i)=>b.push(`  ${getEx(canonicalId(ex.exId))?.name||canonicalId(ex.exId)} S${i+1}: ${bwText(st,ex.exId,s)}`));});const splits=s.running?.splits||s.importedRun?.splits||[];if(!b.length&&!splits.length&&!s.intervalos)return;lines.push(`${dateOf(s.date)} - ${s.routineName||'Sesión'}`,...b);if(s.intervalos){const i=s.intervalos;lines.push(`  Intervalos: ${i.repeticionesCompletadas??'—'}/${i.repeticionesPlanificadas??'—'}`);(i.series||[]).forEach(sr=>lines.push(`  Serie ${sr.numero}: ${sr.distanciaMetros?sr.distanciaMetros+' m · ':''}${sr.duracionSegundos?fmtTime(sr.duracionSegundos)+' · ':''}${sr.ritmoSegKm?fmtTime(sr.ritmoSegKm)+'/km · ':''}${sr.frecuenciaCardiacaMedia?'FC '+sr.frecuenciaCardiacaMedia:''}`));}if(splits.length){lines.push('  Ritmos por kilómetro:');splits.forEach(x=>lines.push(`    Km ${x.numero}: ${x.ritmo||(x.ritmoSegKm?fmtTime(x.ritmoSegKm):'—')}/km${x.frecuenciaCardiacaMedia?' · FC '+x.frecuenciaCardiacaMedia:''}${x.cadenciaMedia?' · cad '+x.cadenciaMedia:''}`));}lines.push('');});return lines;};
+  migrateExerciseAliases();saveDB();ensureWeightModal();window.MELQART_VERSION=VERSION;document.title='MELQART 2.0.2';setTimeout(()=>{const el=document.getElementById('um-version');if(el)el.textContent=VERSION;try{renderRutinas();}catch{}},350);
+  window.mq202Diagnostico=()=>({version:VERSION,dataSchemaVersion:forge.dataSchemaVersion,latestBodyWeight:latestBodyWeight(),relativeStrengthSessions:(forge.sessions||[]).filter(s=>(s.exercises||[]).some(ex=>CANONICAL_IDS.has(canonicalId(ex.exId)))).map(s=>({id:s.id,date:dateOf(s.date),bodyWeightKg:s.bodyWeightKg,sets:(s.exercises||[]).filter(ex=>CANONICAL_IDS.has(canonicalId(ex.exId))).flatMap(ex=>(ex.sets||[]).map(st=>({exercise:canonicalId(ex.exId),reps:st.reps,externalLoadKg:st.externalLoadKg,effectiveLoadKg:st.effectiveLoadKg}))) }))});
+  console.info('MELQART 2.0.2: carga externa negativa/positiva + peso corporal congelado por sesión');
+})();
