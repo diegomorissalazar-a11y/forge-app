@@ -14571,8 +14571,8 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
 // ---------------------------------------------------------------
 (function mq202ExternalLoadUpgrade(){
   'use strict';
-  const VERSION='2.0.2';
-  const DATA_SCHEMA_VERSION=4;
+  const VERSION='2.0.3';
+  const DATA_SCHEMA_VERSION=5;
   const CANONICAL_IDS=new Set(['ex_dominadas','ex_fondos']);
   const ALL_BW_IDS=new Set(['ex_dominadas','ex_dominadas_asist','ex_fondos','ex_fondos_asist','ex_fondos_tricep']);
   const ALIAS_MAP={ex_dominadas_asist:'ex_dominadas',ex_fondos_asist:'ex_fondos'};
@@ -14604,6 +14604,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     st.type='bodyweight';
     st.externalLoadKg=external;
     st.cargaExternaKg=external;
+    st.externalLoadMode=st.externalLoadMode||(external<0?'assistance':external>0?'ballast':'bodyweight');
     st.bodyWeightKg=bw;
     st.pesoCorporalKg=bw;
     st.effectiveLoadKg=bw===null?null:Math.round((bw+external)*10)/10;
@@ -14674,14 +14675,39 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   }
   window.mq202OpenSessionWeight=function(){ensureWeightModal();const inp=document.getElementById('mq202-weight-input');if(inp)inp.value=activeReferenceWeight()??'';openModal('modal-mq202-weight');setTimeout(()=>inp?.focus(),80);};
   window.mq202SaveSessionWeight=function(){const inp=document.getElementById('mq202-weight-input'),save=document.getElementById('mq202-save-weight');if(!setSessionWeight(inp?.value,!!save?.checked)){showToast('Ingresa un peso válido');return;}closeModal('modal-mq202-weight');showToast('Peso de referencia actualizado',1800,'ok');};
-  window.mq202SetExternalLoad=function(ei,si,value){const ex=activeSession?.exercises?.[ei],st=ex?.sets?.[si];if(!st)return;st.externalLoadKg=num(value)??0;normalizeSet(st,ex.exId,activeSession);const hint=document.getElementById(`mq202-effective-${ei}-${si}`);if(hint)hint.textContent=st.effectiveLoadKg==null?'Sin peso ref.':`${st.effectiveLoadKg.toFixed(1)} kg efectivos`;};
+  function externalMode(st){normalizeSet(st,'',activeSession);return st.externalLoadMode||(st.externalLoadKg<0?'assistance':st.externalLoadKg>0?'ballast':'bodyweight');}
+  window.mq203SetExternalMode=function(ei,si,mode){
+    const ex=activeSession?.exercises?.[ei],st=ex?.sets?.[si];if(!st)return;
+    const amount=Math.abs(num(st.externalLoadKg)??0);
+    st.externalLoadMode=mode;
+    st.externalLoadKg=mode==='assistance'?-amount:mode==='ballast'?amount:0;
+    st.cargaExternaKg=st.externalLoadKg;
+    normalizeSet(st,ex.exId,activeSession);
+    st.externalLoadMode=mode;
+    rerenderActiveSessionExercises();
+  };
+  window.mq202SetExternalLoad=function(ei,si,value){
+    const ex=activeSession?.exercises?.[ei],st=ex?.sets?.[si];if(!st)return;
+    const amount=Math.abs(num(value)??0),mode=st.externalLoadMode||externalMode(st);
+    st.externalLoadKg=mode==='assistance'?-amount:mode==='ballast'?amount:0;
+    st.cargaExternaKg=st.externalLoadKg;
+    normalizeSet(st,ex.exId,activeSession);st.externalLoadMode=mode;
+    const hint=document.getElementById(`mq202-effective-${ei}-${si}`);if(hint)hint.textContent=st.effectiveLoadKg==null?'Sin peso ref.':`${st.effectiveLoadKg.toFixed(1)} kg efectivos`;
+  };
   function previousText(st,exId,session){if(!st)return '—';normalizeSet(st,exId,session);return `${signed(st.externalLoadKg)} kg · ${st.reps||0} reps`;}
   function renderExternalRow(ei,si,set,ultSet){
     const ex=activeSession.exercises[ei];normalizeSet(set,ex.exId,activeSession);if(ultSet)normalizeSet(ultSet,ex.exId);
-    return `<div class="set-row mq202-external-row" id="sr-${ei}-${si}" style="background:${set.done?'rgba(22,163,74,.06)':'transparent'};grid-template-columns:28px 1fr 1fr 1fr auto;align-items:center">
+    const mode=set.externalLoadMode||(set.externalLoadKg<0?'assistance':set.externalLoadKg>0?'ballast':'bodyweight');
+    const amount=mode==='bodyweight'?'':Math.abs(num(set.externalLoadKg)??0);
+    const modeBtn=(m,label)=>`<button type="button" onclick="mq203SetExternalMode(${ei},${si},'${m}')" style="border:1px solid var(--border);background:${mode===m?'var(--ink)':'var(--bg)'};color:${mode===m?'var(--bg)':'var(--ink2)'};border-radius:8px;padding:5px 6px;font-size:8px;font-weight:800;line-height:1;white-space:nowrap">${label}</button>`;
+    return `<div class="set-row mq202-external-row" id="sr-${ei}-${si}" style="background:${set.done?'rgba(22,163,74,.06)':'transparent'};grid-template-columns:28px .85fr 1.55fr .8fr auto;align-items:center">
       <div class="set-num" style="color:${set.done?'var(--green)':'var(--ink3)'}">${si+1}</div>
-      <div style="font-size:10px;color:var(--ink3);line-height:1.35">${previousText(ultSet,ex.exId)}</div>
-      <div><input class="set-inp" type="text" inputmode="decimal" placeholder="−27 / 0 / +5" value="${set.externalLoadKg??0}" oninput="mq202SetExternalLoad(${ei},${si},this.value)"><div id="mq202-effective-${ei}-${si}" style="font-size:9px;color:var(--ink3);text-align:center;margin-top:2px">${set.effectiveLoadKg==null?'Sin peso ref.':set.effectiveLoadKg.toFixed(1)+' kg efectivos'}</div></div>
+      <div style="font-size:9px;color:var(--ink3);line-height:1.3">${previousText(ultSet,ex.exId)}</div>
+      <div>
+        <div style="display:flex;gap:3px;justify-content:center;margin-bottom:5px">${modeBtn('assistance','ASIST.')}${modeBtn('bodyweight','LIBRE')}${modeBtn('ballast','LASTRE')}</div>
+        ${mode==='bodyweight'?`<div class="set-inp" style="display:flex;align-items:center;justify-content:center;min-height:42px;font-weight:800">0 kg</div>`:`<input class="set-inp" type="number" min="0" step="0.5" inputmode="decimal" placeholder="kg" value="${amount}" oninput="mq202SetExternalLoad(${ei},${si},this.value)">`}
+        <div id="mq202-effective-${ei}-${si}" style="font-size:9px;color:var(--ink3);text-align:center;margin-top:2px">${set.effectiveLoadKg==null?'Sin peso ref.':set.effectiveLoadKg.toFixed(1)+' kg efectivos'}</div>
+      </div>
       <input class="set-inp" type="number" min="0" placeholder="reps" value="${set.reps||''}" oninput="updateSet(${ei},${si},'reps',this.value)" inputmode="numeric">
       <div class="set-check ${set.done?'done':''}" onclick="toggleSet(${ei},${si})"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
     </div>`;
@@ -14694,7 +14720,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     if(!isBW(ex?.exId))return html;
     const w=activeReferenceWeight();
     html=html.replace(/>KG<\/span>/,'>Carga externa<\/span>');
-    const strip=`<div class="mq202-weight-strip" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:11px"><span><strong>Peso ref.:</strong> ${w==null?'Sin registrar':w.toFixed(1)+' kg'} · <span style="color:var(--ink3)">negativo = asistencia · positivo = lastre</span></span><button class="btn btn-s btn-sm" style="width:auto;white-space:nowrap" onclick="mq202OpenSessionWeight()">${w==null?'Registrar':'Actualizar'}</button></div>`;
+    const strip=`<div class="mq202-weight-strip" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:11px"><span><strong>Peso ref.:</strong> ${w==null?'Sin registrar':w.toFixed(1)+' kg'} · <span style="color:var(--ink3)">elige asistencia, libre o lastre</span></span><button class="btn btn-s btn-sm" style="width:auto;white-space:nowrap" onclick="mq202OpenSessionWeight()">${w==null?'Registrar':'Actualizar'}</button></div>`;
     const marker='<div class="set-row mq202-external-row"';
     const idx=html.indexOf(marker);
     if(idx>=0)html=html.slice(0,idx)+strip+html.slice(idx);
@@ -14708,7 +14734,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   const prevDetail=window.openSesDetail;
   window.openSesDetail=function(id){const r=prevDetail.apply(this,arguments);const s=(forge.sessions||[]).find(x=>x.id===id),body=document.getElementById('ses-detail-body');if(!s||!body)return r;body.querySelector('.mq201-bw-detail')?.remove();const rows=[];(s.exercises||[]).forEach(ex=>{if(CANONICAL_IDS.has(canonicalId(ex.exId)))(ex.sets||[]).filter(st=>st.done).forEach((st,i)=>rows.push(`<div style="padding:6px 0;border-bottom:1px solid var(--border)"><strong>${getEx(canonicalId(ex.exId))?.name||canonicalId(ex.exId)} · Serie ${i+1}</strong><br><span style="color:var(--ink2)">${bwText(st,ex.exId,s)}</span></div>`));});if(rows.length)body.insertAdjacentHTML('beforeend',`<div class="mq202-bw-detail" style="padding:16px;border-top:1px solid var(--border)"><div class="section-label">Fuerza relativa · carga externa</div><div style="font-size:12px;line-height:1.5">${rows.join('')}</div></div>`);return r;};
   window.exportMq201Lines=function(fechaInicio,fechaFin){const lines=[];(forge.sessions||[]).slice().sort((a,b)=>(a.date||0)-(b.date||0)).forEach(s=>{const d=new Date(s.date);if((fechaInicio&&d<fechaInicio)||(fechaFin&&d>fechaFin))return;const b=[];(s.exercises||[]).forEach(ex=>{if(CANONICAL_IDS.has(canonicalId(ex.exId)))(ex.sets||[]).filter(st=>st.done).forEach((st,i)=>b.push(`  ${getEx(canonicalId(ex.exId))?.name||canonicalId(ex.exId)} S${i+1}: ${bwText(st,ex.exId,s)}`));});const splits=s.running?.splits||s.importedRun?.splits||[];if(!b.length&&!splits.length&&!s.intervalos)return;lines.push(`${dateOf(s.date)} - ${s.routineName||'Sesión'}`,...b);if(s.intervalos){const i=s.intervalos;lines.push(`  Intervalos: ${i.repeticionesCompletadas??'—'}/${i.repeticionesPlanificadas??'—'}`);(i.series||[]).forEach(sr=>lines.push(`  Serie ${sr.numero}: ${sr.distanciaMetros?sr.distanciaMetros+' m · ':''}${sr.duracionSegundos?fmtTime(sr.duracionSegundos)+' · ':''}${sr.ritmoSegKm?fmtTime(sr.ritmoSegKm)+'/km · ':''}${sr.frecuenciaCardiacaMedia?'FC '+sr.frecuenciaCardiacaMedia:''}`));}if(splits.length){lines.push('  Ritmos por kilómetro:');splits.forEach(x=>lines.push(`    Km ${x.numero}: ${x.ritmo||(x.ritmoSegKm?fmtTime(x.ritmoSegKm):'—')}/km${x.frecuenciaCardiacaMedia?' · FC '+x.frecuenciaCardiacaMedia:''}${x.cadenciaMedia?' · cad '+x.cadenciaMedia:''}`));}lines.push('');});return lines;};
-  migrateExerciseAliases();saveDB();ensureWeightModal();window.MELQART_VERSION=VERSION;document.title='MELQART 2.0.2';setTimeout(()=>{const el=document.getElementById('um-version');if(el)el.textContent=VERSION;try{renderRutinas();}catch{}},350);
-  window.mq202Diagnostico=()=>({version:VERSION,dataSchemaVersion:forge.dataSchemaVersion,latestBodyWeight:latestBodyWeight(),relativeStrengthSessions:(forge.sessions||[]).filter(s=>(s.exercises||[]).some(ex=>CANONICAL_IDS.has(canonicalId(ex.exId)))).map(s=>({id:s.id,date:dateOf(s.date),bodyWeightKg:s.bodyWeightKg,sets:(s.exercises||[]).filter(ex=>CANONICAL_IDS.has(canonicalId(ex.exId))).flatMap(ex=>(ex.sets||[]).map(st=>({exercise:canonicalId(ex.exId),reps:st.reps,externalLoadKg:st.externalLoadKg,effectiveLoadKg:st.effectiveLoadKg}))) }))});
-  console.info('MELQART 2.0.2: carga externa negativa/positiva + peso corporal congelado por sesión');
+  migrateExerciseAliases();saveDB();ensureWeightModal();window.MELQART_VERSION=VERSION;document.title='MELQART 2.0.3';setTimeout(()=>{const el=document.getElementById('um-version');if(el)el.textContent=VERSION;try{renderRutinas();}catch{}},350);
+  window.mq203Diagnostico=()=>({version:VERSION,dataSchemaVersion:forge.dataSchemaVersion,latestBodyWeight:latestBodyWeight(),relativeStrengthSessions:(forge.sessions||[]).filter(s=>(s.exercises||[]).some(ex=>CANONICAL_IDS.has(canonicalId(ex.exId)))).map(s=>({id:s.id,date:dateOf(s.date),bodyWeightKg:s.bodyWeightKg,sets:(s.exercises||[]).filter(ex=>CANONICAL_IDS.has(canonicalId(ex.exId))).flatMap(ex=>(ex.sets||[]).map(st=>({exercise:canonicalId(ex.exId),reps:st.reps,externalLoadKg:st.externalLoadKg,effectiveLoadKg:st.effectiveLoadKg}))) }))});
+  console.info('MELQART 2.0.3: selector asistencia/libre/lastre + carga externa normalizada');
 })();
