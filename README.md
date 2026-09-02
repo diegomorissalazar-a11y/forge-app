@@ -1,29 +1,30 @@
-# MELQART 2.0.3 — Carga externa en fuerza relativa
+# MELQART 2.1.0 — arquitectura y recomendación de fuerza
 
-## Cambio principal
+Base auditada: **MELQART 2.0.3**.
 
-Dominadas y Fondos en paralelas usan una única métrica continua: **carga externa**.
+## Cambios
 
-- Valor negativo: asistencia (`-27 kg`).
-- Cero: peso corporal libre (`0 kg`).
-- Valor positivo: lastre (`+5 kg`).
-- Carga efectiva calculada: `peso corporal + carga externa`.
-- El peso corporal queda congelado dentro de cada sesión.
-- Desde la sesión se puede usar el último peso disponible o registrar/actualizar el peso del día.
-- El historial y exportable muestran repeticiones, carga externa, peso corporal y carga efectiva.
-- Las antiguas variantes “Dominadas Asistidas” y “Fondos Asistidos” se migran al ejercicio canónico para conservar una serie histórica continua.
+- Motor de recomendación de fuerza por ejercicio exacto/variante.
+- Principio: **REPS → CONSOLIDACIÓN → CARGA**.
+- Ventana preferida: últimas 3–5 exposiciones; contexto hasta 8.
+- Estados: subir reps, subir carga, mantener/repetir, reducir y reentrada.
+- Reentrada conservadora tras interrupciones >14–21 días.
+- Botón **Recomendación de hoy** en las 4 rutinas de fuerza y en Inicio cuando corresponde.
+- **Iniciar con recomendación** precarga series, peso/carga externa y reps sin marcarlas como realizadas.
+- Dominadas/Fondos conservan carga externa: negativa=asistencia, 0=libre, positiva=lastre.
+- Taxonomía canónica de ejercicios (movimiento, familia, equipo, clase y métrica) sin destruir IDs históricos.
+- Diccionario canónico de variables/unidades.
+- Tipos de sesión normalizados para Ciclo 2.
+- Persistencia de sesión activa en localStorage cada 15 s y en cambios de visibilidad/pagehide.
+- Una sola versión final visible: `2.1.0` en navegador, menú y consola.
+- Auditoría runtime: `mq210Audit()`.
 
-## Compatibilidad
-
-Mantiene los cambios de MELQART 2.0.1:
-
-- JSON estructurado para Carrera de Calidad, Rodaje Regenerativo y Fondo Largo.
-- Intervalos y parciales por kilómetro.
-- Persistencia local, Firebase y respaldo mediante el modelo existente.
-
-## Diagnóstico en consola
+## Diagnóstico
 
 ```js
 window.MELQART_VERSION
-mq202Diagnostico()
+window.MELQART_BUILD
+mq210Audit()
+mq210EvaluateRoutine('r_lunes')
+mq210EvaluateExercise('ex_press_banca', forge.routines.find(r=>r.id==='r_martes'))
 ```

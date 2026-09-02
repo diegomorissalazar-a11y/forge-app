@@ -1,0 +1,9 @@
+{
+  "version": "2.1.0",
+  "basedOn": "2.0.3",
+  "dataSchema": 4,
+  "taxonomySchema": 1,
+  "recommendationSchema": 1,
+  "principle": "REPS -> CONSOLIDACION -> CARGA",
+  "canonicalVariables": ["loadKg","externalLoadKg","bodyWeightKg","effectiveLoadKg","reps","durationSeconds","distanceKm","paceSecondsPerKm","avgHeartRate","avgCadence"]
+}

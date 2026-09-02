@@ -1,0 +1,18 @@
+{
+  "version": "2.1.0",
+  "basedOn": "2.0.3",
+  "checks": {
+    "index_title": true,
+    "index_version_label": true,
+    "cache_app": true,
+    "cache_css": true,
+    "build_version": true,
+    "recommendation_engine": true,
+    "routine_engine": true,
+    "draft": true,
+    "audit": true,
+    "taxonomy": true,
+    "variables": true
+  },
+  "pass": true
+}

@@ -14738,3 +14738,314 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   window.mq203Diagnostico=()=>({version:VERSION,dataSchemaVersion:forge.dataSchemaVersion,latestBodyWeight:latestBodyWeight(),relativeStrengthSessions:(forge.sessions||[]).filter(s=>(s.exercises||[]).some(ex=>CANONICAL_IDS.has(canonicalId(ex.exId)))).map(s=>({id:s.id,date:dateOf(s.date),bodyWeightKg:s.bodyWeightKg,sets:(s.exercises||[]).filter(ex=>CANONICAL_IDS.has(canonicalId(ex.exId))).flatMap(ex=>(ex.sets||[]).map(st=>({exercise:canonicalId(ex.exId),reps:st.reps,externalLoadKg:st.externalLoadKg,effectiveLoadKg:st.effectiveLoadKg}))) }))});
   console.info('MELQART 2.0.3: selector asistencia/libre/lastre + carga externa normalizada');
 })();
+
+// ===============================================================
+// MELQART 2.1.0 — taxonomía canónica + motor de fuerza + borrador
+// Base: MELQART 2.0.3. Mantiene retrocompatibilidad histórica.
+// ===============================================================
+(function mq210ArchitectureAndStrengthEngine(){
+  'use strict';
+
+  const BUILD = Object.freeze({
+    version:'2.1.0',
+    basedOn:'2.0.3',
+    dataSchema:4,
+    taxonomySchema:1,
+    recommendationSchema:1
+  });
+  window.MELQART_BUILD=BUILD;
+
+  const ALIASES = Object.freeze({
+    ex_dominadas_asist:'ex_dominadas',
+    ex_fondos_asist:'ex_fondos'
+  });
+  const cid=id=>ALIASES[id]||id;
+
+  // Taxonomía estable. No cambia IDs históricos: agrega metadatos canónicos.
+  const TAXONOMY = Object.freeze({
+    ex_sentadilla:{movementId:'squat',familyId:'knee_dominant',equipment:'barbell_or_smith',class:'compound',repRange:[5,6],loadStep:2.5},
+    ex_sent_bulgara:{movementId:'split_squat',familyId:'knee_dominant',equipment:'dumbbell',class:'accessory',repRange:[8,10],loadStep:2},
+    ex_curl_femoral:{movementId:'leg_curl',familyId:'knee_flexion',equipment:'machine',class:'accessory',repRange:[10,12],loadStep:null},
+    ex_saltos_cajon:{movementId:'box_jump',familyId:'power',equipment:'bodyweight',class:'accessory',repRange:[4,4],loadStep:null},
+    ex_press_banca:{movementId:'bench_press',familyId:'horizontal_push',equipment:'barbell',class:'compound',repRange:[6,8],loadStep:2.5},
+    ex_remo_maq:{movementId:'chest_supported_row',familyId:'horizontal_pull',equipment:'machine',class:'compound',repRange:[8,10],loadStep:null},
+    ex_press_hombros:{movementId:'overhead_press',familyId:'vertical_push',equipment:'barbell',class:'compound',repRange:[8,10],loadStep:2.5},
+    ex_elev_lateral:{movementId:'lateral_raise',familyId:'shoulder_abduction',equipment:'dumbbell',class:'accessory',repRange:[12,15],loadStep:2},
+    ex_peso_muerto:{movementId:'deadlift',familyId:'hip_hinge',equipment:'barbell_or_smith',class:'compound',repRange:[6,8],loadStep:2.5},
+    ex_hip_thrust_maq:{movementId:'hip_thrust',familyId:'hip_extension',equipment:'machine',class:'compound',repRange:[8,10],loadStep:null},
+    ex_cable_pallof:{movementId:'pallof_press',familyId:'anti_rotation',equipment:'cable',class:'accessory',repRange:[10,12],loadStep:null},
+    ex_farmer_carry:{movementId:'farmer_carry',familyId:'carry',equipment:'dumbbell',class:'compound',metric:'distance',repRange:null,loadStep:2},
+    ex_dominadas:{movementId:'pull_up',familyId:'vertical_pull',equipment:'bodyweight',class:'compound',metric:'external_load',repRange:[6,8],loadStep:2.5,supportsExternalLoad:true},
+    ex_press_incl_manc:{movementId:'incline_press',familyId:'horizontal_push',equipment:'dumbbell',class:'compound',repRange:[7,8],loadStep:2},
+    ex_fondos:{movementId:'dip',familyId:'vertical_push',equipment:'bodyweight',class:'compound',metric:'external_load',repRange:[6,8],loadStep:2.5,supportsExternalLoad:true},
+    ex_facepull:{movementId:'face_pull',familyId:'scapular_pull',equipment:'cable',class:'accessory',repRange:[8,12],loadStep:null},
+    ex_correr:{movementId:'running',familyId:'cardio',equipment:'none',class:'cardio',metric:'pace'}
+  });
+  window.MELQART_TAXONOMY=TAXONOMY;
+  window.MELQART_EXERCISE_ALIASES=ALIASES;
+
+  const VARIABLES = Object.freeze({
+    sessionId:{type:'string',required:true},
+    exerciseId:{type:'string',required:true},
+    canonicalExerciseId:{type:'string',required:true},
+    loadKg:{type:'number',unit:'kg',nullable:true},
+    externalLoadKg:{type:'number',unit:'kg',nullable:true,meaning:'negative=assistance, zero=bodyweight, positive=ballast'},
+    bodyWeightKg:{type:'number',unit:'kg',nullable:true},
+    effectiveLoadKg:{type:'number',unit:'kg',nullable:true,derived:'bodyWeightKg + externalLoadKg'},
+    reps:{type:'number',unit:'repetitions',nullable:true},
+    durationSeconds:{type:'integer',unit:'s',nullable:true},
+    distanceKm:{type:'number',unit:'km',nullable:true},
+    paceSecondsPerKm:{type:'integer',unit:'s/km',nullable:true},
+    avgHeartRate:{type:'integer',unit:'bpm',nullable:true},
+    avgCadence:{type:'number',unit:'steps/min',nullable:true}
+  });
+  window.MELQART_VARIABLE_DICTIONARY=VARIABLES;
+
+  function n(v){ const x=Number(v); return Number.isFinite(x)?x:null; }
+  function dateOf(ts){ try{return localDateStr(ts)}catch(e){return new Date(ts).toISOString().slice(0,10)} }
+  function dayDiff(a,b){ return Math.max(0,Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000)); }
+  function median(arr){ const a=arr.filter(Number.isFinite).slice().sort((x,y)=>x-y); if(!a.length)return null; const m=Math.floor(a.length/2); return a.length%2?a[m]:(a[m-1]+a[m])/2; }
+  function same(a,b,tol=.011){ return a!=null&&b!=null&&Math.abs(a-b)<=tol; }
+
+  function applyTaxonomy(){
+    forge.dataSchemaVersion=Math.max(Number(forge.dataSchemaVersion||0),BUILD.dataSchema);
+    forge.taxonomySchemaVersion=BUILD.taxonomySchema;
+    (forge.exercises||[]).forEach(ex=>{
+      const can=cid(ex.id);
+      ex.canonicalId=can;
+      const tx=TAXONOMY[can];
+      if(tx){ ex.taxonomy={...(ex.taxonomy||{}),...tx}; }
+    });
+    const routineSubtype={r_lunes:'lower_a',r_martes:'upper_a',r_mierco:'quality',r_jueves:'lower_b',r_jueves_noche:'recovery_run',r_viernes:'upper_b',r_cardio:'long_run'};
+    (forge.sessions||[]).forEach(s=>{
+      s.sessionType=s.sessionType||(String(s.routineId||'').includes('cardio')||['r_mierco','r_jueves_noche'].includes(s.routineId)?'running':'strength');
+      s.sessionSubtype=s.sessionSubtype||routineSubtype[s.routineId]||(s.sessionType==='strength'?'free_strength':'free_session');
+      (s.exercises||[]).forEach(ex=>{ ex.canonicalExerciseId=cid(ex.exId); if(ex.exId!==ex.canonicalExerciseId&&!ex.legacyExerciseId)ex.legacyExerciseId=ex.exId; });
+    });
+    try{saveDB();}catch(e){}
+  }
+
+  function planForExercise(exId,routine){
+    const id=cid(exId), tx=TAXONOMY[id]||{};
+    const ep=routine?.exercisePlan?.[exId]||routine?.exercisePlan?.[id]||{};
+    return {sets:Number(ep.sets)||null,repRange:tx.repRange||parseRepRange(ep.reps),role:ep.role||tx.class||'',loadStep:tx.loadStep,class:tx.class||'accessory',metric:tx.metric||'weight'};
+  }
+  function parseRepRange(x){
+    const nums=String(x||'').match(/\d+(?:[.,]\d+)?/g)?.map(v=>Number(v.replace(',','.')))||[];
+    if(nums.length>=2)return [nums[0],nums[1]];
+    if(nums.length===1)return [nums[0],nums[0]+(nums[0]<=8?2:0)];
+    return null;
+  }
+
+  function loadForSet(st,exId){
+    const id=cid(exId),tx=TAXONOMY[id]||{};
+    if(tx.metric==='external_load'){
+      const ext=n(st.externalLoadKg ?? st.cargaExternaKg);
+      if(ext!=null)return ext;
+      // compatibilidad histórica: 0 en Dominadas/Fondos = peso corporal libre.
+      return n(st.weight)===0?0:null;
+    }
+    return n(st.weight);
+  }
+  function exposureFromSession(s,ex){
+    const id=cid(ex.exId),done=(ex.sets||[]).filter(st=>st.done!==false && (n(st.reps)!=null || loadForSet(st,id)!=null));
+    if(!done.length)return null;
+    const loads=done.map(st=>loadForSet(st,id)).filter(v=>v!=null);
+    const reps=done.map(st=>n(st.reps)).filter(v=>v!=null);
+    if(!reps.length && (TAXONOMY[id]?.metric!=='distance'))return null;
+    return {date:dateOf(s.date),ts:s.date,sessionId:s.id,exerciseId:id,loads,reps,load:median(loads),minReps:reps.length?Math.min(...reps):null,totalReps:reps.reduce((a,b)=>a+b,0),sets:done.length,bodyWeightKg:n(s.bodyWeightKg),rawSets:done};
+  }
+  function historyFor(exId,limit=8){
+    const id=cid(exId),rows=[];
+    (forge.sessions||[]).forEach(s=>(s.exercises||[]).forEach(ex=>{ if(cid(ex.exId)!==id)return; const x=exposureFromSession(s,ex); if(x)rows.push(x); }));
+    return rows.sort((a,b)=>a.ts-b.ts).slice(-limit);
+  }
+
+  function derivedStep(history, fallback){
+    const vals=[...new Set(history.map(x=>x.load).filter(v=>v!=null).map(v=>Number(v.toFixed(3))))].sort((a,b)=>a-b);
+    const diffs=[]; for(let i=1;i<vals.length;i++){const d=vals[i]-vals[i-1];if(d>0.01)diffs.push(d);}
+    return diffs.length?Math.min(...diffs):fallback;
+  }
+  function roundToStep(value,step){ if(!step||!Number.isFinite(step))return value; return Math.round(value/step)*step; }
+
+  function evaluateExercise(exId,routine){
+    const id=cid(exId),tx=TAXONOMY[id]||{},cfg=planForExercise(exId,routine),hist=historyFor(id,8),recent=hist.slice(-5),last=hist.at(-1)||null,prev=hist.at(-2)||null;
+    const name=getEx(id)?.name||getEx(exId)?.name||id;
+    if(!last)return {exerciseId:id,name,status:'SIN_DATOS',decision:'maintain',confidence:'baja',targetLoad:null,targetReps:cfg.repRange?.[0]??null,targetSets:cfg.sets,evidence:['Sin exposiciones históricas equivalentes.'],history:[]};
+    const days=dayDiff(last.date,today());
+    const range=cfg.repRange||[last.minReps||1,Math.max(last.minReps||1,8)];
+    const lower=range[0],upper=range[1];
+    const recentSameLoad=recent.filter(x=>same(x.load,last.load));
+    const bestRecentMin=Math.max(...recent.map(x=>x.minReps??0));
+    const lastMin=last.minReps??0,prevMin=prev?.minReps??null;
+    const step=derivedStep(hist, cfg.loadStep ?? null);
+    const evidence=[];
+    let decision='maintain',status='ESTABLE',targetLoad=last.load,targetReps=Math.min(upper,Math.max(lower,lastMin||lower)),confidence=recent.length>=3?'alta':'media';
+
+    if(days>21){
+      decision='reentry'; status='REENTRADA'; confidence='media'; evidence.push(`${days} días desde la última exposición.`);
+      if(cfg.class==='compound' && tx.metric!=='external_load' && last.load!=null){targetLoad=roundToStep(last.load*0.925,step); targetReps=lower; evidence.push('Reentrada conservadora: reducir 5–10% y reconstruir repeticiones.');}
+      else {targetLoad=last.load;targetReps=Math.max(lower,Math.min(lastMin||lower,upper));evidence.push('Mantener carga y reiniciar desde el tramo bajo del rango.');}
+    } else if(days>14){
+      decision='repeat';status='REENTRADA';confidence='media';targetLoad=last.load;targetReps=Math.max(lower,Math.min(lastMin||lower,upper));evidence.push(`${days} días desde la última exposición: no progresar agresivamente.`);
+    } else {
+      const drop=prevMin!=null && (bestRecentMin-lastMin)>=2;
+      const repeatedDrop=recent.slice(-2).every(x=>(bestRecentMin-(x.minReps??0))>=2);
+      if(drop){
+        status='REGRESION'; decision=repeatedDrop?'reduce':'repeat'; targetReps=Math.max(lower,lastMin);
+        if(repeatedDrop && last.load!=null && tx.metric!=='external_load'){ targetLoad=step?roundToStep(last.load-step,step):last.load*0.95; evidence.push('Caída de ≥2 reps repetida: reducción moderada.'); }
+        else evidence.push('Caída de ≥2 reps respecto del mejor registro reciente: no aumentar carga.');
+      } else if(lastMin>=upper && recentSameLoad.length>=2){
+        const priorSame=recentSameLoad.at(-2); const stable=!priorSame || (lastMin-(priorSame.minReps??lastMin))>=-1;
+        if(stable){
+          if(step){ decision='increase_load';status='PROGRESANDO';targetLoad=roundToStep((last.load??0)+step,step);targetReps=lower;evidence.push(`Techo de ${upper} reps consolidado en ≥2 exposiciones.`);evidence.push(`Siguiente incremento observado/configurado: ${step} kg.`); }
+          else {decision='increase_load';status='PROGRESANDO';targetLoad=null;targetReps=lower;evidence.push(`Techo de ${upper} reps consolidado.`);evidence.push('Subir al siguiente peso disponible; salto no definido.');}
+        }
+      } else if(lastMin<upper && (!prev || lastMin>=(prevMin??lastMin)-1)){
+        decision='increase_reps';status=recentSameLoad.length>=2?'CONSOLIDANDO':'PROGRESANDO';targetLoad=last.load;targetReps=Math.min(upper,Math.max(lower,lastMin+1));evidence.push(`Mantener carga y progresar repeticiones hacia ${upper}.`);
+        if(recentSameLoad.length<2)evidence.push('Carga aún no consolidada en dos exposiciones.');
+      } else {
+        decision='repeat';status='ESTABLE';targetLoad=last.load;targetReps=Math.max(lower,Math.min(upper,lastMin));evidence.push('Sin evidencia suficiente para subir carga.');
+      }
+    }
+
+    // Fuerza relativa: progresión continua por carga externa; nunca saltar a lastre sin consolidar.
+    if(tx.metric==='external_load' && decision==='increase_load' && last.load===0){
+      const freeStable=recent.slice(-2).length===2 && recent.slice(-2).every(x=>(x.minReps??0)>=upper && same(x.load,0));
+      if(!freeStable){decision='increase_reps';status='CONSOLIDANDO';targetLoad=0;targetReps=upper;evidence.splice(0,evidence.length,'Peso corporal aún no consolidado en dos sesiones consecutivas; no agregar lastre.');}
+    }
+    if(tx.metric==='external_load' && decision==='reduce' && last.load!=null){targetLoad=last.load; evidence.push('En fuerza relativa, primero repetir la carga externa antes de aumentar asistencia.');}
+
+    const score=Math.max(0,Math.min(100,Math.round((recent.length>=3?25:15)+(days<=10?25:days<=17?15:5)+(decision==='increase_load'||decision==='increase_reps'?30:decision==='repeat'?18:10)+(Math.min(20,Math.max(0,(lastMin-lower)/(Math.max(1,upper-lower))*20))))));
+    return {exerciseId:id,name,status,decision,targetLoad,targetReps,targetSets:cfg.sets,repRange:range,loadStep:step,daysSinceLastExposure:days,confidence,progressionScore:score,evidence,history:recent.map(x=>({date:x.date,load:x.load,minReps:x.minReps,reps:x.reps,sets:x.sets}))};
+  }
+  window.mq210EvaluateExercise=evaluateExercise;
+
+  function evaluateRoutine(routineId){
+    const r=(forge.routines||[]).find(x=>x.id===routineId); if(!r)return null;
+    const items=(r.exercises||[]).map(id=>getEx(id)).filter(e=>e&&!['warmup','stretch','run','hiit'].includes(e.type)).map(e=>evaluateExercise(e.id,r));
+    const reentry=items.some(x=>x.status==='REENTRADA');
+    const regress=items.filter(x=>x.status==='REGRESION').length;
+    const improving=items.filter(x=>['increase_load','increase_reps'].includes(x.decision)).length;
+    const consolidating=items.filter(x=>x.status==='CONSOLIDANDO').length;
+    let state=reentry?'REENTRADA':regress>=2?'FATIGA POSIBLE':improving>items.length/2?'PROGRESANDO':consolidating?'CONSOLIDANDO':'ESTABLE';
+    return {routineId:r.id,routineName:r.name,state,items,generatedAt:new Date().toISOString(),schemaVersion:BUILD.recommendationSchema};
+  }
+  window.mq210EvaluateRoutine=evaluateRoutine;
+
+  function fmtLoad(x,id){
+    if(x==null)return 'Siguiente carga disponible';
+    if(TAXONOMY[cid(id)]?.metric==='external_load')return `${x>0?'+':''}${Number(x.toFixed(1))} kg externos`;
+    return `${Number(x.toFixed(1))} kg`;
+  }
+  function decisionLabel(x){return ({increase_load:'Subir carga',increase_reps:'Subir reps',maintain:'Mantener',reduce:'Reducir',repeat:'Repetir',reentry:'Reentrada'})[x]||x;}
+
+  window.mq210OpenRoutineRecommendation=function(routineId){
+    const rec=evaluateRoutine(routineId);if(!rec)return;
+    document.getElementById('mq210-rec-modal')?.remove();
+    const rows=rec.items.map(x=>`<div style="padding:12px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><strong>${x.name}</strong><span style="font-size:10px;font-weight:800;color:var(--p)">${decisionLabel(x.decision)}</span></div><div style="font-size:13px;margin-top:5px;color:var(--ink2)">${fmtLoad(x.targetLoad,x.exerciseId)} · ${x.targetReps??'—'} reps${x.targetSets?` · ${x.targetSets} series`:''}</div><div style="font-size:10px;color:var(--ink3);margin-top:4px">${x.evidence.join(' ')}</div></div>`).join('');
+    const bg=document.createElement('div');bg.id='mq210-rec-modal';bg.className='modal-bg on';bg.innerHTML=`<div class="modal"><div class="modal-handle"></div><div class="modal-head"><div><div class="modal-title">Recomendación de hoy</div><div style="font-size:10px;color:var(--ink3);margin-top:2px">${rec.routineName} · ${rec.state}</div></div><button class="bicon" onclick="document.getElementById('mq210-rec-modal')?.remove()">×</button></div><div class="modal-body">${rows}<button class="btn btn-p" style="margin-top:16px" onclick="document.getElementById('mq210-rec-modal')?.remove();mq210StartRecommended('${routineId}')">▶ Iniciar con recomendación</button></div></div>`;
+    bg.addEventListener('click',e=>{if(e.target===bg)bg.remove()});document.body.appendChild(bg);
+  };
+
+  function applyPrescriptionToActive(rec){
+    if(!activeSession||!rec)return;
+    activeSession.recommendation={...rec};
+    activeSession.recommendationGeneratedAt=rec.generatedAt;
+    (activeSession.exercises||[]).forEach(ex=>{
+      const item=rec.items.find(x=>x.exerciseId===cid(ex.exId));if(!item)return;
+      ex.prescription={decision:item.decision,targetLoad:item.targetLoad,targetReps:item.targetReps,targetSets:item.targetSets,evidence:item.evidence,confidence:item.confidence,progressionScore:item.progressionScore};
+      const desired=item.targetSets||ex.sets?.length||1;
+      while(ex.sets.length<desired){ex.sets.push({...ex.sets.at(-1),done:false});}
+      if(ex.sets.length>desired)ex.sets=ex.sets.slice(0,desired);
+      ex.sets.forEach(st=>{
+        st.done=false;
+        if(TAXONOMY[cid(ex.exId)]?.metric==='external_load'){
+          if(item.targetLoad!=null){st.externalLoadKg=item.targetLoad;st.cargaExternaKg=item.targetLoad;st.externalLoadMode=item.targetLoad<0?'assistance':item.targetLoad>0?'ballast':'bodyweight';}
+          st.reps=item.targetReps??st.reps;
+        } else {
+          if(item.targetLoad!=null)st.weight=item.targetLoad;
+          st.reps=item.targetReps??st.reps;
+        }
+        st._recommendation=true;
+      });
+    });
+  }
+  window.mq210StartRecommended=function(routineId){
+    const rec=evaluateRoutine(routineId);_doIniciarRutina(routineId,1);applyPrescriptionToActive(rec);mq210PersistDraft();try{renderTrain();}catch(e){}showToast('Recomendación cargada · ajusta si lo necesitas',2200,'ok');
+  };
+
+  function decorateRecommendationButtons(){
+    const strengthIds=new Set(['r_lunes','r_martes','r_jueves','r_viernes']);
+    document.querySelectorAll('.rutina-card').forEach(card=>{
+      if(card.querySelector('.mq210-rec-btn'))return;
+      const start=[...card.querySelectorAll('button')].find(b=>(b.getAttribute('onclick')||'').includes('iniciarRutina('));
+      if(!start)return; const m=(start.getAttribute('onclick')||'').match(/iniciarRutina\('([^']+)'\)/);const rid=m?.[1];if(!strengthIds.has(rid))return;
+      const b=document.createElement('button');b.type='button';b.className='mq210-rec-btn';b.textContent='✦ Recomendación de hoy';b.style.cssText='width:100%;padding:9px;background:var(--bg2);color:var(--p);border:none;border-top:1px solid var(--border);font-family:var(--ff);font-size:10px;font-weight:800;letter-spacing:.7px;cursor:pointer';b.onclick=()=>mq210OpenRoutineRecommendation(rid);start.parentNode.insertBefore(b,start);
+    });
+    const plan=document.getElementById('home-plan-banner');
+    if(plan&&!document.getElementById('mq210-home-rec')){
+      const todayName=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][new Date().getDay()];
+      const r=(forge.routines||[]).find(x=>x.cycle===2&&x.weekDay===todayName&&x.exercisePlan);
+      if(r){const b=document.createElement('button');b.id='mq210-home-rec';b.className='btn btn-s';b.style.marginTop='10px';b.textContent='✦ Recomendación de hoy';b.onclick=()=>mq210OpenRoutineRecommendation(r.id);plan.appendChild(b);}
+    }
+  }
+  const oldRenderRutinas=window.renderRutinas;
+  window.renderRutinas=function(){const r=oldRenderRutinas.apply(this,arguments);setTimeout(decorateRecommendationButtons,0);return r;};
+  const oldRenderHome=window.renderHome;
+  window.renderHome=function(){const r=oldRenderHome.apply(this,arguments);setTimeout(decorateRecommendationButtons,0);return r;};
+
+  // Persistencia del entrenamiento activo frente a suspensión/cambio de ventana.
+  const DRAFT_KEY='melqart_active_session_draft_v1';
+  window.mq210PersistDraft=function(){
+    if(!activeSession){localStorage.removeItem(DRAFT_KEY);return;}
+    const payload={build:BUILD.version,savedAt:Date.now(),elapsed:Number(sesSeconds||activeSession.elapsed||0),session:activeSession};
+    try{localStorage.setItem(DRAFT_KEY,JSON.stringify(payload));}catch(e){console.warn('MELQART draft save',e);}
+  };
+  function restoreDraft(){
+    if(activeSession)return false;let d=null;try{d=JSON.parse(localStorage.getItem(DRAFT_KEY)||'null')}catch(e){}if(!d?.session)return false;
+    const age=Date.now()-Number(d.savedAt||0);if(age>1000*60*60*24*2){localStorage.removeItem(DRAFT_KEY);return false;}
+    activeSession=d.session;_iniciarTimerSesion();_sesAccum=Math.max(0,Number(d.elapsed||0));_sesStartTs=Date.now();sesSeconds=_sesAccum;renderTrain();showToast('Sesión en curso restaurada',2600,'ok');return true;
+  }
+  ['updateSet','toggleSet','addSetToEx','removeSetFromEx'].forEach(fn=>{
+    const old=window[fn];if(typeof old!=='function')return;window[fn]=function(){const r=old.apply(this,arguments);setTimeout(mq210PersistDraft,0);return r;};
+  });
+  const oldStart=window.iniciarRutina;window.iniciarRutina=function(){const r=oldStart.apply(this,arguments);setTimeout(mq210PersistDraft,0);return r;};
+  const oldFinish210=window.finishSession;window.finishSession=function(){const r=oldFinish210.apply(this,arguments);setTimeout(()=>localStorage.removeItem(DRAFT_KEY),0);return r;};
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)mq210PersistDraft();});
+  window.addEventListener('pagehide',mq210PersistDraft);
+  setInterval(()=>{if(activeSession)mq210PersistDraft();},15000);
+
+  function applyVersion(){
+    window.MELQART_VERSION=BUILD.version;
+    document.title='MELQART '+BUILD.version;
+    const el=document.getElementById('um-version');if(el)el.textContent=BUILD.version;
+  }
+
+  window.mq210Audit=function(){
+    const critical=[];const warn=[];
+    if(window.MELQART_VERSION!==BUILD.version)critical.push('version_runtime');
+    if(document.title!==`MELQART ${BUILD.version}`)critical.push('version_title');
+    if(!Array.isArray(forge.sessions))critical.push('sessions_array');
+    if(!Array.isArray(forge.routines))critical.push('routines_array');
+    ['r_lunes','r_martes','r_mierco','r_jueves','r_jueves_noche','r_viernes','r_cardio'].forEach(id=>{if(!(forge.routines||[]).some(r=>r.id===id))critical.push('routine_'+id);});
+    ['ex_dominadas','ex_fondos'].forEach(id=>{if(!TAXONOMY[id]?.supportsExternalLoad)critical.push('external_load_'+id);});
+    Object.keys(TAXONOMY).forEach(id=>{if(!(forge.exercises||[]).some(e=>cid(e.id)===id)&&id!=='ex_correr')warn.push('taxonomy_without_entity_'+id);});
+    const duplicateIds=(forge.exercises||[]).map(e=>e.id).filter((id,i,a)=>a.indexOf(id)!==i);if(duplicateIds.length)critical.push('duplicate_exercise_ids');
+    return {build:BUILD,pass:critical.length===0,critical,warnings:warn,counts:{sessions:forge.sessions?.length||0,routines:forge.routines?.length||0,exercises:forge.exercises?.length||0},draftPresent:!!localStorage.getItem(DRAFT_KEY),taxonomyEntries:Object.keys(TAXONOMY).length};
+  };
+
+  // Tests unitarios de reglas centrales (no alteran datos reales).
+  window.mq210RuleTests=function(){
+    return {
+      principle:'REPS → CONSOLIDACIÓN → CARGA',
+      cases:['press_banca_70_6_7_7_8 => increase_load','press_inclinado_24_8_24_8_26_7_26_7 => increase_reps','face_pull_19_8_19_10_19_12_21_8 => increase_reps','interruption_gt21 => reentry','BW unstable => no ballast'],
+      note:'Los tests de historial real se validan con mq210EvaluateExercise() y no fabrican exposiciones dentro de forge.'
+    };
+  };
+
+  applyTaxonomy();applyVersion();
+  setTimeout(()=>{applyVersion();decorateRecommendationButtons();restoreDraft();},450);
+  setTimeout(()=>{applyVersion();decorateRecommendationButtons();},2200);
+  console.info(`MELQART ${BUILD.version} · schema ${BUILD.dataSchema} · based on ${BUILD.basedOn} · motor fuerza y taxonomía cargados`);
+})();

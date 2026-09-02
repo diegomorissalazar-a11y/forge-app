@@ -1,0 +1,15 @@
+MELQART 2.1.0 regression audit
+Base: 2.0.3
+
+PASS - index.html preserved
+PASS - app.js base preserved and 2.1.0 module appended
+PASS - styles.css base preserved
+PASS - brand assets preserved
+PASS - Firebase/localStorage legacy code preserved
+PASS - running JSON import modules preserved
+PASS - external-load Dominadas/Fondos module preserved
+PASS - strength routines preserved
+PASS - recommendation engine added without marking prescribed sets as done
+PASS - active-session draft persistence added
+PASS - runtime audit added
+PASS - version final override set to 2.1.0

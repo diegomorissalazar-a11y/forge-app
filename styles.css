@@ -2683,3 +2683,6 @@ td, th {
 /* MELQART v181.1 */
 .mq-recovery-chart circle{ pointer-events:auto; }
 .mq-chart-tooltip.visible{ opacity:1; transform:translateY(0); }
+
+/* MELQART 2.1.0 — recomendación de fuerza */
+.mq210-rec-btn:active{background:var(--bg4)!important}
