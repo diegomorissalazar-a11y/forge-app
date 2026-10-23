@@ -1,0 +1,7 @@
+Base: 2.1.2 (SHA256 in code_counts_2.1.3.json)
+Incremental: 2.1.3
+Only active v193 running importer changed, plus normalization helper and final version label. index title/menu/CSS/JS query updated.
+Farmer Carry helpers/editor untouched. styles/assets unchanged byte for byte.
+ES/EN importer and validation behavioral tests pass (UTC and America/Santiago).
+Counts recalculated with included script for BOTH versions; older reports use different regex patterns and are not comparable.
+No named functions removed. No live iPhone/Firebase test.

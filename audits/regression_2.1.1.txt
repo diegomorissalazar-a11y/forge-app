@@ -1,0 +1,26 @@
+MELQART 2.1.1 — AUDITORÍA INCREMENTAL
+Base directa: 2.1.0
+Nueva: 2.1.1
+
+Farmer Carry
+- ID canónico: ex_farmer_carry
+- Métrica: load_duration
+- Campos de serie: weight + durationSeconds
+- Repeticiones: NO
+- UI: KG + TIEMPO
+
+Conteo estático comparativo
+- Funciones 2.1.0: 833
+- Funciones 2.1.1: 837
+- Delta funciones: +4
+- Variables 2.1.0: 1327
+- Variables 2.1.1: 1336
+- Delta variables: +9
+
+Funciones eliminadas detectadas: ninguna
+
+Validaciones
+- Sintaxis JS: PASS (node --check)
+- Versión incremental: PASS (2.1.0 -> 2.1.1)
+- Farmer Carry sin reps en taxonomía: PASS
+- Variables durationSeconds/loadKg disponibles: PASS

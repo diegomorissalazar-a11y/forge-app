@@ -1,3 +1,21 @@
+// MELQART 2.1.2: shared metric resolution for live and saved sessions.
+function mq212IsLoadDuration(exId){
+  const e=getEx(exId);
+  const name=String(e?.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  return exId==='ex_farmer_carry' || e?.taxonomy?.metric==='load_duration' || window.MELQART_TAXONOMY?.[exId]?.metric==='load_duration' || /\bfarmer(?:'?s)?\b.*\bcarry\b|\bcarry\s+farm(?:er)?\b/.test(name);
+}
+function mq212Duration(st){
+  if(st?.durationSeconds!=null && Number.isFinite(Number(st.durationSeconds)))return Math.max(0,Number(st.durationSeconds));
+  if(!st?.time)return 0;
+  if(!String(st.time).includes(':'))return Math.max(0,Number(st.time)||0);
+  const t=parseTimeStr(st.time);return t.h*3600+t.m*60+t.s;
+}
+function mq212SetText(st){return `${st.weight||0} kg × ${mq212Duration(st)?mq212Duration(st)+' s':'duración sin registrar'}`;}
+function mq212EditDuration(id,ei,si,value){
+  const st=forge.sessions.find(s=>s.id===id)?.exercises?.[ei]?.sets?.[si];if(!st)return;
+  st.durationSeconds=Math.max(0,Math.floor(Number(value)||0));st.time=fmtTimeStr(st.durationSeconds);
+  if(st.reps!=null){st.legacyReps=st.legacyReps??st.reps;delete st.reps;}
+}
 // ---------------------------------------------------------------
 //  FIREBASE
 // ---------------------------------------------------------------
@@ -1017,7 +1035,7 @@ function exportarSemana(){
           });
         } else {
           // v181.7: preservar todas las series, incluso idénticas. No deduplicar sets.
-          lines.push('> '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
+          lines.push('> '+e.name+': '+sets.map(st=>(mq212IsLoadDuration(ex.exId)?mq212SetText(st):st.weight+'kg x '+st.reps)).join(' | '));
         }
       });
       lines.push('');
@@ -1637,7 +1655,7 @@ function openSesDetail(id){
             <span style="font-size:14px;color:var(--ink2)">${isRun?
               [set.distance?set.distance+'km':'',set.time||''].filter(Boolean).join(' · ')+
               (set.fc?` ❤️${set.fc}bpm`:'')+(set.pasos?` 👟${fmtMiles(parseInt(set.pasos))}p`:'')
-              :(set.weight||0)+' kg × '+(set.reps||0)}</span>
+              :mq212IsLoadDuration(ex.exId)?mq212SetText(set):(set.weight||0)+' kg × '+(set.reps||0)}</span>
           </div>`).join('')}
         </div>`;
       }).join('')}
@@ -1701,7 +1719,7 @@ function renderEditSesExs(s){
         <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px">
           <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
           <input class="inp" type="text" placeholder="kg" value="${set.weight||''}" oninput="updateEditSet('${s.id}',${ei},${si},'weight',this.value)" style="padding:7px;font-size:13px" inputmode="decimal">
-          <input class="inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateEditSet('${s.id}',${ei},${si},'reps',this.value)" style="padding:7px;font-size:13px" inputmode="numeric">
+          ${mq212IsLoadDuration(ex.exId)?`<input class="inp" type="number" min="0" step="1" aria-label="Duración en segundos" placeholder="segundos" value="${mq212Duration(set)||''}" oninput="mq212EditDuration('${s.id}',${ei},${si},this.value)" style="padding:7px;font-size:13px" inputmode="numeric">`:`<input class="inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateEditSet('${s.id}',${ei},${si},'reps',this.value)" style="padding:7px;font-size:13px" inputmode="numeric">`}
           <button onclick="deleteEditSet('${s.id}',${ei},${si})" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:16px">✕</button>
         </div>
       `).join('')}
@@ -1757,7 +1775,7 @@ function saveEditSesion(){
     const e=getEx(ex.exId);
     const isRun=e?.type==='run'||e?.type==='hiit';
     ex.sets.forEach(set=>{
-      set.done = isRun ? !!(parseFloat(set.distance)||set.time) : !!(set.weight||set.reps);
+      set.done = mq212IsLoadDuration(ex.exId) ? mq212Duration(set)>0 && Number(set.weight)>0 : isRun ? !!(parseFloat(set.distance)||set.time) : !!(set.weight||set.reps);
     });
     ex.sets=ex.sets.filter(set=>isRun?(parseFloat(set.distance)||set.time):set.done);
   });
@@ -1804,7 +1822,7 @@ function addEditSet(sesId,ei){
   const e=getEx(s.exercises[ei].exId);
   const isRun=e?.type==='run'||e?.type==='hiit';
   const last=s.exercises[ei].sets[s.exercises[ei].sets.length-1]||{weight:0,reps:8};
-  s.exercises[ei].sets.push({type:isRun?'run':'weight',done:true,weight:last.weight,reps:last.reps,distance:'',time:'',fc:'',pasos:''});
+  s.exercises[ei].sets.push(mq212IsLoadDuration(s.exercises[ei].exId)?{type:'load_duration',done:false,weight:last.weight||0,durationSeconds:mq212Duration(last),time:last.time||''}:{type:isRun?'run':'weight',done:true,weight:last.weight,reps:last.reps,distance:'',time:'',fc:'',pasos:''});
   renderEditSesExs(s);
 }
 
@@ -2372,6 +2390,7 @@ function renderSexBlock(ex,ei){
   }
   const isRun=e.type==='run'||e.type==='hiit';
   const isPlyo=e.type==='plyo';
+  const isCarry=mq212IsLoadDuration(ex.exId);
   const pr=getPR(ex.exId);
 
   // ── Último registro de esta misma rutina ──────────────────────
@@ -2399,6 +2418,8 @@ function renderSexBlock(ex,ei){
     const runPR=getRunPRObj(ex.exId);
     if(runPR.dist>0) prStr=`PR: ${runPR.dist.toFixed(2)}km`;
     if(runPR.ritmo>0) prStr+=(prStr?' · ':'')+`${Math.floor(runPR.ritmo)}'${pad(Math.round((runPR.ritmo%1)*60))}"/km`;
+  } else if(isCarry){
+    prStr='Carga + duración · segundos';
   } else {
     if(pr.weight>0) prStr=`PR: ${pr.weight}kg × ${pr.reps} reps`;
   }
@@ -2416,7 +2437,14 @@ function renderSexBlock(ex,ei){
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowfullscreen style="display:block"></iframe>
     </div>` : '';
-  const colHeader = isRun ? '' : isPlyo ? `
+  const colHeader = isRun ? '' : isCarry ? `
+    <div style="display:grid;grid-template-columns:28px 1fr 1fr 1fr auto;gap:6px;padding:5px 16px;background:var(--bg3);border-bottom:1px solid var(--border)">
+      <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase">Serie</span>
+      <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase">Anterior</span>
+      <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase;text-align:center">KG</span>
+      <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase;text-align:center">Segundos</span>
+      <span style="width:34px"></span>
+    </div>` : isPlyo ? `
     <div style="display:grid;grid-template-columns:28px 1fr 1fr 1fr auto;gap:6px;padding:5px 16px;background:var(--bg3);border-bottom:1px solid var(--border)">
       <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase">Serie</span>
       <span style="font-size:10px;color:var(--ink3);font-weight:700;text-transform:uppercase">Anterior</span>
@@ -2472,6 +2500,7 @@ function renderSetRow(ei,si,set,isRun,ultSet){
   const baseEx=EJERCICIOS_BASE.find(b=>b.id===ex?.exId);
   const isBilateral = eDef?.bilateral===true || ex?.bilateral===true || baseEx?.bilateral===true;
   const isPlyo=eDef?.type==='plyo';
+  const isCarry=mq212IsLoadDuration(ex?.exId);
 
   // Render especial para ejercicios pliométricos (saltos cajón) — altura + reps
   if(isPlyo){
@@ -2521,6 +2550,22 @@ function renderSetRow(ei,si,set,isRun,ultSet){
     const color=set._fuente==='plan'?'var(--green)':'var(--orange)';
     const label=set._fuente==='plan'?'Plan':'Rutina';
     refHtml=`<div style="grid-column:2/-1;font-size:10px;padding:1px 0 4px"><span style="color:${color};font-weight:700">${icono} ${label}: ${set._pesoSugerido}kg</span></div>`;
+  }
+
+  // Farmer Carry: ejercicio continuo. Registra carga + duración, nunca repeticiones.
+  if(isCarry){
+    const prevSec=ultSet ? (Number(ultSet.durationSeconds)||(()=>{const t=parseTimeStr(ultSet.time||'');return t.h*3600+t.m*60+t.s;})()) : 0;
+    const anteriorCarry=ultSet ? `${ultSet.weight||0}kg × ${prevSec?fmtTimeStr(prevSec):'—'}` : '—';
+    const sec=mq212Duration(set);
+    return `<div class="set-row" id="sr-${ei}-${si}" style="flex-wrap:wrap;background:${done?'rgba(22,163,74,.06)':'transparent'};grid-template-columns:28px 1fr 1fr 1fr auto auto">
+      <div class="set-num" style="color:${done?'var(--green)':'var(--ink3)'}">${si+1}</div>
+      <div style="font-size:12px;color:var(--ink3);display:flex;align-items:center;padding:0 4px">${anteriorCarry}</div>
+      <input class="set-inp" type="text" placeholder="kg" value="${set.weight||''}" oninput="updateSet(${ei},${si},'weight',this.value)" inputmode="decimal">
+      <input class="set-inp" type="text" min="0" step="1" aria-label="Duración en segundos" placeholder="segundos" value="${sec||''}" oninput="updateCarryDuration(${ei},${si},this.value)" inputmode="numeric">
+      <div class="set-check ${done?'done':''}" onclick="toggleSet(${ei},${si})"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <button onclick="removeSetFromEx(${ei},${si})" style="background:none;border:none;color:var(--ink3);cursor:pointer;padding:4px 6px;font-size:16px;line-height:1" title="Eliminar serie">✕</button>
+      ${refHtml}
+    </div>`;
   }
 
   // Bilateral: botones L / R en lugar del check único
@@ -2605,6 +2650,16 @@ function updateSet(ei,si,field,val){
   const v=normDec(val);
   activeSession.exercises[ei].sets[si][field]=field==='weight'||field==='reps'?parseFloat(v)||0:v;
 }
+function updateCarryDuration(ei,si,val){
+  if(!activeSession) return;
+  const raw=String(val||'').trim();
+  let sec=0;
+  if(raw.includes(':')){const p=raw.split(':').map(v=>parseInt(v,10)||0);sec=p.length===3?p[0]*3600+p[1]*60+p[2]:p[0]*60+p[1];}
+  else {sec=parseInt(raw,10)||0;}
+  const st=activeSession.exercises?.[ei]?.sets?.[si];if(!st)return;
+  st.durationSeconds=Math.max(0,sec);st.time=fmtTimeStr(st.durationSeconds);if(st.reps!=null){st.legacyReps=st.legacyReps??st.reps;delete st.reps;}
+}
+window.updateCarryDuration=updateCarryDuration;
 function getRestSecondsForExercise(exObj){
   const eDef = getEx(exObj?.exId);
   const restSec = Number(exObj?._restSec ?? eDef?.restSec ?? activeSession?.restSec ?? 0) || 0;
@@ -2680,7 +2735,7 @@ function addSetToEx(ei){
   const last=ex.sets[ex.sets.length-1]||{weight:0,reps:8};
   const e=getEx(ex.exId);
   const isRun=e?.type==='run'||e?.type==='hiit';
-  ex.sets.push({type:isRun?'run':'weight',done:false,weight:last.weight,reps:last.reps,distance:'',time:'',fc:'',pasos:''});
+  ex.sets.push(mq212IsLoadDuration(ex.exId)?{type:'load_duration',done:false,weight:last.weight||0,durationSeconds:mq212Duration(last),time:last.time||''}:{type:isRun?'run':'weight',done:false,weight:last.weight,reps:last.reps,distance:'',time:'',fc:'',pasos:''});
   const container=document.getElementById('session-exs');
   container.innerHTML=activeSession.exercises.map((ex,i)=>renderSexBlock(ex,i)).join('');
 }
@@ -10476,7 +10531,7 @@ try{
               });
             }else{
               // Preserva sets idénticos reales. No deduplica.
-              lines.push('> '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
+              lines.push('> '+e.name+': '+sets.map(st=>(mq212IsLoadDuration(ex.exId)?mq212SetText(st):st.weight+'kg x '+st.reps)).join(' | '));
             }
           });
           lines.push('');
@@ -10703,7 +10758,7 @@ try{
             unique.forEach(st=>lines.push('> '+e.name+': '+runLine1816(st)));
           }else{
             // No deduplicar: sets idénticos son series reales.
-            lines.push('> '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
+            lines.push('> '+e.name+': '+sets.map(st=>(mq212IsLoadDuration(ex.exId)?mq212SetText(st):st.weight+'kg x '+st.reps)).join(' | '));
           }
         });
         lines.push('');
@@ -10827,7 +10882,7 @@ try{
             unique.forEach(st=>lines.push('> '+e.name+': '+fmtRun1818(st)));
           } else {
             // v181.8: no deduplicar series idénticas.
-            lines.push('> '+e.name+': '+sets.map(st=>st.weight+'kg x '+st.reps).join(' | '));
+            lines.push('> '+e.name+': '+sets.map(st=>(mq212IsLoadDuration(ex.exId)?mq212SetText(st):st.weight+'kg x '+st.reps)).join(' | '));
           }
         });
         lines.push('');
@@ -13034,6 +13089,44 @@ try{
 
 
 
+// MELQART 2.1.3: normalize supported JSON names before any database mutation.
+function mq213NormalizeRunJson(raw){
+  const j=typeof raw==='string'?JSON.parse(raw):raw;
+  if(!j || typeof j!=='object' || Array.isArray(j)) throw new Error('La carrera debe ser un objeto JSON');
+  function numeric213(value){
+    if(typeof value!=='number' && typeof value!=='string') return NaN;
+    if(String(value).trim()==='') return NaN;
+    return Number(String(value).trim().replace(',','.'));
+  }
+  function duration213(value){
+    if(typeof value==='number') return value;
+    const text=String(value??'').trim();
+    if(!text.includes(':')) return numeric213(text);
+    if(!/^\d+:\d{2}(?::\d{2})?$/.test(text)) return NaN;
+    const parts=text.split(':').map(Number);
+    if(parts.at(-1)>=60 || (parts.length===3 && parts[1]>=60)) return NaN;
+    return parts.length===3?parts[0]*3600+parts[1]*60+parts[2]:parts[0]*60+parts[1];
+  }
+  const distance=numeric213(j.distanceKm??j.distancia_km??j.distance??j.km);
+  const seconds=duration213(j.durationSeconds??j.duracion_segundos??j.duration??j.tiempo??j.timeTotal??j.elapsed);
+  if(!Number.isFinite(distance) || distance<=0) throw new Error('Distancia inválida: usa distanceKm o distancia_km, mayor que 0');
+  if(!Number.isFinite(seconds) || seconds<=0 || Math.round(seconds)<=0) throw new Error('Duración inválida: usa duration/tiempo (HH:MM:SS o MM:SS) o durationSeconds/duracion_segundos, mayor que 0');
+  return {...j,
+    distanceKm:distance,duration:Math.round(seconds),
+    date:j.date??j.fecha,time:j.time??j.hora,
+    avgHeartRate:j.avgHeartRate??j.frecuencia_cardiaca_media??j.fcMedia??j.heartRate??j.hr,
+    maxHeartRate:j.maxHeartRate??j.frecuencia_cardiaca_maxima??j.fcMax??j.maxHr,
+    calories:j.calories??j.calorias_activas??j.kcal,
+    steps:j.steps??j.pasos,
+    avgCadence:j.avgCadence??j.cadencia_media??j.cadenciaMedia,
+    maxCadence:j.maxCadence??j.cadencia_maxima??j.cadenciaMaxima,
+    avgPace:j.avgPace??j.ritmo_promedio??j.ritmoPromedio??j.pace,
+    notes:j.notes??j.observaciones??'',
+    elevationAvgM:j.elevationAvgM??j.elevacion_media_m??null,
+    elevationMaxM:j.elevationMaxM??j.elevacion_maxima_m??null
+  };
+}
+
 // ---------------------------------------------------------------
 // MELQART v193 — Importador carrera con ritmos parciales por km
 // ---------------------------------------------------------------
@@ -13123,14 +13216,14 @@ try{
   }
 
   window.importRunJson = window.importRunJson193 = window.importRunJson188 = window.mq184RunJsonToSession = function(raw){
-    const j=typeof raw==='string'?JSON.parse(raw):raw;
+    const j=mq213NormalizeRunJson(raw);
     const date=normDate193(j.date);
     const time=String(j.time||'12:00').slice(0,5);
     const ts=new Date(`${date}T${time}:00`).getTime();
     const distance=Number(j.distanceKm ?? j.distance ?? j.km ?? 0);
     const durationRaw=String(j.duration || j.timeTotal || j.elapsed || '');
     const seconds=secFromTime193(durationRaw);
-    if(!distance || !seconds) throw new Error('Faltan distanceKm o duration');
+    if(!Number.isFinite(distance) || distance<=0 || !Number.isFinite(seconds) || seconds<=0) throw new Error('Distancia y duración deben ser mayores que 0');
 
     const splits=normalizeSplits193(j);
     const splitSummary=splitSummary193(splits);
@@ -13194,6 +13287,8 @@ try{
       splitSummary,
       milestones:j.milestones || j.hitos || {},
       notes:j.notes||'',
+      elevationAvgM:j.elevationAvgM,
+      elevationMaxM:j.elevationMaxM,
       source:j.source||'json_carrera'
     };
 
@@ -13221,7 +13316,9 @@ try{
       splits,
       splitSummary,
       milestones:j.milestones || j.hitos || {},
-      notes:j.notes||''
+      notes:j.notes||'',
+      elevationAvgM:j.elevationAvgM,
+      elevationMaxM:j.elevationMaxM
     }];
 
     try{saveDB()}catch(e){}
@@ -13964,7 +14061,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
           ex_peso_muerto:{sets:3,reps:'5',role:'principal',restSec:180},
           ex_hip_thrust_maq:{sets:3,reps:'8',role:'principal',restSec:150},
           ex_cable_pallof:{sets:3,reps:'10–12 por lado',role:'core anti-rotación',restSec:60},
-          ex_farmer_carry:{sets:3,reps:'25–30 m',role:'funcional',restSec:90}
+          ex_farmer_carry:{sets:3,durationSeconds:30,role:'funcional',restSec:90}
         },fallback:{ex_farmer_carry:'ex_plancha_frontal'}
       },
       {
@@ -14774,7 +14871,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     ex_peso_muerto:{movementId:'deadlift',familyId:'hip_hinge',equipment:'barbell_or_smith',class:'compound',repRange:[6,8],loadStep:2.5},
     ex_hip_thrust_maq:{movementId:'hip_thrust',familyId:'hip_extension',equipment:'machine',class:'compound',repRange:[8,10],loadStep:null},
     ex_cable_pallof:{movementId:'pallof_press',familyId:'anti_rotation',equipment:'cable',class:'accessory',repRange:[10,12],loadStep:null},
-    ex_farmer_carry:{movementId:'farmer_carry',familyId:'carry',equipment:'dumbbell',class:'compound',metric:'distance',repRange:null,loadStep:2},
+    ex_farmer_carry:{movementId:'farmer_carry',familyId:'carry',equipment:'dumbbell',class:'compound',metric:'load_duration',repRange:null,loadStep:2},
     ex_dominadas:{movementId:'pull_up',familyId:'vertical_pull',equipment:'bodyweight',class:'compound',metric:'external_load',repRange:[6,8],loadStep:2.5,supportsExternalLoad:true},
     ex_press_incl_manc:{movementId:'incline_press',familyId:'horizontal_push',equipment:'dumbbell',class:'compound',repRange:[7,8],loadStep:2},
     ex_fondos:{movementId:'dip',familyId:'vertical_push',equipment:'bodyweight',class:'compound',metric:'external_load',repRange:[6,8],loadStep:2.5,supportsExternalLoad:true},
@@ -14794,6 +14891,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     effectiveLoadKg:{type:'number',unit:'kg',nullable:true,derived:'bodyWeightKg + externalLoadKg'},
     reps:{type:'number',unit:'repetitions',nullable:true},
     durationSeconds:{type:'integer',unit:'s',nullable:true},
+    carryDurationSeconds:{type:'integer',unit:'s',nullable:true,meaning:'continuous loaded carry duration per set'},
     distanceKm:{type:'number',unit:'km',nullable:true},
     paceSecondsPerKm:{type:'integer',unit:'s/km',nullable:true},
     avgHeartRate:{type:'integer',unit:'bpm',nullable:true},
@@ -14848,12 +14946,15 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     return n(st.weight);
   }
   function exposureFromSession(s,ex){
-    const id=cid(ex.exId),done=(ex.sets||[]).filter(st=>st.done!==false && (n(st.reps)!=null || loadForSet(st,id)!=null));
+    const metric=TAXONOMY[id]?.metric||'weight';
+    const done=(ex.sets||[]).filter(st=>st.done!==false && (n(st.reps)!=null || loadForSet(st,id)!=null || n(st.durationSeconds)!=null || st.time));
     if(!done.length)return null;
     const loads=done.map(st=>loadForSet(st,id)).filter(v=>v!=null);
     const reps=done.map(st=>n(st.reps)).filter(v=>v!=null);
-    if(!reps.length && (TAXONOMY[id]?.metric!=='distance'))return null;
-    return {date:dateOf(s.date),ts:s.date,sessionId:s.id,exerciseId:id,loads,reps,load:median(loads),minReps:reps.length?Math.min(...reps):null,totalReps:reps.reduce((a,b)=>a+b,0),sets:done.length,bodyWeightKg:n(s.bodyWeightKg),rawSets:done};
+    const durations=done.map(st=>{if(n(st.durationSeconds)!=null)return n(st.durationSeconds);const t=parseTimeStr(st.time||'');return (t.h*3600+t.m*60+t.s)||null;}).filter(v=>v!=null);
+    if(metric==='load_duration' && (!loads.length || !durations.length))return null;
+    if(!reps.length && !['distance','load_duration'].includes(metric))return null;
+    return {date:dateOf(s.date),ts:s.date,sessionId:s.id,exerciseId:id,metric,loads,reps,durations,load:median(loads),durationSeconds:durations.length?median(durations):null,minDurationSeconds:durations.length?Math.min(...durations):null,minReps:reps.length?Math.min(...reps):null,totalReps:reps.reduce((a,b)=>a+b,0),sets:done.length,bodyWeightKg:n(s.bodyWeightKg),rawSets:done};
   }
   function historyFor(exId,limit=8){
     const id=cid(exId),rows=[];
@@ -14871,7 +14972,16 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   function evaluateExercise(exId,routine){
     const id=cid(exId),tx=TAXONOMY[id]||{},cfg=planForExercise(exId,routine),hist=historyFor(id,8),recent=hist.slice(-5),last=hist.at(-1)||null,prev=hist.at(-2)||null;
     const name=getEx(id)?.name||getEx(exId)?.name||id;
-    if(!last)return {exerciseId:id,name,status:'SIN_DATOS',decision:'maintain',confidence:'baja',targetLoad:null,targetReps:cfg.repRange?.[0]??null,targetSets:cfg.sets,evidence:['Sin exposiciones históricas equivalentes.'],history:[]};
+    if(!last)return {exerciseId:id,name,status:'SIN_DATOS',decision:'maintain',confidence:'baja',targetLoad:null,targetReps:cfg.repRange?.[0]??null,targetDurationSeconds:tx.metric==='load_duration'?30:null,targetSets:cfg.sets,evidence:['Sin exposiciones históricas equivalentes.'],history:[]};
+    if(tx.metric==='load_duration'){
+      const days=dayDiff(last.date,today());
+      const recentDur=recent.map(x=>x.minDurationSeconds).filter(v=>v!=null);
+      const targetDuration=Math.max(15,Math.round(last.minDurationSeconds||last.durationSeconds||30));
+      const evidence=[`${last.load??'—'} kg · ${targetDuration}s en la última exposición comparable.`];
+      if(days>14)evidence.push(`${days} días desde la última exposición: mantener carga y duración antes de progresar.`);
+      else evidence.push('Farmer Carry progresa por carga y/o tiempo; no utiliza repeticiones.');
+      return {exerciseId:id,name,status:days>21?'REENTRADA':'ESTABLE',decision:days>14?'repeat':'maintain',targetLoad:last.load,targetReps:null,targetDurationSeconds:targetDuration,targetSets:cfg.sets,repRange:null,loadStep:derivedStep(hist,cfg.loadStep??null),daysSinceLastExposure:days,confidence:recent.length>=3?'alta':'media',progressionScore:recentDur.length>=3?70:55,evidence,history:recent.map(x=>({date:x.date,load:x.load,durationSeconds:x.minDurationSeconds,sets:x.sets}))};
+    }
     const days=dayDiff(last.date,today());
     const range=cfg.repRange||[last.minReps||1,Math.max(last.minReps||1,8)];
     const lower=range[0],upper=range[1];
@@ -14943,7 +15053,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   window.mq210OpenRoutineRecommendation=function(routineId){
     const rec=evaluateRoutine(routineId);if(!rec)return;
     document.getElementById('mq210-rec-modal')?.remove();
-    const rows=rec.items.map(x=>`<div style="padding:12px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><strong>${x.name}</strong><span style="font-size:10px;font-weight:800;color:var(--p)">${decisionLabel(x.decision)}</span></div><div style="font-size:13px;margin-top:5px;color:var(--ink2)">${fmtLoad(x.targetLoad,x.exerciseId)} · ${x.targetReps??'—'} reps${x.targetSets?` · ${x.targetSets} series`:''}</div><div style="font-size:10px;color:var(--ink3);margin-top:4px">${x.evidence.join(' ')}</div></div>`).join('');
+    const rows=rec.items.map(x=>`<div style="padding:12px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><strong>${x.name}</strong><span style="font-size:10px;font-weight:800;color:var(--p)">${decisionLabel(x.decision)}</span></div><div style="font-size:13px;margin-top:5px;color:var(--ink2)">${fmtLoad(x.targetLoad,x.exerciseId)} · ${x.targetDurationSeconds!=null?fmtTimeStr(x.targetDurationSeconds):(x.targetReps??'—')+' reps'}${x.targetSets?` · ${x.targetSets} series`:''}</div><div style="font-size:10px;color:var(--ink3);margin-top:4px">${x.evidence.join(' ')}</div></div>`).join('');
     const bg=document.createElement('div');bg.id='mq210-rec-modal';bg.className='modal-bg on';bg.innerHTML=`<div class="modal"><div class="modal-handle"></div><div class="modal-head"><div><div class="modal-title">Recomendación de hoy</div><div style="font-size:10px;color:var(--ink3);margin-top:2px">${rec.routineName} · ${rec.state}</div></div><button class="bicon" onclick="document.getElementById('mq210-rec-modal')?.remove()">×</button></div><div class="modal-body">${rows}<button class="btn btn-p" style="margin-top:16px" onclick="document.getElementById('mq210-rec-modal')?.remove();mq210StartRecommended('${routineId}')">▶ Iniciar con recomendación</button></div></div>`;
     bg.addEventListener('click',e=>{if(e.target===bg)bg.remove()});document.body.appendChild(bg);
   };
@@ -14954,7 +15064,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     activeSession.recommendationGeneratedAt=rec.generatedAt;
     (activeSession.exercises||[]).forEach(ex=>{
       const item=rec.items.find(x=>x.exerciseId===cid(ex.exId));if(!item)return;
-      ex.prescription={decision:item.decision,targetLoad:item.targetLoad,targetReps:item.targetReps,targetSets:item.targetSets,evidence:item.evidence,confidence:item.confidence,progressionScore:item.progressionScore};
+      ex.prescription={decision:item.decision,targetLoad:item.targetLoad,targetReps:item.targetReps,targetDurationSeconds:item.targetDurationSeconds??null,targetSets:item.targetSets,evidence:item.evidence,confidence:item.confidence,progressionScore:item.progressionScore};
       const desired=item.targetSets||ex.sets?.length||1;
       while(ex.sets.length<desired){ex.sets.push({...ex.sets.at(-1),done:false});}
       if(ex.sets.length>desired)ex.sets=ex.sets.slice(0,desired);
@@ -14963,6 +15073,10 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
         if(TAXONOMY[cid(ex.exId)]?.metric==='external_load'){
           if(item.targetLoad!=null){st.externalLoadKg=item.targetLoad;st.cargaExternaKg=item.targetLoad;st.externalLoadMode=item.targetLoad<0?'assistance':item.targetLoad>0?'ballast':'bodyweight';}
           st.reps=item.targetReps??st.reps;
+        } else if(TAXONOMY[cid(ex.exId)]?.metric==='load_duration'){
+          if(item.targetLoad!=null)st.weight=item.targetLoad;
+          if(item.targetDurationSeconds!=null){st.durationSeconds=item.targetDurationSeconds;st.time=fmtTimeStr(item.targetDurationSeconds);}
+          delete st.reps;
         } else {
           if(item.targetLoad!=null)st.weight=item.targetLoad;
           st.reps=item.targetReps??st.reps;
@@ -15048,4 +15162,56 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   setTimeout(()=>{applyVersion();decorateRecommendationButtons();restoreDraft();},450);
   setTimeout(()=>{applyVersion();decorateRecommendationButtons();},2200);
   console.info(`MELQART ${BUILD.version} · schema ${BUILD.dataSchema} · based on ${BUILD.basedOn} · motor fuerza y taxonomía cargados`);
+})();
+
+
+// ===============================================================
+// MELQART 2.1.1 — Farmer Carry carga + tiempo + auditoría incremental
+// Base directa: MELQART 2.1.0
+// ===============================================================
+(function mq211IncrementalPatch(){
+  'use strict';
+  const BUILD211=Object.freeze({version:'2.1.1',basedOn:'2.1.0',dataSchema:4,taxonomySchema:2,recommendationSchema:1});
+  if(window.MELQART_TAXONOMY?.ex_farmer_carry){
+    window.MELQART_TAXONOMY.ex_farmer_carry.metric='load_duration';
+    window.MELQART_TAXONOMY.ex_farmer_carry.repRange=null;
+  }
+  const ex=(forge.exercises||[]).find(e=>e.id==='ex_farmer_carry');
+  if(ex){ex.taxonomy={...(ex.taxonomy||{}),movementId:'farmer_carry',familyId:'carry',equipment:'dumbbell',class:'compound',metric:'load_duration',repRange:null,loadStep:2};}
+  const routine=(forge.routines||[]).find(r=>r.id==='r_jueves');
+  if(routine?.exercisePlan?.ex_farmer_carry){delete routine.exercisePlan.ex_farmer_carry.reps;routine.exercisePlan.ex_farmer_carry.durationSeconds=routine.exercisePlan.ex_farmer_carry.durationSeconds||30;}
+  window.MELQART_BUILD=BUILD211;window.MELQART_VERSION=BUILD211.version;
+  function apply(){document.title='MELQART '+BUILD211.version;const el=document.getElementById('um-version');if(el)el.textContent=BUILD211.version;}
+  window.mq211Audit=function(){
+    const base=typeof window.mq210Audit==='function'?window.mq210Audit():null;
+    const critical=[],warnings=[];
+    if(window.MELQART_VERSION!==BUILD211.version)critical.push('version_runtime');
+    if(document.title!==`MELQART ${BUILD211.version}`)critical.push('version_title');
+    const tx=window.MELQART_TAXONOMY?.ex_farmer_carry;
+    if(tx?.metric!=='load_duration')critical.push('farmer_metric_not_load_duration');
+    if(tx?.repRange!=null)critical.push('farmer_rep_range_present');
+    if(!window.MELQART_VARIABLE_DICTIONARY?.durationSeconds)critical.push('duration_variable_missing');
+    if(!window.MELQART_VARIABLE_DICTIONARY?.loadKg)critical.push('load_variable_missing');
+    if(!Array.isArray(forge.sessions)||!Array.isArray(forge.routines)||!Array.isArray(forge.exercises))critical.push('core_collections');
+    return {build:BUILD211,pass:critical.length===0,critical,warnings,baseAudit:base,farmerCarry:{metric:tx?.metric,usesReps:false,fields:['weight','durationSeconds']},counts:{sessions:forge.sessions?.length||0,routines:forge.routines?.length||0,exercises:forge.exercises?.length||0,taxonomyEntries:Object.keys(window.MELQART_TAXONOMY||{}).length,variableDictionaryEntries:Object.keys(window.MELQART_VARIABLE_DICTIONARY||{}).length}};
+  };
+  try{saveDB();}catch(e){}
+  apply();setTimeout(apply,500);setTimeout(apply,2200);
+  console.info('MELQART 2.1.1 · incremental sobre 2.1.0 · Farmer Carry = carga + tiempo');
+})();
+
+(function mq212Build(){
+ const build=Object.freeze({...window.MELQART_BUILD,version:'2.1.2',basedOn:'2.1.1'});
+ window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
+ function apply212(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
+ apply212();setTimeout(apply212,600);setTimeout(apply212,2400);
+ console.info('MELQART 2.1.2 · base 2.1.1 · carga + segundos');
+})();
+
+(function mq213Build(){
+ const build=Object.freeze({...window.MELQART_BUILD,version:'2.1.3',basedOn:'2.1.2'});
+ window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
+ function apply213(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
+ apply213();setTimeout(apply213,700);setTimeout(apply213,2600);
+ console.info('MELQART 2.1.3 · base 2.1.2 · importación de carrera ES/EN');
 })();

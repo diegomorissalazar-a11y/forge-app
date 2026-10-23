@@ -1,0 +1,45 @@
+{
+  "method": "Static source audit: unique named function declarations + named arrow/window function assignments; unique top-level/local const/let/var identifiers detected by source pattern. Counts are comparative, not runtime object counts.",
+  "baseVersion": "2.1.0",
+  "newVersion": "2.1.1",
+  "base": {
+    "functions": 833,
+    "variables": 1327
+  },
+  "new": {
+    "functions": 837,
+    "variables": 1336
+  },
+  "delta": {
+    "functions": 4,
+    "variables": 9
+  },
+  "addedFunctions": [
+    "apply",
+    "mq211Audit",
+    "mq211IncrementalPatch",
+    "updateCarryDuration"
+  ],
+  "removedFunctions": [],
+  "addedVariables": [
+    "BUILD211",
+    "anteriorCarry",
+    "durations",
+    "isCarry",
+    "metric",
+    "prevSec",
+    "recentDur",
+    "targetDuration",
+    "warnings"
+  ],
+  "removedVariables": [],
+  "farmerCarry": {
+    "canonicalId": "ex_farmer_carry",
+    "metric": "load_duration",
+    "editableFields": [
+      "weight",
+      "durationSeconds"
+    ],
+    "repetitions": false
+  }
+}

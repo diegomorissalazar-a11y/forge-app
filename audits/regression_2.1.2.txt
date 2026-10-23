@@ -1,0 +1,43 @@
+Base: 2.1.1. New: 2.1.2.
+{
+  "baseVersion": "2.1.1",
+  "newVersion": "2.1.2",
+  "method": "Unique names by identical source regex in both files: named function declarations, window function assignments, declared arrows; first identifier following const/let/var. Comparative lexical counts, not all bindings or runtime behavior. Not comparable with earlier counts using unspecified patterns.",
+  "base": {
+    "functions": 850,
+    "variables": 1247
+  },
+  "new": {
+    "functions": 856,
+    "variables": 1248
+  },
+  "delta": {
+    "functions": 6,
+    "variables": 1
+  },
+  "addedFunctions": [
+    "apply212",
+    "mq212Build",
+    "mq212Duration",
+    "mq212EditDuration",
+    "mq212IsLoadDuration",
+    "mq212SetText"
+  ],
+  "removedFunctions": [],
+  "addedVariables": [
+    "build"
+  ],
+  "removedVariables": [],
+  "sourceSHA256": {
+    "2.1.1": "b6359d134d4315d573b8cb9d8bdc6a2020e7d370100cc18e74b948b721cc6952",
+    "2.1.2": "0bb30fa31f173b245d393059589c57d88f377ef3266d360991ece1277ff74743"
+  },
+  "validation": [
+    "node --check app.js PASS",
+    "Behavioral VM tests PASS: live render, seconds input, new sets, saved editor, aliases, taxonomy, legacy no inference, ordinary reps",
+    "ZIP CRC PASS"
+  ],
+  "limitations": [
+    "No live Firebase/iPhone end-to-end test. Counts are not proof of feature parity."
+  ]
+}
