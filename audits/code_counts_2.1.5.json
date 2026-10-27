@@ -1,0 +1,43 @@
+{
+  "baseVersion": "2.1.4",
+  "newVersion": "2.1.5",
+  "method": "Comparative unique lexical names: named functions, window function assignments, declared arrows; first identifier after const/let/var. Same patterns on both versions, included in this script. Counts do not prove behavior parity.",
+  "base": {
+    "functions": 853,
+    "variables": 1248
+  },
+  "new": {
+    "functions": 861,
+    "variables": 1248
+  },
+  "delta": {
+    "functions": 8,
+    "variables": 0
+  },
+  "addedFunctions": [
+    "apply215",
+    "equipmentLoads",
+    "equipmentStep",
+    "equipmentTarget",
+    "mq215Build",
+    "mq215Kg",
+    "mq215KgText",
+    "mq215Seconds"
+  ],
+  "removedFunctions": [],
+  "addedVariables": [],
+  "removedVariables": [],
+  "sourceSHA256": {
+    "2.1.4": "c5db959c59c508ee72095a37d756ab44251459a47cc0f7d1bfbb141d574ccdf7",
+    "2.1.5": "784c5eb83d19b8705a6fc2084323e857daf9b4c6924b5073fbfb787b65ed3d52"
+  },
+  "validation": [
+    "node --check app.js PASS",
+    "Recommendation/history/prescription tests PASS; weight precision, bar +5 and dumbbell boundaries PASS",
+    "Importer VM tests PASS",
+    "ZIP CRC PASS"
+  ],
+  "limitations": [
+    "No live iPhone or Firebase end-to-end testing. Existing historical version overrides remain."
+  ]
+}

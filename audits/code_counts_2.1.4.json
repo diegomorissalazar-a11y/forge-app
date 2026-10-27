@@ -1,0 +1,37 @@
+{
+  "baseVersion": "2.1.3",
+  "newVersion": "2.1.4",
+  "method": "Comparative unique lexical names: named functions, window function assignments, declared arrows; first identifier after const/let/var. Same patterns on both versions, included in this script. Counts do not prove behavior parity.",
+  "base": {
+    "functions": 851,
+    "variables": 1248
+  },
+  "new": {
+    "functions": 853,
+    "variables": 1248
+  },
+  "delta": {
+    "functions": 2,
+    "variables": 0
+  },
+  "addedFunctions": [
+    "apply214",
+    "mq214Build"
+  ],
+  "removedFunctions": [],
+  "addedVariables": [],
+  "removedVariables": [],
+  "sourceSHA256": {
+    "2.1.3": "a58c0c6a4b483d6eb74bd42952968eca15a390aed21ce8e418405cd7956fabc9",
+    "2.1.4": "c5db959c59c508ee72095a37d756ab44251459a47cc0f7d1bfbb141d574ccdf7"
+  },
+  "validation": [
+    "node --check app.js PASS",
+    "Recommendation regression test reproduces ReferenceError on 2.1.3 and passes on 2.1.4",
+    "Importer VM tests PASS",
+    "ZIP CRC PASS"
+  ],
+  "limitations": [
+    "No live iPhone or Firebase end-to-end testing. Existing historical version overrides remain."
+  ]
+}

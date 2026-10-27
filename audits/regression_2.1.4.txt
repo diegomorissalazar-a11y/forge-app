@@ -1,0 +1,7 @@
+Base 2.1.3 -> 2.1.4
+Fix: exposureFromSession now declares const id=cid(ex.exId) before taxonomy/history access.
+Same test reproduces ReferenceError on 2.1.3 and passes on 2.1.4.
+Verified history for ordinary/external-load/duration exercises, aliases, recommendation modal, session prescription, no completed proposed sets, no historical mutation, empty history and reentry.
+Existing running import test passes.
+Styles and assets byte-identical. No functions removed. Counts include two new functions for incremental version labeling, no new unique variable names.
+No live browser/iPhone/Firebase validation.

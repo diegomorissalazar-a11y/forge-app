@@ -1,18 +1,21 @@
 {
-  "version": "2.1.3",
-  "basedOn": "2.1.2",
+  "version": "2.1.5",
+  "basedOn": "2.1.4",
   "pass": true,
   "checks": [
-    "JS syntax",
-    "ES screenshot fixture: 4.4km / 1513s",
-    "legacy English and splits",
-    "invalid values do not mutate state",
-    "no named functions removed",
-    "Farmer Carry code preserved",
-    "index title/menu/cache busting 213"
+    "JavaScript syntax",
+    "Shared one-decimal kg and integer-second precision",
+    "Bar +5 preserves load offsets",
+    "Dumbbells 1..10 by 1,12..40 by 2; no invented loads above 40",
+    "Historical/recommendation/modal/prescription tests",
+    "Live and saved input handler tests",
+    "Carry duration without reps",
+    "No historical mutation in engine tests",
+    "ES/EN run importer",
+    "Title/menu/cache references 215"
   ],
-  "limits": [
-    "No real iPhone/Firebase test",
-    "Code counts are lexical, not exhaustive runtime verification"
+  "limitations": [
+    "VM DOM stubs: no actual iPhone/Firebase test",
+    "Lexical counts compare unique names, not all bindings"
   ]
 }

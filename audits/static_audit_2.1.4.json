@@ -1,0 +1,18 @@
+{
+  "version": "2.1.4",
+  "basedOn": "2.1.3",
+  "pass": true,
+  "checks": [
+    "JavaScript syntax",
+    "2.1.3 ReferenceError reproduced with same regression test",
+    "2.1.4 recommendation/history/modal/prescription tests pass",
+    "Farmer Carry duration and external load aliases pass",
+    "Historical sessions unchanged by recommendation",
+    "ES/EN run importer test passes",
+    "HTML title/menu/cache queries 214"
+  ],
+  "limitations": [
+    "VM tests with stubbed DOM, not live browser/device or Firebase",
+    "Function/variable counts are unique lexical names, not exhaustive bindings"
+  ]
+}

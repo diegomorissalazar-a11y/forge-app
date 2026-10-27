@@ -1,3 +1,10 @@
+// MELQART 2.1.5: shared numeric precision, without rewriting historical records.
+function mq215Kg(value){
+  const num=Number(String(value??'').trim().replace(',','.'));
+  return Number.isFinite(num)?(Math.sign(num)*Math.round((Math.abs(num)+Number.EPSILON)*10)/10||0):0;
+}
+function mq215KgText(value){return mq215Kg(value).toLocaleString('es-CL',{maximumFractionDigits:1});}
+function mq215Seconds(value){const num=Number(String(value??'').replace(',','.'));return Number.isFinite(num)?Math.max(0,Math.round(num)):0;}
 // MELQART 2.1.2: shared metric resolution for live and saved sessions.
 function mq212IsLoadDuration(exId){
   const e=getEx(exId);
@@ -5,15 +12,15 @@ function mq212IsLoadDuration(exId){
   return exId==='ex_farmer_carry' || e?.taxonomy?.metric==='load_duration' || window.MELQART_TAXONOMY?.[exId]?.metric==='load_duration' || /\bfarmer(?:'?s)?\b.*\bcarry\b|\bcarry\s+farm(?:er)?\b/.test(name);
 }
 function mq212Duration(st){
-  if(st?.durationSeconds!=null && Number.isFinite(Number(st.durationSeconds)))return Math.max(0,Number(st.durationSeconds));
+  if(st?.durationSeconds!=null && Number.isFinite(Number(st.durationSeconds)))return mq215Seconds(st.durationSeconds);
   if(!st?.time)return 0;
-  if(!String(st.time).includes(':'))return Math.max(0,Number(st.time)||0);
+  if(!String(st.time).includes(':'))return mq215Seconds(st.time);
   const t=parseTimeStr(st.time);return t.h*3600+t.m*60+t.s;
 }
-function mq212SetText(st){return `${st.weight||0} kg × ${mq212Duration(st)?mq212Duration(st)+' s':'duración sin registrar'}`;}
+function mq212SetText(st){return `${mq215KgText(st.weight||0)} kg × ${mq212Duration(st)?mq212Duration(st)+' s':'duración sin registrar'}`;}
 function mq212EditDuration(id,ei,si,value){
   const st=forge.sessions.find(s=>s.id===id)?.exercises?.[ei]?.sets?.[si];if(!st)return;
-  st.durationSeconds=Math.max(0,Math.floor(Number(value)||0));st.time=fmtTimeStr(st.durationSeconds);
+  st.durationSeconds=mq215Seconds(value);st.time=fmtTimeStr(st.durationSeconds);
   if(st.reps!=null){st.legacyReps=st.legacyReps??st.reps;delete st.reps;}
 }
 // ---------------------------------------------------------------
@@ -1035,7 +1042,7 @@ function exportarSemana(){
           });
         } else {
           // v181.7: preservar todas las series, incluso idénticas. No deduplicar sets.
-          lines.push('> '+e.name+': '+sets.map(st=>(mq212IsLoadDuration(ex.exId)?mq212SetText(st):st.weight+'kg x '+st.reps)).join(' | '));
+          lines.push('> '+e.name+': '+sets.map(st=>(mq212IsLoadDuration(ex.exId)?mq212SetText(st):mq215KgText(st.weight)+'kg x '+st.reps)).join(' | '));
         }
       });
       lines.push('');
@@ -1655,7 +1662,7 @@ function openSesDetail(id){
             <span style="font-size:14px;color:var(--ink2)">${isRun?
               [set.distance?set.distance+'km':'',set.time||''].filter(Boolean).join(' · ')+
               (set.fc?` ❤️${set.fc}bpm`:'')+(set.pasos?` 👟${fmtMiles(parseInt(set.pasos))}p`:'')
-              :mq212IsLoadDuration(ex.exId)?mq212SetText(set):(set.weight||0)+' kg × '+(set.reps||0)}</span>
+              :mq212IsLoadDuration(ex.exId)?mq212SetText(set):mq215KgText(set.weight||0)+' kg × '+(set.reps||0)}</span>
           </div>`).join('')}
         </div>`;
       }).join('')}
@@ -1718,7 +1725,7 @@ function renderEditSesExs(s){
       `:`
         <div style="display:grid;grid-template-columns:28px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px">
           <span style="font-size:13px;font-weight:700;color:var(--ink3)">${si+1}</span>
-          <input class="inp" type="text" placeholder="kg" value="${set.weight||''}" oninput="updateEditSet('${s.id}',${ei},${si},'weight',this.value)" style="padding:7px;font-size:13px" inputmode="decimal">
+          <input class="inp" type="text" placeholder="kg" value="${mq215Kg(set.weight)||''}" oninput="updateEditSet('${s.id}',${ei},${si},'weight',this.value)" style="padding:7px;font-size:13px" inputmode="decimal">
           ${mq212IsLoadDuration(ex.exId)?`<input class="inp" type="number" min="0" step="1" aria-label="Duración en segundos" placeholder="segundos" value="${mq212Duration(set)||''}" oninput="mq212EditDuration('${s.id}',${ei},${si},this.value)" style="padding:7px;font-size:13px" inputmode="numeric">`:`<input class="inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateEditSet('${s.id}',${ei},${si},'reps',this.value)" style="padding:7px;font-size:13px" inputmode="numeric">`}
           <button onclick="deleteEditSet('${s.id}',${ei},${si})" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:16px">✕</button>
         </div>
@@ -1754,7 +1761,7 @@ function updateEditSet(sesId,ei,si,field,val){
   const s=(forge.sessions||[]).find(x=>x.id===sesId); if(!s) return;
   const v=normDec(val);
   const numFields=['weight','reps','fc','pasos'];
-  s.exercises[ei].sets[si][field]=numFields.includes(field)?parseFloat(v)||0:v;
+  s.exercises[ei].sets[si][field]=field==='weight'?mq215Kg(v):numFields.includes(field)?parseFloat(v)||0:v;
 }
 
 function saveEditSesion(){
@@ -2064,7 +2071,7 @@ function openRutinaPreview(rutinaId) {
     const pr = getPR(e.id);
     const carga = cargas[e.id];
     const series = r._series?.[e.id] || [];
-    const pdrVal = isRun ? getRunPR(e.id) : (pr.weight > 0 ? `${pr.weight} kg` : '—');
+    const pdrVal = isRun ? getRunPR(e.id) : (pr.weight > 0 ? `${mq215KgText(pr.weight)} kg` : '—');
 
     let seriesHtml = '';
     if (!isRun) {
@@ -2421,7 +2428,7 @@ function renderSexBlock(ex,ei){
   } else if(isCarry){
     prStr='Carga + duración · segundos';
   } else {
-    if(pr.weight>0) prStr=`PR: ${pr.weight}kg × ${pr.reps} reps`;
+    if(pr.weight>0) prStr=`PR: ${mq215KgText(pr.weight)}kg × ${pr.reps} reps`;
   }
 
   const cs=getCargasSemana(activeSession.routineId||'')[ex.exId];
@@ -2490,7 +2497,7 @@ function renderSexBlock(ex,ei){
 function renderSetRow(ei,si,set,isRun,ultSet){
   const done=set.done;
   const anteriorTxt = ultSet
-    ? (isRun ? (ultSet.distance?`${ultSet.distance}km`:'—') : `${ultSet.weight}kg×${ultSet.reps}`)
+    ? (isRun ? (ultSet.distance?`${ultSet.distance}km`:'—') : `${mq215KgText(ultSet.weight)}kg×${ultSet.reps}`)
     : '—';
 
   // ¿Es ejercicio bilateral?
@@ -2549,18 +2556,18 @@ function renderSetRow(ei,si,set,isRun,ultSet){
     const icono=set._fuente==='plan'?'▤':'⚙️';
     const color=set._fuente==='plan'?'var(--green)':'var(--orange)';
     const label=set._fuente==='plan'?'Plan':'Rutina';
-    refHtml=`<div style="grid-column:2/-1;font-size:10px;padding:1px 0 4px"><span style="color:${color};font-weight:700">${icono} ${label}: ${set._pesoSugerido}kg</span></div>`;
+    refHtml=`<div style="grid-column:2/-1;font-size:10px;padding:1px 0 4px"><span style="color:${color};font-weight:700">${icono} ${label}: ${mq215KgText(set._pesoSugerido)}kg</span></div>`;
   }
 
   // Farmer Carry: ejercicio continuo. Registra carga + duración, nunca repeticiones.
   if(isCarry){
     const prevSec=ultSet ? (Number(ultSet.durationSeconds)||(()=>{const t=parseTimeStr(ultSet.time||'');return t.h*3600+t.m*60+t.s;})()) : 0;
-    const anteriorCarry=ultSet ? `${ultSet.weight||0}kg × ${prevSec?fmtTimeStr(prevSec):'—'}` : '—';
+    const anteriorCarry=ultSet ? `${mq215KgText(ultSet.weight||0)}kg × ${prevSec?fmtTimeStr(prevSec):'—'}` : '—';
     const sec=mq212Duration(set);
     return `<div class="set-row" id="sr-${ei}-${si}" style="flex-wrap:wrap;background:${done?'rgba(22,163,74,.06)':'transparent'};grid-template-columns:28px 1fr 1fr 1fr auto auto">
       <div class="set-num" style="color:${done?'var(--green)':'var(--ink3)'}">${si+1}</div>
       <div style="font-size:12px;color:var(--ink3);display:flex;align-items:center;padding:0 4px">${anteriorCarry}</div>
-      <input class="set-inp" type="text" placeholder="kg" value="${set.weight||''}" oninput="updateSet(${ei},${si},'weight',this.value)" inputmode="decimal">
+      <input class="set-inp" type="text" placeholder="kg" value="${mq215Kg(set.weight)||''}" oninput="updateSet(${ei},${si},'weight',this.value)" inputmode="decimal">
       <input class="set-inp" type="text" min="0" step="1" aria-label="Duración en segundos" placeholder="segundos" value="${sec||''}" oninput="updateCarryDuration(${ei},${si},this.value)" inputmode="numeric">
       <div class="set-check ${done?'done':''}" onclick="toggleSet(${ei},${si})"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
       <button onclick="removeSetFromEx(${ei},${si})" style="background:none;border:none;color:var(--ink3);cursor:pointer;padding:4px 6px;font-size:16px;line-height:1" title="Eliminar serie">✕</button>
@@ -2595,7 +2602,7 @@ function renderSetRow(ei,si,set,isRun,ultSet){
   return `<div class="set-row" id="sr-${ei}-${si}" style="flex-wrap:wrap;background:${bgColor};grid-template-columns:28px 1fr 1fr 1fr auto auto">
     <div class="set-num" style="color:${(done||ambos)?'var(--green)':'var(--ink3)'}">${si+1}</div>
     <div style="font-size:12px;color:var(--ink3);display:flex;align-items:center;padding:0 4px">${anteriorTxt}</div>
-    <input class="set-inp" type="text" placeholder="kg" value="${set.weight||''}" oninput="updateSet(${ei},${si},'weight',this.value)" inputmode="decimal">
+    <input class="set-inp" type="text" placeholder="kg" value="${mq215Kg(set.weight)||''}" oninput="updateSet(${ei},${si},'weight',this.value)" inputmode="decimal">
     <input class="set-inp" type="number" placeholder="reps" value="${set.reps||''}" oninput="updateSet(${ei},${si},'reps',this.value)" inputmode="numeric">
     ${checkHtml}
     <button onclick="removeSetFromEx(${ei},${si})" style="background:none;border:none;color:var(--ink3);cursor:pointer;padding:4px 6px;font-size:16px;line-height:1" title="Eliminar serie">✕</button>
@@ -2639,7 +2646,7 @@ function fmtTimeStr(t){
   if(!t) return '';
   const s=String(t);
   if(s.includes(':')) return s; // ya es mm:ss o hh:mm:ss
-  const secs=parseInt(s)||0;
+  const secs=mq215Seconds(s);
   if(secs===0) return '';
   const hh=Math.floor(secs/3600), mm=Math.floor((secs%3600)/60), ss=secs%60;
   return hh>0?(String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')+':'+String(ss).padStart(2,'0'))
@@ -2648,16 +2655,16 @@ function fmtTimeStr(t){
 function updateSet(ei,si,field,val){
   if(!activeSession) return;
   const v=normDec(val);
-  activeSession.exercises[ei].sets[si][field]=field==='weight'||field==='reps'?parseFloat(v)||0:v;
+  activeSession.exercises[ei].sets[si][field]=field==='weight'?mq215Kg(v):field==='reps'?parseFloat(v)||0:v;
 }
 function updateCarryDuration(ei,si,val){
   if(!activeSession) return;
   const raw=String(val||'').trim();
   let sec=0;
   if(raw.includes(':')){const p=raw.split(':').map(v=>parseInt(v,10)||0);sec=p.length===3?p[0]*3600+p[1]*60+p[2]:p[0]*60+p[1];}
-  else {sec=parseInt(raw,10)||0;}
+  else {sec=mq215Seconds(raw);}
   const st=activeSession.exercises?.[ei]?.sets?.[si];if(!st)return;
-  st.durationSeconds=Math.max(0,sec);st.time=fmtTimeStr(st.durationSeconds);if(st.reps!=null){st.legacyReps=st.legacyReps??st.reps;delete st.reps;}
+  st.durationSeconds=mq215Seconds(sec);st.time=fmtTimeStr(st.durationSeconds);if(st.reps!=null){st.legacyReps=st.legacyReps??st.reps;delete st.reps;}
 }
 window.updateCarryDuration=updateCarryDuration;
 function getRestSecondsForExercise(exObj){
@@ -3942,7 +3949,7 @@ function buildAccBody(exId, filtro) {
       if (!sets.length) return;
       const mejor = sets.sort((a, b) => b.weight - a.weight)[0];
       puntos.push({ fecha, val: mejor.weight,
-        label: `${mejor.weight}kg×${mejor.reps}`,
+        label: `${mq215KgText(mejor.weight)}kg×${mejor.reps}`,
         equipment: detectSmith(mejor.weight) ? 'Smith' : '' });
     }
   });
@@ -4194,7 +4201,7 @@ function renderProgEjercicios() {
           const sets = (exEnSes?.sets || []).filter(s => s.done && s.weight).slice(0, 4);
           if (sets.length) {
             seriesHtml = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">` +
-              sets.map(s => `<span style="font-size:11px;color:var(--ink3);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:2px 7px">${s.weight}kg×${s.reps}</span>`).join('') +
+              sets.map(s => `<span style="font-size:11px;color:var(--ink3);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:2px 7px">${mq215KgText(s.weight)}kg×${s.reps}</span>`).join('') +
               `</div>`;
           }
         }
@@ -4293,7 +4300,7 @@ function renderKPIEjClave(){
     }
 
     // Fuerza
-    const valStr=pr.weight>0?`${pr.weight}kg`:'—';
+    const valStr=pr.weight>0?`${mq215KgText(pr.weight)}kg`:'—';
     const metaStr=meta?`Meta: ${meta}kg`:'';
     const pct=meta&&pr.weight>0?Math.min(100,Math.round((pr.weight/meta)*100)):0;
     return `<div class="stat-box" onclick="openExDetail('${ec.id}')" style="cursor:pointer">
@@ -4431,7 +4438,7 @@ function renderExDetail(exId){
   const puntos=sesiones.map(s=>isRun
     ? {fecha:s.fecha, val:s.ritmo>0?s.ritmo:s.totalDist, valDist:s.totalDist, valRitmo:s.ritmo,
        label:`${s.totalDist.toFixed(2)}km${s.ritmo>0?' · '+Math.floor(s.ritmo)+"'"+pad(Math.round((s.ritmo%1)*60))+'"':''}`}
-    : {fecha:s.fecha, val:s.val, label:showRM?`${s.val}kg 1RM`:`${s.mejor.weight}kg×${s.mejor.reps}`}
+    : {fecha:s.fecha, val:s.val, label:showRM?`${mq215KgText(s.val)}kg 1RM`:`${mq215KgText(s.mejor.weight)}kg×${s.mejor.reps}`}
   );
 
   // ── KPIs ─────────────────────────────────────────────────────
@@ -4457,7 +4464,7 @@ function renderExDetail(exId){
     kpis=`
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px">
         <div class="stat-box">
-          <div class="stat-num" style="color:var(--orange);font-size:22px">${pr.weight>0?pr.weight+'kg':'—'}</div>
+          <div class="stat-num" style="color:var(--orange);font-size:22px">${pr.weight>0?mq215KgText(pr.weight)+'kg':'—'}</div>
           <div class="stat-label">PR · ${pr.reps||0} reps</div>
           ${rm>0?`<div style="font-size:10px;color:var(--ink3);margin-top:2px">1RM est. ${rm}kg</div>`:''}
         </div>
@@ -4524,7 +4531,7 @@ function renderExDetail(exId){
           </div>
         </div>`;
       } else {
-        const setsResumen=s.sets.slice(0,3).map(x=>`${x.weight}×${x.reps}`).join('  ');
+        const setsResumen=s.sets.slice(0,3).map(x=>`${mq215KgText(x.weight)}×${x.reps}`).join('  ');
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
           <div>
             <div style="font-size:12px;color:var(--ink3)">${s.fecha}</div>
@@ -4532,7 +4539,7 @@ function renderExDetail(exId){
           </div>
           <div style="text-align:right;display:flex;align-items:center;gap:6px">
             ${s.esPR?'<span style="font-size:10px;background:var(--gold);color:#000;padding:1px 6px;border-radius:4px;font-weight:700">PR</span>':''}
-            <div style="font-size:15px;font-weight:800;color:var(--ink)">${s.mejor.weight}kg<span style="font-size:11px;color:var(--ink3);font-weight:400"> ×${s.mejor.reps}</span></div>
+            <div style="font-size:15px;font-weight:800;color:var(--ink)">${mq215KgText(s.mejor.weight)}kg<span style="font-size:11px;color:var(--ink3);font-weight:400"> ×${s.mejor.reps}</span></div>
           </div>
         </div>`;
       }
@@ -6869,7 +6876,7 @@ function renderPerfilPlan(){
           <div style="font-size:14px;font-weight:700">${e?.name||ec.label}</div>
           ${c?`<span class="carga-tag">Sem ${semG}: ${c} kg</span>`:''}
         </div>
-        <div style="font-size:12px;color:var(--ink3)">PR actual: ${pr.weight||'—'}kg · Meta: ${meta||'—'}kg</div>
+        <div style="font-size:12px;color:var(--ink3)">PR actual: ${pr.weight?mq215KgText(pr.weight):'—'}kg · Meta: ${meta||'—'}kg</div>
         ${pct2>0?`<div style="background:var(--bg3);border-radius:2px;height:4px;margin-top:6px;overflow:hidden"><div style="width:${pct2}%;height:100%;background:var(--orange)"></div></div>`:''}
       </div>`;
     }).join('')}
@@ -10531,7 +10538,7 @@ try{
               });
             }else{
               // Preserva sets idénticos reales. No deduplica.
-              lines.push('> '+e.name+': '+sets.map(st=>(mq212IsLoadDuration(ex.exId)?mq212SetText(st):st.weight+'kg x '+st.reps)).join(' | '));
+              lines.push('> '+e.name+': '+sets.map(st=>(mq212IsLoadDuration(ex.exId)?mq212SetText(st):mq215KgText(st.weight)+'kg x '+st.reps)).join(' | '));
             }
           });
           lines.push('');
@@ -10758,7 +10765,7 @@ try{
             unique.forEach(st=>lines.push('> '+e.name+': '+runLine1816(st)));
           }else{
             // No deduplicar: sets idénticos son series reales.
-            lines.push('> '+e.name+': '+sets.map(st=>(mq212IsLoadDuration(ex.exId)?mq212SetText(st):st.weight+'kg x '+st.reps)).join(' | '));
+            lines.push('> '+e.name+': '+sets.map(st=>(mq212IsLoadDuration(ex.exId)?mq212SetText(st):mq215KgText(st.weight)+'kg x '+st.reps)).join(' | '));
           }
         });
         lines.push('');
@@ -10882,7 +10889,7 @@ try{
             unique.forEach(st=>lines.push('> '+e.name+': '+fmtRun1818(st)));
           } else {
             // v181.8: no deduplicar series idénticas.
-            lines.push('> '+e.name+': '+sets.map(st=>(mq212IsLoadDuration(ex.exId)?mq212SetText(st):st.weight+'kg x '+st.reps)).join(' | '));
+            lines.push('> '+e.name+': '+sets.map(st=>(mq212IsLoadDuration(ex.exId)?mq212SetText(st):mq215KgText(st.weight)+'kg x '+st.reps)).join(' | '));
           }
         });
         lines.push('');
@@ -14777,7 +14784,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     const ex=activeSession?.exercises?.[ei],st=ex?.sets?.[si];if(!st)return;
     const amount=Math.abs(num(st.externalLoadKg)??0);
     st.externalLoadMode=mode;
-    st.externalLoadKg=mode==='assistance'?-amount:mode==='ballast'?amount:0;
+    st.externalLoadKg=mode==='assistance'?-mq215Kg(amount):mode==='ballast'?mq215Kg(amount):0;
     st.cargaExternaKg=st.externalLoadKg;
     normalizeSet(st,ex.exId,activeSession);
     st.externalLoadMode=mode;
@@ -14786,7 +14793,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   window.mq202SetExternalLoad=function(ei,si,value){
     const ex=activeSession?.exercises?.[ei],st=ex?.sets?.[si];if(!st)return;
     const amount=Math.abs(num(value)??0),mode=st.externalLoadMode||externalMode(st);
-    st.externalLoadKg=mode==='assistance'?-amount:mode==='ballast'?amount:0;
+    st.externalLoadKg=mode==='assistance'?-mq215Kg(amount):mode==='ballast'?mq215Kg(amount):0;
     st.cargaExternaKg=st.externalLoadKg;
     normalizeSet(st,ex.exId,activeSession);st.externalLoadMode=mode;
     const hint=document.getElementById(`mq202-effective-${ei}-${si}`);if(hint)hint.textContent=st.effectiveLoadKg==null?'Sin peso ref.':`${st.effectiveLoadKg.toFixed(1)} kg efectivos`;
@@ -14860,20 +14867,20 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
 
   // Taxonomía estable. No cambia IDs históricos: agrega metadatos canónicos.
   const TAXONOMY = Object.freeze({
-    ex_sentadilla:{movementId:'squat',familyId:'knee_dominant',equipment:'barbell_or_smith',class:'compound',repRange:[5,6],loadStep:2.5},
-    ex_sent_bulgara:{movementId:'split_squat',familyId:'knee_dominant',equipment:'dumbbell',class:'accessory',repRange:[8,10],loadStep:2},
+    ex_sentadilla:{movementId:'squat',familyId:'knee_dominant',equipment:'barbell_or_smith',class:'compound',repRange:[5,6],loadStep:5},
+    ex_sent_bulgara:{movementId:'split_squat',familyId:'knee_dominant',equipment:'dumbbell',availableLoads:[1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40],class:'accessory',repRange:[8,10],loadStep:2},
     ex_curl_femoral:{movementId:'leg_curl',familyId:'knee_flexion',equipment:'machine',class:'accessory',repRange:[10,12],loadStep:null},
     ex_saltos_cajon:{movementId:'box_jump',familyId:'power',equipment:'bodyweight',class:'accessory',repRange:[4,4],loadStep:null},
-    ex_press_banca:{movementId:'bench_press',familyId:'horizontal_push',equipment:'barbell',class:'compound',repRange:[6,8],loadStep:2.5},
+    ex_press_banca:{movementId:'bench_press',familyId:'horizontal_push',equipment:'barbell',class:'compound',repRange:[6,8],loadStep:5},
     ex_remo_maq:{movementId:'chest_supported_row',familyId:'horizontal_pull',equipment:'machine',class:'compound',repRange:[8,10],loadStep:null},
-    ex_press_hombros:{movementId:'overhead_press',familyId:'vertical_push',equipment:'barbell',class:'compound',repRange:[8,10],loadStep:2.5},
-    ex_elev_lateral:{movementId:'lateral_raise',familyId:'shoulder_abduction',equipment:'dumbbell',class:'accessory',repRange:[12,15],loadStep:2},
-    ex_peso_muerto:{movementId:'deadlift',familyId:'hip_hinge',equipment:'barbell_or_smith',class:'compound',repRange:[6,8],loadStep:2.5},
+    ex_press_hombros:{movementId:'overhead_press',familyId:'vertical_push',equipment:'barbell',class:'compound',repRange:[8,10],loadStep:5},
+    ex_elev_lateral:{movementId:'lateral_raise',familyId:'shoulder_abduction',equipment:'dumbbell',availableLoads:[1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40],class:'accessory',repRange:[12,15],loadStep:2},
+    ex_peso_muerto:{movementId:'deadlift',familyId:'hip_hinge',equipment:'barbell_or_smith',class:'compound',repRange:[6,8],loadStep:5},
     ex_hip_thrust_maq:{movementId:'hip_thrust',familyId:'hip_extension',equipment:'machine',class:'compound',repRange:[8,10],loadStep:null},
     ex_cable_pallof:{movementId:'pallof_press',familyId:'anti_rotation',equipment:'cable',class:'accessory',repRange:[10,12],loadStep:null},
-    ex_farmer_carry:{movementId:'farmer_carry',familyId:'carry',equipment:'dumbbell',class:'compound',metric:'load_duration',repRange:null,loadStep:2},
+    ex_farmer_carry:{movementId:'farmer_carry',familyId:'carry',equipment:'dumbbell',availableLoads:[1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40],class:'compound',metric:'load_duration',repRange:null,loadStep:2},
     ex_dominadas:{movementId:'pull_up',familyId:'vertical_pull',equipment:'bodyweight',class:'compound',metric:'external_load',repRange:[6,8],loadStep:2.5,supportsExternalLoad:true},
-    ex_press_incl_manc:{movementId:'incline_press',familyId:'horizontal_push',equipment:'dumbbell',class:'compound',repRange:[7,8],loadStep:2},
+    ex_press_incl_manc:{movementId:'incline_press',familyId:'horizontal_push',equipment:'dumbbell',availableLoads:[1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40],class:'compound',repRange:[7,8],loadStep:2},
     ex_fondos:{movementId:'dip',familyId:'vertical_push',equipment:'bodyweight',class:'compound',metric:'external_load',repRange:[6,8],loadStep:2.5,supportsExternalLoad:true},
     ex_facepull:{movementId:'face_pull',familyId:'scapular_pull',equipment:'cable',class:'accessory',repRange:[8,12],loadStep:null},
     ex_correr:{movementId:'running',familyId:'cardio',equipment:'none',class:'cardio',metric:'pace'}
@@ -14939,22 +14946,23 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     const id=cid(exId),tx=TAXONOMY[id]||{};
     if(tx.metric==='external_load'){
       const ext=n(st.externalLoadKg ?? st.cargaExternaKg);
-      if(ext!=null)return ext;
+      if(ext!=null)return mq215Kg(ext);
       // compatibilidad histórica: 0 en Dominadas/Fondos = peso corporal libre.
       return n(st.weight)===0?0:null;
     }
-    return n(st.weight);
+    return n(st.weight)==null?null:mq215Kg(st.weight);
   }
   function exposureFromSession(s,ex){
+    const id=cid(ex.exId);
     const metric=TAXONOMY[id]?.metric||'weight';
     const done=(ex.sets||[]).filter(st=>st.done!==false && (n(st.reps)!=null || loadForSet(st,id)!=null || n(st.durationSeconds)!=null || st.time));
     if(!done.length)return null;
     const loads=done.map(st=>loadForSet(st,id)).filter(v=>v!=null);
     const reps=done.map(st=>n(st.reps)).filter(v=>v!=null);
-    const durations=done.map(st=>{if(n(st.durationSeconds)!=null)return n(st.durationSeconds);const t=parseTimeStr(st.time||'');return (t.h*3600+t.m*60+t.s)||null;}).filter(v=>v!=null);
+    const durations=done.map(st=>{if(n(st.durationSeconds)!=null)return mq215Seconds(st.durationSeconds);const t=parseTimeStr(st.time||'');return (t.h*3600+t.m*60+t.s)||null;}).filter(v=>v!=null);
     if(metric==='load_duration' && (!loads.length || !durations.length))return null;
     if(!reps.length && !['distance','load_duration'].includes(metric))return null;
-    return {date:dateOf(s.date),ts:s.date,sessionId:s.id,exerciseId:id,metric,loads,reps,durations,load:median(loads),durationSeconds:durations.length?median(durations):null,minDurationSeconds:durations.length?Math.min(...durations):null,minReps:reps.length?Math.min(...reps):null,totalReps:reps.reduce((a,b)=>a+b,0),sets:done.length,bodyWeightKg:n(s.bodyWeightKg),rawSets:done};
+    return {date:dateOf(s.date),ts:s.date,sessionId:s.id,exerciseId:id,metric,loads,reps,durations,load:loads.length?mq215Kg(median(loads)):null,durationSeconds:durations.length?mq215Seconds(median(durations)):null,minDurationSeconds:durations.length?Math.min(...durations):null,minReps:reps.length?Math.min(...reps):null,totalReps:reps.reduce((a,b)=>a+b,0),sets:done.length,bodyWeightKg:n(s.bodyWeightKg),rawSets:done};
   }
   function historyFor(exId,limit=8){
     const id=cid(exId),rows=[];
@@ -14965,10 +14973,35 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   function derivedStep(history, fallback){
     const vals=[...new Set(history.map(x=>x.load).filter(v=>v!=null).map(v=>Number(v.toFixed(3))))].sort((a,b)=>a-b);
     const diffs=[]; for(let i=1;i<vals.length;i++){const d=vals[i]-vals[i-1];if(d>0.01)diffs.push(d);}
-    return diffs.length?Math.min(...diffs):fallback;
+    return diffs.length?mq215Kg(Math.min(...diffs)):fallback;
   }
   function roundToStep(value,step){ if(!step||!Number.isFinite(step))return value; return Math.round(value/step)*step; }
 
+  function equipmentLoads(exId){
+    const tx=TAXONOMY[cid(exId)]||{};
+    if(tx.equipment!=='dumbbell')return null;
+    return tx.availableLoads;
+  }
+  function equipmentStep(exId,history,fallback){
+    const tx=TAXONOMY[cid(exId)]||{},last=history.at(-1)?.load;
+    const loads=equipmentLoads(exId);
+    if(loads){const next=loads.find(x=>x>last);return next!=null?mq215Kg(next-last):null;}
+    if(['barbell','barbell_or_smith'].includes(tx.equipment))return 5;
+    return derivedStep(history,fallback);
+  }
+  function equipmentTarget(exId,last,value,decision){
+    if(value==null || last==null)return value;
+    const loads=equipmentLoads(exId),tx=TAXONOMY[cid(exId)]||{};
+    if(loads){
+      if(decision==='increase_load')return loads.find(x=>x>last)??null;
+      if(['reduce','reentry'].includes(decision))return loads.filter(x=>x<=value).at(-1)??null;
+    }
+    if(['barbell','barbell_or_smith'].includes(tx.equipment)){
+      if(decision==='increase_load')return mq215Kg(last+5);
+      if(['reduce','reentry'].includes(decision))return Math.max(0,mq215Kg(last-Math.max(0,Math.floor((last-value)/5))*5));
+    }
+    return mq215Kg(value);
+  }
   function evaluateExercise(exId,routine){
     const id=cid(exId),tx=TAXONOMY[id]||{},cfg=planForExercise(exId,routine),hist=historyFor(id,8),recent=hist.slice(-5),last=hist.at(-1)||null,prev=hist.at(-2)||null;
     const name=getEx(id)?.name||getEx(exId)?.name||id;
@@ -14976,11 +15009,11 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     if(tx.metric==='load_duration'){
       const days=dayDiff(last.date,today());
       const recentDur=recent.map(x=>x.minDurationSeconds).filter(v=>v!=null);
-      const targetDuration=Math.max(15,Math.round(last.minDurationSeconds||last.durationSeconds||30));
+      const targetDuration=Math.max(1,mq215Seconds(last.minDurationSeconds||last.durationSeconds||30));
       const evidence=[`${last.load??'—'} kg · ${targetDuration}s en la última exposición comparable.`];
       if(days>14)evidence.push(`${days} días desde la última exposición: mantener carga y duración antes de progresar.`);
       else evidence.push('Farmer Carry progresa por carga y/o tiempo; no utiliza repeticiones.');
-      return {exerciseId:id,name,status:days>21?'REENTRADA':'ESTABLE',decision:days>14?'repeat':'maintain',targetLoad:last.load,targetReps:null,targetDurationSeconds:targetDuration,targetSets:cfg.sets,repRange:null,loadStep:derivedStep(hist,cfg.loadStep??null),daysSinceLastExposure:days,confidence:recent.length>=3?'alta':'media',progressionScore:recentDur.length>=3?70:55,evidence,history:recent.map(x=>({date:x.date,load:x.load,durationSeconds:x.minDurationSeconds,sets:x.sets}))};
+      return {exerciseId:id,name,status:days>21?'REENTRADA':'ESTABLE',decision:days>14?'repeat':'maintain',targetLoad:last.load,targetReps:null,targetDurationSeconds:targetDuration,targetSets:cfg.sets,repRange:null,loadStep:equipmentStep(id,hist,cfg.loadStep??null),daysSinceLastExposure:days,confidence:recent.length>=3?'alta':'media',progressionScore:recentDur.length>=3?70:55,evidence,history:recent.map(x=>({date:x.date,load:x.load,durationSeconds:x.minDurationSeconds,sets:x.sets}))};
     }
     const days=dayDiff(last.date,today());
     const range=cfg.repRange||[last.minReps||1,Math.max(last.minReps||1,8)];
@@ -14988,13 +15021,13 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     const recentSameLoad=recent.filter(x=>same(x.load,last.load));
     const bestRecentMin=Math.max(...recent.map(x=>x.minReps??0));
     const lastMin=last.minReps??0,prevMin=prev?.minReps??null;
-    const step=derivedStep(hist, cfg.loadStep ?? null);
+    const step=equipmentStep(id,hist,cfg.loadStep ?? null);
     const evidence=[];
     let decision='maintain',status='ESTABLE',targetLoad=last.load,targetReps=Math.min(upper,Math.max(lower,lastMin||lower)),confidence=recent.length>=3?'alta':'media';
 
     if(days>21){
       decision='reentry'; status='REENTRADA'; confidence='media'; evidence.push(`${days} días desde la última exposición.`);
-      if(cfg.class==='compound' && tx.metric!=='external_load' && last.load!=null){targetLoad=roundToStep(last.load*0.925,step); targetReps=lower; evidence.push('Reentrada conservadora: reducir 5–10% y reconstruir repeticiones.');}
+      if(cfg.class==='compound' && tx.metric!=='external_load' && last.load!=null){targetLoad=equipmentTarget(id,last.load,last.load*0.925,'reentry'); targetReps=lower; evidence.push('Reentrada conservadora: reducir 5–10% y reconstruir repeticiones.');}
       else {targetLoad=last.load;targetReps=Math.max(lower,Math.min(lastMin||lower,upper));evidence.push('Mantener carga y reiniciar desde el tramo bajo del rango.');}
     } else if(days>14){
       decision='repeat';status='REENTRADA';confidence='media';targetLoad=last.load;targetReps=Math.max(lower,Math.min(lastMin||lower,upper));evidence.push(`${days} días desde la última exposición: no progresar agresivamente.`);
@@ -15003,12 +15036,12 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
       const repeatedDrop=recent.slice(-2).every(x=>(bestRecentMin-(x.minReps??0))>=2);
       if(drop){
         status='REGRESION'; decision=repeatedDrop?'reduce':'repeat'; targetReps=Math.max(lower,lastMin);
-        if(repeatedDrop && last.load!=null && tx.metric!=='external_load'){ targetLoad=step?roundToStep(last.load-step,step):last.load*0.95; evidence.push('Caída de ≥2 reps repetida: reducción moderada.'); }
+        if(repeatedDrop && last.load!=null && tx.metric!=='external_load'){ targetLoad=equipmentTarget(id,last.load,step?last.load-step:last.load*0.95,'reduce'); evidence.push('Caída de ≥2 reps repetida: reducción moderada.'); }
         else evidence.push('Caída de ≥2 reps respecto del mejor registro reciente: no aumentar carga.');
       } else if(lastMin>=upper && recentSameLoad.length>=2){
         const priorSame=recentSameLoad.at(-2); const stable=!priorSame || (lastMin-(priorSame.minReps??lastMin))>=-1;
         if(stable){
-          if(step){ decision='increase_load';status='PROGRESANDO';targetLoad=roundToStep((last.load??0)+step,step);targetReps=lower;evidence.push(`Techo de ${upper} reps consolidado en ≥2 exposiciones.`);evidence.push(`Siguiente incremento observado/configurado: ${step} kg.`); }
+          if(step){ decision='increase_load';status='PROGRESANDO';targetLoad=equipmentTarget(id,last.load,(last.load??0)+step,'increase_load');targetReps=lower;evidence.push(`Techo de ${upper} reps consolidado en ≥2 exposiciones.`);evidence.push(`Siguiente incremento observado/configurado: ${step} kg.`); }
           else {decision='increase_load';status='PROGRESANDO';targetLoad=null;targetReps=lower;evidence.push(`Techo de ${upper} reps consolidado.`);evidence.push('Subir al siguiente peso disponible; salto no definido.');}
         }
       } else if(lastMin<upper && (!prev || lastMin>=(prevMin??lastMin)-1)){
@@ -15026,6 +15059,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     }
     if(tx.metric==='external_load' && decision==='reduce' && last.load!=null){targetLoad=last.load; evidence.push('En fuerza relativa, primero repetir la carga externa antes de aumentar asistencia.');}
 
+    if(targetLoad!=null)targetLoad=mq215Kg(targetLoad);
     const score=Math.max(0,Math.min(100,Math.round((recent.length>=3?25:15)+(days<=10?25:days<=17?15:5)+(decision==='increase_load'||decision==='increase_reps'?30:decision==='repeat'?18:10)+(Math.min(20,Math.max(0,(lastMin-lower)/(Math.max(1,upper-lower))*20))))));
     return {exerciseId:id,name,status,decision,targetLoad,targetReps,targetSets:cfg.sets,repRange:range,loadStep:step,daysSinceLastExposure:days,confidence,progressionScore:score,evidence,history:recent.map(x=>({date:x.date,load:x.load,minReps:x.minReps,reps:x.reps,sets:x.sets}))};
   }
@@ -15045,8 +15079,8 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
 
   function fmtLoad(x,id){
     if(x==null)return 'Siguiente carga disponible';
-    if(TAXONOMY[cid(id)]?.metric==='external_load')return `${x>0?'+':''}${Number(x.toFixed(1))} kg externos`;
-    return `${Number(x.toFixed(1))} kg`;
+    if(TAXONOMY[cid(id)]?.metric==='external_load')return `${x>0?'+':''}${mq215KgText(x)} kg externos`;
+    return `${mq215KgText(x)} kg`;
   }
   function decisionLabel(x){return ({increase_load:'Subir carga',increase_reps:'Subir reps',maintain:'Mantener',reduce:'Reducir',repeat:'Repetir',reentry:'Reentrada'})[x]||x;}
 
@@ -15071,14 +15105,14 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
       ex.sets.forEach(st=>{
         st.done=false;
         if(TAXONOMY[cid(ex.exId)]?.metric==='external_load'){
-          if(item.targetLoad!=null){st.externalLoadKg=item.targetLoad;st.cargaExternaKg=item.targetLoad;st.externalLoadMode=item.targetLoad<0?'assistance':item.targetLoad>0?'ballast':'bodyweight';}
+          if(item.targetLoad!=null){st.externalLoadKg=mq215Kg(item.targetLoad);st.cargaExternaKg=st.externalLoadKg;st.externalLoadMode=item.targetLoad<0?'assistance':item.targetLoad>0?'ballast':'bodyweight';}
           st.reps=item.targetReps??st.reps;
         } else if(TAXONOMY[cid(ex.exId)]?.metric==='load_duration'){
-          if(item.targetLoad!=null)st.weight=item.targetLoad;
-          if(item.targetDurationSeconds!=null){st.durationSeconds=item.targetDurationSeconds;st.time=fmtTimeStr(item.targetDurationSeconds);}
+          if(item.targetLoad!=null)st.weight=mq215Kg(item.targetLoad);
+          if(item.targetDurationSeconds!=null){st.durationSeconds=mq215Seconds(item.targetDurationSeconds);st.time=fmtTimeStr(item.targetDurationSeconds);}
           delete st.reps;
         } else {
-          if(item.targetLoad!=null)st.weight=item.targetLoad;
+          if(item.targetLoad!=null)st.weight=mq215Kg(item.targetLoad);
           st.reps=item.targetReps??st.reps;
         }
         st._recommendation=true;
@@ -15214,4 +15248,20 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
  function apply213(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
  apply213();setTimeout(apply213,700);setTimeout(apply213,2600);
  console.info('MELQART 2.1.3 · base 2.1.2 · importación de carrera ES/EN');
+})();
+
+(function mq214Build(){
+ const build=Object.freeze({...window.MELQART_BUILD,version:'2.1.4',basedOn:'2.1.3'});
+ window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
+ function apply214(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
+ apply214();setTimeout(apply214,800);setTimeout(apply214,2800);
+ console.info('MELQART 2.1.4 · base 2.1.3 · histórico de recomendaciones corregido');
+})();
+
+(function mq215Build(){
+ const build=Object.freeze({...window.MELQART_BUILD,version:'2.1.5',basedOn:'2.1.4'});
+ window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
+ function apply215(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
+ apply215();setTimeout(apply215,900);setTimeout(apply215,3000);
+ console.info('MELQART 2.1.5 · base 2.1.4 · precisión y cargas disponibles');
 })();

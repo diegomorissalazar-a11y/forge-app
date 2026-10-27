@@ -1,0 +1,6 @@
+Base 2.1.4 -> 2.1.5
+Shared numeric helpers round kg to 1 decimal and seconds to integers. Presentation rounds existing loads; input and recommendation writes normalize new loads. Deduplication signatures preserved.
+Explicit bar increments override historical noise: +5kg total, anchored to current weight. Dumbbell availableLoads catalogue enforces 1..10,12..40. Reentry/reduction select available loads. Unknown machine increments use rounded historical values.
+Recommendation modal/start, aliases, carry, input handlers and ES/EN import tests pass.
+No named functions removed; +8 unique function names, unique variable names unchanged.
+No live iPhone/Firebase test. Counts are not proof of complete feature parity.
