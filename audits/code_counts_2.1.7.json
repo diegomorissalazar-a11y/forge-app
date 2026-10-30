@@ -1,0 +1,66 @@
+{
+  "baseVersion": "2.1.6",
+  "newVersion": "2.1.7",
+  "method": "Comparative unique lexical names: named functions, window function assignments, declared arrows; first identifier after const/let/var. Same patterns on both versions, included in this script. Counts do not prove behavior parity.",
+  "base": {
+    "functions": 867,
+    "variables": 1249
+  },
+  "new": {
+    "functions": 873,
+    "variables": 1244
+  },
+  "delta": {
+    "functions": 6,
+    "variables": -5
+  },
+  "addedFunctions": [
+    "apply217",
+    "mq217Build",
+    "mq217RIRRows",
+    "mq217SetRIR",
+    "progressionTaxonomy",
+    "qualifies"
+  ],
+  "removedFunctions": [],
+  "addedVariables": [
+    "effective",
+    "expected",
+    "explicit",
+    "hist",
+    "index",
+    "knownRIR",
+    "previous",
+    "relative",
+    "safe"
+  ],
+  "removedVariables": [
+    "bestRecentMin",
+    "decision",
+    "drop",
+    "evidence",
+    "factor",
+    "freeStable",
+    "lastMin",
+    "lower",
+    "priorSame",
+    "recentDur",
+    "recentSameLoad",
+    "repeatedDrop",
+    "stable",
+    "targetDuration"
+  ],
+  "sourceSHA256": {
+    "2.1.6": "1779062c02c23d050418be0dd5e6f39e88ec94342ff9e94bd65215a9412ee95d",
+    "2.1.7": "093c1785b581fc0aace1164357bc8a2317738a7064f0d796703eeb62a4f878c9"
+  },
+  "validation": [
+    "node --check app.js PASS",
+    "Unified progression regression tests PASS; previous recommendation tests are historical",
+    "Importer VM tests PASS",
+    "ZIP CRC PASS"
+  ],
+  "limitations": [
+    "No live iPhone or Firebase end-to-end testing. Existing historical version overrides remain."
+  ]
+}

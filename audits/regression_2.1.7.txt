@@ -1,0 +1,5 @@
+Base2.1.6 -> 2.1.7
+Engine replaces old progression branches; no named functions removed. +6 unique function names, -5 unique variable names. Removed legacy local variable names documented in code_counts_2.1.7.json.
+New behavioral test validates RIR, completed exposures, 65kg example, gradual total reps, large jumps, gap return, preview prescription, no calendar percent.
+Previous mode and ES/EN importer regressions PASS.
+No device/Firebase E2E test. Interruption event UI remains pending.

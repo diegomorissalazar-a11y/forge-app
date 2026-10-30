@@ -1,0 +1,43 @@
+{
+  "baseVersion": "2.1.7",
+  "newVersion": "2.1.8",
+  "method": "Comparative unique lexical names: named functions, window function assignments, declared arrows; first identifier after const/let/var. Same patterns on both versions, included in this script. Counts do not prove behavior parity.",
+  "base": {
+    "functions": 873,
+    "variables": 1244
+  },
+  "new": {
+    "functions": 875,
+    "variables": 1246
+  },
+  "delta": {
+    "functions": 2,
+    "variables": 2
+  },
+  "addedFunctions": [
+    "apply218",
+    "mq218Build"
+  ],
+  "removedFunctions": [],
+  "addedVariables": [
+    "achieved",
+    "prescribed",
+    "priorTarget"
+  ],
+  "removedVariables": [
+    "index"
+  ],
+  "sourceSHA256": {
+    "2.1.7": "093c1785b581fc0aace1164357bc8a2317738a7064f0d796703eeb62a4f878c9",
+    "2.1.8": "f7652aadc645b31b8b6b95932ebcd629c628cfcbcfa079a8b4c8bc41d50c0e27"
+  },
+  "validation": [
+    "node --check app.js PASS",
+    "Unified progression regression tests PASS; previous recommendation tests are historical",
+    "Importer VM tests PASS",
+    "ZIP CRC PASS"
+  ],
+  "limitations": [
+    "No live iPhone or Firebase end-to-end testing. Existing historical version overrides remain."
+  ]
+}

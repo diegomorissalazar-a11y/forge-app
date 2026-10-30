@@ -1,3 +1,32 @@
+// Explicit execution mode, scoped to session and routine; legacy bilateral=true means separate sides.
+function mq216SupportsMode(ex){
+ const e=getEx(ex?.exId);return !mq212IsLoadDuration(ex?.exId) && (e?.type==='dumbbell'||e?.taxonomy?.equipment==='dumbbell');
+}
+function mq216Mode(ex,session=activeSession){
+ if(['unilateral','bilateral'].includes(ex?.executionMode))return ex.executionMode;
+ const r=(forge.routines||[]).find(r=>r.id===session?.routineId);
+ const saved=r?.exerciseModes?.[ex?.exId];if(['unilateral','bilateral'].includes(saved))return saved;
+ if(ex?.exId==='ex_remo_manc' && session?.routineId==='r_martes')return 'bilateral';
+ const e=getEx(ex?.exId),base=EJERCICIOS_BASE.find(b=>b.id===ex?.exId);
+ return e?.bilateral===true||ex?.bilateral===true||base?.bilateral===true?'unilateral':'bilateral';
+}
+function mq216SetMode(ei,mode){
+ const ex=activeSession?.exercises?.[ei];if(!ex||!mq216SupportsMode(ex)||!['unilateral','bilateral'].includes(mode))return;
+ const old=mq216Mode(ex);ex.executionMode=mode;
+ const r=(forge.routines||[]).find(r=>r.id===activeSession.routineId);
+ if(r){r.exerciseModes={...(r.exerciseModes||{}),[ex.exId]:mode};}
+ if(old!==mode)(ex.sets||[]).forEach(st=>{
+   // A single completed check cannot assert that both sides were performed.
+   if(mode==='unilateral'){st.done=false;delete st._ladoL;delete st._ladoR;}
+ });
+ try{saveDB();}catch(e){}try{mq210PersistDraft();}catch(e){}
+ rerenderActiveSessionExercises();
+}
+function mq216ModeControl(ex,ei){
+ if(!mq216SupportsMode(ex))return '';
+ const mode=mq216Mode(ex);return `<div style="padding:8px 16px"><label style="font-size:12px">Ejecución <select aria-label="Ejecución unilateral o bilateral" onchange="mq216SetMode(${ei},this.value)"><option value="bilateral" ${mode==='bilateral'?'selected':''}>Bilateral · juntos</option><option value="unilateral" ${mode==='unilateral'?'selected':''}>Unilateral · I / D</option></select></label></div>`;
+}
+
 // MELQART 2.1.5: shared numeric precision, without rewriting historical records.
 function mq215Kg(value){
   const num=Number(String(value??'').trim().replace(',','.'));
@@ -2222,6 +2251,7 @@ function _doIniciarRutina(rutinaId, factor){
     date:Date.now(), exercises, elapsed:0, totalVolume:0,
     restSec:r.restSec||90
   };
+  if(typeof window.mq217Apply==='function')window.mq217Apply(window.mq217Starting||window.mq210EvaluateRoutine(rutinaId));
   _iniciarTimerSesion();
   renderTrain();
   showToast('A entrenar ✦',2000,'ok');
@@ -2489,6 +2519,7 @@ function renderSexBlock(ex,ei){
     </div>
     ${csStr?`<div class="carga-sugerida">✦ ${csStr}</div>`:''}
     ${ytHtml}
+    ${mq216ModeControl(ex,ei)}
     ${colHeader}
     ${ex.sets.map((set,si)=>renderSetRow(ei,si,set,isRun,ultSets[si])).join('')}
   </div>`;
@@ -2505,7 +2536,7 @@ function renderSetRow(ei,si,set,isRun,ultSet){
   const ex=activeSession?.exercises[ei];
   const eDef=getEx(ex?.exId);
   const baseEx=EJERCICIOS_BASE.find(b=>b.id===ex?.exId);
-  const isBilateral = eDef?.bilateral===true || ex?.bilateral===true || baseEx?.bilateral===true;
+  const isBilateral = mq216Mode(ex)==='unilateral';
   const isPlyo=eDef?.type==='plyo';
   const isCarry=mq212IsLoadDuration(ex?.exId);
 
@@ -2585,11 +2616,11 @@ function renderSetRow(ei,si,set,isRun,ultSet){
         <button onclick="toggleLado(${ei},${si},'L')" style="
           width:30px;height:30px;border-radius:50%;border:2px solid ${ladoL?'var(--green)':'var(--border2)'};
           background:${ladoL?'var(--green)':'var(--bg3)'};color:${ladoL?'#fff':'var(--ink3)'};
-          font-size:11px;font-weight:800;cursor:pointer;font-family:var(--fb)">L</button>
+          font-size:11px;font-weight:800;cursor:pointer;font-family:var(--fb)">I</button>
         <button onclick="toggleLado(${ei},${si},'R')" style="
           width:30px;height:30px;border-radius:50%;border:2px solid ${ladoR?'var(--green)':'var(--border2)'};
           background:${ladoR?'var(--green)':'var(--bg3)'};color:${ladoR?'#fff':'var(--ink3)'};
-          font-size:11px;font-weight:800;cursor:pointer;font-family:var(--fb)">R</button>
+          font-size:11px;font-weight:800;cursor:pointer;font-family:var(--fb)">D</button>
       </div>`
     : `<div class="set-check ${done?'done':''}" onclick="toggleSet(${ei},${si})">
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
@@ -2607,6 +2638,7 @@ function renderSetRow(ei,si,set,isRun,ultSet){
     ${checkHtml}
     <button onclick="removeSetFromEx(${ei},${si})" style="background:none;border:none;color:var(--ink3);cursor:pointer;padding:4px 6px;font-size:16px;line-height:1" title="Eliminar serie">✕</button>
     ${refHtml}
+
   </div>`;
 }
 
@@ -2685,7 +2717,7 @@ function maybeStartRestForSet(exObj, ei, si){
 function toggleLado(ei,si,lado){
   if(!activeSession) return;
   const exObj=activeSession.exercises[ei];
-  if(!exObj) return;
+  if(!exObj || mq216Mode(exObj)!=='unilateral') return;
   const set=exObj.sets[si];
   if(!set) return;
 
@@ -2714,7 +2746,7 @@ function toggleSet(ei,si){
   const e=getEx(ex.exId);
   const baseE=EJERCICIOS_BASE.find(b=>b.id===ex.exId);
   const isRun=e?.type==='run'||e?.type==='hiit';
-  const isBilateral= e?.bilateral===true || ex.bilateral===true || baseE?.bilateral===true;
+  const isBilateral=mq216Mode(ex)==='unilateral';
   // Unilaterales: no tocar desde toggleSet, lo maneja toggleLado.
   if(isBilateral) return;
   // Para cardio: leer selectores de tiempo antes de marcar done.
@@ -3794,18 +3826,10 @@ function semanaActualPlan(plan){
 }
 
 function getCargasSemana(rutinaId){
-  const plan=(forge.planes||[]).find(p=>p.activo);
-  if(!plan) return {};
-  const semG=semanaActualPlan(plan);
-  const cargas={};
-  EJERCICIOS_CLAVE.forEach(ec=>{
-    if(!plan.cargas?.[ec.id]) return;
-    const base=plan.cargas[ec.id];
-    const factor=Math.pow(1.025,semG-1);
-    const e=getEx(ec.id);
-    cargas[ec.id]=roundCarga(base*factor, e?.type||'barbell');
-  });
-  return cargas;
+  const r={};
+  const rec=typeof window.mq210EvaluateRoutine==='function'?window.mq210EvaluateRoutine(rutinaId):null;
+  (rec?.items||[]).forEach(x=>{if(x.targetLoad!=null)r[x.exerciseId]=x.targetLoad;});
+  return r;
 }
 
 function crearPlan(){
@@ -14881,7 +14905,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     ex_farmer_carry:{movementId:'farmer_carry',familyId:'carry',equipment:'dumbbell',availableLoads:[1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40],class:'compound',metric:'load_duration',repRange:null,loadStep:2},
     ex_dominadas:{movementId:'pull_up',familyId:'vertical_pull',equipment:'bodyweight',class:'compound',metric:'external_load',repRange:[6,8],loadStep:2.5,supportsExternalLoad:true},
     ex_press_incl_manc:{movementId:'incline_press',familyId:'horizontal_push',equipment:'dumbbell',availableLoads:[1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40],class:'compound',repRange:[7,8],loadStep:2},
-    ex_fondos:{movementId:'dip',familyId:'vertical_push',equipment:'bodyweight',class:'compound',metric:'external_load',repRange:[6,8],loadStep:2.5,supportsExternalLoad:true},
+    ex_fondos:{movementId:'dip',familyId:'vertical_push',equipment:'bodyweight',class:'compound',metric:'external_load',repRange:[6,8],loadStep:2.5,assistanceStepKg:4,supportsExternalLoad:true},
     ex_facepull:{movementId:'face_pull',familyId:'scapular_pull',equipment:'cable',class:'accessory',repRange:[8,12],loadStep:null},
     ex_correr:{movementId:'running',familyId:'cardio',equipment:'none',class:'cardio',metric:'pace'}
   });
@@ -14930,20 +14954,24 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     try{saveDB();}catch(e){}
   }
 
+  function progressionTaxonomy(id){
+    const e=getEx(id);
+    return TAXONOMY[id]||{equipment:e?.type,availableLoads:e?.type==='dumbbell'?TAXONOMY.ex_press_incl_manc.availableLoads:null};
+  }
   function planForExercise(exId,routine){
-    const id=cid(exId), tx=TAXONOMY[id]||{};
+    const id=cid(exId), tx=progressionTaxonomy(id);
     const ep=routine?.exercisePlan?.[exId]||routine?.exercisePlan?.[id]||{};
-    return {sets:Number(ep.sets)||null,repRange:tx.repRange||parseRepRange(ep.reps),role:ep.role||tx.class||'',loadStep:tx.loadStep,class:tx.class||'accessory',metric:tx.metric||'weight'};
+    return {sets:Number(ep.sets)||null,repRange:parseRepRange(ep.reps)||tx.repRange,role:ep.role||tx.class||'',loadStep:tx.loadStep,class:tx.class||'accessory',metric:tx.metric||'weight'};
   }
   function parseRepRange(x){
     const nums=String(x||'').match(/\d+(?:[.,]\d+)?/g)?.map(v=>Number(v.replace(',','.')))||[];
     if(nums.length>=2)return [nums[0],nums[1]];
-    if(nums.length===1)return [nums[0],nums[0]+(nums[0]<=8?2:0)];
+    if(nums.length===1)return [nums[0],nums[0]];
     return null;
   }
 
   function loadForSet(st,exId){
-    const id=cid(exId),tx=TAXONOMY[id]||{};
+    const id=cid(exId),tx=progressionTaxonomy(id);
     if(tx.metric==='external_load'){
       const ext=n(st.externalLoadKg ?? st.cargaExternaKg);
       if(ext!=null)return mq215Kg(ext);
@@ -14955,18 +14983,18 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   function exposureFromSession(s,ex){
     const id=cid(ex.exId);
     const metric=TAXONOMY[id]?.metric||'weight';
-    const done=(ex.sets||[]).filter(st=>st.done!==false && (n(st.reps)!=null || loadForSet(st,id)!=null || n(st.durationSeconds)!=null || st.time));
+    const done=(ex.sets||[]).filter(st=>st.done===true && (n(st.reps)!=null || loadForSet(st,id)!=null || n(st.durationSeconds)!=null || st.time));
     if(!done.length)return null;
     const loads=done.map(st=>loadForSet(st,id)).filter(v=>v!=null);
     const reps=done.map(st=>n(st.reps)).filter(v=>v!=null);
     const durations=done.map(st=>{if(n(st.durationSeconds)!=null)return mq215Seconds(st.durationSeconds);const t=parseTimeStr(st.time||'');return (t.h*3600+t.m*60+t.s)||null;}).filter(v=>v!=null);
     if(metric==='load_duration' && (!loads.length || !durations.length))return null;
     if(!reps.length && !['distance','load_duration'].includes(metric))return null;
-    return {date:dateOf(s.date),ts:s.date,sessionId:s.id,exerciseId:id,metric,loads,reps,durations,load:loads.length?mq215Kg(median(loads)):null,durationSeconds:durations.length?mq215Seconds(median(durations)):null,minDurationSeconds:durations.length?Math.min(...durations):null,minReps:reps.length?Math.min(...reps):null,totalReps:reps.reduce((a,b)=>a+b,0),sets:done.length,bodyWeightKg:n(s.bodyWeightKg),rawSets:done};
+    return {date:dateOf(s.date),ts:s.date,sessionId:s.id,exerciseId:id,metric,loads,reps,durations,load:loads.length?mq215Kg(median(loads)):null,durationSeconds:durations.length?mq215Seconds(median(durations)):null,minDurationSeconds:durations.length?Math.min(...durations):null,minReps:reps.length?Math.min(...reps):null,totalReps:reps.reduce((a,b)=>a+b,0),sets:done.length,bodyWeightKg:n(s.bodyWeightKg),prescription:ex.prescription||null,rawSets:done};
   }
-  function historyFor(exId,limit=8){
+  function historyFor(exId,limit=8,routine){
     const id=cid(exId),rows=[];
-    (forge.sessions||[]).forEach(s=>(s.exercises||[]).forEach(ex=>{ if(cid(ex.exId)!==id)return; const x=exposureFromSession(s,ex); if(x)rows.push(x); }));
+    (forge.sessions||[]).filter(s=>!routine||!s.routineId||s.routineId===routine.id).forEach(s=>(s.exercises||[]).forEach(ex=>{ if(cid(ex.exId)!==id)return; if(routine && ex.executionMode && routine.exerciseModes?.[exId] && ex.executionMode!==routine.exerciseModes[exId])return; const x=exposureFromSession(s,ex); if(x)rows.push(x); }));
     return rows.sort((a,b)=>a.ts-b.ts).slice(-limit);
   }
 
@@ -14978,12 +15006,13 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   function roundToStep(value,step){ if(!step||!Number.isFinite(step))return value; return Math.round(value/step)*step; }
 
   function equipmentLoads(exId){
-    const tx=TAXONOMY[cid(exId)]||{};
+    const tx=progressionTaxonomy(cid(exId));
     if(tx.equipment!=='dumbbell')return null;
     return tx.availableLoads;
   }
   function equipmentStep(exId,history,fallback){
-    const tx=TAXONOMY[cid(exId)]||{},last=history.at(-1)?.load;
+    const tx=progressionTaxonomy(cid(exId)),last=history.at(-1)?.load;
+    if(tx.assistanceStepKg && last<0)return Math.min(tx.assistanceStepKg,-last);
     const loads=equipmentLoads(exId);
     if(loads){const next=loads.find(x=>x>last);return next!=null?mq215Kg(next-last):null;}
     if(['barbell','barbell_or_smith'].includes(tx.equipment))return 5;
@@ -14991,7 +15020,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   }
   function equipmentTarget(exId,last,value,decision){
     if(value==null || last==null)return value;
-    const loads=equipmentLoads(exId),tx=TAXONOMY[cid(exId)]||{};
+    const loads=equipmentLoads(exId),tx=progressionTaxonomy(cid(exId));
     if(loads){
       if(decision==='increase_load')return loads.find(x=>x>last)??null;
       if(['reduce','reentry'].includes(decision))return loads.filter(x=>x<=value).at(-1)??null;
@@ -15003,65 +15032,55 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     return mq215Kg(value);
   }
   function evaluateExercise(exId,routine){
-    const id=cid(exId),tx=TAXONOMY[id]||{},cfg=planForExercise(exId,routine),hist=historyFor(id,8),recent=hist.slice(-5),last=hist.at(-1)||null,prev=hist.at(-2)||null;
-    const name=getEx(id)?.name||getEx(exId)?.name||id;
-    if(!last)return {exerciseId:id,name,status:'SIN_DATOS',decision:'maintain',confidence:'baja',targetLoad:null,targetReps:cfg.repRange?.[0]??null,targetDurationSeconds:tx.metric==='load_duration'?30:null,targetSets:cfg.sets,evidence:['Sin exposiciones históricas equivalentes.'],history:[]};
-    if(tx.metric==='load_duration'){
-      const days=dayDiff(last.date,today());
-      const recentDur=recent.map(x=>x.minDurationSeconds).filter(v=>v!=null);
-      const targetDuration=Math.max(1,mq215Seconds(last.minDurationSeconds||last.durationSeconds||30));
-      const evidence=[`${last.load??'—'} kg · ${targetDuration}s en la última exposición comparable.`];
-      if(days>14)evidence.push(`${days} días desde la última exposición: mantener carga y duración antes de progresar.`);
-      else evidence.push('Farmer Carry progresa por carga y/o tiempo; no utiliza repeticiones.');
-      return {exerciseId:id,name,status:days>21?'REENTRADA':'ESTABLE',decision:days>14?'repeat':'maintain',targetLoad:last.load,targetReps:null,targetDurationSeconds:targetDuration,targetSets:cfg.sets,repRange:null,loadStep:equipmentStep(id,hist,cfg.loadStep??null),daysSinceLastExposure:days,confidence:recent.length>=3?'alta':'media',progressionScore:recentDur.length>=3?70:55,evidence,history:recent.map(x=>({date:x.date,load:x.load,durationSeconds:x.minDurationSeconds,sets:x.sets}))};
+    const id=cid(exId),tx=progressionTaxonomy(id),cfg=planForExercise(exId,routine);
+    const hist=historyFor(id,8,routine),last=hist.at(-1);
+    const explicit=routine?.exercisePlan?.[id]?.progressionRepRange;
+    const range=Array.isArray(explicit)&&explicit.length===2?explicit:(tx.class==='compound'||['barbell','barbell_or_smith'].includes(tx.equipment)?[5,8]:cfg.repRange||[5,8]);
+    const result={exerciseId:id,name:getEx(id)?.name||getEx(exId)?.name||id,status:'SIN_DATOS',decision:'maintain',confidence:'baja',targetLoad:null,targetReps:range[0],targetSets:cfg.sets,targetRIR:2,repRange:range,evidence:[],history:hist.map(x=>({date:x.date,load:x.load,reps:x.reps,sets:x.sets})),cycle:routine?.cycle??null};
+    if(tx.metric==='load_duration'){result.targetReps=null;result.targetDurationSeconds=last?.minDurationSeconds||30;}
+    if(!last){result.evidence.push('Sin histórico comparable: registrar una primera exposición, sin inventar carga.');return result;}
+    result.targetLoad=last.load;result.daysSinceLastExposure=dayDiff(last.date,today());result.confidence='media';result.status='CONSOLIDANDO';
+    const expected=cfg.sets||last.sets;
+    function qualifies(x){return x.sets===expected && x.rawSets.every(st=>st.done===true && Number(st.reps)>=range[1] && st.rir!=null && st.rir!=='' && Number(st.rir)>=2 && same(loadForSet(st,id),last.load));}
+    const complete=last.sets===expected && last.rawSets.every(st=>st.done===true);
+    const knownRIR=complete && last.rawSets.every(st=>st.rir!=null && st.rir!=='' && Number.isFinite(Number(st.rir)));
+    const safe=knownRIR && last.rawSets.every(st=>Number(st.rir)>=2);
+    const recent=hist.slice(-2),days=result.daysSinceLastExposure;
+    const gap=hist.length>=2?dayDiff(hist.at(-2).date,last.date):0;
+    if(days>14 || gap>14){
+      result.decision='reentry';result.status='REENTRADA';result.targetRIR=3;
+      if(days>21 && tx.metric!=='external_load' && last.load!=null)result.targetLoad=equipmentTarget(id,last.load,last.load*.925,'reentry');
+      result.evidence.push('Adaptación tras interrupción: no subir carga; volver a consolidar dos exposiciones comparables.');
+    }else if(tx.metric==='load_duration'){
+      result.evidence.push('Mantener carga y segundos con buena postura; no convertir duración en repeticiones.');
+    }else if(!complete || !knownRIR || !safe){
+      result.evidence.push(!complete?'Faltan series objetivo completadas.':!knownRIR?'Registrar RIR real por serie; no se supone RIR 2 para datos antiguos.':'Margen inferior a RIR 2: no aumentar carga ni repeticiones.');
+    }else if(recent.length===2 && recent.every(qualifies)){
+      const step=equipmentStep(id,hist,cfg.loadStep),next=step?equipmentTarget(id,last.load,last.load+step,'increase_load'):null;
+      const effective=tx.metric==='external_load'?(last.bodyWeightKg!=null?last.bodyWeightKg+last.load:null):last.load;
+      const relative=next!=null && effective>0?(next-last.load)/effective:null;
+      if(next!=null && relative!=null && relative<=.10){
+        result.targetLoad=next;result.targetReps=range[0];result.decision='increase_load';result.status='PROGRESANDO';result.evidence.push('Dos exposiciones completas al techo del rango y RIR ≥2.');
+      }else result.evidence.push(next==null?'No hay siguiente carga disponible confirmada.':'Salto superior al 10% o sin referencia suficiente: mantener carga; no forzar ni ampliar automáticamente el rango del ciclo.');
+    }else{
+      result.decision='increase_reps';result.evidence.push('Mantener carga; avanzar una repetición en TODAS las series solo al completar la meta anterior con RIR 2.');
     }
-    const days=dayDiff(last.date,today());
-    const range=cfg.repRange||[last.minReps||1,Math.max(last.minReps||1,8)];
-    const lower=range[0],upper=range[1];
-    const recentSameLoad=recent.filter(x=>same(x.load,last.load));
-    const bestRecentMin=Math.max(...recent.map(x=>x.minReps??0));
-    const lastMin=last.minReps??0,prevMin=prev?.minReps??null;
-    const step=equipmentStep(id,hist,cfg.loadStep ?? null);
-    const evidence=[];
-    let decision='maintain',status='ESTABLE',targetLoad=last.load,targetReps=Math.min(upper,Math.max(lower,lastMin||lower)),confidence=recent.length>=3?'alta':'media';
-
-    if(days>21){
-      decision='reentry'; status='REENTRADA'; confidence='media'; evidence.push(`${days} días desde la última exposición.`);
-      if(cfg.class==='compound' && tx.metric!=='external_load' && last.load!=null){targetLoad=equipmentTarget(id,last.load,last.load*0.925,'reentry'); targetReps=lower; evidence.push('Reentrada conservadora: reducir 5–10% y reconstruir repeticiones.');}
-      else {targetLoad=last.load;targetReps=Math.max(lower,Math.min(lastMin||lower,upper));evidence.push('Mantener carga y reiniciar desde el tramo bajo del rango.');}
-    } else if(days>14){
-      decision='repeat';status='REENTRADA';confidence='media';targetLoad=last.load;targetReps=Math.max(lower,Math.min(lastMin||lower,upper));evidence.push(`${days} días desde la última exposición: no progresar agresivamente.`);
-    } else {
-      const drop=prevMin!=null && (bestRecentMin-lastMin)>=2;
-      const repeatedDrop=recent.slice(-2).every(x=>(bestRecentMin-(x.minReps??0))>=2);
-      if(drop){
-        status='REGRESION'; decision=repeatedDrop?'reduce':'repeat'; targetReps=Math.max(lower,lastMin);
-        if(repeatedDrop && last.load!=null && tx.metric!=='external_load'){ targetLoad=equipmentTarget(id,last.load,step?last.load-step:last.load*0.95,'reduce'); evidence.push('Caída de ≥2 reps repetida: reducción moderada.'); }
-        else evidence.push('Caída de ≥2 reps respecto del mejor registro reciente: no aumentar carga.');
-      } else if(lastMin>=upper && recentSameLoad.length>=2){
-        const priorSame=recentSameLoad.at(-2); const stable=!priorSame || (lastMin-(priorSame.minReps??lastMin))>=-1;
-        if(stable){
-          if(step){ decision='increase_load';status='PROGRESANDO';targetLoad=equipmentTarget(id,last.load,(last.load??0)+step,'increase_load');targetReps=lower;evidence.push(`Techo de ${upper} reps consolidado en ≥2 exposiciones.`);evidence.push(`Siguiente incremento observado/configurado: ${step} kg.`); }
-          else {decision='increase_load';status='PROGRESANDO';targetLoad=null;targetReps=lower;evidence.push(`Techo de ${upper} reps consolidado.`);evidence.push('Subir al siguiente peso disponible; salto no definido.');}
-        }
-      } else if(lastMin<upper && (!prev || lastMin>=(prevMin??lastMin)-1)){
-        decision='increase_reps';status=recentSameLoad.length>=2?'CONSOLIDANDO':'PROGRESANDO';targetLoad=last.load;targetReps=Math.min(upper,Math.max(lower,lastMin+1));evidence.push(`Mantener carga y progresar repeticiones hacia ${upper}.`);
-        if(recentSameLoad.length<2)evidence.push('Carga aún no consolidada en dos exposiciones.');
-      } else {
-        decision='repeat';status='ESTABLE';targetLoad=last.load;targetReps=Math.max(lower,Math.min(upper,lastMin));evidence.push('Sin evidencia suficiente para subir carga.');
+    if(tx.metric!=='load_duration'){
+      const prescribed=Number(last.prescription?.targetReps);
+      const priorTarget=Number.isFinite(prescribed)&&prescribed>0?prescribed:Math.max(...last.reps,range[0]);
+      let target=Math.min(range[1],Math.max(range[0],priorTarget));
+      if(result.decision==='increase_load'||result.decision==='reentry')target=range[0];
+      else if(result.decision==='increase_reps'){
+        const achieved=complete&&last.rawSets.every(st=>Number(st.reps)>=target);
+        if(achieved && target<range[1])target++;
+        else result.decision='maintain';
       }
+      result.targetReps=target;
+      result.targetRepsBySet=Array.from({length:expected},()=>target);
+      result.evidence.push(`Objetivo uniforme: ${expected} series de ${target}. Si falta una, repetir la misma meta.`);
     }
-
-    // Fuerza relativa: progresión continua por carga externa; nunca saltar a lastre sin consolidar.
-    if(tx.metric==='external_load' && decision==='increase_load' && last.load===0){
-      const freeStable=recent.slice(-2).length===2 && recent.slice(-2).every(x=>(x.minReps??0)>=upper && same(x.load,0));
-      if(!freeStable){decision='increase_reps';status='CONSOLIDANDO';targetLoad=0;targetReps=upper;evidence.splice(0,evidence.length,'Peso corporal aún no consolidado en dos sesiones consecutivas; no agregar lastre.');}
-    }
-    if(tx.metric==='external_load' && decision==='reduce' && last.load!=null){targetLoad=last.load; evidence.push('En fuerza relativa, primero repetir la carga externa antes de aumentar asistencia.');}
-
-    if(targetLoad!=null)targetLoad=mq215Kg(targetLoad);
-    const score=Math.max(0,Math.min(100,Math.round((recent.length>=3?25:15)+(days<=10?25:days<=17?15:5)+(decision==='increase_load'||decision==='increase_reps'?30:decision==='repeat'?18:10)+(Math.min(20,Math.max(0,(lastMin-lower)/(Math.max(1,upper-lower))*20))))));
-    return {exerciseId:id,name,status,decision,targetLoad,targetReps,targetSets:cfg.sets,repRange:range,loadStep:step,daysSinceLastExposure:days,confidence,progressionScore:score,evidence,history:recent.map(x=>({date:x.date,load:x.load,minReps:x.minReps,reps:x.reps,sets:x.sets}))};
+    if(result.targetLoad!=null)result.targetLoad=mq215Kg(result.targetLoad);
+    return result;
   }
   window.mq210EvaluateExercise=evaluateExercise;
 
@@ -15085,9 +15104,9 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   function decisionLabel(x){return ({increase_load:'Subir carga',increase_reps:'Subir reps',maintain:'Mantener',reduce:'Reducir',repeat:'Repetir',reentry:'Reentrada'})[x]||x;}
 
   window.mq210OpenRoutineRecommendation=function(routineId){
-    const rec=evaluateRoutine(routineId);if(!rec)return;
+    const rec=evaluateRoutine(routineId);if(!rec)return;window.mq217Preview=JSON.parse(JSON.stringify(rec));
     document.getElementById('mq210-rec-modal')?.remove();
-    const rows=rec.items.map(x=>`<div style="padding:12px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><strong>${x.name}</strong><span style="font-size:10px;font-weight:800;color:var(--p)">${decisionLabel(x.decision)}</span></div><div style="font-size:13px;margin-top:5px;color:var(--ink2)">${fmtLoad(x.targetLoad,x.exerciseId)} · ${x.targetDurationSeconds!=null?fmtTimeStr(x.targetDurationSeconds):(x.targetReps??'—')+' reps'}${x.targetSets?` · ${x.targetSets} series`:''}</div><div style="font-size:10px;color:var(--ink3);margin-top:4px">${x.evidence.join(' ')}</div></div>`).join('');
+    const rows=rec.items.map(x=>`<div style="padding:12px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><strong>${x.name}</strong><span style="font-size:10px;font-weight:800;color:var(--p)">${decisionLabel(x.decision)}</span></div><div style="font-size:13px;margin-top:5px;color:var(--ink2)">${fmtLoad(x.targetLoad,x.exerciseId)} · ${x.targetDurationSeconds!=null?fmtTimeStr(x.targetDurationSeconds):(x.targetRepsBySet?.join(' / ')??x.targetReps??'—')+' reps · RIR '+(x.targetRIR??2)}${x.targetSets?` · ${x.targetSets} series`:''}</div><div style="font-size:10px;color:var(--ink3);margin-top:4px">${x.evidence.join(' ')}</div></div>`).join('');
     const bg=document.createElement('div');bg.id='mq210-rec-modal';bg.className='modal-bg on';bg.innerHTML=`<div class="modal"><div class="modal-handle"></div><div class="modal-head"><div><div class="modal-title">Recomendación de hoy</div><div style="font-size:10px;color:var(--ink3);margin-top:2px">${rec.routineName} · ${rec.state}</div></div><button class="bicon" onclick="document.getElementById('mq210-rec-modal')?.remove()">×</button></div><div class="modal-body">${rows}<button class="btn btn-p" style="margin-top:16px" onclick="document.getElementById('mq210-rec-modal')?.remove();mq210StartRecommended('${routineId}')">▶ Iniciar con recomendación</button></div></div>`;
     bg.addEventListener('click',e=>{if(e.target===bg)bg.remove()});document.body.appendChild(bg);
   };
@@ -15098,29 +15117,31 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     activeSession.recommendationGeneratedAt=rec.generatedAt;
     (activeSession.exercises||[]).forEach(ex=>{
       const item=rec.items.find(x=>x.exerciseId===cid(ex.exId));if(!item)return;
-      ex.prescription={decision:item.decision,targetLoad:item.targetLoad,targetReps:item.targetReps,targetDurationSeconds:item.targetDurationSeconds??null,targetSets:item.targetSets,evidence:item.evidence,confidence:item.confidence,progressionScore:item.progressionScore};
+      ex.prescription={decision:item.decision,targetLoad:item.targetLoad,targetReps:item.targetReps,targetRepsBySet:item.targetRepsBySet,targetRIR:item.targetRIR,targetDurationSeconds:item.targetDurationSeconds??null,targetSets:item.targetSets,evidence:item.evidence,confidence:item.confidence,progressionScore:item.progressionScore};
       const desired=item.targetSets||ex.sets?.length||1;
       while(ex.sets.length<desired){ex.sets.push({...ex.sets.at(-1),done:false});}
       if(ex.sets.length>desired)ex.sets=ex.sets.slice(0,desired);
-      ex.sets.forEach(st=>{
-        st.done=false;
+      ex.sets.forEach((st,si)=>{
+        st.done=false;delete st.rir;delete st._ladoL;delete st._ladoR;
+        st.targetRIR=item.targetRIR??2;st._pesoSugerido=item.targetLoad??0;st._fuente='progresión';
         if(TAXONOMY[cid(ex.exId)]?.metric==='external_load'){
           if(item.targetLoad!=null){st.externalLoadKg=mq215Kg(item.targetLoad);st.cargaExternaKg=st.externalLoadKg;st.externalLoadMode=item.targetLoad<0?'assistance':item.targetLoad>0?'ballast':'bodyweight';}
-          st.reps=item.targetReps??st.reps;
+          st.reps=item.targetRepsBySet?.[si]??item.targetReps??st.reps;
         } else if(TAXONOMY[cid(ex.exId)]?.metric==='load_duration'){
-          if(item.targetLoad!=null)st.weight=mq215Kg(item.targetLoad);
+          st.weight=item.targetLoad==null?'':mq215Kg(item.targetLoad);
           if(item.targetDurationSeconds!=null){st.durationSeconds=mq215Seconds(item.targetDurationSeconds);st.time=fmtTimeStr(item.targetDurationSeconds);}
           delete st.reps;
         } else {
-          if(item.targetLoad!=null)st.weight=mq215Kg(item.targetLoad);
-          st.reps=item.targetReps??st.reps;
+          st.weight=item.targetLoad==null?'':mq215Kg(item.targetLoad);
+          st.reps=item.targetRepsBySet?.[si]??item.targetReps??st.reps;
         }
         st._recommendation=true;
       });
     });
   }
+  window.mq217Apply=applyPrescriptionToActive;
   window.mq210StartRecommended=function(routineId){
-    const rec=evaluateRoutine(routineId);_doIniciarRutina(routineId,1);applyPrescriptionToActive(rec);mq210PersistDraft();try{renderTrain();}catch(e){}showToast('Recomendación cargada · ajusta si lo necesitas',2200,'ok');
+    const rec=window.mq217Preview?.routineId===routineId?window.mq217Preview:evaluateRoutine(routineId);window.mq217Preview=null;window.mq217Starting=rec;_doIniciarRutina(routineId,1);window.mq217Starting=null;mq210PersistDraft();try{renderTrain();}catch(e){}showToast('Recomendación cargada · ajusta si lo necesitas',2200,'ok');
   };
 
   function decorateRecommendationButtons(){
@@ -15264,4 +15285,46 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
  function apply215(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
  apply215();setTimeout(apply215,900);setTimeout(apply215,3000);
  console.info('MELQART 2.1.5 · base 2.1.4 · precisión y cargas disponibles');
+})();
+
+(function mq216Build(){
+ const build=Object.freeze({...window.MELQART_BUILD,version:'2.1.6',basedOn:'2.1.5'});
+ window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
+ function apply216(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
+ apply216();setTimeout(apply216,1000);setTimeout(apply216,3200);
+})();
+
+function mq217SetRIR(ei,si,value){
+ const st=activeSession?.exercises?.[ei]?.sets?.[si];if(!st)return;
+ const n=Number(value);if(value===''){delete st.rir;}else if(Number.isInteger(n)&&n>=0&&n<=10)st.rir=n;
+ try{mq210PersistDraft();}catch(e){}
+}
+(function mq217Build(){
+ const build=Object.freeze({...window.MELQART_BUILD,version:'2.1.7',basedOn:'2.1.6'});
+ window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
+ function apply217(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
+ apply217();setTimeout(apply217,1100);setTimeout(apply217,3400);
+})();
+
+(function mq217RIRRows(){
+ const previous=window.renderSetRow;
+ window.renderSetRow=function(ei,si,set,isRun,ultSet){
+   const html=previous.apply(this,arguments),ex=activeSession?.exercises?.[ei],e=getEx(ex?.exId);
+   if(isRun||mq212IsLoadDuration(ex?.exId)||e?.type==='plyo')return html;
+   return html+`<div style="padding:6px 16px;font-size:12px"><label>RIR realizado <input aria-label="RIR realizado" type="number" min="0" max="10" step="1" inputmode="numeric" placeholder="sin registrar" value="${set.rir??''}" oninput="mq217SetRIR(${ei},${si},this.value)" style="width:70px"> · objetivo ${set.targetRIR??2}</label></div>`;
+ };
+})();
+
+(function mq218Build(){
+ const build=Object.freeze({...window.MELQART_BUILD,version:'2.1.8',basedOn:'2.1.7'});
+ window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
+ function apply218(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
+ apply218();setTimeout(apply218,1200);setTimeout(apply218,3600);
+})();
+
+(function mq219Build(){
+ const build=Object.freeze({...window.MELQART_BUILD,version:'2.1.9',basedOn:'2.1.8'});
+ window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
+ function apply219(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
+ apply219();setTimeout(apply219,1300);setTimeout(apply219,3800);
 })();

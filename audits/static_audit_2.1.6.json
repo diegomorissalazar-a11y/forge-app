@@ -1,0 +1,17 @@
+{
+  "version": "2.1.6",
+  "basedOn": "2.1.5",
+  "pass": true,
+  "checks": [
+    "Syntax",
+    "Unilateral/bilateral actual row rendering",
+    "I/D completion and pending sides on mode switch",
+    "Routine-scoped persistence and serialization",
+    "Remo Tuesday defaults bilateral",
+    "Carry and bar excluded from selector",
+    "Recommendation/precision/import tests pass"
+  ],
+  "limitations": [
+    "VM with DOM stubs; no real iPhone/Firebase validation"
+  ]
+}

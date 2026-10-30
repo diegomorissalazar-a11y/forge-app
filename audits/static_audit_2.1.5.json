@@ -1,0 +1,21 @@
+{
+  "version": "2.1.5",
+  "basedOn": "2.1.4",
+  "pass": true,
+  "checks": [
+    "JavaScript syntax",
+    "Shared one-decimal kg and integer-second precision",
+    "Bar +5 preserves load offsets",
+    "Dumbbells 1..10 by 1,12..40 by 2; no invented loads above 40",
+    "Historical/recommendation/modal/prescription tests",
+    "Live and saved input handler tests",
+    "Carry duration without reps",
+    "No historical mutation in engine tests",
+    "ES/EN run importer",
+    "Title/menu/cache references 215"
+  ],
+  "limitations": [
+    "VM DOM stubs: no actual iPhone/Firebase test",
+    "Lexical counts compare unique names, not all bindings"
+  ]
+}

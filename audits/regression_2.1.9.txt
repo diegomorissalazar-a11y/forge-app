@@ -1,0 +1,1 @@
+2.1.8 ->2.1.9. Fondos assistanceStepKg4 overrides history while external load is negative; min(4,-load) reaches0 without inventing ballast. Does not change pullup hardware. Regression tests pass. Functions875->877, unique variable names1246 unchanged; no removed functions. No real device/Firebase E2E.

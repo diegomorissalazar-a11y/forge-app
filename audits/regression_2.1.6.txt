@@ -1,0 +1,5 @@
+Base 2.1.5 -> 2.1.6
+Explicit executionMode overrides legacy bilateral flag; routine.exerciseModes persists preference. No historical rewrite.
+Mode/render/toggle and existing recommendation/precision/import tests PASS.
++6 unique function names, +1 unique variable name; no functions removed.
+Assets/styles unchanged. No real iPhone/Firebase test.

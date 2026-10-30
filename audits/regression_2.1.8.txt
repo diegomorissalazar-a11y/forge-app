@@ -1,0 +1,5 @@
+Base2.1.7 ->2.1.8
+Replaces one-total-rep advancement with uniform rep target across all sets. Reads previous prescription to retain failed targets.
+New regression passes uniform advancement, partial failure repeat, RIR gates, weight reset all sets, mode and ES/EN import.
+Functions873->875; unique variable names1244->1246. No functions removed.
+No live device/Firebase validation.

@@ -1,0 +1,19 @@
+{
+  "version": "2.1.8",
+  "basedOn": "2.1.7",
+  "pass": true,
+  "checks": [
+    "JS syntax",
+    "65x5/5/5 ->65x6/6/6",
+    "65x6/6/5 repeats65x6/6/6",
+    "65x7/7/7 ->65x8/8/8",
+    "Two qualified 65x8/8/8 ->70x5/5/5",
+    "One missing series prevents increase",
+    "RIR gates and shared prescription",
+    "Mode and import regressions"
+  ],
+  "limits": [
+    "No live iPhone/Firebase E2E test",
+    "Illness/injury registration remains pending"
+  ]
+}

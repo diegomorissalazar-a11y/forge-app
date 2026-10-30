@@ -1,0 +1,23 @@
+{
+  "version": "2.1.7",
+  "basedOn": "2.1.6",
+  "pass": true,
+  "checks": [
+    "Syntax",
+    "User 65x5 -> reps -> 70x5 regression",
+    "RIR2 gates with no inferred RIR",
+    "Two complete comparable exposures",
+    "One total extra rep",
+    "Large equipment jumps held",
+    "Gap adaptation",
+    "Frozen preview applied to session",
+    "Normal-start same prescription hook",
+    "No 2.5 percent weekly calculation",
+    "Mode and run import regression tests"
+  ],
+  "limits": [
+    "DOM-stub VM tests, no real iPhone/Firebase test",
+    "Interruption uses gaps; illness/injury date-entry UI is not part of this change",
+    "Cycle exercise configuration retained; no new phase calendar created"
+  ]
+}
