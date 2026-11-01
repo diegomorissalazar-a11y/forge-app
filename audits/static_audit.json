@@ -1,18 +1,20 @@
 {
-  "version": "2.1.9",
-  "basedOn": "2.1.8",
+  "version": "2.1.12",
+  "basedOn": "2.1.11",
   "pass": true,
   "checks": [
     "JS syntax",
-    "Dips configured assistance step4kg",
-    "27->23->19 confirmed",
-    "Reps progress before reducing assistance",
-    "All sets reset to5",
-    "No jump past zero into ballast",
-    "Previous progression/mode/import regression tests"
+    "Missing/empty RIR defaults2 in derived historical readings",
+    "Explicit0/1 RIR respected",
+    "Prescription sets start RIR2 and done=false",
+    "Uniform rep progression and ranges",
+    "Assisted dips4kg steps",
+    "Progress list, side modes, run importer regressions"
   ],
   "limits": [
-    "No live iPhone/Firebase validation",
-    "Pullup machine step not assumed from dips"
+    "Default RIR2 is user-specified assumption, not measured effort",
+    "No historical rewrite",
+    "No actual iPhone/Firebase test",
+    "Mixed historical loads still summarized by median; no warmup inference"
   ]
 }

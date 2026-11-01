@@ -1,0 +1,4 @@
+2.1.9 ->2.1.10
+Fix positive-weight-only progress filter for relative exercises. Canonical grouping with no data mutation, explicit assistance/free/ballast text and expandable history. Ordinary rows retained.
+Tests PASS: actual list/history, prior progression, mode, run import. Counts877->885 functions;1246->1249 unique variable names. No removed functions.
+No iPhone/Firebase live validation.

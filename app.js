@@ -1,3 +1,31 @@
+function mq2110Canonical(id){return ({ex_dominadas_asist:'ex_dominadas',ex_fondos_asist:'ex_fondos'})[id]||id;}
+function mq2110IsRelative(id){return ['ex_dominadas','ex_fondos'].includes(mq2110Canonical(id));}
+function mq2110External(st,id){
+ const v=st.externalLoadKg??st.cargaExternaKg;
+ if(v!=null && v!=='' && Number.isFinite(Number(v)))return mq215Kg(v);
+ if(st.assistanceKg!=null && Number(st.assistanceKg)>0)return -mq215Kg(st.assistanceKg);
+ if(st.ballastKg!=null && Number(st.ballastKg)>0)return mq215Kg(st.ballastKg);
+ if(String(id).endsWith('_asist') && Number(st.weight)>0)return -mq215Kg(st.weight);
+ if(Number(st.weight)===0 && st.weight!=null)return 0;
+ return null;
+}
+function mq2110Rows(id){
+ const rows=[];
+ (forge.sessions||[]).forEach(s=>{
+  const sets=[];(s.exercises||[]).filter(ex=>mq2110Canonical(ex.exId)===mq2110Canonical(id)).forEach(ex=>{
+   (ex.sets||[]).filter(st=>st.done===true && Number(st.reps)>0).forEach(st=>sets.push({reps:Number(st.reps),external:mq2110External(st,ex.exId),rir:st.rir}));
+  });
+  if(sets.length)rows.push({date:s.date,sets});
+ });return rows.sort((a,b)=>a.date-b.date);
+}
+function mq2110SetText(st){return `${st.external==null?'Carga sin registrar':st.external<0?'Asistencia '+mq215KgText(-st.external)+' kg':st.external>0?'Lastre +'+mq215KgText(st.external)+' kg':'Peso corporal'} × ${st.reps}`;}
+function mq2110History(id,filtro){
+ let rows=mq2110Rows(id);const months=({'3m':3,'6m':6,'12m':12})[filtro];
+ if(months){const cutoff=new Date();cutoff.setMonth(cutoff.getMonth()-months);rows=rows.filter(r=>r.date>=cutoff.getTime());}
+ const buttons=['3m','6m','12m','todo'].map(f=>`<button class="btn btn-s" onclick="setProgAccFiltro('${mq2110Canonical(id)}','${f}')">${f}</button>`).join('');
+ return `<div style="display:flex;gap:6px;padding:10px 0">${buttons}</div><div style="font-size:12px">Carga externa: negativa = asistencia; 0 = libre; positiva = lastre.</div>`+rows.slice().reverse().map(r=>`<div style="padding:10px 0;border-bottom:1px solid var(--border)"><strong>${localDateStr(r.date)}</strong>${r.sets.map((st,i)=>`<div>Serie ${i+1}: ${mq2110SetText(st)}${st.rir!=null?' · RIR '+Number(st.rir):''}</div>`).join('')}</div>`).join('')+(rows.length?'':'<p>Sin series completadas en este período.</p>');
+}
+
 // Explicit execution mode, scoped to session and routine; legacy bilateral=true means separate sides.
 function mq216SupportsMode(ex){
  const e=getEx(ex?.exId);return !mq212IsLoadDuration(ex?.exId) && (e?.type==='dumbbell'||e?.taxonomy?.equipment==='dumbbell');
@@ -3921,6 +3949,7 @@ function setProgAccFiltro(exId, filtro) {
 
 /** Construye el HTML del cuerpo del accordion con gráfico + filtros */
 function buildAccBody(exId, filtro) {
+  if(mq2110IsRelative(exId))return mq2110History(exId,filtro);
   const e = getEx(exId); if (!e) return '';
   const isRun = e.type === 'run' || e.type === 'hiit';
   const sesiones = forge.sessions || [];
@@ -4168,11 +4197,11 @@ function renderProgEjercicios() {
   const exs = forge.exercises || [];
   const sesiones = forge.sessions || [];
 
-  const exsConData = exs.filter(e =>
-    sesiones.some(s => s.exercises?.some(ex =>
-      ex.exId === e.id && (ex.sets || []).some(st => st.done && (st.weight > 0 || st.distance))
-    ))
-  );
+  const unique=new Map();
+  exs.forEach(e=>{const id=mq2110Canonical(e.id);if(!unique.has(id)||e.id===id)unique.set(id,{...e,id,name:mq2110IsRelative(id)?(id==='ex_fondos'?'Fondos':'Dominadas'):e.name});});
+  const exsConData=[...unique.values()].filter(e=>mq2110IsRelative(e.id)?mq2110Rows(e.id).length>0:
+    sesiones.some(s=>s.exercises?.some(ex=>ex.exId===e.id&&(ex.sets||[]).some(st=>st.done&&(st.weight>0||st.distance)))));
+
 
   if (!exsConData.length) {
     document.getElementById('prog-ex-list').innerHTML =
@@ -4205,15 +4234,17 @@ function renderProgEjercicios() {
   function buildGroupBody(grupoKey, exsList) {
     const filtro = window._progAccFiltro['_grupo_' + grupoKey] || '3m';
     const exRows = exsList.map(e => {
+      const relative=mq2110IsRelative(e.id),relativeRows=relative?mq2110Rows(e.id):[];
+      const bestRelative=relativeRows.flatMap(r=>r.sets).filter(st=>st.external!=null).sort((a,b)=>b.external-a.external||b.reps-a.reps)[0];
       const isRun = e.type === 'run' || e.type === 'hiit';
       const pr = isRun ? null : getPR(e.id);
       const runPR = isRun ? getRunPRObj(e.id) : null;
 
       // PDR string
-      const pdrVal = isRun
+      const pdrVal = relative ? (bestRelative?mq2110SetText(bestRelative):'—') : isRun
         ? (runPR && runPR.dist > 0 ? runPR.dist.toFixed(2) + ' km' : '—')
         : (pr && pr.weight > 0 ? pr.weight + ' kg' : '—');
-      const pdrReps = !isRun && pr && pr.weight > 0 ? pr.reps + ' reps' : '';
+      const pdrReps = !relative && !isRun && pr && pr.weight > 0 ? pr.reps + ' reps' : '';
 
       // Últimas series de la última sesión
       let seriesHtml = '';
@@ -4243,6 +4274,7 @@ function renderProgEjercicios() {
         }
       }
 
+      if(relative){const latest=relativeRows.at(-1);seriesHtml=latest?latest.sets.map(st=>`<div style="font-size:12px;margin-top:4px">${mq2110SetText(st)}</div>`).join(''):'';}
       // Gráfico del ejercicio individual (al hacer clic en la fila)
       const exIsOpen = !!window._progAccState[e.id];
       const exBodyHtml = exIsOpen ? buildAccBody(e.id, window._progAccFiltro[e.id] || filtro) : '';
@@ -4254,8 +4286,8 @@ function renderProgEjercicios() {
             <div style="font-size:14px;font-weight:600;color:var(--ink)">${e.name}</div>
             ${seriesHtml}
           </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:2px">PDR</div>
+          <div style="text-align:right;flex-shrink:0;max-width:45%;overflow-wrap:anywhere">
+            <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:2px">${relative?'Carga externa máx.':'PDR'}</div>
             <div style="font-size:15px;font-weight:700;color:var(--p)">${pdrVal}</div>
             ${pdrReps ? `<div style="font-size:10px;color:var(--ink3)">${pdrReps}</div>` : ''}
           </div>
@@ -14061,10 +14093,10 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
         objective:'Fuerza de sentadilla',priority:'high',cycle:2,weekDay:'lunes',
         exercises:['ex_saltos_cajon','ex_sentadilla','ex_sent_bulgara','ex_curl_femoral'],
         exercisePlan:{
-          ex_saltos_cajon:{sets:2,reps:'4',role:'activación',restSec:60},
-          ex_sentadilla:{sets:3,reps:'5–6',role:'principal',restSec:180},
-          ex_sent_bulgara:{sets:2,reps:'8 por pierna',role:'accesorio',restSec:120},
-          ex_curl_femoral:{sets:2,reps:'10',role:'accesorio',restSec:90}
+          ex_saltos_cajon:{sets:2,reps:'3–5',role:'activación',restSec:60},
+          ex_sentadilla:{sets:3,reps:'5–8',role:'principal',restSec:180},
+          ex_sent_bulgara:{sets:2,reps:'8–12 por pierna',role:'accesorio',restSec:120},
+          ex_curl_femoral:{sets:2,reps:'10–15',role:'accesorio',restSec:90}
         }
       },
       {
@@ -14072,9 +14104,9 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
         objective:'Empuje + espalda',priority:'medium',cycle:2,weekDay:'martes',
         exercises:['ex_press_banca','ex_remo_maq','ex_press_hombros','ex_elev_lateral'],
         exercisePlan:{
-          ex_press_banca:{sets:3,reps:'5–6',role:'principal',restSec:180},
-          ex_remo_maq:{sets:3,reps:'6–8',role:'principal',restSec:150},
-          ex_press_hombros:{sets:2,reps:'6',role:'secundario',restSec:150},
+          ex_press_banca:{sets:3,reps:'5–8',role:'principal',restSec:180},
+          ex_remo_maq:{sets:3,reps:'8–12',role:'principal',restSec:150},
+          ex_press_hombros:{sets:2,reps:'6–10',role:'secundario',restSec:150},
           ex_elev_lateral:{sets:2,reps:'12–15',role:'accesorio',restSec:75}
         }
       },
@@ -14089,9 +14121,9 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
         objective:'Cadena posterior y glúteos',priority:'high',cycle:2,weekDay:'jueves',
         exercises:['ex_peso_muerto','ex_hip_thrust_maq','ex_cable_pallof','ex_farmer_carry'],
         exercisePlan:{
-          ex_peso_muerto:{sets:3,reps:'5',role:'principal',restSec:180},
-          ex_hip_thrust_maq:{sets:3,reps:'8',role:'principal',restSec:150},
-          ex_cable_pallof:{sets:3,reps:'10–12 por lado',role:'core anti-rotación',restSec:60},
+          ex_peso_muerto:{sets:3,reps:'5–8',role:'principal',restSec:180},
+          ex_hip_thrust_maq:{sets:3,reps:'8–12',role:'principal',restSec:150},
+          ex_cable_pallof:{sets:3,reps:'10–15 por lado',role:'core anti-rotación',restSec:60},
           ex_farmer_carry:{sets:3,durationSeconds:30,role:'funcional',restSec:90}
         },fallback:{ex_farmer_carry:'ex_plancha_frontal'}
       },
@@ -14105,9 +14137,9 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
         objective:'Fuerza relativa y estabilidad del hombro',priority:'medium',cycle:2,weekDay:'viernes',
         exercises:['ex_dominadas','ex_press_incl_manc','ex_fondos','ex_facepull'],
         exercisePlan:{
-          ex_dominadas:{sets:3,reps:'máximas técnicas',role:'fuerza relativa',restSec:150},
-          ex_press_incl_manc:{sets:3,reps:'8',role:'principal',restSec:150},
-          ex_fondos:{sets:3,reps:'máximas técnicas',role:'fuerza relativa',restSec:120},
+          ex_dominadas:{sets:3,reps:'5–8',role:'fuerza relativa',restSec:150},
+          ex_press_incl_manc:{sets:3,reps:'8–12',role:'principal',restSec:150},
+          ex_fondos:{sets:3,reps:'5–8',role:'fuerza relativa',restSec:120},
           ex_facepull:{sets:3,reps:'12–15',role:'estabilidad hombro',restSec:75}
         },fallback:{ex_dominadas:'ex_jalon_pecho',ex_fondos:'ex_fondos_asist'}
       },
@@ -14891,22 +14923,22 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
 
   // Taxonomía estable. No cambia IDs históricos: agrega metadatos canónicos.
   const TAXONOMY = Object.freeze({
-    ex_sentadilla:{movementId:'squat',familyId:'knee_dominant',equipment:'barbell_or_smith',class:'compound',repRange:[5,6],loadStep:5},
-    ex_sent_bulgara:{movementId:'split_squat',familyId:'knee_dominant',equipment:'dumbbell',availableLoads:[1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40],class:'accessory',repRange:[8,10],loadStep:2},
-    ex_curl_femoral:{movementId:'leg_curl',familyId:'knee_flexion',equipment:'machine',class:'accessory',repRange:[10,12],loadStep:null},
-    ex_saltos_cajon:{movementId:'box_jump',familyId:'power',equipment:'bodyweight',class:'accessory',repRange:[4,4],loadStep:null},
-    ex_press_banca:{movementId:'bench_press',familyId:'horizontal_push',equipment:'barbell',class:'compound',repRange:[6,8],loadStep:5},
-    ex_remo_maq:{movementId:'chest_supported_row',familyId:'horizontal_pull',equipment:'machine',class:'compound',repRange:[8,10],loadStep:null},
-    ex_press_hombros:{movementId:'overhead_press',familyId:'vertical_push',equipment:'barbell',class:'compound',repRange:[8,10],loadStep:5},
-    ex_elev_lateral:{movementId:'lateral_raise',familyId:'shoulder_abduction',equipment:'dumbbell',availableLoads:[1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40],class:'accessory',repRange:[12,15],loadStep:2},
-    ex_peso_muerto:{movementId:'deadlift',familyId:'hip_hinge',equipment:'barbell_or_smith',class:'compound',repRange:[6,8],loadStep:5},
-    ex_hip_thrust_maq:{movementId:'hip_thrust',familyId:'hip_extension',equipment:'machine',class:'compound',repRange:[8,10],loadStep:null},
-    ex_cable_pallof:{movementId:'pallof_press',familyId:'anti_rotation',equipment:'cable',class:'accessory',repRange:[10,12],loadStep:null},
+    ex_sentadilla:{movementId:'squat',familyId:'knee_dominant',equipment:'barbell_or_smith',class:'compound',repRange:[5, 8],loadStep:5},
+    ex_sent_bulgara:{movementId:'split_squat',familyId:'knee_dominant',equipment:'dumbbell',availableLoads:[1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40],class:'accessory',repRange:[8, 12],loadStep:2},
+    ex_curl_femoral:{movementId:'leg_curl',familyId:'knee_flexion',equipment:'machine',class:'accessory',repRange:[10, 15],loadStep:null},
+    ex_saltos_cajon:{movementId:'box_jump',familyId:'power',equipment:'bodyweight',class:'accessory',repRange:[3, 5],loadStep:null},
+    ex_press_banca:{movementId:'bench_press',familyId:'horizontal_push',equipment:'barbell',class:'compound',repRange:[5, 8],loadStep:5},
+    ex_remo_maq:{movementId:'chest_supported_row',familyId:'horizontal_pull',equipment:'machine',class:'compound',repRange:[8, 12],loadStep:null},
+    ex_press_hombros:{movementId:'overhead_press',familyId:'vertical_push',equipment:'barbell',class:'compound',repRange:[6, 10],loadStep:5},
+    ex_elev_lateral:{movementId:'lateral_raise',familyId:'shoulder_abduction',equipment:'dumbbell',availableLoads:[1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40],class:'accessory',repRange:[12, 15],loadStep:2},
+    ex_peso_muerto:{movementId:'deadlift',familyId:'hip_hinge',equipment:'barbell_or_smith',class:'compound',repRange:[5, 8],loadStep:5},
+    ex_hip_thrust_maq:{movementId:'hip_thrust',familyId:'hip_extension',equipment:'machine',class:'compound',repRange:[8, 12],loadStep:null},
+    ex_cable_pallof:{movementId:'pallof_press',familyId:'anti_rotation',equipment:'cable',class:'accessory',repRange:[10, 15],loadStep:null},
     ex_farmer_carry:{movementId:'farmer_carry',familyId:'carry',equipment:'dumbbell',availableLoads:[1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40],class:'compound',metric:'load_duration',repRange:null,loadStep:2},
-    ex_dominadas:{movementId:'pull_up',familyId:'vertical_pull',equipment:'bodyweight',class:'compound',metric:'external_load',repRange:[6,8],loadStep:2.5,supportsExternalLoad:true},
-    ex_press_incl_manc:{movementId:'incline_press',familyId:'horizontal_push',equipment:'dumbbell',availableLoads:[1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40],class:'compound',repRange:[7,8],loadStep:2},
-    ex_fondos:{movementId:'dip',familyId:'vertical_push',equipment:'bodyweight',class:'compound',metric:'external_load',repRange:[6,8],loadStep:2.5,assistanceStepKg:4,supportsExternalLoad:true},
-    ex_facepull:{movementId:'face_pull',familyId:'scapular_pull',equipment:'cable',class:'accessory',repRange:[8,12],loadStep:null},
+    ex_dominadas:{movementId:'pull_up',familyId:'vertical_pull',equipment:'bodyweight',class:'compound',metric:'external_load',repRange:[5, 8],loadStep:2.5,supportsExternalLoad:true},
+    ex_press_incl_manc:{movementId:'incline_press',familyId:'horizontal_push',equipment:'dumbbell',availableLoads:[1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40],class:'compound',repRange:[8, 12],loadStep:2},
+    ex_fondos:{movementId:'dip',familyId:'vertical_push',equipment:'bodyweight',class:'compound',metric:'external_load',repRange:[5, 8],loadStep:2.5,assistanceStepKg:4,supportsExternalLoad:true},
+    ex_facepull:{movementId:'face_pull',familyId:'scapular_pull',equipment:'cable',class:'accessory',repRange:[12, 15],loadStep:null},
     ex_correr:{movementId:'running',familyId:'cardio',equipment:'none',class:'cardio',metric:'pace'}
   });
   window.MELQART_TAXONOMY=TAXONOMY;
@@ -14954,9 +14986,11 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     try{saveDB();}catch(e){}
   }
 
+  const PROGRESSION_RANGES2111=Object.freeze({"ex_press_banca": [5, 8], "ex_remo_maq": [8, 12], "ex_remo_manc": [8, 12], "ex_press_hombros": [6, 10], "ex_elev_lateral": [12, 15], "ex_dominadas": [5, 8], "ex_press_incl_manc": [8, 12], "ex_fondos": [5, 8], "ex_facepull": [12, 15], "ex_sentadilla": [5, 8], "ex_sent_bulgara": [8, 12], "ex_curl_femoral": [10, 15], "ex_peso_muerto": [5, 8], "ex_peso_muerto_rum": [5, 8], "ex_hip_thrust_maq": [8, 12], "ex_cable_pallof": [10, 15], "ex_saltos_cajon": [3, 5]});
+  window.MELQART_PROGRESSION_RANGES=PROGRESSION_RANGES2111;
   function progressionTaxonomy(id){
     const e=getEx(id);
-    return TAXONOMY[id]||{equipment:e?.type,availableLoads:e?.type==='dumbbell'?TAXONOMY.ex_press_incl_manc.availableLoads:null};
+    return TAXONOMY[id]||{equipment:e?.type==='smith'?'barbell_or_smith':e?.type,availableLoads:e?.type==='dumbbell'?TAXONOMY.ex_press_incl_manc.availableLoads:null};
   }
   function planForExercise(exId,routine){
     const id=cid(exId), tx=progressionTaxonomy(id);
@@ -14983,7 +15017,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   function exposureFromSession(s,ex){
     const id=cid(ex.exId);
     const metric=TAXONOMY[id]?.metric||'weight';
-    const done=(ex.sets||[]).filter(st=>st.done===true && (n(st.reps)!=null || loadForSet(st,id)!=null || n(st.durationSeconds)!=null || st.time));
+    const done=(ex.sets||[]).filter(st=>st.done===true && (n(st.reps)!=null || loadForSet(st,id)!=null || n(st.durationSeconds)!=null || st.time)).map(st=>({...st,rir:st.rir==null||st.rir===''?2:st.rir}));
     if(!done.length)return null;
     const loads=done.map(st=>loadForSet(st,id)).filter(v=>v!=null);
     const reps=done.map(st=>n(st.reps)).filter(v=>v!=null);
@@ -15035,9 +15069,14 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     const id=cid(exId),tx=progressionTaxonomy(id),cfg=planForExercise(exId,routine);
     const hist=historyFor(id,8,routine),last=hist.at(-1);
     const explicit=routine?.exercisePlan?.[id]?.progressionRepRange;
-    const range=Array.isArray(explicit)&&explicit.length===2?explicit:(tx.class==='compound'||['barbell','barbell_or_smith'].includes(tx.equipment)?[5,8]:cfg.repRange||[5,8]);
+    const range=Array.isArray(explicit)&&explicit.length===2?explicit:PROGRESSION_RANGES2111[id]||cfg.repRange||[5,8];
     const result={exerciseId:id,name:getEx(id)?.name||getEx(exId)?.name||id,status:'SIN_DATOS',decision:'maintain',confidence:'baja',targetLoad:null,targetReps:range[0],targetSets:cfg.sets,targetRIR:2,repRange:range,evidence:[],history:hist.map(x=>({date:x.date,load:x.load,reps:x.reps,sets:x.sets})),cycle:routine?.cycle??null};
-    if(tx.metric==='load_duration'){result.targetReps=null;result.targetDurationSeconds=last?.minDurationSeconds||30;}
+    if(tx.metric==='load_duration'){result.targetReps=null;result.repRange=null;result.durationRangeSeconds=[30,45];result.targetDurationSeconds=last?.minDurationSeconds||30;}
+    if(id==='ex_saltos_cajon'||getEx(id)?.type==='plyo'){
+      result.status='CALIDAD';result.targetLoad=null;result.targetReps=4;result.targetRIR=null;
+      result.targetRepsBySet=Array.from({length:cfg.sets||2},()=>4);
+      result.evidence.push('Potencia: 3–5 saltos de calidad; detener si cae la ejecución. Sin incremento automático de peso o repeticiones.');return result;
+    }
     if(!last){result.evidence.push('Sin histórico comparable: registrar una primera exposición, sin inventar carga.');return result;}
     result.targetLoad=last.load;result.daysSinceLastExposure=dayDiff(last.date,today());result.confidence='media';result.status='CONSOLIDANDO';
     const expected=cfg.sets||last.sets;
@@ -15054,7 +15093,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     }else if(tx.metric==='load_duration'){
       result.evidence.push('Mantener carga y segundos con buena postura; no convertir duración en repeticiones.');
     }else if(!complete || !knownRIR || !safe){
-      result.evidence.push(!complete?'Faltan series objetivo completadas.':!knownRIR?'Registrar RIR real por serie; no se supone RIR 2 para datos antiguos.':'Margen inferior a RIR 2: no aumentar carga ni repeticiones.');
+      result.evidence.push(!complete?'Faltan series objetivo completadas.':!knownRIR?'RIR 2 por defecto; revisar el valor registrado.':'Margen inferior a RIR 2: no aumentar carga ni repeticiones.');
     }else if(recent.length===2 && recent.every(qualifies)){
       const step=equipmentStep(id,hist,cfg.loadStep),next=step?equipmentTarget(id,last.load,last.load+step,'increase_load'):null;
       const effective=tx.metric==='external_load'?(last.bodyWeightKg!=null?last.bodyWeightKg+last.load:null):last.load;
@@ -15106,7 +15145,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
   window.mq210OpenRoutineRecommendation=function(routineId){
     const rec=evaluateRoutine(routineId);if(!rec)return;window.mq217Preview=JSON.parse(JSON.stringify(rec));
     document.getElementById('mq210-rec-modal')?.remove();
-    const rows=rec.items.map(x=>`<div style="padding:12px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><strong>${x.name}</strong><span style="font-size:10px;font-weight:800;color:var(--p)">${decisionLabel(x.decision)}</span></div><div style="font-size:13px;margin-top:5px;color:var(--ink2)">${fmtLoad(x.targetLoad,x.exerciseId)} · ${x.targetDurationSeconds!=null?fmtTimeStr(x.targetDurationSeconds):(x.targetRepsBySet?.join(' / ')??x.targetReps??'—')+' reps · RIR '+(x.targetRIR??2)}${x.targetSets?` · ${x.targetSets} series`:''}</div><div style="font-size:10px;color:var(--ink3);margin-top:4px">${x.evidence.join(' ')}</div></div>`).join('');
+    const rows=rec.items.map(x=>`<div style="padding:12px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><strong>${x.name}</strong><span style="font-size:10px;font-weight:800;color:var(--p)">${decisionLabel(x.decision)}</span></div><div style="font-size:13px;margin-top:5px;color:var(--ink2)">${fmtLoad(x.targetLoad,x.exerciseId)} · ${x.targetDurationSeconds!=null?fmtTimeStr(x.targetDurationSeconds):(x.targetRepsBySet?.join(' / ')??x.targetReps??'—')+' reps · RIR '+(x.targetRIR??2)}${x.repRange?` · rango ${x.repRange[0]}–${x.repRange[1]}`:x.durationRangeSeconds?' · referencia 30–45 s':''}${x.targetSets?` · ${x.targetSets} series`:''}</div><div style="font-size:10px;color:var(--ink3);margin-top:4px">${x.evidence.join(' ')}</div></div>`).join('');
     const bg=document.createElement('div');bg.id='mq210-rec-modal';bg.className='modal-bg on';bg.innerHTML=`<div class="modal"><div class="modal-handle"></div><div class="modal-head"><div><div class="modal-title">Recomendación de hoy</div><div style="font-size:10px;color:var(--ink3);margin-top:2px">${rec.routineName} · ${rec.state}</div></div><button class="bicon" onclick="document.getElementById('mq210-rec-modal')?.remove()">×</button></div><div class="modal-body">${rows}<button class="btn btn-p" style="margin-top:16px" onclick="document.getElementById('mq210-rec-modal')?.remove();mq210StartRecommended('${routineId}')">▶ Iniciar con recomendación</button></div></div>`;
     bg.addEventListener('click',e=>{if(e.target===bg)bg.remove()});document.body.appendChild(bg);
   };
@@ -15117,12 +15156,12 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     activeSession.recommendationGeneratedAt=rec.generatedAt;
     (activeSession.exercises||[]).forEach(ex=>{
       const item=rec.items.find(x=>x.exerciseId===cid(ex.exId));if(!item)return;
-      ex.prescription={decision:item.decision,targetLoad:item.targetLoad,targetReps:item.targetReps,targetRepsBySet:item.targetRepsBySet,targetRIR:item.targetRIR,targetDurationSeconds:item.targetDurationSeconds??null,targetSets:item.targetSets,evidence:item.evidence,confidence:item.confidence,progressionScore:item.progressionScore};
+      ex.prescription={decision:item.decision,targetLoad:item.targetLoad,targetReps:item.targetReps,targetRepsBySet:item.targetRepsBySet,targetRIR:item.targetRIR,repRange:item.repRange,durationRangeSeconds:item.durationRangeSeconds,targetDurationSeconds:item.targetDurationSeconds??null,targetSets:item.targetSets,evidence:item.evidence,confidence:item.confidence,progressionScore:item.progressionScore};
       const desired=item.targetSets||ex.sets?.length||1;
       while(ex.sets.length<desired){ex.sets.push({...ex.sets.at(-1),done:false});}
       if(ex.sets.length>desired)ex.sets=ex.sets.slice(0,desired);
       ex.sets.forEach((st,si)=>{
-        st.done=false;delete st.rir;delete st._ladoL;delete st._ladoR;
+        st.done=false;st.rir=2;delete st._ladoL;delete st._ladoR;
         st.targetRIR=item.targetRIR??2;st._pesoSugerido=item.targetLoad??0;st._fuente='progresión';
         if(TAXONOMY[cid(ex.exId)]?.metric==='external_load'){
           if(item.targetLoad!=null){st.externalLoadKg=mq215Kg(item.targetLoad);st.cargaExternaKg=st.externalLoadKg;st.externalLoadMode=item.targetLoad<0?'assistance':item.targetLoad>0?'ballast':'bodyweight';}
@@ -15296,7 +15335,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
 
 function mq217SetRIR(ei,si,value){
  const st=activeSession?.exercises?.[ei]?.sets?.[si];if(!st)return;
- const n=Number(value);if(value===''){delete st.rir;}else if(Number.isInteger(n)&&n>=0&&n<=10)st.rir=n;
+ const n=Number(value);if(value===''){st.rir=2;}else if(Number.isInteger(n)&&n>=0&&n<=10)st.rir=n;
  try{mq210PersistDraft();}catch(e){}
 }
 (function mq217Build(){
@@ -15311,7 +15350,7 @@ function mq217SetRIR(ei,si,value){
  window.renderSetRow=function(ei,si,set,isRun,ultSet){
    const html=previous.apply(this,arguments),ex=activeSession?.exercises?.[ei],e=getEx(ex?.exId);
    if(isRun||mq212IsLoadDuration(ex?.exId)||e?.type==='plyo')return html;
-   return html+`<div style="padding:6px 16px;font-size:12px"><label>RIR realizado <input aria-label="RIR realizado" type="number" min="0" max="10" step="1" inputmode="numeric" placeholder="sin registrar" value="${set.rir??''}" oninput="mq217SetRIR(${ei},${si},this.value)" style="width:70px"> · objetivo ${set.targetRIR??2}</label></div>`;
+   return html+`<div style="padding:6px 16px;font-size:12px"><label>RIR realizado <input aria-label="RIR realizado" type="number" min="0" max="10" step="1" inputmode="numeric" placeholder="sin registrar" value="${set.rir==null||set.rir===''?2:set.rir}" oninput="mq217SetRIR(${ei},${si},this.value)" style="width:70px"> · objetivo ${set.targetRIR??2}</label></div>`;
  };
 })();
 
@@ -15327,4 +15366,25 @@ function mq217SetRIR(ei,si,value){
  window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
  function apply219(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
  apply219();setTimeout(apply219,1300);setTimeout(apply219,3800);
+})();
+
+(function mq2110Build(){
+ const build=Object.freeze({...window.MELQART_BUILD,version:'2.1.10',basedOn:'2.1.9'});
+ window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
+ function apply2110(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
+ apply2110();setTimeout(apply2110,1400);setTimeout(apply2110,4000);
+})();
+
+(function mq2111Build(){
+ const build=Object.freeze({...window.MELQART_BUILD,version:'2.1.11',basedOn:'2.1.10'});
+ window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
+ function apply2111(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
+ apply2111();setTimeout(apply2111,1500);setTimeout(apply2111,4200);
+})();
+
+(function mq2112Build(){
+ const build=Object.freeze({...window.MELQART_BUILD,version:'2.1.12',basedOn:'2.1.11'});
+ window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
+ function apply2112(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
+ apply2112();setTimeout(apply2112,1600);setTimeout(apply2112,4400);
 })();

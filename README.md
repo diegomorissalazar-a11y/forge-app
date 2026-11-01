@@ -1,5 +1,5 @@
-MELQART 2.1.9 — base 2.1.8
+MELQART 2.1.12 — base 2.1.11
 
-Fondos asistidos: assistanceStepKg=4 confirmado por usuario: -27 -> -23 -> -19. Configuración explícita prevalece sobre diferencias inferidas del histórico. Sigue exigiendo dos exposiciones completas al techo con RIR>=2, peso corporal de referencia y salto efectivo <=10%; reduce asistencia y reinicia todas las series a5. La asistencia se limita en0, sin añadir lastre de forma implícita. El lastre y dominadas conservan su configuración previa, ya que no se confirmó el equipo de dominadas.
+Por instrucción del usuario todas las series son efectivas, no se infieren calentamientos por ser más ligeras. RIR2 por defecto en formulario, precarga y lectura derivada de históricos sin RIR; un valor explícito (incluido0) se respeta. Borrar el campo devuelve2. No modifica históricos en bloque. Una recomendación no marca series como realizadas.
 
-Pruebas test_progression_2.1.9.cjs y auditoría en audits/. +2 nombres de función, mismos nombres de variables; ninguna función eliminada. No probado con iPhone/Firebase real.
+Se conservan rangos por ejercicio y progresión uniforme de todas las series. Auditoría+2 nombres de función, variables únicas sin variación, sin funciones eliminadas. Prueba actual test_default_rir_2.1.12.cjs; pruebas antiguas describen otras versiones. No probado con iPhone/Firebase real. El cálculo de carga de históricos mixtos todavía usa mediana: esta versión solo cambia el RIR predeterminado, no incorpora inferencia de calentamientos ni nueva política de cargas mixtas.

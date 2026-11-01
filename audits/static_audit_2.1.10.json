@@ -1,0 +1,19 @@
+{
+  "version": "2.1.10",
+  "basedOn": "2.1.9",
+  "pass": true,
+  "checks": [
+    "JS syntax",
+    "Actual progress list render",
+    "Assisted/free/weighted completed sets visible",
+    "Canonical aliases deduplicated",
+    "Expandable history and period filters",
+    "Ordinary weight rows retained",
+    "No source mutation",
+    "Previous progression/mode/import tests"
+  ],
+  "limitations": [
+    "VM DOM stubs; no real iPhone/Firebase validation",
+    "External load maximum is descriptive, not a bodyweight-adjusted strength ranking"
+  ]
+}

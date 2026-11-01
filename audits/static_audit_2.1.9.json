@@ -1,0 +1,18 @@
+{
+  "version": "2.1.9",
+  "basedOn": "2.1.8",
+  "pass": true,
+  "checks": [
+    "JS syntax",
+    "Dips configured assistance step4kg",
+    "27->23->19 confirmed",
+    "Reps progress before reducing assistance",
+    "All sets reset to5",
+    "No jump past zero into ballast",
+    "Previous progression/mode/import regression tests"
+  ],
+  "limits": [
+    "No live iPhone/Firebase validation",
+    "Pullup machine step not assumed from dips"
+  ]
+}

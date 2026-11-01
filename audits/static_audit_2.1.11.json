@@ -1,0 +1,21 @@
+{
+  "version": "2.1.11",
+  "basedOn": "2.1.10",
+  "pass": true,
+  "checks": [
+    "JS syntax",
+    "16 exercise-specific upper/lower ranges",
+    "Uniform targets and failed-target repeat",
+    "Incline24x12 ->26x8",
+    "Bench65x8 ->70x5",
+    "RIR gates, real equipment, shared prescription",
+    "Jump quality excluded from automatic progression",
+    "Carry duration retained",
+    "Relative history, modes, importer regression tests"
+  ],
+  "limitations": [
+    "VM tests with DOM stubs; no real iPhone/Firebase validation",
+    "Carry30\u201345s is a reference range, duration is not automatically advanced without quality input",
+    "Illness/injury entry remains pending"
+  ]
+}

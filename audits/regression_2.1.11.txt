@@ -1,0 +1,4 @@
+2.1.10 ->2.1.11
+Adds per-exercise progression ranges; removes universal compound5–8 fallback. Existing explicit progressionRepRange remains highest priority. No session history rewrite or series count migration.
+PASS new range/progression tests plus previous relative-progress, I/D mode, run import tests.
+Functions+2, unique variable names+1; none removed. No real iPhone/Firebase E2E test.

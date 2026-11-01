@@ -1,0 +1,4 @@
+2.1.11 ->2.1.12
+RIR default2 in form/prescription/derived exposure. Explicit lower RIR preserved. No automatic warmup classification, no raw history rewrite.
+Tests pass current RIR default and all previous progression, range, dips, progress, mode, run import cases.
+Functions887->889, unique variable names1250 unchanged. No function removed. No live iPhone/Firebase validation.
