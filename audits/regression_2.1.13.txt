@@ -1,0 +1,3 @@
+2.1.12 ->2.1.13. Adds outbound normalization and optional prescription nulls; retains sync paths, photos policies and local state.
+Cloud write mock tests pass for repair and failure; previous current RIR/range/progression, relative-progress, modes and importer tests pass.
+Functions889->893; unique variable names1250->1251; none removed. No real Firebase/iPhone E2E.

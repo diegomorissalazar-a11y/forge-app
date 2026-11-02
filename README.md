@@ -1,5 +1,7 @@
-MELQART 2.1.12 — base 2.1.11
+MELQART 2.1.13 — base 2.1.12
 
-Por instrucción del usuario todas las series son efectivas, no se infieren calentamientos por ser más ligeras. RIR2 por defecto en formulario, precarga y lectura derivada de históricos sin RIR; un valor explícito (incluido0) se respeta. Borrar el campo devuelve2. No modifica históricos en bloque. Una recomendación no marca series como realizadas.
+Corrige envío de propiedades undefined en prescripciones y snapshots. Copia de salida limpia: omite propiedades undefined de objetos, usa null para undefined en arrays conservando índices; mantiene cero,false,null. No muta datos locales. Fechas y tipos nativos SDK se conservan. Detecta ciclos/listas directamente anidadas antes del envío sin transformar silenciosamente estructuras. Se usa en las dos rutas existentes de subida, conservando rutas remotas y política de fotos de cada una. Campos opcionales de nuevas prescripciones usan null.
 
-Se conservan rangos por ejercicio y progresión uniforme de todas las series. Auditoría+2 nombres de función, variables únicas sin variación, sin funciones eliminadas. Prueba actual test_default_rir_2.1.12.cjs; pruebas antiguas describen otras versiones. No probado con iPhone/Firebase real. El cálculo de carga de históricos mixtos todavía usa mediana: esta versión solo cambia el RIR predeterminado, no incorpora inferencia de calentamientos ni nueva política de cargas mixtas.
+La captura no muestra el mensaje completo, por lo que la causa exacta en la cuenta no está confirmada. Test_cloud_2.1.13.cjs reproduce rechazo de undefined con un mock estricto y valida la corrección. Resto de regresiones pasa. No cambia límites de tamaño ni reglas de Firebase. Sin validación real iPhone/Firebase.
+
+Auditoría+4 nombres de función,+1 nombre de variable; ninguna función eliminada.

@@ -1,20 +1,20 @@
 {
-  "version": "2.1.12",
-  "basedOn": "2.1.11",
+  "version": "2.1.13",
+  "basedOn": "2.1.12",
   "pass": true,
   "checks": [
     "JS syntax",
-    "Missing/empty RIR defaults2 in derived historical readings",
-    "Explicit0/1 RIR respected",
-    "Prescription sets start RIR2 and done=false",
-    "Uniform rep progression and ranges",
-    "Assisted dips4kg steps",
-    "Progress list, side modes, run importer regressions"
+    "Both write paths normalize optional undefined fields",
+    "Prescription optional fields use null",
+    "Reproduced undefined rejection with strict write mock",
+    "Nested snapshot/arrays values retained",
+    "Local state and photos unchanged",
+    "Failed writes do not mark sync successful",
+    "Previous RIR/ranges/progression/progress/modes/import tests"
   ],
   "limits": [
-    "Default RIR2 is user-specified assumption, not measured effort",
-    "No historical rewrite",
-    "No actual iPhone/Firebase test",
-    "Mixed historical loads still summarized by median; no warmup inference"
+    "Screenshot error text truncated: exact server reason not confirmed",
+    "Strict mocked write, not actual Firebase account/iPhone",
+    "Does not change cloud security rules or document size quota"
   ]
 }

@@ -1,3 +1,23 @@
+// Normalize optional values on the outbound copy only; preserve false, zero and array positions.
+function mq2113CloudData(value){
+ const visiting=new WeakSet();
+ function clean(v,path){
+  if(v===undefined)return null;
+  if(v===null||typeof v==='string'||typeof v==='boolean'||typeof v==='number')return v;
+  if(typeof v!=='object')throw new Error('Dato no compatible en '+path);
+  if(v instanceof Date)return new Date(v.getTime());
+  if(visiting.has(v))throw new Error('Referencia circular en '+path);
+  visiting.add(v);
+  let result;
+  if(Array.isArray(v))result=Array.from(v,(x,i)=>{if(Array.isArray(x))throw new Error('Lista anidada no compatible en '+path+'['+i+']');return clean(x,path+'['+i+']');});
+  else if(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null){
+   result={};Object.keys(v).forEach(k=>{if(v[k]!==undefined)Object.defineProperty(result,k,{value:clean(v[k],path+'.'+k),enumerable:true,writable:true,configurable:true});});
+  }else result=v; // Preserve SDK-native Timestamp/DocumentReference/GeoPoint values.
+  visiting.delete(v);return result;
+ }
+ return clean(value,'datos');
+}
+
 function mq2110Canonical(id){return ({ex_dominadas_asist:'ex_dominadas',ex_fondos_asist:'ex_fondos'})[id]||id;}
 function mq2110IsRelative(id){return ['ex_dominadas','ex_fondos'].includes(mq2110Canonical(id));}
 function mq2110External(st,id){
@@ -310,7 +330,7 @@ async function doGuardarNube() {
       const {foto, ...rest} = s;
       return rest;
     });
-    await db.collection('users').doc(currentUser.uid).collection('forge').doc('data').set(forgeSync);
+    await db.collection('users').doc(currentUser.uid).collection('forge').doc('data').set(mq2113CloudData(forgeSync));
     setLastSync(); saveDB();
     setSyncDot('ok');
     showToast('✓ Datos guardados en la nube', 2500, 'ok');
@@ -7000,7 +7020,7 @@ async function syncHaciaFirebase(){
   showToast('Subiendo a Firebase…',2000);
   try{
     const ref=firebase.firestore().collection('users').doc(user.uid).collection('data').doc('forge');
-    await ref.set(forge);
+    await ref.set(mq2113CloudData(forge));
     showToast('✓ Firebase actualizado',2500,'ok');
   }catch(e){ showToast('Error: '+e.message,3000); }
 }
@@ -15156,7 +15176,7 @@ setTimeout(()=>{const el=document.getElementById('um-version'); if(el) el.textCo
     activeSession.recommendationGeneratedAt=rec.generatedAt;
     (activeSession.exercises||[]).forEach(ex=>{
       const item=rec.items.find(x=>x.exerciseId===cid(ex.exId));if(!item)return;
-      ex.prescription={decision:item.decision,targetLoad:item.targetLoad,targetReps:item.targetReps,targetRepsBySet:item.targetRepsBySet,targetRIR:item.targetRIR,repRange:item.repRange,durationRangeSeconds:item.durationRangeSeconds,targetDurationSeconds:item.targetDurationSeconds??null,targetSets:item.targetSets,evidence:item.evidence,confidence:item.confidence,progressionScore:item.progressionScore};
+      ex.prescription={decision:item.decision,targetLoad:item.targetLoad,targetReps:item.targetReps,targetRepsBySet:item.targetRepsBySet??null,targetRIR:item.targetRIR??null,repRange:item.repRange??null,durationRangeSeconds:item.durationRangeSeconds??null,targetDurationSeconds:item.targetDurationSeconds??null,targetSets:item.targetSets,evidence:item.evidence,confidence:item.confidence,progressionScore:item.progressionScore??null};
       const desired=item.targetSets||ex.sets?.length||1;
       while(ex.sets.length<desired){ex.sets.push({...ex.sets.at(-1),done:false});}
       if(ex.sets.length>desired)ex.sets=ex.sets.slice(0,desired);
@@ -15387,4 +15407,11 @@ function mq217SetRIR(ei,si,value){
  window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
  function apply2112(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
  apply2112();setTimeout(apply2112,1600);setTimeout(apply2112,4400);
+})();
+
+(function mq2113Build(){
+ const build=Object.freeze({...window.MELQART_BUILD,version:'2.1.13',basedOn:'2.1.12'});
+ window.MELQART_BUILD=build;window.MELQART_VERSION=build.version;
+ function apply2113(){document.title='MELQART '+build.version;const el=document.getElementById('um-version');if(el)el.textContent=build.version;}
+ apply2113();setTimeout(apply2113,1700);setTimeout(apply2113,4600);
 })();
